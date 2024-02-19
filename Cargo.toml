@@ -1,0 +1,15 @@
+[package]
+name = "manga-rustique"
+version = "0.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = [
+  "scrappers",
+]
+
+[dependencies]
+scrappers = { path = "scrappers" }
+tokio = { version = "1", features = ["full"] }
