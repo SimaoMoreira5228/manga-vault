@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use crate::{get_image_url, Chapter, Manga, MangaItem, ScrapperTraits, ScrapperType};
+use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
 
 use super::MangaReadOrgScrapper;
 
@@ -183,7 +183,7 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 		Ok(manga_items)
 	}
 
-	async fn scrape_manga(&self, url: &str) -> Result<Manga, reqwest::Error> {
+	async fn scrape_manga(&self, url: &str) -> Result<MangaPage, reqwest::Error> {
 		let res = reqwest::get(url).await?;
 		let body = res.text().await?;
 
@@ -223,13 +223,36 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 			})
 			.collect::<Vec<Chapter>>();
 
-		Ok(Manga {
+		Ok(MangaPage {
 			title,
 			img_url,
 			description,
 			chapters,
 			url: url.to_string(),
 		})
+	}
+
+	async fn scrape_genres_list(&self) -> Result<Vec<Genre>, reqwest::Error> {
+		let url = "https://www.mangaread.org/";
+		let res = reqwest::get(url).await?;
+		let body = res.text().await?;
+
+		let html = scraper::Html::parse_document(&body);
+		//search for the id menu-item-72 and then a ul with the genres
+		let genres_selector = scraper::Selector::parse("li.menu-item-72 ul.sub-menu li a").unwrap();
+		let genres = html
+			.select(&genres_selector)
+			.map(|genre| {
+				let name = genre.text().collect::<Vec<_>>().join(" ");
+				let url = genre.value().attr("href").unwrap();
+				Genre {
+					name,
+					url: url.to_string(),
+				}
+			})
+			.collect::<Vec<Genre>>();
+
+		Ok(genres)
 	}
 
 	fn get_scrapper_type(&self) -> ScrapperType {

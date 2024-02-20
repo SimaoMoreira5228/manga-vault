@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{get_image_url, Chapter, Manga, MangaItem, ScrapperTraits, ScrapperType};
+use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
 
 use super::ManganatoScrapper;
 
@@ -149,7 +149,7 @@ impl ScrapperTraits for ManganatoScrapper {
 		return Ok(manga_items);
 	}
 
-	async fn scrape_manga(&self, url: &str) -> Result<Manga, reqwest::Error> {
+	async fn scrape_manga(&self, url: &str) -> Result<MangaPage, reqwest::Error> {
 		let res = reqwest::get(url).await?;
 		let body = res.text().await?;
 
@@ -206,13 +206,42 @@ impl ScrapperTraits for ManganatoScrapper {
 			}
 		}
 
-		Ok(Manga {
+		Ok(MangaPage {
 			title,
 			url: url.to_string(),
 			img_url: img_url.to_string(),
 			description: description.to_string(),
 			chapters,
 		})
+	}
+
+	async fn scrape_genres_list(&self) -> Result<Vec<Genre>, reqwest::Error> {
+		let url = "https://manganato.com/genre-all";
+		let res = reqwest::get(url).await?;
+		let body = res.text().await?;
+
+		let html = scraper::Html::parse_document(&body);
+		let genres_div_selector = scraper::Selector::parse("div.panel-genres-list").unwrap();
+		let genres_div = html.select(&genres_div_selector).next().unwrap();
+		let genres_selector = scraper::Selector::parse("a.a-h").unwrap();
+		let genres = genres_div.select(&genres_selector).collect::<Vec<scraper::ElementRef>>();
+		let mut genres_list: Vec<Genre> = Vec::new();
+
+		for genre in genres {
+			let name = genre.text().collect::<Vec<_>>().join("");
+			let url = genre.value().attr("href").unwrap();
+
+			if url.contains("genre-all") {
+				continue;
+			}
+
+			genres_list.push(Genre {
+				name,
+				url: url.to_string(),
+			});
+		}
+
+		Ok(genres_list)
 	}
 
 	fn get_scrapper_type(&self) -> ScrapperType {

@@ -13,7 +13,8 @@ pub trait ScrapperTraits {
 	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error>;
 	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error>;
 	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>, reqwest::Error>;
-	async fn scrape_manga(&self, url: &str) -> Result<Manga, reqwest::Error>;
+	async fn scrape_manga(&self, url: &str) -> Result<MangaPage, reqwest::Error>;
+	async fn scrape_genres_list(&self) -> Result<Vec<Genre>, reqwest::Error>;
 	fn get_scrapper_type(&self) -> ScrapperType;
 }
 
@@ -60,7 +61,7 @@ pub struct MangaItem {
 }
 
 #[derive(Debug)]
-pub struct Manga {
+pub struct MangaPage {
 	pub title: String,
 	pub url: String,
 	pub img_url: String,
@@ -71,6 +72,12 @@ pub struct Manga {
 #[derive(Debug)]
 pub struct Chapter {
 	pub title: String,
+	pub url: String,
+}
+
+#[derive(Debug)]
+pub struct Genre {
+	pub name: String,
 	pub url: String,
 }
 
