@@ -66,6 +66,7 @@ pub struct MangaPage {
 	pub url: String,
 	pub img_url: String,
 	pub description: String,
+	pub genres: Vec<String>,
 	pub chapters: Vec<Chapter>,
 }
 

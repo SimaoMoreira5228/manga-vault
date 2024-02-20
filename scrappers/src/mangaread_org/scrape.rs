@@ -201,6 +201,20 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 		let img_selector = scraper::Selector::parse("div.summary_image img").unwrap();
 		let img_url = get_image_url(&html.select(&img_selector).next().unwrap());
 
+		let summary_content_selector = scraper::Selector::parse("div.summary_content_wrap div.summary_content").unwrap();
+		let summary_content_div = html.select(&summary_content_selector).next().unwrap();
+		let post_content_item_selector = scraper::Selector::parse("div.post-content div.post-content_item").unwrap();
+		let post_content_item = summary_content_div.select(&post_content_item_selector);
+		let mut genres: Vec<String> = Vec::new();
+
+		for div in post_content_item {
+			let genres_selector = scraper::Selector::parse("div.genres-content a").unwrap();
+			let genres_div = div.select(&genres_selector);
+			for genre in genres_div {
+				genres.push(genre.text().collect::<Vec<_>>().join(" "));
+			}
+		}
+
 		let description_selector = scraper::Selector::parse("div.summary__content").unwrap();
 		let description = html
 			.select(&description_selector)
@@ -227,6 +241,7 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 			title,
 			img_url,
 			description,
+			genres,
 			chapters,
 			url: url.to_string(),
 		})

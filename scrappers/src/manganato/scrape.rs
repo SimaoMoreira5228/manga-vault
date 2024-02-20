@@ -164,6 +164,37 @@ impl ScrapperTraits for ManganatoScrapper {
 			.collect::<Vec<_>>()
 			.join(" ");
 
+		let variations_table_info_selector =
+			scraper::Selector::parse("div.story-info-right table.variations-tableInfo tbody").unwrap();
+		let info = html
+			.select(&variations_table_info_selector)
+			.collect::<Vec<scraper::ElementRef>>()[0];
+
+		let info_text = info.text().collect::<Vec<_>>().join("");
+
+		let mut _alternative: Vec<String> = Vec::new();
+		let mut _authors: Vec<String> = Vec::new();
+		let mut _status = String::new();
+		let mut genres: Vec<String> = Vec::new();
+		let mut lines: Vec<&str> = info_text.lines().map(|x| x.trim()).collect::<Vec<_>>();
+		lines = lines.iter().filter(|x| !x.is_empty()).map(|x| *x).collect();
+
+		let lines_clone = lines.clone();
+		for line in lines_clone {
+			if line.contains("Alternative") {
+				let next_line = lines[lines.iter().position(|x| *x == line).unwrap() + 1];
+				_alternative = next_line.split(" ; ").map(|x| x.to_string()).collect();
+			} else if line.contains("Author(s)") {
+				let next_line = lines[lines.iter().position(|x| *x == line).unwrap() + 1];
+				_authors = next_line.split(" - ").map(|x| x.to_string()).collect();
+			} else if line.contains("Status") {
+				_status = line.split_once(":").unwrap().1.to_string();
+			} else if line.contains("Genres") {
+				let next_line = lines[lines.iter().position(|x| *x == line).unwrap() + 1];
+				genres = next_line.split(" - ").map(|x| x.to_string()).collect();
+			}
+		}
+
 		let img_url_selector = scraper::Selector::parse("div.story-info-left img").unwrap();
 		let img_el = html.select(&img_url_selector).next().unwrap();
 		let img_url = get_image_url(&img_el);
@@ -211,6 +242,7 @@ impl ScrapperTraits for ManganatoScrapper {
 			url: url.to_string(),
 			img_url: img_url.to_string(),
 			description: description.to_string(),
+			genres,
 			chapters,
 		})
 	}
