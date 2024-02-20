@@ -21,8 +21,8 @@ pub trait ScrapperTraits {
 pub struct Scrapper;
 
 impl Scrapper {
-	pub fn new(type_: ScrapperType) -> Box<dyn ScrapperTraits> {
-		match type_ {
+	pub fn new(r#type: ScrapperType) -> Box<dyn ScrapperTraits> {
+		match r#type {
 			ScrapperType::MangareadOrg => Box::new(mangaread_org::MangaReadOrgScrapper::new()),
 			ScrapperType::Manganato => Box::new(manganato::ManganatoScrapper::new()),
 		}
@@ -38,7 +38,7 @@ impl Scrapper {
 		}
 		let bytes = res.unwrap().bytes().await.unwrap();
 
-		let file_name = url.split("/").last().unwrap();
+		let file_name = url.split('/').last().unwrap();
 		let mut file = tokio::fs::File::create(format!("./imgs/{}", file_name)).await.unwrap();
 		let result = file.write_all(&bytes).await;
 		if result.is_err() {
@@ -65,6 +65,12 @@ pub struct MangaPage {
 	pub title: String,
 	pub url: String,
 	pub img_url: String,
+	pub alternative_names: Vec<String>,
+	pub authors: Vec<String>,
+	pub artists: Option<Vec<String>>,
+	pub status: String,
+	pub r#type: Option<String>,
+	pub release_date: Option<String>,
 	pub description: String,
 	pub genres: Vec<String>,
 	pub chapters: Vec<Chapter>,

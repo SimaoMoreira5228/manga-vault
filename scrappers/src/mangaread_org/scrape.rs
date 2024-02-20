@@ -196,7 +196,9 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 			.unwrap()
 			.text()
 			.collect::<Vec<_>>()
-			.join(" ");
+			.join(" ")
+			.trim()
+			.to_string();
 
 		let img_selector = scraper::Selector::parse("div.summary_image img").unwrap();
 		let img_url = get_image_url(&html.select(&img_selector).next().unwrap());
@@ -206,12 +208,120 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 		let post_content_item_selector = scraper::Selector::parse("div.post-content div.post-content_item").unwrap();
 		let post_content_item = summary_content_div.select(&post_content_item_selector);
 		let mut genres: Vec<String> = Vec::new();
+		let mut alternative_names: Vec<String> = Vec::new();
+		let mut authors: Vec<String> = Vec::new();
+		let mut artists: Option<Vec<String>> = None;
+		let mut status: String = String::new();
+		let mut r#type: Option<String> = None;
+		let mut release_date: Option<String> = None;
 
 		for div in post_content_item {
 			let genres_selector = scraper::Selector::parse("div.genres-content a").unwrap();
 			let genres_div = div.select(&genres_selector);
-			for genre in genres_div {
-				genres.push(genre.text().collect::<Vec<_>>().join(" "));
+			let get_genres = genres_div
+				.map(|x| x.text().collect::<Vec<_>>().join(" ").trim().to_string())
+				.collect::<Vec<String>>();
+			if !get_genres.is_empty() {
+				genres = get_genres;
+			}
+
+			let authors_selector = scraper::Selector::parse("div.author-content a").unwrap();
+			let authors_div = div.select(&authors_selector);
+			let get_authors = authors_div
+				.map(|x| x.text().collect::<Vec<_>>().join(" "))
+				.collect::<Vec<String>>();
+			if !get_authors.is_empty() {
+				authors = get_authors;
+			}
+
+			let artists_selector = scraper::Selector::parse("div.artist-content a").unwrap();
+			let artists_div = div.select(&artists_selector);
+			let get_artists = artists_div
+				.map(|x| x.text().collect::<Vec<_>>().join(" "))
+				.collect::<Vec<String>>();
+			if !get_artists.is_empty() {
+				artists = Some(get_artists);
+			}
+
+			if div
+				.select(&scraper::Selector::parse("div.summary-heading").unwrap())
+				.next()
+				.unwrap()
+				.text()
+				.filter(|x| x.contains("Type"))
+				.count() > 0
+			{
+				r#type = Some(
+					div.select(&scraper::Selector::parse("div.summary-content").unwrap())
+						.next()
+						.unwrap()
+						.text()
+						.collect::<Vec<_>>()
+						.join(" ")
+						.trim()
+						.to_string(),
+				);
+			} else if {
+				div.select(&scraper::Selector::parse("div.summary-heading").unwrap())
+					.next()
+					.unwrap()
+					.text()
+					.filter(|x| x.contains("Alternative"))
+					.count()
+			} > 0
+			{
+				alternative_names = div
+					.select(&scraper::Selector::parse("div.summary-content").unwrap())
+					.next()
+					.unwrap()
+					.text()
+					.collect::<Vec<_>>()
+					.join(" ")
+					.trim()
+					.split(", ")
+					.map(|x| x.to_string())
+					.collect();
+			}
+		}
+
+		let post_status_item_selector = scraper::Selector::parse("div.post-status div.post-content_item").unwrap();
+		for div in html.select(&post_status_item_selector) {
+			if div
+				.select(&scraper::Selector::parse("div.summary-heading").unwrap())
+				.next()
+				.unwrap()
+				.text()
+				.filter(|x| x.contains("Status"))
+				.count() > 0
+			{
+				status = div
+					.select(&scraper::Selector::parse("div.summary-content").unwrap())
+					.next()
+					.unwrap()
+					.text()
+					.collect::<Vec<_>>()
+					.join(" ")
+					.trim()
+					.to_string();
+			} else if div
+				.select(&scraper::Selector::parse("div.summary-heading").unwrap())
+				.next()
+				.unwrap()
+				.text()
+				.filter(|x| x.contains("Release"))
+				.count() > 0
+			{
+				release_date = Some(
+					div.select(&scraper::Selector::parse("div.summary-content").unwrap())
+						.next()
+						.unwrap()
+						.text()
+						.collect::<Vec<_>>()
+						.join(" ")
+						.trim()
+						.parse::<String>()
+						.unwrap(),
+				);
 			}
 		}
 
@@ -222,13 +332,15 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 			.unwrap()
 			.text()
 			.collect::<Vec<_>>()
-			.join(" ");
+			.join(" ")
+			.trim()
+			.to_string();
 
 		let chapters_selector = scraper::Selector::parse("li.wp-manga-chapter a").unwrap();
 		let chapters = html
 			.select(&chapters_selector)
 			.map(|chapter| {
-				let title = chapter.text().collect::<Vec<_>>().join(" ");
+				let title = chapter.text().collect::<Vec<_>>().join(" ").trim().to_string();
 				let url = chapter.value().attr("href").unwrap();
 				Chapter {
 					title,
@@ -240,6 +352,12 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 		Ok(MangaPage {
 			title,
 			img_url,
+			alternative_names,
+			authors,
+			artists,
+			status,
+			r#type,
+			release_date,
 			description,
 			genres,
 			chapters,

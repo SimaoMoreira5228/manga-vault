@@ -162,7 +162,9 @@ impl ScrapperTraits for ManganatoScrapper {
 			.unwrap()
 			.text()
 			.collect::<Vec<_>>()
-			.join(" ");
+			.join(" ")
+			.trim()
+			.to_string();
 
 		let variations_table_info_selector =
 			scraper::Selector::parse("div.story-info-right table.variations-tableInfo tbody").unwrap();
@@ -172,26 +174,27 @@ impl ScrapperTraits for ManganatoScrapper {
 
 		let info_text = info.text().collect::<Vec<_>>().join("");
 
-		let mut _alternative: Vec<String> = Vec::new();
-		let mut _authors: Vec<String> = Vec::new();
-		let mut _status = String::new();
+		let mut alternative: Vec<String> = Vec::new();
+		let mut authors: Vec<String> = Vec::new();
+		let mut status = String::new();
 		let mut genres: Vec<String> = Vec::new();
 		let mut lines: Vec<&str> = info_text.lines().map(|x| x.trim()).collect::<Vec<_>>();
-		lines = lines.iter().filter(|x| !x.is_empty()).map(|x| *x).collect();
-
+		lines.retain(|x| !x.is_empty());
+		
 		let lines_clone = lines.clone();
 		for line in lines_clone {
 			if line.contains("Alternative") {
 				let next_line = lines[lines.iter().position(|x| *x == line).unwrap() + 1];
-				_alternative = next_line.split(" ; ").map(|x| x.to_string()).collect();
+				alternative = next_line.split(" ; ").map(|x| x.trim().to_string()).collect();
 			} else if line.contains("Author(s)") {
 				let next_line = lines[lines.iter().position(|x| *x == line).unwrap() + 1];
-				_authors = next_line.split(" - ").map(|x| x.to_string()).collect();
+				authors = next_line.split(" - ").map(|x| x.trim().to_string()).collect();
 			} else if line.contains("Status") {
-				_status = line.split_once(":").unwrap().1.to_string();
+				let next_line = lines[lines.iter().position(|x| *x == line).unwrap() + 1];
+				status = next_line.trim().to_string();
 			} else if line.contains("Genres") {
 				let next_line = lines[lines.iter().position(|x| *x == line).unwrap() + 1];
-				genres = next_line.split(" - ").map(|x| x.to_string()).collect();
+				genres = next_line.split(" - ").map(|x| x.trim().to_string()).collect();
 			}
 		}
 
@@ -208,7 +211,7 @@ impl ScrapperTraits for ManganatoScrapper {
 			.collect::<Vec<_>>()
 			.join(" ");
 
-		description = description.split_once(":").unwrap().1.to_string();
+		description = description.split_once(':').unwrap().1.trim().to_string();
 
 		let chapters_div_selector = scraper::Selector::parse("div.panel-story-chapter-list").unwrap();
 		let mut chapters: Vec<Chapter> = Vec::new();
@@ -241,6 +244,12 @@ impl ScrapperTraits for ManganatoScrapper {
 			title,
 			url: url.to_string(),
 			img_url: img_url.to_string(),
+			alternative_names: alternative,
+			authors,
+			artists: None,
+			status,
+			r#type: None,
+			release_date: None,
 			description: description.to_string(),
 			genres,
 			chapters,
