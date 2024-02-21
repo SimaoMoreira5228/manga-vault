@@ -35,6 +35,7 @@ name = "api"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "config",
  "serde",
  "serde_json",
  "tokio",
@@ -177,6 +178,14 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "config"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "core-foundation"
@@ -680,10 +689,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
-name = "manga-rustique"
+name = "manga-oxigen"
 version = "0.0.0"
 dependencies = [
  "api",
+ "config",
  "scrappers",
  "tokio",
 ]

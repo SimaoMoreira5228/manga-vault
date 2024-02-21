@@ -5,17 +5,15 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-const PORT: &str = "3000";
-
 #[tokio::main]
-pub async fn run() {
+pub async fn run(config: &config::Config) {
 	let app = Router::new()
 		.route("/", get(|| async { "Hello, world!" }))
 		.route("/echo", post(echo));
 
-	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", PORT)).await.unwrap();
+	let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.port)).await.unwrap();
 	axum::serve(listener, app).await.unwrap();
-	println!("Listening on port {}", PORT);
+	println!("Listening on port {}", config.port);
 }
 
 async fn echo(Json(payload): Json<Payload>) -> (StatusCode, Json<Payload>) {

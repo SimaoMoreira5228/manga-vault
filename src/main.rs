@@ -1,3 +1,4 @@
 fn main() {
-	api::run();
+	let config = config::load_config();
+	api::run(&config);
 }

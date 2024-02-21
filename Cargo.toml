@@ -1,14 +1,15 @@
 [package]
-name = "manga-rustique"
+name = "manga-oxigen"
 version = "0.0.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = ["api", "scrappers"]
+members = ["api", "config", "scrappers"]
 
 [dependencies]
 scrappers = { path = "scrappers" }
 api = { path = "api" }
+config = { path = "config" }
 tokio = { version = "1", features = ["full"] }
