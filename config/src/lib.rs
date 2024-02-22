@@ -19,7 +19,7 @@ pub fn load_config() -> Config {
 	if !std::path::Path::new(&config_file).exists() {
 		let default_config_json = Config {
 			port: 3000,
-			database_path: "db.json".to_string(),
+			database_path: "db.sqlite".to_string(),
 			directory: current_dir,
 		};
 

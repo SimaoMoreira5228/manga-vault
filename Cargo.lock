@@ -36,6 +36,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "config",
+ "database",
  "serde",
  "serde_json",
  "tokio",
@@ -224,6 +225,14 @@ checksum = "13b588ba4ac1a99f7f2964d24b3d896ddc6bf847ee3855dbd4366f058cfcd331"
 dependencies = [
  "quote",
  "syn 2.0.49",
+]
+
+[[package]]
+name = "database"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "sqlite",
 ]
 
 [[package]]
@@ -694,6 +703,7 @@ version = "0.0.0"
 dependencies = [
  "api",
  "config",
+ "database",
  "scrappers",
  "tokio",
 ]
@@ -1322,6 +1332,36 @@ checksum = "7b5fac59a5cb5dd637972e5fca70daf0523c9067fcdc4842f053dae04a18f8e9"
 dependencies = [
  "libc",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "sqlite"
+version = "0.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78a97f6ee5b054b7cfddc3b6613fdea4c77af2ef8f8aac3048c7d0be31e605e3"
+dependencies = [
+ "libc",
+ "sqlite3-sys",
+]
+
+[[package]]
+name = "sqlite3-src"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9448d45899495acd1a46b0b888ae9747c13551fb0d8f4a60ab485da52b040503"
+dependencies = [
+ "cc",
+ "pkg-config",
+]
+
+[[package]]
+name = "sqlite3-sys"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aed0b61828382e1103930d2d5df1972d493173319730b481192e63d929097321"
+dependencies = [
+ "libc",
+ "sqlite3-src",
 ]
 
 [[package]]

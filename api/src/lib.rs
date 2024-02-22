@@ -6,7 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 #[tokio::main]
-pub async fn run(config: &config::Config) {
+pub async fn run(config: &config::Config, db: &database::Connection) {
 	let app = Router::new()
 		.route("/", get(|| async { "Hello, world!" }))
 		.route("/echo", post(echo));

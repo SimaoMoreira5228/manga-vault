@@ -1,5 +1,12 @@
 {
-  "rust-analyzer.linkedProjects": [
-    "./scrappers/Cargo.toml"
+  "sqltools.useNodeRuntime": true,
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "SQLite",
+      "name": "manga-oxigen-sqlite",
+      "group": "manga-oxigen",
+      "database": "${workspaceFolder:manga-oxigen}/db.sqlite"
+    }
   ]
 }
