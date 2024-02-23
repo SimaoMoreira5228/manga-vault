@@ -29,7 +29,7 @@ async fn login(db: web::Data<Arc<Mutex<Database>>>, user: web::Json<CreateUser>)
 
 	let claims = Claims {
 		sub: db_user.id.to_string(),
-		exp: (chrono::Utc::now() + chrono::Duration::hours(1)).timestamp() as usize,
+		exp: (chrono::Utc::now() + chrono::Duration::hours(24)).timestamp() as usize,
 	};
 
 	let token = encode(
