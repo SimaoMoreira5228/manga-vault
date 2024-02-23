@@ -22,7 +22,6 @@ pub async fn run(config: &Config) -> std::io::Result<()> {
 			.service(logout)
 			.wrap_fn(|req, srv| {
 				let path = req.path();
-				print!("path: {}", path);
 				if path == "/create" || path == "/login" {
 					return srv.call(req);
 				}
@@ -97,7 +96,6 @@ async fn login(db: web::Data<Arc<Mutex<Database>>>, user: web::Json<CreateUser>)
 
 #[get("/logout")]
 async fn logout() -> impl Responder {
-	println!("logout");
 	HttpResponse::Ok().cookie(Cookie::build("token", "").finish()).finish()
 }
 
