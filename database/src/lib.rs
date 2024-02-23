@@ -1,3 +1,8 @@
+use config::Config;
+use serde::{Deserialize, Serialize};
+
+pub mod functions;
+
 const NEW_DB: &str = "CREATE TABLE Users (
   id INTEGER PRIMARY KEY,
   username TEXT UNIQUE,
@@ -43,29 +48,86 @@ CREATE TABLE FavoriteMangas (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   userId INTEGER,
   mangaId INTEGER,
+  categorieId INTEGER,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (userId) REFERENCES Users(id),
-  FOREIGN KEY (mangaId) REFERENCES Manga(id)
+  FOREIGN KEY (mangaId) REFERENCES Manga(id),
+  FOREIGN KEY (categorieId) REFERENCES Categories(id)
+);
+CREATE TABLE Categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT,
+  userId INTEGER,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES Users(id)
 );
 CREATE TABLE readChapters (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   userId INTEGER,
   chapterId INTEGER,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (userId) REFERENCES Users(id),
   FOREIGN KEY (chapterId) REFERENCES Chapter(id)
 );";
 
-pub type Connection = sqlite::Connection;
+#[derive(Debug, Deserialize, Serialize)]
+pub struct User {
+	pub id: i64,
+	pub username: String,
+	pub hashed_password: String,
+	pub created_at: String,
+}
 
-pub fn connect(config: &config::Config) -> Connection {
-	if !std::path::Path::new(&config.database_path).exists() {
-		let connection = sqlite::Connection::open(config.database_path.clone()).unwrap();
-		connection.execute(NEW_DB).unwrap_or_else(|e| {
-			eprintln!("Error creating database: {}", e);
-      panic!("Error creating database");
-		});
-		connection
-	} else {
-		let connection = sqlite::Connection::open(config.database_path.clone()).unwrap();
-		connection
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Manga {
+	pub id: i64,
+	pub title: String,
+	pub url: String,
+	pub img: String,
+	pub created_at: String,
+	pub updated_at: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Chapter {
+	pub id: i64,
+	pub title: String,
+	pub url: String,
+	pub created_at: String,
+	pub updated_at: String,
+	pub manga_id: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FavoriteManga {
+	pub id: i64,
+	pub user_id: i64,
+	pub manga_id: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ReadChapter {
+	pub id: i64,
+	pub user_id: i64,
+	pub chapter_id: i64,
+}
+
+pub struct Database {
+	pub connection: rusqlite::Connection,
+}
+
+impl Database {
+	pub fn new(config: &Config) -> Result<Database, rusqlite::Error> {
+		if !std::path::Path::new(&config.database_path).exists() {
+			let connection = rusqlite::Connection::open(&config.database_path)?;
+			connection.execute_batch(NEW_DB)?;
+			return Ok(Database { connection });
+		}
+		let connection = rusqlite::Connection::open(&config.database_path)?;
+		Ok(Database { connection })
+	}
+
+	pub fn close(self) -> Result<(), rusqlite::Error> {
+		self.connection.close().map_err(|(_, error)| error)
 	}
 }
