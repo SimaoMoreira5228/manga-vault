@@ -5,7 +5,8 @@ use database::Database;
 use jsonwebtoken::{encode, Algorithm, DecodingKey, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 
-use crate::{CreateUser, SECRET_JWT};
+use crate::user::{CreateUser, LogedUser};
+use crate::SECRET_JWT;
 
 #[derive(Serialize, Deserialize)]
 struct Claims {
@@ -38,14 +39,22 @@ async fn login(db: web::Data<Arc<Mutex<Database>>>, user: web::Json<CreateUser>)
 	)
 	.unwrap();
 
+	let res_user = LogedUser {
+		id: db_user.id,
+		username: db_user.username,
+	};
+
+	// send token as cookie and return a 200 OK response with user id and username
 	HttpResponse::Ok()
 		.cookie(Cookie::build("token", token).http_only(true).finish())
-		.finish()
+		.json(res_user)
 }
 
 #[get("/logout")]
 async fn logout() -> impl Responder {
-	HttpResponse::Ok().cookie(Cookie::build("token", "").finish()).finish()
+	HttpResponse::Ok()
+		.cookie(Cookie::build("token", "").finish())
+		.body("Logged out")
 }
 
 pub fn jwt_validator(req: ServiceRequest) -> Result<ServiceRequest, actix_web::Error> {

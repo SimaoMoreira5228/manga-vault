@@ -10,6 +10,12 @@ impl Database {
 		self.get_user_by_id(self.connection.last_insert_rowid())
 	}
 
+	pub fn delete_user(&self, id: i64) -> Result<(), rusqlite::Error> {
+		let mut stmt = self.connection.prepare("DELETE FROM Users WHERE id = ?1")?;
+		stmt.execute(rusqlite::params![id])?;
+		Ok(())
+	}
+
 	pub fn create_manga(&self, title: &str, url: &str, img: &str) -> Result<(), rusqlite::Error> {
 		let mut stmt = self
 			.connection
