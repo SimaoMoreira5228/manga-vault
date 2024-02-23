@@ -265,6 +265,7 @@ dependencies = [
  "cookie 0.18.0",
  "database",
  "jsonwebtoken",
+ "lazy_static",
  "serde",
  "serde_json",
  "tokio",

@@ -44,7 +44,6 @@ async fn login(db: web::Data<Arc<Mutex<Database>>>, user: web::Json<CreateUser>)
 		username: db_user.username,
 	};
 
-	// send token as cookie and return a 200 OK response with user id and username
 	HttpResponse::Ok()
 		.cookie(Cookie::build("token", token).http_only(true).finish())
 		.json(res_user)

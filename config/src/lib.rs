@@ -11,6 +11,7 @@ pub struct Config {
 	pub port: u16,
 	pub database_path: String,
 	pub directory: String,
+	pub secret_jwt: String,
 }
 
 pub fn load_config() -> Config {
@@ -21,6 +22,7 @@ pub fn load_config() -> Config {
 			port: 3000,
 			database_path: "db.sqlite".to_string(),
 			directory: current_dir,
+			secret_jwt: "#5z3BQkA@EQ2!mM*XyYQu3XM5".to_string(),
 		};
 
 		std::fs::write(&config_file, serde_json::to_string_pretty(&default_config_json).unwrap()).unwrap();

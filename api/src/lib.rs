@@ -9,11 +9,14 @@ use user::{create_user, delete_user};
 
 use std::sync::{Arc, Mutex};
 
-const SECRET_JWT: &str = "#5z3BQkA@EQ2!mM*XyYQu3XM5";
+lazy_static::lazy_static! {
+	static ref CONFIG: Config = config::load_config();
+	static ref SECRET_JWT: String = CONFIG.secret_jwt.clone();
+}
 
 #[tokio::main]
-pub async fn run(config: &Config) -> std::io::Result<()> {
-	let db = Arc::new(Mutex::new(Database::new(&config).unwrap()));
+pub async fn run() -> std::io::Result<()> {
+	let db = Arc::new(Mutex::new(Database::new(&CONFIG).unwrap()));
 	HttpServer::new(move || {
 		App::new()
 			.app_data(web::Data::new(db.clone()))
@@ -36,7 +39,7 @@ pub async fn run(config: &Config) -> std::io::Result<()> {
 				Box::pin(async move { Err::<_, actix_web::Error>(req.err().unwrap().into()) })
 			})
 	})
-	.bind(("0.0.0.0", config.port))?
+	.bind(("0.0.0.0", CONFIG.port))?
 	.run()
 	.await
 }
