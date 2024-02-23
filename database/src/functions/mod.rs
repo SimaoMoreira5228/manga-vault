@@ -311,4 +311,25 @@ impl Database {
 		}
 		Ok(favorite_mangas_vec)
 	}
+
+	pub fn get_all_mangas_from_category(&self, category_id: i64) -> Result<Vec<Manga>, rusqlite::Error> {
+		let mut stmt = self
+			.connection
+			.prepare("SELECT * FROM Manga WHERE id IN (SELECT mangaId FROM FavoriteMangas WHERE categorieId = ?1)")?;
+		let mangas = stmt.query_map(rusqlite::params![category_id], |row| {
+			Ok(Manga {
+				id: row.get(0)?,
+				title: row.get(1)?,
+				url: row.get(2)?,
+				img: row.get(3)?,
+				created_at: row.get(4)?,
+				updated_at: row.get(5)?,
+			})
+		})?;
+		let mut mangas_vec = Vec::new();
+		for manga in mangas {
+			mangas_vec.push(manga?);
+		}
+		Ok(mangas_vec)
+	}
 }
