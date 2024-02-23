@@ -228,6 +228,8 @@ impl Database {
 				id: row.get(0)?,
 				user_id: row.get(1)?,
 				manga_id: row.get(2)?,
+				categorie_id: row.get(3)?,
+				created_at: row.get(4)?,
 			})
 		})?;
 		let mut favorite_mangas_vec = Vec::new();
@@ -250,6 +252,7 @@ impl Database {
 				id: row.get(0)?,
 				user_id: row.get(1)?,
 				chapter_id: row.get(2)?,
+				created_at: row.get(3)?,
 			})
 		})?;
 		let mut read_chapters_vec = Vec::new();
@@ -289,5 +292,23 @@ impl Database {
 			.prepare("DELETE FROM readChapters WHERE userId = ?1 AND chapterId = ?2")?;
 		stmt.execute(rusqlite::params![user_id, chapter_id])?;
 		Ok(())
+	}
+
+	pub fn get_all_favorite_mangas(&self) -> Result<Vec<FavoriteManga>, rusqlite::Error> {
+		let mut stmt = self.connection.prepare("SELECT * FROM FavoriteMangas")?;
+		let favorite_mangas = stmt.query_map([], |row| {
+			Ok(FavoriteManga {
+				id: row.get(0)?,
+				user_id: row.get(1)?,
+				manga_id: row.get(2)?,
+				categorie_id: row.get(3)?,
+				created_at: row.get(4)?,
+			})
+		})?;
+		let mut favorite_mangas_vec = Vec::new();
+		for favorite_manga in favorite_mangas {
+			favorite_mangas_vec.push(favorite_manga?);
+		}
+		Ok(favorite_mangas_vec)
 	}
 }

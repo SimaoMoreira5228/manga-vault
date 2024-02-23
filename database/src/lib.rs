@@ -14,8 +14,6 @@ CREATE TABLE Manga (
   title TEXT,
   url TEXT,
   img TEXT,
-  chaptersId INTEGER,
-  readChaptersId INTEGER,
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   userId INTEGER,
@@ -103,6 +101,8 @@ pub struct FavoriteManga {
 	pub id: i64,
 	pub user_id: i64,
 	pub manga_id: i64,
+  pub categorie_id: i64,
+  pub created_at: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -110,6 +110,7 @@ pub struct ReadChapter {
 	pub id: i64,
 	pub user_id: i64,
 	pub chapter_id: i64,
+  pub created_at: String,
 }
 
 pub struct Database {

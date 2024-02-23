@@ -10,7 +10,6 @@ CREATE TABLE Manga (
   url TEXT,
   img TEXT,
   chaptersId INTEGER,
-  readChaptersId INTEGER,
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   userId INTEGER,
