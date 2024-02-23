@@ -63,3 +63,8 @@ CREATE TABLE readChapters (
   FOREIGN KEY (userId) REFERENCES Users(id),
   FOREIGN KEY (chapterId) REFERENCES Chapter(id)
 );
+CREATE TABLE files (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -14,6 +14,7 @@ CREATE TABLE Manga (
   title TEXT,
   url TEXT,
   img TEXT,
+  chaptersId INTEGER,
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   userId INTEGER,
@@ -66,6 +67,11 @@ CREATE TABLE readChapters (
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (userId) REFERENCES Users(id),
   FOREIGN KEY (chapterId) REFERENCES Chapter(id)
+);
+CREATE TABLE files (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );";
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -110,6 +116,13 @@ pub struct ReadChapter {
 	pub id: i64,
 	pub user_id: i64,
 	pub chapter_id: i64,
+  pub created_at: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct File {
+  pub id: String,
+  pub name: String,
   pub created_at: String,
 }
 

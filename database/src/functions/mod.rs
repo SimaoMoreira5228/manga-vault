@@ -1,4 +1,4 @@
-use crate::{Chapter, Database, FavoriteManga, Manga, ReadChapter, User};
+use crate::{Chapter, Database, FavoriteManga, File, Manga, ReadChapter, User};
 
 impl Database {
 	pub fn create_user(&self, username: &str, hashed_password: &str) -> Result<User, rusqlite::Error> {
@@ -337,5 +337,23 @@ impl Database {
 			mangas_vec.push(manga?);
 		}
 		Ok(mangas_vec)
+	}
+
+	pub fn insert_file(&self, id: &str, name: &str) -> Result<(), rusqlite::Error> {
+		let mut stmt = self.connection.prepare("INSERT INTO Files (id, name) VALUES (?1, ?2)")?;
+		stmt.execute(rusqlite::params![id, name])?;
+		Ok(())
+	}
+
+	pub fn get_file(&self, id: &str) -> Result<File, rusqlite::Error> {
+		let mut stmt = self.connection.prepare("SELECT * FROM Files WHERE id = ?1")?;
+		let file = stmt.query_row(rusqlite::params![id], |row| {
+			Ok(File {
+				id: row.get(0)?,
+				name: row.get(1)?,
+				created_at: row.get(2)?,
+			})
+		})?;
+		Ok(file)
 	}
 }

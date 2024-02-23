@@ -9,6 +9,7 @@ edition = "2021"
 config ={ path = "../config" }
 database = { path = "../database" }
 actix-web = "4"
+actix-multipart = "0.6.1"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -17,3 +18,5 @@ jsonwebtoken = "9"
 chrono = "0.4"
 cookie = "0.18"
 lazy_static = "1.4.0"
+uuid = { version = "1.7.0", features = ["v4"] }
+futures-util = "0.3.30"
