@@ -20,19 +20,13 @@ async fn upload_file(db: web::Data<Arc<Mutex<Database>>>, mut payload: Multipart
 		std::fs::create_dir_all(&path).expect("Failed to create uploads directory");
 	}
 
-	println!("1");
-
 	while let Some(Ok(mut field)) = payload.next().await {
 		let content_disposition = field.content_disposition().clone();
-
-		println!("2");
 
 		let old_name = content_disposition.get_filename().unwrap();
 		let id = uuid::Uuid::new_v4().to_string();
 
 		let file_extension = Path::new(&old_name).extension().and_then(OsStr::to_str);
-
-		println!("3");
 
 		if let Some(extension) = file_extension {
 			if !["jpg", "jpeg", "png", "gif"].contains(&extension) {
@@ -42,8 +36,6 @@ async fn upload_file(db: web::Data<Arc<Mutex<Database>>>, mut payload: Multipart
 			return HttpResponse::BadRequest().body("No file extension found");
 		}
 
-		println!("4");
-
 		let filepath = format!("{}/{}", path.display(), id);
 		println!("filepath: {}", filepath);
 		let mut file = match std::fs::File::create(filepath) {
@@ -51,16 +43,11 @@ async fn upload_file(db: web::Data<Arc<Mutex<Database>>>, mut payload: Multipart
 			Err(e) => return HttpResponse::InternalServerError().body(format!("Error: {}", e)),
 		};
 
-		println!("5");
-
 		while let Some(chunk) = field.next().await {
-			println!("6");
 			let data = match chunk {
 				Ok(data) => data,
 				Err(e) => return HttpResponse::InternalServerError().body(format!("Error: {}", e)),
 			};
-
-			println!("7");
 
 			file = match file.write_all(&data) {
 				Ok(_) => file,
@@ -68,27 +55,19 @@ async fn upload_file(db: web::Data<Arc<Mutex<Database>>>, mut payload: Multipart
 			};
 		}
 
-		println!("8");
-
 		let db = db.lock().unwrap();
 		db.insert_file(&id, &old_name).unwrap();
-
-		println!("9");
 
 		file = match file.sync_all() {
 			Ok(_) => file,
 			Err(e) => return HttpResponse::InternalServerError().body(format!("Error: {}", e)),
 		};
 
-		println!("10");
-
 		match file.flush() {
 			Ok(_) => file,
 			Err(e) => return HttpResponse::InternalServerError().body(format!("Error: {}", e)),
 		};
 	}
-
-	println!("11");
 
 	HttpResponse::Ok().body("File uploaded")
 }

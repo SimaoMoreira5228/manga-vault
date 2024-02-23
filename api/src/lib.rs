@@ -1,6 +1,6 @@
 mod auth;
-mod user;
 mod files;
+mod user;
 
 use actix_web::{dev::Service, web, App, HttpServer};
 use config::Config;
