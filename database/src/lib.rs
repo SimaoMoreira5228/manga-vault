@@ -119,6 +119,14 @@ pub struct ReadChapter {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct Category {
+  pub id: i64,
+  pub name: String,
+  pub user_id: i64,
+  pub created_at: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct File {
   pub id: String,
   pub name: String,
