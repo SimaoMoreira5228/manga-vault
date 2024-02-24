@@ -4,9 +4,9 @@
     {
       "previewLimit": 50,
       "driver": "SQLite",
-      "name": "manga-oxigen-sqlite",
-      "group": "manga-oxigen",
-      "database": "${workspaceFolder:manga-oxigen}/db.sqlite"
+      "name": "manga-vault-sqlite",
+      "group": "manga-vault",
+      "database": "${workspaceFolder:manga-vault}/db.sqlite"
     }
   ]
 }
