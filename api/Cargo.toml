@@ -20,3 +20,5 @@ cookie = "0.18"
 lazy_static = "1.4.0"
 uuid = { version = "1.7.0", features = ["v4"] }
 futures-util = "0.3.30"
+infer = "0.15"
+reqwest = "0.11"
