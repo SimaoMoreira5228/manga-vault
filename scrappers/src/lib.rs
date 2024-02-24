@@ -53,6 +53,21 @@ pub enum ScrapperType {
 	Manganato,
 }
 
+pub fn get_scrapper_type(scrapper: &str) -> ScrapperType {
+	match scrapper {
+		"mangaread_org" => ScrapperType::MangareadOrg,
+		"manganato" => ScrapperType::Manganato,
+		_ => ScrapperType::MangareadOrg,
+	}
+}
+
+pub fn get_scrapper_type_str(scrapper: &ScrapperType) -> &str {
+	match scrapper {
+		ScrapperType::MangareadOrg => "mangaread_org",
+		ScrapperType::Manganato => "manganato",
+	}
+}
+
 #[derive(Debug)]
 pub struct MangaItem {
 	pub title: String,

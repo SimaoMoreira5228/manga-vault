@@ -1,5 +1,6 @@
 mod auth;
 mod files;
+mod manga;
 mod user;
 
 use actix_web::{dev::Service, web, App, HttpServer};
@@ -26,6 +27,10 @@ pub async fn run() -> std::io::Result<()> {
 			.service(files::upload_file)
 			.service(files::get_image)
 			.service(files::download_file)
+			.service(manga::sync_mangas)
+			.service(manga::sync_category_mangas)
+			.service(manga::add_favorite_manga)
+			.service(manga::remove_favorite_manga)
 			.wrap_fn(|req, srv| {
 				let path = req.path();
 				if path == "/create" || path == "/login" {

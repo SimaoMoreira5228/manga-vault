@@ -308,6 +308,7 @@ dependencies = [
  "jsonwebtoken",
  "lazy_static",
  "reqwest",
+ "scrappers",
  "serde",
  "serde_json",
  "tokio",
@@ -638,6 +639,7 @@ version = "0.1.0"
 dependencies = [
  "config",
  "rusqlite",
+ "scrappers",
  "serde",
  "serde_json",
 ]

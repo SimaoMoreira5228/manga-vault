@@ -9,11 +9,9 @@ CREATE TABLE Manga (
   title TEXT,
   url TEXT,
   img TEXT,
-  chaptersId INTEGER,
+  scrapper TEXT,
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  userId INTEGER,
-  FOREIGN KEY (userId) REFERENCES Users(id)
+  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TRIGGER update_manga_timestamp
 AFTER
@@ -26,9 +24,9 @@ CREATE TABLE Chapter (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT,
   url TEXT,
+  mangaId INTEGER,
   createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  mangaId INTEGER,
   FOREIGN KEY (mangaId) REFERENCES Manga(id)
 );
 CREATE TRIGGER update_chapter_timestamp
