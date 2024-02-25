@@ -1,13 +1,11 @@
 mod auth;
+mod entities;
 mod files;
 mod manga;
 mod user;
 
 use actix_web::{dev::Service, web, App, HttpServer};
 use config::Config;
-use database::Database;
-
-use std::sync::{Arc, Mutex};
 
 lazy_static::lazy_static! {
 	static ref CONFIG: Config = config::load_config();
@@ -16,10 +14,10 @@ lazy_static::lazy_static! {
 
 #[tokio::main]
 pub async fn run() -> std::io::Result<()> {
-	let db = Arc::new(Mutex::new(Database::new(&CONFIG).unwrap()));
+	let db = connection::Database::new(&CONFIG).await.unwrap();
 	HttpServer::new(move || {
 		App::new()
-			.app_data(web::Data::new(db.clone()))
+			.app_data(web::Data::new(db.conn.clone()))
 			.service(user::create_user)
 			.service(user::delete_user)
 			.service(auth::login)
@@ -27,8 +25,6 @@ pub async fn run() -> std::io::Result<()> {
 			.service(files::upload_file)
 			.service(files::get_image)
 			.service(files::download_file)
-			.service(manga::sync_mangas)
-			.service(manga::sync_category_mangas)
 			.service(manga::add_favorite_manga)
 			.service(manga::remove_favorite_manga)
 			.wrap_fn(|req, srv| {

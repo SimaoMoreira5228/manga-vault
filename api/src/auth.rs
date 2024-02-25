@@ -1,12 +1,9 @@
-use std::sync::{Arc, Mutex};
-
-use actix_web::{cookie::Cookie, dev::ServiceRequest, get, post, web, HttpResponse, Responder};
-use database::Database;
-use jsonwebtoken::{encode, Algorithm, DecodingKey, EncodingKey, Header};
-use serde::{Deserialize, Serialize};
-
 use crate::user::{CreateUser, LogedUser};
 use crate::SECRET_JWT;
+use actix_web::{cookie::Cookie, dev::ServiceRequest, get, post, web, HttpResponse, Responder};
+use jsonwebtoken::{encode, Algorithm, DecodingKey, EncodingKey, Header};
+use sea_orm::EntityTrait;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 struct Claims {
@@ -15,14 +12,22 @@ struct Claims {
 }
 
 #[post("/login")]
-async fn login(db: web::Data<Arc<Mutex<Database>>>, user: web::Json<CreateUser>) -> impl Responder {
-	let db_user = db.lock().unwrap().get_user_by_username(&user.username);
-	if db_user.is_err() {
+async fn login(db: web::Data<connection::Connection>, user: web::Json<CreateUser>) -> impl Responder {
+	let db_user: Option<crate::entities::users::Model> = crate::entities::users::Entity::find()
+		.all(db.get_ref())
+		.await
+		.unwrap()
+		.into_iter()
+		.find(|u| u.username == user.username);
+
+	if db_user.is_none() {
 		return HttpResponse::BadRequest().body("Invalid username or password");
 	}
+
 	let db_user = db_user.unwrap();
 
 	let valid = bcrypt::verify(&user.password, &db_user.hashed_password).unwrap();
+
 	if !valid {
 		return HttpResponse::BadRequest().body("Invalid username or password");
 	}

@@ -1,12 +1,11 @@
-use std::sync::{Arc, Mutex};
-
-use actix_web::{get, post, web, HttpResponse, Responder};
-use database::Database;
+use actix_web::{post, web, HttpResponse, Responder};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, DeleteResult, EntityTrait, ModelTrait, QueryFilter};
 
 use crate::user::LogedUser;
 
-#[get("/mangas/sync-all")]
-async fn sync_mangas(db: web::Data<Arc<Mutex<Database>>>, user: web::Json<LogedUser>) -> impl Responder {
+// move to a websocket
+/* #[get("/mangas/sync-all")]
+async fn sync_mangas(db: web::Data<connection::Connection>, user: web::Json<LogedUser>) -> impl Responder {
 	let favorite_mangas = db.lock().unwrap().get_user_favorite_mangas(user.id);
 	if favorite_mangas.is_err() {
 		return HttpResponse::BadRequest().body("Mangas not found");
@@ -42,7 +41,7 @@ async fn sync_mangas(db: web::Data<Arc<Mutex<Database>>>, user: web::Json<LogedU
 
 #[get("/mangas/sync/{id}")]
 async fn sync_category_mangas(
-	db: web::Data<Arc<Mutex<Database>>>,
+	db: web::Data<connection::Connection>,
 	user: web::Json<LogedUser>,
 	id: web::Path<i64>,
 ) -> impl Responder {
@@ -80,46 +79,90 @@ async fn sync_category_mangas(
 	}
 
 	HttpResponse::Ok().body("Mangas updated")
+} */
+
+#[derive(serde::Deserialize)]
+pub struct AddFavoriteMangaStruct {
+	pub id: i32,
+	pub username: String,
+	pub manga_id: i32,
+	categorie_id: i32,
 }
 
 #[post("/mangas/favorite/add")]
 async fn add_favorite_manga(
-  db: web::Data<Arc<Mutex<Database>>>,
-  user: web::Json<LogedUser>,
-  manga_id: web::Json<i64>,
+	db: web::Data<connection::Connection>,
+	info: web::Json<AddFavoriteMangaStruct>,
 ) -> impl Responder {
-  let manga = db.lock().unwrap().get_manga_by_id(manga_id.into_inner());
-  if manga.is_err() {
-    return HttpResponse::BadRequest().body("Manga not found");
-  }
+	let manga: Option<crate::entities::mangas::Model> = crate::entities::mangas::Entity::find_by_id(info.manga_id).one(db.get_ref()).await.unwrap();
 
-  let manga = manga.unwrap();
-  let favorite_manga = db.lock().unwrap().get_user_favorite_manga(user.id, manga.id);
-  if favorite_manga.is_ok() {
-    return HttpResponse::BadRequest().body("Manga already favorited");
-  }
+	if manga.is_none() {
+		return HttpResponse::BadRequest().body("Manga not found");
+	}
 
-  let _ = db.lock().unwrap().add_favorite_manga(user.id, manga.id);
-  HttpResponse::Ok().body("Manga favorited")
+	let manga = manga.unwrap();
+	let favorite_manga: Option<crate::entities::favorite_mangas::Model> = crate::entities::favorite_mangas::Entity::find()
+		.filter(crate::entities::favorite_mangas::Column::UserId.contains(info.id.to_string()))
+		.filter(crate::entities::favorite_mangas::Column::MangaId.contains(manga.id.to_string()))
+		.one(db.get_ref())
+		.await
+		.unwrap();
+
+	if favorite_manga.is_some() {
+		return HttpResponse::BadRequest().body("Manga already favorited");
+	}
+
+	let _ = crate::entities::favorite_mangas::ActiveModel {
+		user_id: Set(info.id),
+		manga_id: Set(manga.id),
+		categorie_id: Set(info.categorie_id),
+		created_at: Set(chrono::Utc::now().naive_utc().to_string()),
+		..Default::default()
+	}
+	.insert(db.get_ref())
+	.await;
+
+	HttpResponse::Ok().body("Manga favorited")
+}
+
+#[derive(serde::Deserialize)]
+pub struct RemoveFavoriteManga {
+	pub id: i64,
+	pub manga_id: i64,
 }
 
 #[post("/mangas/favorite/remove")]
 async fn remove_favorite_manga(
-  db: web::Data<Arc<Mutex<Database>>>,
-  user: web::Json<LogedUser>,
-  manga_id: web::Json<i64>,
+	db: web::Data<connection::Connection>,
+	user: web::Json<LogedUser>,
+	manga_id: web::Json<i32>,
 ) -> impl Responder {
-  let manga = db.lock().unwrap().get_manga_by_id(manga_id.into_inner());
-  if manga.is_err() {
-    return HttpResponse::BadRequest().body("Manga not found");
-  }
+	let manga: Option<crate::entities::mangas::Model> = crate::entities::mangas::Entity::find_by_id(manga_id.into_inner())
+		.one(db.get_ref())
+		.await
+		.unwrap();
 
-  let manga = manga.unwrap();
-  let favorite_manga = db.lock().unwrap().get_user_favorite_manga(user.id, manga.id);
-  if favorite_manga.is_err() {
-    return HttpResponse::BadRequest().body("Manga not favorited");
-  }
+	if manga.is_none() {
+		return HttpResponse::BadRequest().body("Manga not found");
+	}
 
-  let _ = db.lock().unwrap().remove_favorite_manga(user.id, manga.id);
-  HttpResponse::Ok().body("Manga removed from favorites")
+	let manga = manga.unwrap();
+	let favorite_manga: Option<crate::entities::favorite_mangas::Model> = crate::entities::favorite_mangas::Entity::find()
+		.filter(crate::entities::favorite_mangas::Column::UserId.contains(user.id.to_string()))
+		.filter(crate::entities::favorite_mangas::Column::MangaId.contains(manga.id.to_string()))
+		.one(db.get_ref())
+		.await
+		.unwrap();
+
+	if favorite_manga.is_none() {
+		return HttpResponse::BadRequest().body("Manga not favorited");
+	}
+
+	let res: DeleteResult = favorite_manga.unwrap().delete(db.get_ref()).await.expect("Failed to remove manga from favorites");
+
+	if res.rows_affected == 0 {
+		return HttpResponse::InternalServerError().body("Failed to remove manga from favorites");
+	}
+
+	HttpResponse::Ok().body("Manga removed from favorites")
 }

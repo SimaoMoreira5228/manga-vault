@@ -1,17 +1,14 @@
 use actix_multipart::Multipart;
 use actix_web::{get, post, web, HttpResponse, Responder};
-use database::Database;
 use futures_util::{StreamExt, TryStreamExt};
-use std::{
-	io::Write,
-	path::Path,
-	sync::{Arc, Mutex},
-};
+use sea_orm::ActiveValue::Set;
+use sea_orm::{ActiveModelTrait, EntityTrait};
+use std::{io::Write, path::Path};
 
 use crate::CONFIG;
 
 #[post("/upload")]
-async fn upload_file(db: web::Data<Arc<Mutex<Database>>>, mut payload: Multipart) -> impl Responder {
+async fn upload_file(db: web::Data<connection::Connection>, mut payload: Multipart) -> impl Responder {
 	let path = format!("{}/uploads", CONFIG.directory);
 
 	let path = Path::new(&path);
@@ -44,16 +41,20 @@ async fn upload_file(db: web::Data<Arc<Mutex<Database>>>, mut payload: Multipart
 
 	file.write_all(&data).expect("Failed to write to file");
 
-	let db = db.lock().unwrap();
-	db.insert_file(&unique_signature, &image_url).unwrap();
+	let _ = crate::entities::files::ActiveModel {
+		name: Set(image_url.clone()),
+		created_at: Set(chrono::Utc::now().naive_utc().to_string()),
+		..Default::default()
+	}
+	.insert(db.get_ref())
+	.await;
 
 	HttpResponse::Ok().body(format!("File uploaded: {}", image_url))
 }
 
 #[get("/image/{id}")]
-async fn get_image(db: web::Data<Arc<Mutex<Database>>>, id: web::Path<String>) -> impl Responder {
-	let db = db.lock().unwrap();
-	let file = db.get_file(&id).unwrap();
+async fn get_image(db: web::Data<connection::Connection>, id: web::Path<String>) -> impl Responder {
+	let file: crate::entities::files::Model = crate::entities::files::Entity::find_by_id(id.into_inner()).one(db.get_ref()).await.unwrap().expect("File not found");
 
 	let path = format!("{}/uploads", CONFIG.directory);
 	let path = Path::new(&path);
@@ -70,14 +71,16 @@ async fn get_image(db: web::Data<Arc<Mutex<Database>>>, id: web::Path<String>) -
 }
 
 #[get("download/{id}")]
-async fn download_file(db: web::Data<Arc<Mutex<Database>>>, id: web::Path<String>) -> impl Responder {
-	let db = db.lock().unwrap();
-	let db_file = db.get_file(&id).unwrap();
+async fn download_file(db: web::Data<connection::Connection>, id: web::Path<String>) -> impl Responder {
+	let db_file: Option<crate::entities::files::Model> = crate::entities::files::Entity::find_by_id(id.into_inner())
+		.one(db.get_ref())
+		.await
+		.unwrap();
 
 	let path = format!("{}/uploads", CONFIG.directory);
 	let path = Path::new(&path);
 
-	let file = match std::fs::read(format!("{}/{}", path.display(), db_file.name)) {
+	let file = match std::fs::read(format!("{}/{}", path.display(), db_file.clone().unwrap().name)) {
 		Ok(file) => file,
 		Err(e) => return HttpResponse::InternalServerError().body(format!("Error: {}", e)),
 	};
@@ -87,7 +90,7 @@ async fn download_file(db: web::Data<Arc<Mutex<Database>>>, id: web::Path<String
 
 	HttpResponse::Ok()
 		.content_type(mime)
-		.insert_header(("Content-Disposition", format!("attachment; filename={}", db_file.name)))
+		.insert_header(("Content-Disposition", format!("attachment; filename={}", db_file.clone().unwrap().name)))
 		.body(file)
 }
 

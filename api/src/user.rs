@@ -1,8 +1,9 @@
-use std::sync::{Arc, Mutex};
-
+use crate::entities;
 use actix_web::{post, web, HttpResponse, Responder};
-use database::Database;
+use sea_orm::ActiveValue::Set;
+use sea_orm::{ActiveModelTrait, ColumnTrait, DeleteResult, EntityTrait, ModelTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::error;
 
 #[derive(Deserialize)]
 pub struct CreateUser {
@@ -12,27 +13,56 @@ pub struct CreateUser {
 
 #[derive(Deserialize, Serialize)]
 pub struct LogedUser {
-	pub id: i64,
+	pub id: i32,
 	pub username: String,
 }
 
 #[post("/create")]
-async fn create_user(db: web::Data<Arc<Mutex<Database>>>, user: web::Json<CreateUser>) -> impl Responder {
-	let user = db
-		.lock()
-		.unwrap()
-		.create_user(&user.username, &bcrypt::hash(&user.password, 10).unwrap());
-	if user.is_err() {
+async fn create_user(db: web::Data<connection::Connection>, user: web::Json<CreateUser>) -> impl Responder {
+	let db_user: Option<entities::users::Model> = entities::users::Entity::find()
+		.filter(entities::users::Column::Username.contains(&user.username))
+		.one(db.get_ref())
+		.await
+		.unwrap();
+
+	if db_user.is_some() {
 		return HttpResponse::BadRequest().body("User already exists");
 	}
-	HttpResponse::Ok().body("User created")
+
+	let hashed_password = bcrypt::hash(&user.password, 12).unwrap();
+
+	let user = entities::users::ActiveModel {
+		username: Set(user.username.clone()),
+		hashed_password: Set(hashed_password),
+		created_at: Set(chrono::Utc::now().naive_utc().to_string()),
+		..Default::default()
+	};
+
+	let user: entities::users::Model = user.insert(db.get_ref()).await.unwrap();
+
+	HttpResponse::Ok().json(LogedUser {
+		id: user.id,
+		username: user.username,
+	})
 }
 
 #[post("/delete-user")]
-async fn delete_user(db: web::Data<Arc<Mutex<Database>>>, user: web::Json<LogedUser>) -> impl Responder {
-	let user = db.lock().unwrap().delete_user(user.id);
-	if user.is_err() {
+async fn delete_user(db: web::Data<connection::Connection>, user: web::Json<LogedUser>) -> impl Responder {
+	let user: Option<entities::users::Model> = entities::users::Entity::find_by_id(user.id).one(db.get_ref()).await.unwrap();
+
+	if user.is_none() {
 		return HttpResponse::BadRequest().body("User not found");
 	}
+
+	let user = user.unwrap();
+
+	let res: DeleteResult = user
+		.delete(db.get_ref())
+		.await.expect("Failed to delete user");
+
+	if res.rows_affected == 0 {
+		return HttpResponse::InternalServerError().body("Failed to delete user");
+	}
+
 	HttpResponse::Ok().body("User deleted")
 }

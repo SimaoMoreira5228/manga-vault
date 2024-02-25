@@ -6,11 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = ["api", "config", "database", "scrappers"]
+members = ["api", "config", "database/*", "scrappers"]
 
 [dependencies]
-scrappers = { path = "scrappers" }
 api = { path = "api" }
-config = { path = "config" }
-database = { path = "database" }
 tokio = { version = "1", features = ["full"] }
