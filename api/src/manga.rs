@@ -82,7 +82,7 @@ async fn sync_category_mangas(
 } */
 
 #[derive(serde::Deserialize)]
-pub struct AddFavoriteMangaStruct {
+struct AddFavoriteManga {
 	pub id: i32,
 	pub username: String,
 	pub manga_id: i32,
@@ -92,9 +92,12 @@ pub struct AddFavoriteMangaStruct {
 #[post("/mangas/favorite/add")]
 async fn add_favorite_manga(
 	db: web::Data<connection::Connection>,
-	info: web::Json<AddFavoriteMangaStruct>,
+	info: web::Json<AddFavoriteManga>,
 ) -> impl Responder {
-	let manga: Option<crate::entities::mangas::Model> = crate::entities::mangas::Entity::find_by_id(info.manga_id).one(db.get_ref()).await.unwrap();
+	let manga: Option<crate::entities::mangas::Model> = crate::entities::mangas::Entity::find_by_id(info.manga_id)
+		.one(db.get_ref())
+		.await
+		.unwrap();
 
 	if manga.is_none() {
 		return HttpResponse::BadRequest().body("Manga not found");
@@ -126,21 +129,21 @@ async fn add_favorite_manga(
 }
 
 #[derive(serde::Deserialize)]
-pub struct RemoveFavoriteManga {
-	pub id: i64,
+struct RemoveFavoriteManga {
+	pub user_id: i64,
 	pub manga_id: i64,
 }
 
 #[post("/mangas/favorite/remove")]
 async fn remove_favorite_manga(
 	db: web::Data<connection::Connection>,
-	user: web::Json<LogedUser>,
-	manga_id: web::Json<i32>,
+	info: web::Json<RemoveFavoriteManga>,
 ) -> impl Responder {
-	let manga: Option<crate::entities::mangas::Model> = crate::entities::mangas::Entity::find_by_id(manga_id.into_inner())
-		.one(db.get_ref())
-		.await
-		.unwrap();
+	let manga: Option<crate::entities::mangas::Model> =
+		crate::entities::mangas::Entity::find_by_id(info.manga_id.into_inner())
+			.one(db.get_ref())
+			.await
+			.unwrap();
 
 	if manga.is_none() {
 		return HttpResponse::BadRequest().body("Manga not found");
@@ -148,8 +151,8 @@ async fn remove_favorite_manga(
 
 	let manga = manga.unwrap();
 	let favorite_manga: Option<crate::entities::favorite_mangas::Model> = crate::entities::favorite_mangas::Entity::find()
-		.filter(crate::entities::favorite_mangas::Column::UserId.contains(user.id.to_string()))
-		.filter(crate::entities::favorite_mangas::Column::MangaId.contains(manga.id.to_string()))
+		.filter(crate::entities::favorite_mangas::Column::UserId.contains(info.user_id.to_string()))
+		.filter(crate::entities::favorite_mangas::Column::MangaId.contains(info.manga_id.to_string()))
 		.one(db.get_ref())
 		.await
 		.unwrap();
@@ -158,7 +161,11 @@ async fn remove_favorite_manga(
 		return HttpResponse::BadRequest().body("Manga not favorited");
 	}
 
-	let res: DeleteResult = favorite_manga.unwrap().delete(db.get_ref()).await.expect("Failed to remove manga from favorites");
+	let res: DeleteResult = favorite_manga
+		.unwrap()
+		.delete(db.get_ref())
+		.await
+		.expect("Failed to remove manga from favorites");
 
 	if res.rows_affected == 0 {
 		return HttpResponse::InternalServerError().body("Failed to remove manga from favorites");
