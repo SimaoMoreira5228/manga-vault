@@ -21,7 +21,7 @@ pub trait ScrapperTraits {
 pub struct Scrapper;
 
 impl Scrapper {
-	pub fn new(r#type: ScrapperType) -> Box<dyn ScrapperTraits> {
+	pub fn new(r#type: ScrapperType) -> Box<dyn ScrapperTraits + Send> {
 		match r#type {
 			ScrapperType::MangareadOrg => Box::new(mangaread_org::MangaReadOrgScrapper::new()),
 			ScrapperType::Manganato => Box::new(manganato::ManganatoScrapper::new()),

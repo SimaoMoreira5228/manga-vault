@@ -9,7 +9,7 @@ pub struct Model {
 	pub id: i32,
 	pub user_id: i32,
 	pub manga_id: i32,
-	pub categorie_id: i32,
+	pub category_id: i32,
 	pub created_at: String,
 }
 
@@ -18,7 +18,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "Entity",
 		from = "Column::Id",
-		to = "Column::CategorieId",
+		to = "Column::CategoryId",
 		on_update = "NoAction",
 		on_delete = "Cascade"
 	)]

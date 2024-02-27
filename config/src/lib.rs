@@ -8,7 +8,8 @@ fn current_dir() -> String {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
-	pub port: u16,
+	pub api_port: u16,
+	pub websocket_port: u16,
 	pub database_path: String,
 	pub directory: String,
 	pub secret_jwt: String,
@@ -19,7 +20,8 @@ pub fn load_config() -> Config {
 	let config_file = format!("{}/config.json", current_dir);
 	if !std::path::Path::new(&config_file).exists() {
 		let default_config_json = Config {
-			port: 3000,
+			api_port: 5228,
+			websocket_port: 5229,
 			database_path: "db.sqlite".to_string(),
 			directory: current_dir,
 			secret_jwt: "#5z3BQkA@EQ2!mM*XyYQu3XM5".to_string(),

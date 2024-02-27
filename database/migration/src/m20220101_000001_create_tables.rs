@@ -94,7 +94,7 @@ impl MigrationTrait for Migration {
 					)
 					.col(ColumnDef::new(FavoriteMangas::UserId).integer().not_null())
 					.col(ColumnDef::new(FavoriteMangas::MangaId).integer().not_null())
-					.col(ColumnDef::new(FavoriteMangas::CategorieId).integer().not_null())
+					.col(ColumnDef::new(FavoriteMangas::CategoryId).integer().not_null())
 					.col(ColumnDef::new(FavoriteMangas::CreatedAt).date_time().not_null())
 					.foreign_key(
 						ForeignKey::create()
@@ -114,7 +114,7 @@ impl MigrationTrait for Migration {
 						ForeignKey::create()
 							.name("fk_categorie_id")
 							.from(Categories::Table, Categories::Id)
-							.to(FavoriteMangas::Table, FavoriteMangas::CategorieId)
+							.to(FavoriteMangas::Table, FavoriteMangas::CategoryId)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.to_owned(),
@@ -249,7 +249,7 @@ enum FavoriteMangas {
 	Id,
 	UserId,
 	MangaId,
-	CategorieId,
+	CategoryId,
 	CreatedAt,
 }
 
