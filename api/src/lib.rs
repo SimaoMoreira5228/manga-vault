@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 use actix_web::{dev::Service, web, App, HttpServer};
 use config::Config;
-use futures_util::future::ok;
 use tokio::{net::TcpListener, sync::Mutex};
 use websocket::handle_connection;
 
@@ -23,7 +22,7 @@ pub async fn run() -> std::io::Result<()> {
 	let db = connection::Database::new(&CONFIG).await.unwrap();
 	let websocket_db = Arc::new(Mutex::new(db.conn.clone()));
 
-	let websocket_server_handle = tokio::spawn(async move {
+	let _websocket_server_handle = tokio::spawn(async move {
 		let listener = TcpListener::bind(format!("0.0.0.0:{}", CONFIG.websocket_port)).await.unwrap();
 		println!("Websocket server running on port {}", CONFIG.websocket_port);
 

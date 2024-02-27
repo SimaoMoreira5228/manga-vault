@@ -3,7 +3,6 @@ use actix_web::{post, web, HttpResponse, Responder};
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DeleteResult, EntityTrait, ModelTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc::error;
 
 #[derive(Deserialize)]
 pub struct CreateUser {

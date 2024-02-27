@@ -1,14 +1,9 @@
-use crate::entities::chapters;
 use crate::websocket::{Content, MangaResponse, SyncFavoriteMangasResponse};
-use actix_web::web::Query;
 use connection::Connection;
 use futures_util::{stream::SplitSink, SinkExt};
-use sea_orm::prelude::Expr;
-use sea_orm::sea_query::extension::postgres::PgExpr;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
-	ActiveModelTrait, ColumnTrait, EntityOrSelect, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait,
-	RelationTrait,
+	ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryTrait,
 };
 use tokio::net::TcpStream;
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};

@@ -3,13 +3,10 @@ mod sync_category;
 
 use crate::websocket::sync_all::sync_all_favorite_mangas;
 use crate::websocket::sync_category::sync_favorite_mangas_from_category;
-use config::Config;
 use connection::Connection;
-use futures_util::{SinkExt, StreamExt};
-use sea_orm::{ActiveModelTrait, EntityTrait, RelationTrait};
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpStream;
 use tokio_tungstenite::accept_async;
 
 #[derive(Debug, Serialize, Deserialize)]

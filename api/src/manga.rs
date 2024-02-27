@@ -1,12 +1,9 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, DeleteResult, EntityTrait, ModelTrait, QueryFilter};
 
-use crate::user::LogedUser;
-
 #[derive(serde::Deserialize)]
 struct AddFavoriteManga {
 	pub id: i32,
-	pub username: String,
 	pub manga_id: i32,
 	pub categorie_id: i32,
 }
@@ -67,7 +64,6 @@ async fn remove_favorite_manga(
 		return HttpResponse::BadRequest().body("Manga not found");
 	}
 
-	let manga = manga.unwrap();
 	let favorite_manga: Option<crate::entities::favorite_mangas::Model> = crate::entities::favorite_mangas::Entity::find()
 		.filter(crate::entities::favorite_mangas::Column::UserId.contains(info.user_id.to_string()))
 		.filter(crate::entities::favorite_mangas::Column::MangaId.contains(info.manga_id.to_string()))
