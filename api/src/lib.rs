@@ -5,10 +5,12 @@ mod manga;
 mod user;
 mod websocket;
 
+use std::sync::Arc;
+
 use actix_web::{dev::Service, web, App, HttpServer};
 use config::Config;
 use futures_util::future::ok;
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::Mutex};
 use websocket::handle_connection;
 
 lazy_static::lazy_static! {
@@ -19,22 +21,24 @@ lazy_static::lazy_static! {
 #[tokio::main]
 pub async fn run() -> std::io::Result<()> {
 	let db = connection::Database::new(&CONFIG).await.unwrap();
-	let http_db = db.conn.clone();
+	let websocket_db = Arc::new(Mutex::new(db.conn.clone()));
 
 	let websocket_server_handle = tokio::spawn(async move {
 		let listener = TcpListener::bind(format!("0.0.0.0:{}", CONFIG.websocket_port)).await.unwrap();
 		println!("Websocket server running on port {}", CONFIG.websocket_port);
 
 		while let Ok((stream, _)) = listener.accept().await {
+			let db = websocket_db.clone();
 			tokio::spawn(async move {
-				handle_connection(stream, db.conn.clone()).await;
+				let db = db.lock().await;
+				handle_connection(stream, db.clone()).await;
 			});
 		}
 	});
 
 	HttpServer::new(move || {
 		App::new()
-			.app_data(web::Data::new(http_db.clone()))
+			.app_data(web::Data::new(db.conn.clone()))
 			.service(user::create_user)
 			.service(user::delete_user)
 			.service(auth::login)
