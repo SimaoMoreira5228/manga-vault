@@ -37,7 +37,7 @@ struct MangaResponse {
 	url: String,
 	img_url: String,
 	chapters_count: usize,
-	read_chapters: u64,
+	read_chapters: usize,
 }
 
 pub async fn handle_connection(stream: TcpStream, db: Connection) {

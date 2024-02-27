@@ -45,12 +45,7 @@ pub async fn sync_all_favorite_mangas(
 		let manga_page = manga_page.unwrap();
 		let chapters = manga_page.chapters;
 		let chapters_count = chapters.len();
-		let read_chapters = crate::entities::read_chapters::Entity::find()
-			.filter(crate::entities::read_chapters::Column::UserId.eq(content.user_id))
-			.filter(crate::entities::read_chapters::Column::MangaId.eq(favorite_manga.id))
-			.count(&db)
-			.await
-			.unwrap();
+		let read_chapters: Vec<i32> = vec![];
 
 		for chapter in chapters {
 			let db_chapter: Option<crate::entities::chapters::Model> = crate::entities::chapters::Entity::find()
@@ -72,6 +67,17 @@ pub async fn sync_all_favorite_mangas(
 
 				//todo: treat this
 				let _ = active_model_chapter.insert(&db).await;
+
+				let read_chapter: Option<crate::entities::read_chapters::Model> = crate::entities::read_chapters::find()
+					.filter(crate::entities::read_chapters::Column::UserId.eq(content.user_id))
+					.filter(crate::entities::read_chapters::Column::ChapterId.eq(db_chapter.unwrap().id))
+					.one(&db)
+					.await
+					.unwrap();
+
+				if read_chapter.is_some() {
+					read_chapters.push(read_chapter.unwrap().chapter_id);
+				}
 			}
 		}
 
@@ -86,7 +92,7 @@ pub async fn sync_all_favorite_mangas(
 				url: favorite_manga.url,
 				img_url: manga_page.img_url,
 				chapters_count,
-				read_chapters,
+				read_chapters: read_chapters.len(),
 			}),
 			error: None,
 		};
