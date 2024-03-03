@@ -9,18 +9,27 @@ pub struct Database {
 
 impl Database {
 	pub async fn new(config: &Config) -> Result<Self, Box<dyn std::error::Error>> {
-		let url = format!("sqlite://{}/{}?mode=rwc", config.directory, config.database_path);
-		let conn = sea_orm::Database::connect(url).await;
+		let mut url = format!("sqlite://{}/{}?mode=ro", config.directory, config.database_path);
+		let mut conn = sea_orm::Database::connect(url).await;
 
 		if conn.is_err() {
-			let url = format!("sqlite://{}/{}?mode=rwc", config.directory, config.database_path);
-			let conn = sea_orm::Database::connect(url).await;
+			url = format!("sqlite://{}/{}?mode=rwc", config.directory, config.database_path);
+			conn = sea_orm::Database::connect(url).await;
 			migration::Migrator::fresh(conn.as_ref().unwrap()).await.unwrap();
 
 			if conn.is_err() {
 				return Err(Box::new(conn.err().unwrap()));
 			}
 		}
+
+		let result = conn.unwrap().close().await;
+
+		if result.is_err() {
+			return Err(Box::new(result.err().unwrap()));
+		}
+
+		url = format!("sqlite://{}/{}?mode=rwc", config.directory, config.database_path);
+		conn = sea_orm::Database::connect(url).await;
 
 		Ok(Self { conn: conn.unwrap() })
 	}
