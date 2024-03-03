@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use scraper::ElementRef;
+use serde::Serialize;
 use tokio::io::AsyncWriteExt;
 
 mod manganato;
@@ -21,7 +22,7 @@ pub trait ScrapperTraits {
 pub struct Scrapper;
 
 impl Scrapper {
-	pub fn new(r#type: ScrapperType) -> Box<dyn ScrapperTraits + Send> {
+	pub fn new(r#type: &ScrapperType) -> Box<dyn ScrapperTraits + Send> {
 		match r#type {
 			ScrapperType::MangareadOrg => Box::new(mangaread_org::MangaReadOrgScrapper::new()),
 			ScrapperType::Manganato => Box::new(manganato::ManganatoScrapper::new()),
@@ -48,6 +49,7 @@ impl Scrapper {
 	}
 }
 
+#[derive(Debug, Serialize)]
 pub enum ScrapperType {
 	MangareadOrg,
 	Manganato,
@@ -68,14 +70,18 @@ pub fn get_scrapper_type_str(scrapper: &ScrapperType) -> &str {
 	}
 }
 
-#[derive(Debug)]
+pub fn get_all_scrapper_types() -> Vec<ScrapperType> {
+	vec![ScrapperType::MangareadOrg, ScrapperType::Manganato]
+}
+
+#[derive(Debug, Serialize)]
 pub struct MangaItem {
 	pub title: String,
 	pub url: String,
 	pub img_url: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct MangaPage {
 	pub title: String,
 	pub url: String,
@@ -91,13 +97,13 @@ pub struct MangaPage {
 	pub chapters: Vec<Chapter>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Chapter {
 	pub title: String,
 	pub url: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Genre {
 	pub name: String,
 	pub url: String,
