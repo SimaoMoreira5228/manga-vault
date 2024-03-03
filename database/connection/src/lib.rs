@@ -20,6 +20,8 @@ impl Database {
 			if conn.is_err() {
 				return Err(Box::new(conn.err().unwrap()));
 			}
+
+			return Ok(Self { conn: conn.unwrap() });
 		}
 
 		let result = conn.unwrap().close().await;
