@@ -1,15 +1,21 @@
 mod auth;
+mod chapter;
 mod entities;
+mod favorites;
 mod files;
 mod manga;
+mod read_chapter;
+mod scrapper;
 mod user;
 mod websocket;
 
 use std::sync::Arc;
 
-use actix_web::{dev::Service, web, App, HttpServer};
+use actix_web::dev::Service;
+use actix_web::{web, App, HttpServer};
 use config::Config;
-use tokio::{net::TcpListener, sync::Mutex};
+use tokio::net::TcpListener;
+use tokio::sync::Mutex;
 use websocket::handle_connection;
 
 lazy_static::lazy_static! {
@@ -22,9 +28,8 @@ pub async fn run() -> std::io::Result<()> {
 	let db = connection::Database::new(&CONFIG).await.unwrap();
 	let websocket_db = Arc::new(Mutex::new(db.conn.clone()));
 
-	let _websocket_server_handle = tokio::spawn(async move {
+	_ = tokio::spawn(async move {
 		let listener = TcpListener::bind(format!("0.0.0.0:{}", CONFIG.websocket_port)).await.unwrap();
-		println!("Websocket server running on port {}", CONFIG.websocket_port);
 
 		while let Ok((stream, _)) = listener.accept().await {
 			let db = websocket_db.clone();
@@ -38,15 +43,14 @@ pub async fn run() -> std::io::Result<()> {
 	HttpServer::new(move || {
 		App::new()
 			.app_data(web::Data::new(db.conn.clone()))
-			.service(user::create_user)
-			.service(user::delete_user)
-			.service(auth::login)
-			.service(auth::logout)
-			.service(files::upload_file)
-			.service(files::get_image)
-			.service(files::download_file)
-			.service(manga::add_favorite_manga)
-			.service(manga::remove_favorite_manga)
+			.configure(user::init_routes)
+			.configure(auth::init_routes)
+			.configure(manga::init_routes)
+			.configure(chapter::init_routes)
+			.configure(favorites::init_routes)
+			.configure(files::init_routes)
+			.configure(scrapper::init_routes)
+			.configure(read_chapter::init_routes)
 			.wrap_fn(|req, srv| {
 				let path = req.path();
 				if path == "/create" || path == "/login" {

@@ -1,8 +1,11 @@
-use crate::entities;
-use actix_web::{post, web, HttpResponse, Responder};
+use std::vec;
+
+use actix_web::{get, post, web, HttpResponse, Responder};
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DeleteResult, EntityTrait, ModelTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
+
+use crate::entities;
 
 #[derive(Deserialize)]
 pub struct CreateUser {
@@ -11,7 +14,7 @@ pub struct CreateUser {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct LogedUser {
+pub struct IncomingUser {
 	pub id: i32,
 	pub username: String,
 }
@@ -39,14 +42,14 @@ async fn create_user(db: web::Data<connection::Connection>, user: web::Json<Crea
 
 	let user: entities::users::Model = user.insert(db.get_ref()).await.unwrap();
 
-	HttpResponse::Ok().json(LogedUser {
+	HttpResponse::Ok().json(IncomingUser {
 		id: user.id,
 		username: user.username,
 	})
 }
 
 #[post("/delete-user")]
-async fn delete_user(db: web::Data<connection::Connection>, user: web::Json<LogedUser>) -> impl Responder {
+async fn delete_user(db: web::Data<connection::Connection>, user: web::Json<IncomingUser>) -> impl Responder {
 	let user: Option<entities::users::Model> = entities::users::Entity::find_by_id(user.id).one(db.get_ref()).await.unwrap();
 
 	if user.is_none() {
@@ -55,13 +58,33 @@ async fn delete_user(db: web::Data<connection::Connection>, user: web::Json<Loge
 
 	let user = user.unwrap();
 
-	let res: DeleteResult = user
-		.delete(db.get_ref())
-		.await.expect("Failed to delete user");
+	let res: DeleteResult = user.delete(db.get_ref()).await.expect("Failed to delete user");
 
 	if res.rows_affected == 0 {
 		return HttpResponse::InternalServerError().body("Failed to delete user");
 	}
 
 	HttpResponse::Ok().body("User deleted")
+}
+
+#[get("/users")]
+async fn get_users(db: web::Data<connection::Connection>) -> impl Responder {
+	let users: Vec<entities::users::Model> = entities::users::Entity::find().all(db.get_ref()).await.unwrap();
+
+	let mut response = vec![];
+
+	for user in users {
+		response.push(IncomingUser {
+			id: user.id,
+			username: user.username,
+		});
+	}
+
+	HttpResponse::Ok().json(response)
+}
+
+pub fn init_routes(cfg: &mut web::ServiceConfig) {
+	cfg.service(create_user);
+	cfg.service(delete_user);
+	cfg.service(get_users);
 }

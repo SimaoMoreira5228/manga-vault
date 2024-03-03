@@ -118,3 +118,9 @@ pub async fn fetch_external_image(url: &str) -> HttpResponse {
 
 	HttpResponse::Ok().content_type(mime).body(data)
 }
+
+pub fn init_routes(cfg: &mut web::ServiceConfig) {
+	cfg.service(upload_file);
+	cfg.service(get_image);
+	cfg.service(download_file);
+}

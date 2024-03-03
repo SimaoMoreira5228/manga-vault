@@ -1,9 +1,12 @@
-use crate::user::{CreateUser, LogedUser};
-use crate::SECRET_JWT;
-use actix_web::{cookie::Cookie, dev::ServiceRequest, get, post, web, HttpResponse, Responder};
+use actix_web::cookie::Cookie;
+use actix_web::dev::ServiceRequest;
+use actix_web::{get, post, web, HttpResponse, Responder};
 use jsonwebtoken::{encode, Algorithm, DecodingKey, EncodingKey, Header};
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
+
+use crate::user::{CreateUser, IncomingUser};
+use crate::SECRET_JWT;
 
 #[derive(Serialize, Deserialize)]
 struct Claims {
@@ -44,7 +47,7 @@ async fn login(db: web::Data<connection::Connection>, user: web::Json<CreateUser
 	)
 	.unwrap();
 
-	let res_user = LogedUser {
+	let res_user = IncomingUser {
 		id: db_user.id,
 		username: db_user.username,
 	};
@@ -76,4 +79,9 @@ pub fn jwt_validator(req: ServiceRequest) -> Result<ServiceRequest, actix_web::E
 	.map_err(|_| actix_web::error::ErrorUnauthorized("Invalid token"))?;
 
 	Ok(req)
+}
+
+pub fn init_routes(cfg: &mut web::ServiceConfig) {
+	cfg.service(login);
+	cfg.service(logout);
 }
