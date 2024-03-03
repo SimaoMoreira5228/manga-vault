@@ -3,7 +3,7 @@ use scrappers::Scrapper;
 use sea_orm::EntityTrait;
 use serde::Serialize;
 
-use crate::files::fetch_external_image;
+use crate::routes::files::fetch_external_image;
 
 #[derive(Serialize)]
 struct ResponseChapter {

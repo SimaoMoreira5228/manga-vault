@@ -5,7 +5,7 @@ use jsonwebtoken::{encode, Algorithm, DecodingKey, EncodingKey, Header};
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 
-use crate::user::{CreateUser, IncomingUser};
+use crate::routes::user::{CreateUser, IncomingUser};
 use crate::SECRET_JWT;
 
 #[derive(Serialize, Deserialize)]
