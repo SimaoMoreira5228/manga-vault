@@ -39,7 +39,7 @@ pub async fn sync_favorite_mangas_from_category(
 
 	for favorite_manga in favorite_mangas {
 		let scrapper_type = scrappers::get_scrapper_type(&favorite_manga.scrapper);
-		let scrapper = scrappers::Scrapper::new(scrapper_type);
+		let scrapper = scrappers::Scrapper::new(&scrapper_type);
 		let manga_page = scrapper.scrape_manga(&favorite_manga.url).await;
 
 		if manga_page.is_err() {
