@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 
-use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
-
 use super::ManganatoScrapper;
+use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
 
 #[async_trait]
 impl ScrapperTraits for ManganatoScrapper {
@@ -139,7 +138,7 @@ impl ScrapperTraits for ManganatoScrapper {
 				let url = url_div.value().attr("href").unwrap();
 
 				manga_items.push(MangaItem {
-					title,
+					title: title.trim().to_string(),
 					url: url.to_string(),
 					img_url: img_url.to_string(),
 				});
@@ -180,7 +179,7 @@ impl ScrapperTraits for ManganatoScrapper {
 		let mut genres: Vec<String> = Vec::new();
 		let mut lines: Vec<&str> = info_text.lines().map(|x| x.trim()).collect::<Vec<_>>();
 		lines.retain(|x| !x.is_empty());
-		
+
 		let lines_clone = lines.clone();
 		for line in lines_clone {
 			if line.contains("Alternative") {
