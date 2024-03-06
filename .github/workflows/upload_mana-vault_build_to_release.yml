@@ -1,4 +1,4 @@
-name: Upload Mana Vault Build to Release
+name: Upload Manga Vault Build to Release
 
 on:
   release:
@@ -33,6 +33,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./target/release/mana-vault
-          asset_name: mana-vault-${{ matrix.os }}
+          asset_path: ./target/release/manga-vault
+          asset_name: manga-vault-${{ matrix.os }}
           asset_content_type: application/octet-stream

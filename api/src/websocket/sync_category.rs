@@ -78,7 +78,7 @@ pub async fn sync_favorite_mangas_from_category(
 					..Default::default()
 				};
 
-				//todo: treat this
+				//TODO: treat this
 				let _ = active_model_chapter.insert(&db);
 
 				let read_chapter: Option<crate::entities::read_chapters::Model> = crate::entities::read_chapters::Entity::find()
@@ -94,7 +94,7 @@ pub async fn sync_favorite_mangas_from_category(
 			}
 		}
 
-		// todo: maybe update the manga (img_url, title, etc)
+		// TODO: maybe update the manga (img_url, title, etc)
 
 		drop(scrapper);
 
