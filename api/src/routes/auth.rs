@@ -10,7 +10,7 @@ use crate::SECRET_JWT;
 
 #[derive(Serialize, Deserialize)]
 struct Claims {
-	sub: String,
+	sub: i32,
 	exp: usize,
 }
 
@@ -36,7 +36,7 @@ async fn login(db: web::Data<connection::Connection>, user: web::Json<CreateUser
 	}
 
 	let claims = Claims {
-		sub: db_user.id.to_string(),
+		sub: db_user.id,
 		exp: (chrono::Utc::now() + chrono::Duration::hours(24)).timestamp() as usize,
 	};
 
@@ -81,7 +81,41 @@ pub fn jwt_validator(req: ServiceRequest) -> Result<ServiceRequest, actix_web::E
 	Ok(req)
 }
 
-pub fn init_routes(cfg: &mut web::ServiceConfig) {
+#[get("/me")]
+async fn me(req: actix_web::HttpRequest, db: web::Data<connection::Connection>) -> impl Responder {
+	let cookie = req
+		.cookie("token")
+		.ok_or_else(|| actix_web::error::ErrorUnauthorized("No token"))
+		.unwrap();
+
+	let user_token = cookie.value();
+
+	let token_data = jsonwebtoken::decode::<Claims>(
+		&user_token,
+		&DecodingKey::from_secret(SECRET_JWT.as_ref()),
+		&jsonwebtoken::Validation::new(Algorithm::HS256),
+	)
+	.map_err(|_| actix_web::error::ErrorUnauthorized("Invalid token"));
+
+	let user_id = token_data.unwrap().claims.sub;
+
+	let user: Option<crate::entities::users::Model> = crate::entities::users::Entity::find_by_id(user_id)
+		.one(db.get_ref())
+		.await
+		.unwrap();
+
+	if let Some(user) = user {
+		HttpResponse::Ok().json(IncomingUser {
+			id: user.id,
+			username: user.username,
+		})
+	} else {
+		HttpResponse::NotFound().finish()
+	}
+}
+
+pub fn init_routes(cfg: &mut actix_web::web::ServiceConfig) {
 	cfg.service(login);
 	cfg.service(logout);
+	cfg.service(me);
 }
