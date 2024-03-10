@@ -1,8 +1,13 @@
-use serde::{Deserialize, Serialize};
 use std::env;
 
-fn current_dir() -> String {
-	env::current_dir().unwrap().to_str().unwrap().to_string()
+use serde::{Deserialize, Serialize};
+
+fn current_dir() -> std::path::PathBuf {
+	env::current_exe()
+		.unwrap()
+		.parent()
+		.expect("Failed to get current directory")
+		.to_path_buf()
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -16,13 +21,13 @@ pub struct Config {
 
 pub fn load_config() -> Config {
 	let current_dir = current_dir();
-	let config_file = format!("{}/config.json", current_dir);
+	let config_file = format!("{}/config.json", current_dir.display());
 	if !std::path::Path::new(&config_file).exists() {
 		let default_config_json = Config {
 			api_port: 5228,
 			websocket_port: 5229,
-			database_path: "db.sqlite".to_string(),
-			directory: current_dir,
+			database_path: format!("{}/db.sqlite", current_dir.display()),
+			directory: current_dir.display(),
 			secret_jwt: "#5z3BQkA@EQ2!mM*XyYQu3XM5".to_string(),
 		};
 
