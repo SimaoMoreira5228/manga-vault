@@ -27,7 +27,7 @@ pub fn load_config() -> Config {
 			api_port: 5228,
 			websocket_port: 5229,
 			database_path: format!("{}/db.sqlite", current_dir.display()),
-			directory: current_dir.display(),
+			directory: current_dir.display().to_string(),
 			secret_jwt: "#5z3BQkA@EQ2!mM*XyYQu3XM5".to_string(),
 		};
 
