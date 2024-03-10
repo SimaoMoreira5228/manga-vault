@@ -19,7 +19,7 @@ pub struct IncomingUser {
 	pub username: String,
 }
 
-#[post("/create")]
+#[post("/users/create")]
 async fn create_user(db: web::Data<connection::Connection>, user: web::Json<CreateUser>) -> impl Responder {
 	let db_user: Option<entities::users::Model> = entities::users::Entity::find()
 		.filter(entities::users::Column::Username.contains(&user.username))
@@ -48,7 +48,7 @@ async fn create_user(db: web::Data<connection::Connection>, user: web::Json<Crea
 	})
 }
 
-#[post("/delete-user")]
+#[post("/users/delete")]
 async fn delete_user(db: web::Data<connection::Connection>, user: web::Json<IncomingUser>) -> impl Responder {
 	let user: Option<entities::users::Model> = entities::users::Entity::find_by_id(user.id).one(db.get_ref()).await.unwrap();
 
@@ -83,8 +83,28 @@ async fn get_users(db: web::Data<connection::Connection>) -> impl Responder {
 	HttpResponse::Ok().json(response)
 }
 
+#[get("/users/{id}")]
+async fn get_user(db: web::Data<connection::Connection>, id: web::Path<i32>) -> impl Responder {
+	let user: Option<entities::users::Model> = entities::users::Entity::find_by_id(id.into_inner())
+		.one(db.get_ref())
+		.await
+		.unwrap();
+
+	if user.is_none() {
+		return HttpResponse::BadRequest().body("User not found");
+	}
+
+	let user = user.unwrap();
+
+	HttpResponse::Ok().json(IncomingUser {
+		id: user.id,
+		username: user.username,
+	})
+}
+
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
 	cfg.service(create_user);
 	cfg.service(delete_user);
 	cfg.service(get_users);
+	cfg.service(get_user);
 }
