@@ -17,11 +17,16 @@ pub async fn downloader(path: &str, owner: &str, repo: &str) -> Result<(), Box<d
 
 	let release_info: Value = response.text().await?.parse()?;
 
-	let asset_url = release_info["assets"][0]["browser_download_url"]
-		.as_str()
-		.ok_or("Asset URL not found")?;
+	let assets = release_info["assets"].as_array().ok_or("Assets not found")?;
+	let mut asset_url: &str = "";
+	let mut asset_name: &str = "";
 
-	let asset_name = release_info["assets"][0]["name"].as_str().ok_or("Asset name not found")?;
+	for asset in assets {
+		if asset["name"].as_str().unwrap() == "website.zip" {
+			asset_url = asset["browser_download_url"].as_str().ok_or("Asset URL not found")?;
+			asset_name = asset["name"].as_str().ok_or("Asset name not found")?;
+		}
+	}
 
 	let response = client.get(asset_url).send().await?;
 
@@ -57,8 +62,8 @@ pub async fn get_version(owner: &str, repo: &str) -> Result<String, Box<dyn std:
 pub async fn unzip_file(path: &str, dir: &str) -> Result<(), Box<dyn std::error::Error>> {
 	let file = fs::File::open(path).unwrap();
 	let mut archive = zip::ZipArchive::new(file).unwrap();
-	archive.extract(dir).unwrap();
-	fs::remove_file(format!("{}/website.zip", dir)).unwrap();
+	archive.extract(dir)?;
+	fs::remove_file(path).unwrap();
 
 	Ok(())
 }

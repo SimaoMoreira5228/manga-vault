@@ -62,7 +62,7 @@ pub async fn start() {
 		downloader::downloader(&website_dir, "SimaoMoreira5228", "manga-vault")
 			.await
 			.unwrap();
-		downloader::unzip_file(format!("{}/website.zip", website_dir).as_str(), &website_dir)
+		downloader::unzip_file(format!("{}/website.zip", website_dir).as_str(), &CONFIG.directory)
 			.await
 			.unwrap();
 		fs::write(format!("{}/version.txt", website_dir), latest_version).unwrap();
@@ -77,7 +77,7 @@ pub async fn start() {
 			downloader::downloader(&website_dir, "SimaoMoreira5228", "manga-vault")
 				.await
 				.unwrap();
-			downloader::unzip_file(format!("{}/website.zip", website_dir).as_str(), &website_dir)
+			downloader::unzip_file(format!("{}/website.zip", website_dir).as_str(), &CONFIG.directory)
 				.await
 				.unwrap();
 			fs::write(format!("{}/version.txt", website_dir), latest_version).unwrap();
