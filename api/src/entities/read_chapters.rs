@@ -9,27 +9,54 @@ pub struct Model {
 	pub id: i32,
 	pub user_id: i32,
 	pub chapter_id: i32,
+	pub manga_id: i32,
 	pub created_at: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
 	#[sea_orm(
-		belongs_to = "Entity",
-		from = "Column::Id",
-		to = "Column::ChapterId",
+		belongs_to = "super::chapters::Entity",
+		from = "Column::ChapterId",
+		to = "super::chapters::Column::Id",
 		on_update = "NoAction",
 		on_delete = "Cascade"
 	)]
-	SelfRef2,
+	Chapters,
 	#[sea_orm(
-		belongs_to = "Entity",
-		from = "Column::Id",
-		to = "Column::UserId",
+		belongs_to = "super::mangas::Entity",
+		from = "Column::MangaId",
+		to = "super::mangas::Column::Id",
 		on_update = "NoAction",
 		on_delete = "Cascade"
 	)]
-	SelfRef1,
+	Mangas,
+	#[sea_orm(
+		belongs_to = "super::users::Entity",
+		from = "Column::UserId",
+		to = "super::users::Column::Id",
+		on_update = "NoAction",
+		on_delete = "Cascade"
+	)]
+	Users,
+}
+
+impl Related<super::chapters::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Chapters.def()
+	}
+}
+
+impl Related<super::mangas::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Mangas.def()
+	}
+}
+
+impl Related<super::users::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Users.def()
+	}
 }
 
 impl ActiveModelBehavior for ActiveModel {}

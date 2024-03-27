@@ -5,7 +5,7 @@ use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DeleteResult, EntityTrait, ModelTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
-use crate::entities;
+use crate::entities::{self, categories};
 
 #[derive(Deserialize)]
 pub struct CreateUser {
@@ -41,6 +41,19 @@ async fn create_user(db: web::Data<connection::Connection>, user: web::Json<Crea
 	};
 
 	let user: entities::users::Model = user.insert(db.get_ref()).await.unwrap();
+
+	let category = categories::ActiveModel {
+		name: Set("Default".to_string()),
+		created_at: Set(chrono::Utc::now().naive_utc().to_string()),
+		user_id: Set(user.id),
+		..Default::default()
+	};
+
+	let category: categories::Model = category.insert(db.get_ref()).await.unwrap();
+
+	if category.id == 0 {
+		return HttpResponse::InternalServerError().body("Failed to create user");
+	}
 
 	HttpResponse::Ok().json(IncomingUser {
 		id: user.id,
@@ -104,7 +117,10 @@ async fn get_user(db: web::Data<connection::Connection>, id: web::Path<i32>) -> 
 
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
 	cfg.service(create_user);
-	cfg.service(delete_user);
 	cfg.service(get_users);
 	cfg.service(get_user);
+}
+
+pub fn init_secure_routes(cfg: &mut web::ServiceConfig) {
+	cfg.service(delete_user);
 }

@@ -6,7 +6,7 @@
       "driver": "SQLite",
       "name": "manga-vault-sqlite",
       "group": "manga-vault",
-      "database": "${workspaceFolder:manga-vault}/db.sqlite"
+      "database": "${workspaceFolder:manga-vault}/target/debug/db.sqlite"
     }
   ]
 }

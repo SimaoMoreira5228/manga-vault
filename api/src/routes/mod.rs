@@ -6,3 +6,4 @@ pub mod manga;
 pub mod read_chapter;
 pub mod scrapper;
 pub mod user;
+pub mod categories;

@@ -18,13 +18,27 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
 	#[sea_orm(
-		belongs_to = "Entity",
-		from = "Column::Id",
-		to = "Column::MangaId",
+		belongs_to = "super::mangas::Entity",
+		from = "Column::MangaId",
+		to = "super::mangas::Column::Id",
 		on_update = "NoAction",
 		on_delete = "Cascade"
 	)]
-	SelfRef,
+	Mangas,
+	#[sea_orm(has_many = "super::read_chapters::Entity")]
+	ReadChapters,
+}
+
+impl Related<super::mangas::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Mangas.def()
+	}
+}
+
+impl Related<super::read_chapters::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::ReadChapters.def()
+	}
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -1,12 +1,14 @@
-use crate::websocket::{Content, MangaResponse, SyncFavoriteMangasResponse};
 use connection::Connection;
-use futures_util::{stream::SplitSink, SinkExt};
+use futures_util::stream::SplitSink;
+use futures_util::SinkExt;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{
-	ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryTrait,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryTrait};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
+use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::WebSocketStream;
+
+use crate::entities::prelude::{Chapters, FavoriteMangas, Mangas, ReadChapters};
+use crate::websocket::{Content, MangaResponse, SyncFavoriteMangasResponse};
 
 pub async fn sync_favorite_mangas_from_category(
 	write: &mut SplitSink<WebSocketStream<TcpStream>, Message>,
@@ -26,12 +28,12 @@ pub async fn sync_favorite_mangas_from_category(
 		return;
 	}
 
-	let favorite_mangas_subquery = crate::entities::favorite_mangas::Entity::find()
+	let favorite_mangas_subquery = FavoriteMangas::find()
 		.filter(crate::entities::favorite_mangas::Column::UserId.eq(content.user_id))
 		.filter(crate::entities::favorite_mangas::Column::CategoryId.eq(content.category_id.unwrap()))
 		.into_query();
 
-	let favorite_mangas: Vec<crate::entities::mangas::Model> = crate::entities::mangas::Entity::find()
+	let favorite_mangas: Vec<crate::entities::mangas::Model> = Mangas::find()
 		.filter(crate::entities::mangas::Column::Id.in_subquery(favorite_mangas_subquery))
 		.all(&db)
 		.await
@@ -61,7 +63,7 @@ pub async fn sync_favorite_mangas_from_category(
 		let mut read_chapters: Vec<i32> = vec![];
 
 		for chapter in chapters {
-			let db_chapter: Option<crate::entities::chapters::Model> = crate::entities::chapters::Entity::find()
+			let db_chapter: Option<crate::entities::chapters::Model> = Chapters::find()
 				.filter(crate::entities::chapters::Column::MangaId.eq(favorite_manga.id))
 				.filter(crate::entities::chapters::Column::Url.eq(&chapter.url))
 				.one(&db)
@@ -78,10 +80,10 @@ pub async fn sync_favorite_mangas_from_category(
 					..Default::default()
 				};
 
-				//TODO: treat this
+				// TODO: treat this
 				let _ = active_model_chapter.insert(&db);
 
-				let read_chapter: Option<crate::entities::read_chapters::Model> = crate::entities::read_chapters::Entity::find()
+				let read_chapter: Option<crate::entities::read_chapters::Model> = ReadChapters::find()
 					.filter(crate::entities::read_chapters::Column::UserId.eq(content.user_id))
 					.filter(crate::entities::read_chapters::Column::ChapterId.eq(db_chapter.unwrap().id))
 					.one(&db)

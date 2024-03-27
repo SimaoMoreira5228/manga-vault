@@ -1,22 +1,64 @@
 use actix_web::cookie::Cookie;
 use actix_web::dev::ServiceRequest;
 use actix_web::{get, post, web, HttpResponse, Responder};
-use jsonwebtoken::{encode, Algorithm, DecodingKey, EncodingKey, Header};
+use actix_web_httpauth::extractors::bearer::BearerAuth;
+use cookie::time::OffsetDateTime;
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 
+use crate::entities::prelude::Users;
 use crate::routes::user::{CreateUser, IncomingUser};
 use crate::SECRET_JWT;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Claims {
 	sub: i32,
 	exp: usize,
 }
 
+struct NewTokenResponse {
+	token: String,
+	exp: i64,
+}
+
+fn generate_token(user_id: i32) -> Result<NewTokenResponse, jsonwebtoken::errors::Error> {
+	let exp = chrono::Utc::now()
+		.checked_add_signed(chrono::Duration::hours(24))
+		.expect("valid timestamp")
+		.timestamp();
+	let claims = Claims {
+		sub: user_id.to_owned(),
+		exp: exp as usize,
+	};
+
+	let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(SECRET_JWT.as_ref()));
+
+	if token.is_err() {
+		return Err(token.err().unwrap());
+	} else {
+		return Ok(NewTokenResponse {
+			token: token.unwrap(),
+			exp,
+		});
+	}
+}
+
+pub async fn validate_token(
+	req: ServiceRequest,
+	credentials: BearerAuth,
+) -> Result<ServiceRequest, (actix_web::Error, ServiceRequest)> {
+	let token = credentials.token();
+	let validation = Validation::default();
+	match decode::<Claims>(&token, &DecodingKey::from_secret(SECRET_JWT.as_ref()), &validation) {
+		Ok(_) => Ok(req),
+		Err(_) => Err((actix_web::error::ErrorUnauthorized("Invalid token"), req)),
+	}
+}
+
 #[post("/login")]
 async fn login(db: web::Data<connection::Connection>, user: web::Json<CreateUser>) -> impl Responder {
-	let db_user: Option<crate::entities::users::Model> = crate::entities::users::Entity::find()
+	let db_user: Option<crate::entities::users::Model> = Users::find()
 		.all(db.get_ref())
 		.await
 		.unwrap()
@@ -35,17 +77,7 @@ async fn login(db: web::Data<connection::Connection>, user: web::Json<CreateUser
 		return HttpResponse::BadRequest().body("Invalid username or password");
 	}
 
-	let claims = Claims {
-		sub: db_user.id,
-		exp: (chrono::Utc::now() + chrono::Duration::hours(24)).timestamp() as usize,
-	};
-
-	let token = encode(
-		&Header::new(Algorithm::HS256),
-		&claims,
-		&EncodingKey::from_secret(SECRET_JWT.as_ref()),
-	)
-	.unwrap();
+	let result = generate_token(db_user.id).unwrap();
 
 	let res_user = IncomingUser {
 		id: db_user.id,
@@ -53,53 +85,40 @@ async fn login(db: web::Data<connection::Connection>, user: web::Json<CreateUser
 	};
 
 	HttpResponse::Ok()
-		.cookie(Cookie::build("token", token).http_only(true).finish())
+		.cookie(
+			Cookie::build("token", format!("Bearer {}", result.token))
+				.http_only(true)
+				.path("/")
+				.expires(OffsetDateTime::from_unix_timestamp(result.exp).unwrap())
+				.finish(),
+		)
 		.json(res_user)
 }
 
 #[get("/logout")]
 async fn logout() -> impl Responder {
-	HttpResponse::Ok()
-		.cookie(Cookie::build("token", "").finish())
-		.body("Logged out")
-}
-
-pub fn jwt_validator(req: ServiceRequest) -> Result<ServiceRequest, actix_web::Error> {
-	let cookie = req
-		.cookie("token")
-		.ok_or_else(|| actix_web::error::ErrorUnauthorized("No token"))?;
-
-	let user_token = cookie.value();
-
-	jsonwebtoken::decode::<Claims>(
-		&user_token,
-		&DecodingKey::from_secret(SECRET_JWT.as_ref()),
-		&jsonwebtoken::Validation::new(Algorithm::HS256),
-	)
-	.map_err(|_| actix_web::error::ErrorUnauthorized("Invalid token"))?;
-
-	Ok(req)
+	HttpResponse::Ok().cookie(Cookie::build("token", "").finish()).finish()
 }
 
 #[get("/me")]
 async fn me(req: actix_web::HttpRequest, db: web::Data<connection::Connection>) -> impl Responder {
-	let cookie = req
-		.cookie("token")
-		.ok_or_else(|| actix_web::error::ErrorUnauthorized("No token"))
-		.unwrap();
+	let cookie = req.headers().get("Authorization");
 
-	let user_token = cookie.value();
+	if cookie.is_none() {
+		return HttpResponse::NotFound().finish();
+	}
 
-	let token_data = jsonwebtoken::decode::<Claims>(
-		&user_token,
-		&DecodingKey::from_secret(SECRET_JWT.as_ref()),
-		&jsonwebtoken::Validation::new(Algorithm::HS256),
-	)
-	.map_err(|_| actix_web::error::ErrorUnauthorized("Invalid token"));
+	let cookie = cookie.unwrap();
 
-	let user_id = token_data.unwrap().claims.sub;
+	let user_token = cookie.to_str().unwrap().replace("Bearer ", "");
 
-	let user: Option<crate::entities::users::Model> = crate::entities::users::Entity::find_by_id(user_id)
+	let validation = Validation::default();
+
+	let decoded_token = decode::<Claims>(&user_token, &DecodingKey::from_secret(SECRET_JWT.as_ref()), &validation);
+
+	let user_id = decoded_token.unwrap().claims.sub;
+
+	let user: Option<crate::entities::users::Model> = Users::find_by_id(user_id)
 		.one(db.get_ref())
 		.await
 		.unwrap();
@@ -116,6 +135,9 @@ async fn me(req: actix_web::HttpRequest, db: web::Data<connection::Connection>) 
 
 pub fn init_routes(cfg: &mut actix_web::web::ServiceConfig) {
 	cfg.service(login);
+}
+
+pub fn init_secure_routes(cfg: &mut actix_web::web::ServiceConfig) {
 	cfg.service(logout);
 	cfg.service(me);
 }
