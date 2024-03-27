@@ -26,6 +26,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: target/release/manga-vault
-          asset_name: manga_vault
+          asset_path: target/release/manga-*
+          asset_name: manga-vault
           asset_content_type: application/octet-stream
