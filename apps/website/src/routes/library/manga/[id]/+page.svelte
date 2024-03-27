@@ -6,6 +6,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Select from '$lib/components/ui/select';
 	import Spinner from '$lib/icons/spinner.svelte';
+	import { toast } from 'svelte-sonner/dist';
 
 	export let data: PageData;
 
@@ -26,6 +27,9 @@
 			let selectedCategory = document.getElementById('selector') as HTMLInputElement;
 			await fetch(`/library/manga/${data.mangaPage.id}/bookmark`, {
 				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
 				body: JSON.stringify({
 					user_id: data.user?.id,
 					manga_id: parseInt(data.mangaPage.id),
@@ -33,10 +37,12 @@
 				})
 			});
 		} catch (error) {
-			// TODO: make a toast for error sending
+			toast('An error occurred while adding the manga to your library');
 		} finally {
 			isSubmitting = false;
-			location.reload();
+			if (!isSubmitting) {
+				location.reload();
+			}
 		}
 	}
 
@@ -47,7 +53,7 @@
 				method: 'DELETE'
 			});
 		} catch (error) {
-			// TODO: make a toast for error sending
+			toast('An error occurred while removing the manga from your library');
 		} finally {
 			isDeleting = false;
 			location.reload();

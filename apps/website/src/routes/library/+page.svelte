@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { toast } from "svelte-sonner";
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { Plus } from 'lucide-svelte';
 	import { onMount } from 'svelte';
@@ -26,7 +27,7 @@
 				res.json()
 			);
 		} catch (error) {
-			// TODO: make a toast to send the error message
+			toast("An error occurred while fetching favorites")
 		} finally {
 			isloading = false;
 		}
@@ -42,7 +43,7 @@
 			);
 			isloading = false;
 		} catch (error) {
-			// TODO: make a toast to send the error message
+			toast("An error occurred while fetching favorites")
 		} finally {
 			isloading = false;
 		}
