@@ -5,17 +5,26 @@ use scraper::ElementRef;
 use serde::Serialize;
 use tokio::io::AsyncWriteExt;
 
-mod manganato;
+// mod manganato;
 mod mangaread_org;
+
+#[derive(Debug, Serialize)]
+pub struct ScrapperInfo {
+	pub id: ScrapperType,
+	pub name: String,
+	pub img_url: String,
+}
 
 #[async_trait]
 pub trait ScrapperTraits {
 	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>, reqwest::Error>;
+	async fn get_cookies(&self) -> Result<String, reqwest::Error>;
 	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error>;
 	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error>;
 	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>, reqwest::Error>;
 	async fn scrape_manga(&self, url: &str) -> Result<MangaPage, reqwest::Error>;
 	async fn scrape_genres_list(&self) -> Result<Vec<Genre>, reqwest::Error>;
+	async fn get_info(&self) -> Result<ScrapperInfo, reqwest::Error>;
 	fn get_scrapper_type(&self) -> ScrapperType;
 }
 
@@ -25,7 +34,7 @@ impl Scrapper {
 	pub fn new(r#type: &ScrapperType) -> Box<dyn ScrapperTraits + Send> {
 		match r#type {
 			ScrapperType::MangareadOrg => Box::new(mangaread_org::MangaReadOrgScrapper::new()),
-			ScrapperType::Manganato => Box::new(manganato::ManganatoScrapper::new()),
+			// ScrapperType::Manganato => Box::new(manganato::ManganatoScrapper::new()),
 		}
 	}
 }
@@ -52,13 +61,13 @@ impl Scrapper {
 #[derive(Debug, Serialize)]
 pub enum ScrapperType {
 	MangareadOrg,
-	Manganato,
+	// Manganato,
 }
 
 pub fn get_scrapper_type(scrapper: &str) -> ScrapperType {
 	match scrapper {
 		"mangaread_org" => ScrapperType::MangareadOrg,
-		"manganato" => ScrapperType::Manganato,
+		// "manganato" => ScrapperType::Manganato,
 		_ => ScrapperType::MangareadOrg,
 	}
 }
@@ -66,12 +75,12 @@ pub fn get_scrapper_type(scrapper: &str) -> ScrapperType {
 pub fn get_scrapper_type_str(scrapper: &ScrapperType) -> &str {
 	match scrapper {
 		ScrapperType::MangareadOrg => "mangaread_org",
-		ScrapperType::Manganato => "manganato",
+		// ScrapperType::Manganato => "manganato",
 	}
 }
 
 pub fn get_all_scrapper_types() -> Vec<ScrapperType> {
-	vec![ScrapperType::MangareadOrg, ScrapperType::Manganato]
+	vec![ScrapperType::MangareadOrg, /* ScrapperType::Manganato */]
 }
 
 #[derive(Debug, Serialize)]

@@ -2,12 +2,15 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
-
 use super::MangaReadOrgScrapper;
+use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
 
 #[async_trait]
 impl ScrapperTraits for MangaReadOrgScrapper {
+	async fn get_cookies(&self) -> Result<String, reqwest::Error> {
+		Ok("".to_string())
+	}
+
 	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>, reqwest::Error> {
 		let res = reqwest::get(url).await?;
 		let body = res.text().await?;
@@ -17,12 +20,8 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 		let mut imgs: Vec<String> = Vec::new();
 
 		for img in html.select(&img_selector) {
-			let img_url = img.value().attr("data-cfsrc");
-			if img_url.is_none() {
-				continue;
-			}
-			let img_url = img_url.unwrap();
-			imgs.push(img_url.to_string());
+			let img_url = get_image_url(&img).to_string();
+			imgs.push(img_url);
 		}
 
 		Ok(imgs)
@@ -360,7 +359,7 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 			release_date,
 			description,
 			genres,
-			chapters,
+			chapters: chapters.into_iter().rev().collect(),
 			url: url.to_string(),
 		})
 	}
@@ -371,7 +370,7 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 		let body = res.text().await?;
 
 		let html = scraper::Html::parse_document(&body);
-		//search for the id menu-item-72 and then a ul with the genres
+		// search for the id menu-item-72 and then a ul with the genres
 		let genres_selector = scraper::Selector::parse("li.menu-item-72 ul.sub-menu li a").unwrap();
 		let genres = html
 			.select(&genres_selector)
@@ -386,6 +385,14 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 			.collect::<Vec<Genre>>();
 
 		Ok(genres)
+	}
+
+	async fn get_info(&self) -> Result<crate::ScrapperInfo, reqwest::Error> {
+		Ok(crate::ScrapperInfo {
+			id: self.get_scrapper_type(),
+			name: "Mangaread.org".to_string(),
+			img_url: "https://www.mangaread.org/wp-content/uploads/2017/10/log1.png".to_string(),
+		})
 	}
 
 	fn get_scrapper_type(&self) -> ScrapperType {
