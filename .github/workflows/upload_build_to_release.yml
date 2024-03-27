@@ -20,12 +20,23 @@ jobs:
       - name: Build
         run: cargo build --release
 
+      - name: Set asset name and path
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            echo "::set-output name=asset_name::manga-vault"
+            echo "::set-output name=asset_path::target/release/manga-vault"
+          else
+            echo "::set-output name=asset_name::manga-vault.exe"
+            echo "::set-output name=asset_path::target/release/manga-vault.exe"
+          fi
+        id: set_asset_info
+
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: target/release/manga-*
-          asset_name: manga-vault
+          asset_path: ${{ steps.set_asset_info.outputs.asset_path }}
+          asset_name: ${{ steps.set_asset_info.outputs.asset_name }}
           asset_content_type: application/octet-stream
