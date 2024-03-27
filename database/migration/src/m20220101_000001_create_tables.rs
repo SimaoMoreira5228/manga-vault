@@ -33,19 +33,27 @@ impl MigrationTrait for Migration {
 					)
 					.col(ColumnDef::new(ReadChapters::UserId).integer().not_null())
 					.col(ColumnDef::new(ReadChapters::ChapterId).integer().not_null())
+					.col(ColumnDef::new(ReadChapters::MangaId).integer().not_null())
 					.col(ColumnDef::new(ReadChapters::CreatedAt).date_time().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fk_user_id")
-							.from(Users::Table, Users::Id)
-							.to(ReadChapters::Table, ReadChapters::UserId)
+							.from(ReadChapters::Table, ReadChapters::UserId)
+							.to(Users::Table, Users::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.foreign_key(
 						ForeignKey::create()
 							.name("fk_chapter_id")
-							.from(Chapters::Table, Chapters::Id)
-							.to(ReadChapters::Table, ReadChapters::ChapterId)
+							.from(ReadChapters::Table, ReadChapters::ChapterId)
+							.to(Chapters::Table, Chapters::Id)
+							.on_delete(ForeignKeyAction::Cascade),
+					)
+					.foreign_key(
+						ForeignKey::create()
+							.name("fk_manga_id")
+							.from(ReadChapters::Table, ReadChapters::MangaId)
+							.to(Mangas::Table, Mangas::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.to_owned(),
@@ -99,22 +107,22 @@ impl MigrationTrait for Migration {
 					.foreign_key(
 						ForeignKey::create()
 							.name("fk_user_id")
-							.from(Users::Table, Users::Id)
-							.to(FavoriteMangas::Table, FavoriteMangas::UserId)
+							.from(FavoriteMangas::Table, FavoriteMangas::UserId)
+							.to(Users::Table, Users::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.foreign_key(
 						ForeignKey::create()
 							.name("fk_manga_id")
-							.from(Mangas::Table, Mangas::Id)
-							.to(FavoriteMangas::Table, FavoriteMangas::MangaId)
+							.from(FavoriteMangas::Table, FavoriteMangas::MangaId)
+							.to(Mangas::Table, Mangas::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.foreign_key(
 						ForeignKey::create()
 							.name("fk_categorie_id")
-							.from(Categories::Table, Categories::Id)
-							.to(FavoriteMangas::Table, FavoriteMangas::CategoryId)
+							.from(FavoriteMangas::Table, FavoriteMangas::CategoryId)
+							.to(Categories::Table, Categories::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.to_owned(),
@@ -141,8 +149,8 @@ impl MigrationTrait for Migration {
 					.foreign_key(
 						ForeignKey::create()
 							.name("fk_manga_id")
-							.from(Mangas::Table, Mangas::Id)
-							.to(Chapters::Table, Chapters::MangaId)
+							.from(Chapters::Table, Chapters::MangaId)
+							.to(Mangas::Table, Mangas::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.to_owned(),
@@ -167,8 +175,8 @@ impl MigrationTrait for Migration {
 					.foreign_key(
 						ForeignKey::create()
 							.name("fk_user_id")
-							.from(Users::Table, Users::Id)
-							.to(Categories::Table, Categories::UserId)
+							.from(Categories::Table, Categories::UserId)
+							.to(Users::Table, Users::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.to_owned(),
@@ -220,6 +228,7 @@ enum ReadChapters {
 	Id,
 	UserId,
 	ChapterId,
+	MangaId,
 	CreatedAt,
 }
 
