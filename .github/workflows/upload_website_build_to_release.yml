@@ -1,0 +1,36 @@
+name: Upload Manga Vault Build to Release (Linux)
+
+on:
+  release:
+    types: released
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  security-events: write
+
+jobs:
+  build-and-upload-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: npm run build
+        working-directory: apps/website
+
+      - name: Create zip
+        run: mkdir website && cp package.json website/ && cp package-lock.json website/ && cp -r build website/ && zip -r website.zip website
+        working-directory: apps/website
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: apps/website/website.zip
+          asset_name: website.zip
+          asset_content_type: application/zip
