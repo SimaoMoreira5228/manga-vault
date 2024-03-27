@@ -12,6 +12,7 @@ fn current_dir() -> std::path::PathBuf {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
+	pub website_port: u16,
 	pub api_port: u16,
 	pub websocket_port: u16,
 	pub database_path: String,
@@ -24,6 +25,7 @@ pub fn load_config() -> Config {
 	let config_file = format!("{}/config.json", current_dir.display());
 	if !std::path::Path::new(&config_file).exists() {
 		let default_config_json = Config {
+			website_port: 5227,
 			api_port: 5228,
 			websocket_port: 5229,
 			database_path: format!("{}/db.sqlite", current_dir.display()),
