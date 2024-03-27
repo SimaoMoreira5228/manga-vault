@@ -41,6 +41,7 @@
     "bits-ui": "^0.19.7",
     "clsx": "^2.1.0",
     "dotenv": "^16.4.5",
+    "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "lucide-svelte": "^0.354.0",
     "tailwind-merge": "^2.2.1",
