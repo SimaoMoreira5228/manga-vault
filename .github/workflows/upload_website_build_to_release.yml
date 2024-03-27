@@ -21,6 +21,9 @@ jobs:
         run: npm install
         working-directory: apps/website
 
+      - name: rename .env.example to .env
+        run: mv apps/website/.env.example apps/website/.env
+
       - name: Build
         run: npm run build
         working-directory: apps/website
