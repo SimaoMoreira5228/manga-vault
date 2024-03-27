@@ -20,18 +20,12 @@ jobs:
       - name: Build
         run: cargo build --release
 
-      - name: Verify
-        run: ls -l target
-        
-      - name: Verify2
-        run: ls -l target/release
-
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: target/release/manga_vault
+          asset_path: target/release/manga-vault
           asset_name: manga_vault
           asset_content_type: application/octet-stream
