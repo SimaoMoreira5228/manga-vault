@@ -89,13 +89,13 @@ pub async fn start() {
 
 	if cfg!(target_os = "windows") {
 		Command::new("cmd")
-			.args(&["/C", "npm", "install"])
+			.args(&["/C", "npm", "ci", "--omit", "dev"])
 			.current_dir(&website_dir)
 			.output()
 			.expect("Failed to install dependencies");
 	} else {
 		Command::new("npm")
-			.args(&["install"])
+			.args(&["ci", "--omit", "dev"])
 			.current_dir(&website_dir)
 			.output()
 			.expect("Failed to install dependencies");
