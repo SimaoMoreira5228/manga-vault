@@ -2,7 +2,8 @@ name: Upload Manga Vault Build to Release
 
 on:
   release:
-    types: [created]
+    types:
+      - created
 
 jobs:
   build-and-upload:
