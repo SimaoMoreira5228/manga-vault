@@ -16,7 +16,7 @@
 
 <div class="flex h-full w-full flex-col justify-start gap-4">
 	{#each data.scrappers as scrapper}
-		<div class="bg-input flex w-full flex-row justify-between p-4 shadow-xl">
+		<div class="flex w-full flex-row justify-between bg-input p-4 shadow-xl">
 			<div class="flex flex-row items-center gap-4">
 				<img src={scrapper.img_url} alt="" class="h-12" />
 				<h1>{scrapper.name}</h1>

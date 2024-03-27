@@ -1,12 +1,12 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { onMount } from 'svelte';
-	import type { MangaItem } from '$lib/types';
+	import type { FavoitesMangaItem } from '$lib/types';
 	import { page } from '$app/stores';
 	import Spinner from '$lib/icons/spinner.svelte';
 	import { toast } from 'svelte-sonner';
 
-	let mangaItems: MangaItem[] = [];
+	let mangaItems: FavoitesMangaItem[] = [];
 	let scrapperPage = 1;
 
 	function normalizeTitles(title: string) {

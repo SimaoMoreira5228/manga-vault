@@ -1,17 +1,17 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { toast } from "svelte-sonner";
+	import { toast } from 'svelte-sonner';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { Plus } from 'lucide-svelte';
 	import { onMount } from 'svelte';
 	import { normalizeTitles } from '$lib/utils';
-	import type { Category, MangaItem } from '$lib/types';
+	import type { Category, FavoitesMangaItem } from '$lib/types';
 	import Spinner from '$lib/icons/spinner.svelte';
 	import type { PageData } from './$types';
 
 	export let data: PageData;
 	let slectedCategory = data.categories[0];
-	let favorites: MangaItem[] = [];
+	let favorites: FavoitesMangaItem[] = [];
 	let isloading = false;
 
 	onMount(async () => {
@@ -27,7 +27,7 @@
 				res.json()
 			);
 		} catch (error) {
-			toast("❌ An error occurred while fetching favorites")
+			toast('❌ An error occurred while fetching favorites');
 		} finally {
 			isloading = false;
 		}
@@ -43,7 +43,7 @@
 			);
 			isloading = false;
 		} catch (error) {
-			toast("❌ An error occurred while fetching favorites")
+			toast('❌ An error occurred while fetching favorites');
 		} finally {
 			isloading = false;
 		}
@@ -104,7 +104,9 @@
 					<div
 						class="absolute inset-0 h-full w-full bg-gradient-to-b from-transparent to-black opacity-45"
 					/>
-					<div class="absolute h-6 w-6 bg-red-500 top-1 right-1 rounded-full text-center" >{favorite.chapters_number - favorite.read_chapters_number}</div>
+					<div class="absolute right-1 top-1 h-6 w-6 rounded-full bg-red-500 text-center">
+						{favorite.chapters_number - favorite.read_chapters_number}
+					</div>
 					<Tooltip.Root>
 						<Tooltip.Trigger class="absolute bottom-0 left-0 z-10 w-full p-1">
 							<p class="truncate pb-1 text-sm font-medium text-white">

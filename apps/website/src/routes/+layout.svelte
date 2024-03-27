@@ -5,7 +5,7 @@
 	import '../app.pcss';
 	import { getTitle, toggleTheme } from '$lib/utils';
 	import { page } from '$app/stores';
-	import { Toaster } from "$lib/components/ui/sonner";
+	import { Toaster } from '$lib/components/ui/sonner';
 
 	onMount(() => {
 		let theme = localStorage.getItem('theme') || 'dark';

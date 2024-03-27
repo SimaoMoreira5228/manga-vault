@@ -1,4 +1,4 @@
-export type MangaItem = {
+export type FavoitesMangaItem = {
 	id: number;
 	title: string;
 	url: string;
@@ -8,6 +8,21 @@ export type MangaItem = {
 	read_chapters_number: number;
 	created_at: string;
 	updated_at: string;
+};
+
+export type MangaItem = {
+	id: number;
+	title: string;
+	url: string;
+	img_url: string;
+	scrapper: string;
+	created_at: string;
+	updated_at: string;
+};
+
+export type allSearchedMangaItems = {
+	scraper: string;
+	mangas: MangaItem[];
 };
 
 export type MangaSource = {

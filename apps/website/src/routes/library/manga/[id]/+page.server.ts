@@ -1,5 +1,5 @@
 import { api } from '$lib/axios.server';
-import type { Category, MangaItem, MangaPage, ReadChapter } from '$lib/types';
+import type { Category, FavoitesMangaItem, MangaPage, ReadChapter } from '$lib/types';
 import { getUser } from '$lib/utils.server';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
@@ -20,7 +20,7 @@ export const load: PageServerLoad = async ({ cookies, params }) => {
 
 	let isBookmarked = false;
 	if (user !== null) {
-		const data: MangaItem[] = await api
+		const data: FavoitesMangaItem[] = await api
 			.get(`/api/mangas/${user.id}/favorites`, { headers: { Authorization: token } })
 			.then((res) => res.data);
 

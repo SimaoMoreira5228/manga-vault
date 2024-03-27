@@ -56,18 +56,28 @@ async fn get_mangas(db: web::Data<connection::Connection>) -> impl Responder {
 
 #[derive(serde::Serialize)]
 struct ResponseManga {
+	id: i32,
 	title: String,
 	url: String,
 	img_url: String,
 	scrapper: String,
+	created_at: String,
+	updated_at: String,
+}
+
+#[derive(serde::Serialize)]
+struct SearchAllResponse {
+	scraper: String,
+	mangas: Vec<ResponseManga>,
 }
 
 #[get("/mangas/search/{title}/all")]
 async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title: web::Path<String>) -> impl Responder {
-	let mut response: Vec<ResponseManga> = vec![];
+	let mut response: Vec<SearchAllResponse> = vec![];
 	let all_scrappers_types = scrappers::get_all_scrapper_types();
 
 	for scrapper_type in all_scrappers_types {
+		let mut searched_mangas: Vec<ResponseManga> = vec![];
 		let mangas = scrappers::Scrapper::new(&scrapper_type)
 			.scrape_search(title.as_str(), 1)
 			.await;
@@ -99,25 +109,36 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 
 				let new_db_manga: crate::entities::mangas::Model = manga_active_model.insert(db.get_ref()).await.unwrap();
 
-				response.push(ResponseManga {
+				searched_mangas.push(ResponseManga {
+					id: new_db_manga.id,
 					title: new_db_manga.title,
 					url: new_db_manga.url,
 					img_url: new_db_manga.img_url,
 					scrapper: new_db_manga.scrapper,
+					created_at: new_db_manga.created_at,
+					updated_at: new_db_manga.updated_at,
 				});
 			}
 
 			if db_manga.is_some() {
 				let db_manga = db_manga.unwrap();
 
-				response.push(ResponseManga {
+				searched_mangas.push(ResponseManga {
+					id: db_manga.id,
 					title: db_manga.title,
 					url: db_manga.url,
 					img_url: db_manga.img_url,
 					scrapper: db_manga.scrapper,
+					created_at: db_manga.created_at,
+					updated_at: db_manga.updated_at,
 				});
 			}
 		}
+
+		response.push(SearchAllResponse {
+			scraper: scrappers::get_scrapper_type_str(&scrapper_type).to_string(),
+			mangas: searched_mangas,
+		});
 	}
 
 	HttpResponse::Ok().json(response)
@@ -161,10 +182,13 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 			let new_db_manga: crate::entities::mangas::Model = manga_active_model.insert(db.get_ref()).await.unwrap();
 
 			response.push(ResponseManga {
+				id: new_db_manga.id,
 				title: new_db_manga.title,
 				url: new_db_manga.url,
 				img_url: new_db_manga.img_url,
 				scrapper: new_db_manga.scrapper,
+				created_at: new_db_manga.created_at,
+				updated_at: new_db_manga.updated_at,
 			});
 		}
 
@@ -172,10 +196,13 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 			let db_manga = db_manga.unwrap();
 
 			response.push(ResponseManga {
+				id: db_manga.id,
 				title: db_manga.title,
 				url: db_manga.url,
 				img_url: db_manga.img_url,
 				scrapper: db_manga.scrapper,
+				created_at: db_manga.created_at,
+				updated_at: db_manga.updated_at,
 			});
 		}
 	}
