@@ -1,4 +1,6 @@
-use std::{fs::{self, DirEntry}, io::BufRead, process::Command};
+use std::fs::{self, DirEntry};
+use std::io::BufRead;
+use std::process::Command;
 
 use crate::{downloader, CONFIG};
 
@@ -69,6 +71,9 @@ pub async fn start() {
 	} else if website_version_file.is_some() {
 		let file = fs::File::open(format!("{}/version.txt", website_dir)).unwrap();
 		let version = std::io::BufReader::new(file).lines().next().unwrap().unwrap();
+
+		println!("versions: {} {}", version, latest_version); // TODO: TEST THIS
+
 		if version != latest_version {
 			if website_build_folder.is_some() {
 				fs::remove_dir_all(format!("{}/build", website_dir)).unwrap();
@@ -84,15 +89,31 @@ pub async fn start() {
 		}
 	}
 
-	Command::new("npm")
-		.args(&["install"])
-		.current_dir(&website_dir)
-		.output()
-		.expect("Failed to install dependencies");
+	if cfg!(target_os = "windows") {
+		Command::new("cmd")
+			.args(&["/C", "npm", "install"])
+			.current_dir(&website_dir)
+			.output()
+			.expect("Failed to install dependencies");
+	} else {
+		Command::new("npm")
+			.args(&["install"])
+			.current_dir(&website_dir)
+			.output()
+			.expect("Failed to install dependencies");
+	}
 
-	Command::new("node")
-		.args(&["server.js"])
-		.current_dir(&website_dir)
-		.spawn()
-		.expect("Failed to start server");
+	if cfg!(target_os = "windows") {
+		Command::new("cmd")
+			.args(&["/C", "node", "server.js"])
+			.current_dir(&website_dir)
+			.output()
+			.expect("Failed to start server");
+	} else {
+		Command::new("node")
+			.args(&["server.js"])
+			.current_dir(&website_dir)
+			.output()
+			.expect("Failed to start server");
+	}
 }
