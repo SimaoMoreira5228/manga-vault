@@ -1,6 +1,6 @@
 use std::fs::{self, DirEntry};
 use std::io::BufRead;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use crate::{downloader, CONFIG};
 
@@ -41,7 +41,7 @@ pub async fn start() {
 		if file_name == "server.js" {
 			server_file = Some(file);
 			continue;
-		} else if file_name == "verson.txt" {
+		} else if file_name == "version.txt" {
 			website_version_file = Some(file);
 			continue;
 		} else if file_name == "build" {
@@ -72,8 +72,6 @@ pub async fn start() {
 		let file = fs::File::open(format!("{}/version.txt", website_dir)).unwrap();
 		let version = std::io::BufReader::new(file).lines().next().unwrap().unwrap();
 
-		println!("versions: {} {}", version, latest_version); // TODO: TEST THIS
-
 		if version != latest_version {
 			if website_build_folder.is_some() {
 				fs::remove_dir_all(format!("{}/build", website_dir)).unwrap();
@@ -103,17 +101,35 @@ pub async fn start() {
 			.expect("Failed to install dependencies");
 	}
 
-	if cfg!(target_os = "windows") {
+	let output = if cfg!(target_os = "windows") {
 		Command::new("cmd")
 			.args(&["/C", "node", "server.js"])
 			.current_dir(&website_dir)
-			.output()
-			.expect("Failed to start server");
+			.stdout(Stdio::piped())
+			.stderr(Stdio::piped())
+			.spawn()
+			.expect("Failed to start website")
 	} else {
 		Command::new("node")
 			.args(&["server.js"])
 			.current_dir(&website_dir)
-			.output()
-			.expect("Failed to start server");
+			.stdout(Stdio::piped())
+			.stderr(Stdio::piped())
+			.spawn()
+			.expect("Failed to start website")
+	};
+
+	let stdout = output.stdout.unwrap();
+	let stderr = output.stderr.unwrap();
+
+	let stdout = std::io::BufReader::new(stdout).lines();
+	let stderr = std::io::BufReader::new(stderr).lines();
+
+	for line in stdout {
+		println!("{}", line.unwrap());
+	}
+
+	for line in stderr {
+		println!("{}", line.unwrap());
 	}
 }
