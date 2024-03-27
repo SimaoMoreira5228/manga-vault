@@ -7,6 +7,12 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  security-events: write
+
 jobs:
   build-and-upload:
     runs-on: ${{ matrix.os }}
