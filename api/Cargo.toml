@@ -25,7 +25,7 @@ lazy_static = "1.4.0"
 uuid = { version = "1.7.0", features = ["v4"] }
 futures-util = "0.3.30"
 infer = "0.15"
-reqwest = "0.12.2"
+reqwest = "0.12"
 sea-orm = { version = "0.12", features = [
   "sqlx-sqlite",
   "runtime-tokio-rustls",
