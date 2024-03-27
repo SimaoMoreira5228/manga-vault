@@ -2,18 +2,11 @@
 	import * as Avatar from '$lib/components/ui/avatar/index';
 	import { PlusIcon } from 'lucide-svelte';
 	import type { PageData } from './$types';
+	import { smallName } from '$lib/utils';
 
 	export let data: PageData;
 
 	const users = data.users;
-
-	function smallName(name: string) {
-		const [first, last] = name.split(' ');
-		if (last) {
-			return `${first.charAt(0).toUpperCase()}.${last.charAt(0).toUpperCase()}`;
-		}
-		return first.charAt(0).toUpperCase();
-	}
 
 	// TODO: setup avatars for users
 </script>

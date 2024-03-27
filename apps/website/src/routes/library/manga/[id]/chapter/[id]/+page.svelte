@@ -8,7 +8,7 @@
 		arrowBigRightString,
 		arrowLeftToLineString
 	} from '$lib/customLucideSVGs';
-	import { toast } from 'svelte-sonner/dist';
+	import { toast } from 'svelte-sonner';
 
 	export let data: PageData;
 	const chapter = data.chapter;
@@ -94,7 +94,7 @@
 				body: JSON.stringify(chapter)
 			}).then((res) => res.json());
 		} catch (error) {
-			toast('An error occurred while fetching the chapter');
+			toast('❌ An error occurred while fetching the chapter');
 		} finally {
 			isLoading = false;
 		}

@@ -5,6 +5,7 @@
 	import type { PageData } from './$types';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 
 	export let data: PageData;
 
@@ -37,10 +38,11 @@
 			});
 
 			if (resp.ok) {
+				toast('✅ Logged in successfully');
 				window.location.reload();
 			}
 		} catch (error) {
-			console.error(error);
+			toast('❌ An error occurred while logging in');
 		}
 	}
 </script>

@@ -27,7 +27,7 @@
 				res.json()
 			);
 		} catch (error) {
-			toast("An error occurred while fetching favorites")
+			toast("❌ An error occurred while fetching favorites")
 		} finally {
 			isloading = false;
 		}
@@ -43,7 +43,7 @@
 			);
 			isloading = false;
 		} catch (error) {
-			toast("An error occurred while fetching favorites")
+			toast("❌ An error occurred while fetching favorites")
 		} finally {
 			isloading = false;
 		}

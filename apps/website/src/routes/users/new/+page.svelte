@@ -4,6 +4,7 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 
 	let username = '';
 	let password = '';
@@ -48,7 +49,10 @@
 		});
 
 		if (resp.ok) {
+			toast('✅ User created successfully');
 			goto('/');
+		} else {
+			toast('❌ An error occurred while creating the user');
 		}
 	}
 </script>

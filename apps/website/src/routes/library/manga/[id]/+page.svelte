@@ -6,7 +6,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Select from '$lib/components/ui/select';
 	import Spinner from '$lib/icons/spinner.svelte';
-	import { toast } from 'svelte-sonner/dist';
+	import { toast } from 'svelte-sonner';
 
 	export let data: PageData;
 
@@ -25,7 +25,7 @@
 		try {
 			isSubmitting = true;
 			let selectedCategory = document.getElementById('selector') as HTMLInputElement;
-			await fetch(`/library/manga/${data.mangaPage.id}/bookmark`, {
+			const rep = await fetch(`/library/manga/${data.mangaPage.id}/bookmark`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -36,8 +36,12 @@
 					category_id: parseInt(selectedCategory.value)
 				})
 			});
+
+			if (rep.ok) {
+				toast('✅ Manga added to your library');
+			}
 		} catch (error) {
-			toast('An error occurred while adding the manga to your library');
+			toast('❌ An error occurred while adding the manga to your library');
 		} finally {
 			isSubmitting = false;
 			if (!isSubmitting) {
@@ -49,11 +53,15 @@
 	async function handleDelete() {
 		try {
 			isDeleting = true;
-			await fetch(`/library/manga/${data.mangaPage.id}/bookmark/${data.user?.id}`, {
+			const rep = await fetch(`/library/manga/${data.mangaPage.id}/bookmark/${data.user?.id}`, {
 				method: 'DELETE'
 			});
+
+			if (rep.ok) {
+				toast('⚠️ Manga removed from your library');
+			}
 		} catch (error) {
-			toast('An error occurred while removing the manga from your library');
+			toast('❌ An error occurred while removing the manga from your library');
 		} finally {
 			isDeleting = false;
 			location.reload();

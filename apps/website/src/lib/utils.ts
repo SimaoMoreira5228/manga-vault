@@ -68,6 +68,14 @@ export const toggleTheme = () => {
 	});
 };
 
+export function smallName(name: string) {
+	const [first, last] = name.split(' ');
+	if (last) {
+		return `${first.charAt(0).toUpperCase()}.${last.charAt(0).toUpperCase()}`;
+	}
+	return first.charAt(0).toUpperCase();
+}
+
 export const getTitle = (path: string) => {
 	switch (true) {
 		case path.includes('library/search'):

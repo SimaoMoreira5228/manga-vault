@@ -4,6 +4,7 @@
 	import type { MangaItem } from '$lib/types';
 	import { page } from '$app/stores';
 	import Spinner from '$lib/icons/spinner.svelte';
+	import { toast } from 'svelte-sonner';
 
 	let mangaItems: MangaItem[] = [];
 	let scrapperPage = 1;
@@ -53,7 +54,7 @@
 			scrapperPage++;
 			mangaItems = [...mangaItems, ...data];
 		} catch (error) {
-			console.error(error);
+			toast('❌ An error occurred while fetching the manga items');
 		} finally {
 			isLoadingMoreMangaItems = false;
 		}
