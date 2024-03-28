@@ -1,5 +1,5 @@
 import { api } from '$lib/axios.server';
-import { json } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 type MarkAsRead = {
@@ -13,13 +13,17 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 
 	const body: MarkAsRead = await request.json();
 
-	const resp = await api.post(
-		`/api/user/${body.user_id}/read/${body.chapter_id}/mark-as-read`,
-		body,
-		{
-			headers: { Authorization: token }
-		}
-	);
+	try {
+		const resp = await api.post(
+			`/api/user/${body.user_id}/read/${body.chapter_id}/mark-as-read`,
+			body,
+			{
+				headers: { Authorization: token }
+			}
+		);
 
-	return json(resp.data);
+		return json(resp.data);
+	} catch (_) {
+		return error(500, "Couldn't mark chapter as read, Probably already marked");
+	}
 };

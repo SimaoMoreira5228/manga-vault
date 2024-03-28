@@ -69,8 +69,8 @@
 	}
 </script>
 
-<div class="flex h-full w-full justify-between gap-12">
-	<div class="flex h-[95%] w-2/3 flex-col items-start gap-2 overflow-y-scroll">
+<div class="flex h-full w-full flex-col justify-between gap-12 overflow-y-scroll md:flex-row">
+	<div class="flex h-[95%] w-full flex-col items-start gap-2 overflow-y-scroll md:w-2/3">
 		<img src={data.mangaPage.img_url} alt="" class="w-1/3 object-contain" />
 		<div class="felx-col flex items-center justify-center gap-2">
 			<h1 class="text-2xl font-bold">

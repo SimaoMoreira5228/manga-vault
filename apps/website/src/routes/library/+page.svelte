@@ -93,35 +93,39 @@
 		</div>
 	{:else}
 		<div
-			class="grid grid-cols-1 gap-4 overflow-y-scroll md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8"
+			class="grid grid-cols-1 gap-4 overflow-y-scroll text-center md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8"
 			id="mangaItems"
 		>
 			{#each favorites as favorite}
 				<a
-					class="relative h-80 w-48 overflow-hidden rounded-md shadow-xl"
+					class="flex h-full w-full items-center justify-center rounded-md"
 					href="/library/manga/{favorite.id}"
 				>
-					<div
-						class="absolute inset-0 h-full w-full bg-gradient-to-b from-transparent to-black opacity-45"
-					/>
-					<div class="absolute right-1 top-1 h-6 w-6 rounded-full bg-red-500 text-center">
-						{favorite.chapters_number - favorite.read_chapters_number}
+					<div class="relative h-80 w-48 shadow-xl">
+						<div
+							class="absolute inset-0 h-full w-full bg-gradient-to-b from-transparent to-black opacity-45"
+						/>
+						<div class="absolute right-1 top-1 h-6 w-fit min-w-6 rounded-sm bg-red-500 text-center">
+							<span class="flex items-center justify-center">
+								{favorite.chapters_number - favorite.read_chapters_number}
+							</span>
+						</div>
+						<Tooltip.Root>
+							<Tooltip.Trigger class="absolute bottom-0 left-0 z-10 w-full p-1">
+								<p class="truncate pb-1 text-sm font-medium text-white">
+									{normalizeTitles(favorite.title.toString())}
+								</p>
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>{normalizeTitles(favorite.title.toString())}</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
+						<img
+							class="h-full w-full rounded-md object-cover"
+							src={favorite.img_url.toString()}
+							alt=""
+						/>
 					</div>
-					<Tooltip.Root>
-						<Tooltip.Trigger class="absolute bottom-0 left-0 z-10 w-full p-1">
-							<p class="truncate pb-1 text-sm font-medium text-white">
-								{normalizeTitles(favorite.title.toString())}
-							</p>
-						</Tooltip.Trigger>
-						<Tooltip.Content>
-							<p>{normalizeTitles(favorite.title.toString())}</p>
-						</Tooltip.Content>
-					</Tooltip.Root>
-					<img
-						class="h-full w-full rounded-md object-cover"
-						src={favorite.img_url.toString()}
-						alt=""
-					/>
 				</a>
 			{/each}
 		</div>

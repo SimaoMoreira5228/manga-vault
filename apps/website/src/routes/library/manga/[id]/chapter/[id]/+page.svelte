@@ -32,6 +32,7 @@
 
 		if (locationText) {
 			locationText.innerText = chapter.chapter_info.title;
+			locationText.classList.add('hidden', 'md:block');
 		}
 
 		if (controls) {
@@ -50,10 +51,11 @@
 			const marginLabel = document.createElement('label');
 			marginLabel.htmlFor = 'marginInput';
 			marginLabel.innerText = `Margin: ${margin}%`;
-			marginLabel.classList.add('text-xs', 'text-center');
+			marginLabel.classList.add('text-xs', 'text-center', 'hidden', 'md:block');
 			inputDiv.appendChild(marginLabel);
 
 			const marginInput = document.createElement('input');
+			marginInput.classList.add('hidden', 'md:block');
 			marginInput.id = 'marginInput';
 			marginInput.type = 'range';
 			marginInput.min = '0';
@@ -63,6 +65,11 @@
 				margin = parseInt(marginInput.value);
 				marginLabel.innerText = `Margin: ${margin}%`;
 				localStorage.setItem('margin', margin.toString());
+				let imagesDiv = document.getElementById('images');
+				if (imagesDiv) {
+					imagesDiv.style.paddingLeft = `${margin}%`;
+					imagesDiv.style.paddingRight = `${margin}%`;
+				}
 			});
 			inputDiv.appendChild(marginInput);
 
@@ -97,6 +104,14 @@
 			toast('❌ An error occurred while fetching the chapter');
 		} finally {
 			isLoading = false;
+
+			setTimeout(() => {
+				const imagesDiv = document.getElementById('images');
+				if (imagesDiv) {
+					imagesDiv.style.paddingLeft = `${margin}%`;
+					imagesDiv.style.paddingRight = `${margin}%`;
+				}
+			}, 200);
 		}
 
 		const imagesContainer = document.getElementById('imagesCotainer');
@@ -149,18 +164,22 @@
 	});
 </script>
 
-<div class="flex h-full w-full flex-col items-center overflow-y-scroll" id="imagesCotainer">
-	{#if isLoading}
-		<Spinner class="h-12 w-12 text-blue-400" />
-	{:else if pages.length === 0 && !isLoading}
-		<p class="text-2xl font-bold">No pages found</p>
-	{:else}
-		{#each pages as page, i}
-			{#if page === ''}
-				<p>Page {i + 1} was not found</p>
-			{:else}
-				<img src={page} alt={`Page ${i + 1}`} class="w-[{margin}%] object-contain" />
-			{/if}
-		{/each}
-	{/if}
+<div class="flex h-full w-full justify-center">
+	<div class="flex h-full w-full flex-col items-center overflow-y-scroll" id="imagesCotainer">
+		{#if isLoading}
+			<Spinner class="h-12 w-12 text-blue-400" />
+		{:else if pages.length === 0 && !isLoading}
+			<p class="text-2xl font-bold">No pages found</p>
+		{:else if pages.length > 0}
+			<div class="h-full w-full" id="images">
+				{#each pages as page, i}
+					{#if page === ''}
+						<p>Page {i + 1} was not found</p>
+					{:else}
+						<img src={page} alt={`Page ${i + 1}`} class="object-contain" />
+					{/if}
+				{/each}
+			</div>
+		{/if}
+	</div>
 </div>

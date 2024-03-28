@@ -44,7 +44,7 @@
 			<Button on:click={search}><Search class="h-4 w-4" /></Button>
 		</div>
 	</div>
-	<div class="flex h-full w-full flex-col">
+	<div class="flex h-full w-full flex-col overflow-y-scroll">
 		{#each allMangaItems as mangaItems}
 			<div class="flex w-full flex-col gap-4">
 				<div class="flex w-full flex-col">
@@ -56,27 +56,29 @@
 				>
 					{#each mangaItems.mangas as mangaItem}
 						<a
-							class="relative h-80 w-48 overflow-hidden rounded-md shadow-xl"
+							class="flex h-full w-full items-center justify-center rounded-md"
 							href="/library/manga/{mangaItem.id}"
 						>
-							<div
-								class="absolute inset-0 h-full w-full bg-gradient-to-b from-transparent to-black opacity-45"
-							></div>
-							<Tooltip.Root>
-								<Tooltip.Trigger class="absolute bottom-0 left-0 z-10 w-full p-1">
-									<p class="truncate pb-1 text-sm font-medium text-white">
-										{normalizeTitles(mangaItem.title.toString())}
-									</p>
-								</Tooltip.Trigger>
-								<Tooltip.Content>
-									<p>{normalizeTitles(mangaItem.title.toString())}</p>
-								</Tooltip.Content>
-							</Tooltip.Root>
-							<img
-								class="h-full w-full rounded-md object-cover"
-								src={mangaItem.img_url.toString()}
-								alt=""
-							/>
+							<div class="relative h-80 w-48 shadow-xl">
+								<div
+									class="absolute inset-0 h-full w-full bg-gradient-to-b from-transparent to-black opacity-45"
+								/>
+								<Tooltip.Root>
+									<Tooltip.Trigger class="absolute bottom-0 left-0 z-10 w-full p-1">
+										<p class="truncate pb-1 text-sm font-medium text-white">
+											{normalizeTitles(mangaItem.title.toString())}
+										</p>
+									</Tooltip.Trigger>
+									<Tooltip.Content>
+										<p>{normalizeTitles(mangaItem.title.toString())}</p>
+									</Tooltip.Content>
+								</Tooltip.Root>
+								<img
+									class="h-full w-full rounded-md object-cover"
+									src={mangaItem.img_url.toString()}
+									alt=""
+								/>
+							</div>
 						</a>
 					{/each}
 				</div>
