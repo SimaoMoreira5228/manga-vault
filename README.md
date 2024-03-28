@@ -20,3 +20,12 @@
    - [websocket](http://localhost:5229) => http://localhost:5229
 
 4. You can change the routes (and other settings) by editing the `config.json` file.
+
+5. Some website configurations can be changed by editing the `.env` file in the `website` folder.
+   - Example:
+     ```env
+      API_IP=localhost
+      API_PORT=5228
+      BODY_SIZE_LIMIT=5000000 # 5MB
+     ```
+     - This sets the API IP to `localhost`, the API port to `5228`, and the body size limit to `5MB`.

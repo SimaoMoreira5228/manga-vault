@@ -6,16 +6,18 @@ export const POST: RequestHandler = async ({ cookies, request }) => {
 	const token = cookies.get('token');
 	const formData = await request.formData();
 
-	try {
-		const resp = await api.post('api/upload', formData, {
-			headers: {
-				Authorization: token,
-				'Content-Type': 'multipart/form-data'
-			}
-		});
+	const resp = await api.post('api/upload', formData, {
+		headers: {
+			Authorization: token,
+			'Content-Type': 'multipart/form-data'
+		}
+	});
 
-		return json(resp.data);
-	} catch (_) {
-		return error(500, 'Internal Server Error');
+	if (resp.status !== 200) {
+		return error(resp.status, resp.statusText);
 	}
+
+	const data = await resp.data;
+
+	return json(data);
 };

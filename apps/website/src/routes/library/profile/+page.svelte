@@ -47,14 +47,14 @@
 					if (response.ok) {
 						toast('Image uploaded');
 					} else {
-						toast(`Error uploading image: ${await response.text()}`);
+						toast(`Error uploading image: ${response.statusText}`);
 					}
 				} else {
-					toast(`Error uploading image: ${await response.text()}`);
+					toast(`Error uploading image: ${response.statusText}`);
 				}
 			}
 		} catch (error) {
-			toast('Error uploading image');
+			toast(`Error uploading image: ${error}`);
 		} finally {
 			loadingAvatar = false;
 		}

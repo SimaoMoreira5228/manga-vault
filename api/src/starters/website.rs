@@ -1,6 +1,9 @@
 use std::fs::{self, DirEntry};
 use std::io::BufRead;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
+
+use tokio::io::AsyncReadExt;
+use tokio::process::Command;
 
 use crate::{downloader, CONFIG};
 
@@ -92,18 +95,20 @@ pub async fn start() {
 			.args(&["/C", "npm", "ci", "--omit", "dev"])
 			.current_dir(&website_dir)
 			.output()
+			.await
 			.expect("Failed to install dependencies");
 	} else {
 		Command::new("npm")
 			.args(&["ci", "--omit", "dev"])
 			.current_dir(&website_dir)
 			.output()
+			.await
 			.expect("Failed to install dependencies");
 	}
 
 	let output = if cfg!(target_os = "windows") {
 		Command::new("cmd")
-			.args(&["/C", "node", "server.js"])
+			.args(&["/C", "node", "-r", "dotenv/config", "server.js"])
 			.current_dir(&website_dir)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
@@ -111,7 +116,7 @@ pub async fn start() {
 			.expect("Failed to start website")
 	} else {
 		Command::new("node")
-			.args(&["server.js"])
+			.args(&["-r", "dotenv/config", "server.js"])
 			.current_dir(&website_dir)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
@@ -119,17 +124,28 @@ pub async fn start() {
 			.expect("Failed to start website")
 	};
 
-	let stdout = output.stdout.unwrap();
-	let stderr = output.stderr.unwrap();
+	let mut stdout = output.stdout.unwrap();
+	let mut stderr = output.stderr.unwrap();
 
-	let stdout = std::io::BufReader::new(stdout).lines();
-	let stderr = std::io::BufReader::new(stderr).lines();
+	tokio::spawn(async move {
+		let mut buf = vec![0; 1024];
+		loop {
+			let n = stderr.read(&mut buf).await.unwrap();
+			if n == 0 {
+				break;
+			}
+			let s = std::str::from_utf8(&buf[..n]).unwrap();
+			println!("{}", s);
+		}
+	});
 
-	for line in stdout {
-		println!("{}", line.unwrap());
-	}
-
-	for line in stderr {
-		println!("{}", line.unwrap());
+	loop {
+		let mut buf = vec![0; 1024];
+		let n = stdout.read(&mut buf).await.unwrap();
+		if n == 0 {
+			break;
+		}
+		let s = std::str::from_utf8(&buf[..n]).unwrap();
+		println!("{}", s);
 	}
 }
