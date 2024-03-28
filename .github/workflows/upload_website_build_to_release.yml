@@ -29,7 +29,7 @@ jobs:
         working-directory: apps/website
 
       - name: Create zip
-        run: mkdir website && cp package.json website/ && cp package-lock.json website/ && cp -r build website/ && zip -r website.zip website
+        run: mkdir website && cp package.json website/ && cp package-lock.json website/ && cp -r build website/ && cp .env website/ && zip -r website.zip website
         working-directory: apps/website
 
       - name: Upload Release Asset
