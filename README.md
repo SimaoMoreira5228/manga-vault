@@ -22,6 +22,7 @@
 4. You can change the routes (and other settings) by editing the `config.json` file.
 
 5. Some website configurations can be changed by editing the `.env` file in the `website` folder.
+   - if the `.env` file does not exist, create it.
    - Example:
      ```env
       API_IP=localhost
