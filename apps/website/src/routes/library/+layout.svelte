@@ -16,7 +16,7 @@
 </script>
 
 <div class="flex h-full w-full flex-col overflow-y-hidden">
-	<header class="flex w-full flex-row justify-between bg-input p-2">
+	<header class="bg-input flex w-full flex-row justify-between p-2">
 		<!-- svelte-ignore a11y-missing-content -->
 		<div class="flex flex-row items-center justify-center gap-4">
 			<div id="controls" class="flex flex-row items-center justify-center gap-2"></div>
@@ -26,9 +26,13 @@
 			<div id="otherControls" class="flex flex-row items-center justify-center gap-2"></div>
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Avatar.Root class="h-12 w-12 rounded-full bg-background">
-						<Avatar.Image src="" alt="" class="h-full w-full object-cover" />
-						<Avatar.Fallback class="h-full w-full rounded-lg bg-background">
+					<Avatar.Root class="bg-background h-12 w-12 rounded-full">
+						<Avatar.Image
+							src={`/image/${data.user.image_id}`}
+							alt=""
+							class="h-full w-full object-cover"
+						/>
+						<Avatar.Fallback class="bg-background h-full w-full rounded-lg">
 							{smallName(data.user.username)}
 						</Avatar.Fallback>
 					</Avatar.Root>
@@ -37,6 +41,9 @@
 					<DropdownMenu.Group>
 						<DropdownMenu.Label>My Account</DropdownMenu.Label>
 						<DropdownMenu.Separator />
+						<DropdownMenu.Item>
+							<a href="/library/profile">Profile</a>
+						</DropdownMenu.Item>
 						<DropdownMenu.Item>
 							<a href="/users/logout">Log Out</a>
 						</DropdownMenu.Item>
@@ -54,22 +61,22 @@
 		</div>
 	</header>
 	<div class="flex h-full justify-start">
-		<div class="flex h-full flex-col items-start justify-start bg-input">
+		<div class="bg-input flex h-full flex-col items-start justify-start">
 			<a
 				href="/library"
-				class="p-4 hover:bg-background {isLibrary ? 'bg-background hover:bg-input' : ''}"
+				class="hover:bg-background p-4 {isLibrary ? 'bg-background hover:bg-input' : ''}"
 			>
 				<BookMarked />
 			</a>
 			<a
 				href="/library/sources"
-				class="p-4 hover:bg-background {isLibrarySources ? 'bg-background hover:bg-input' : ''}"
+				class="hover:bg-background p-4 {isLibrarySources ? 'bg-background hover:bg-input' : ''}"
 			>
 				<FolderClosed />
 			</a>
 			<a
 				href="/library/search"
-				class="p-4 hover:bg-background {isLibrarySearch ? 'bg-background hover:bg-input' : ''}"
+				class="hover:bg-background p-4 {isLibrarySearch ? 'bg-background hover:bg-input' : ''}"
 			>
 				<Search />
 			</a>

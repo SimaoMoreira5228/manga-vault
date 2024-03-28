@@ -44,7 +44,7 @@ async fn upload_file(db: web::Data<connection::Connection>, mut payload: Multipa
 
 	file.write_all(&data).expect("Failed to write to file");
 
-	let _ = crate::entities::files::ActiveModel {
+	let inserted = crate::entities::files::ActiveModel {
 		name: Set(image_url.clone()),
 		created_at: Set(chrono::Utc::now().naive_utc().to_string()),
 		..Default::default()
@@ -52,11 +52,16 @@ async fn upload_file(db: web::Data<connection::Connection>, mut payload: Multipa
 	.insert(db.get_ref())
 	.await;
 
-	HttpResponse::Ok().body(format!("File uploaded: {}", image_url))
+	if inserted.is_err() {
+		println!("Failed to insert file {:?}", inserted.err().unwrap());
+		return HttpResponse::InternalServerError().body("Failed to insert file");
+	}
+
+	HttpResponse::Ok().body(inserted.unwrap().id.to_string())
 }
 
 #[get("/image/{id}")]
-async fn get_image(db: web::Data<connection::Connection>, id: web::Path<String>) -> impl Responder {
+async fn get_image(db: web::Data<connection::Connection>, id: web::Path<i32>) -> impl Responder {
 	let file: crate::entities::files::Model = Files::find_by_id(id.into_inner())
 		.one(db.get_ref())
 		.await
@@ -78,7 +83,7 @@ async fn get_image(db: web::Data<connection::Connection>, id: web::Path<String>)
 }
 
 #[get("download/{id}")]
-async fn download_file(db: web::Data<connection::Connection>, id: web::Path<String>) -> impl Responder {
+async fn download_file(db: web::Data<connection::Connection>, id: web::Path<i32>) -> impl Responder {
 	let db_file: Option<crate::entities::files::Model> = Files::find_by_id(id.into_inner()).one(db.get_ref()).await.unwrap();
 
 	let path = format!("{}/uploads", CONFIG.directory);
@@ -101,8 +106,11 @@ async fn download_file(db: web::Data<connection::Connection>, id: web::Path<Stri
 		.body(file)
 }
 
-pub fn init_routes(cfg: &mut web::ServiceConfig) {
+pub fn init_secure_routes(cfg: &mut web::ServiceConfig) {
 	cfg.service(upload_file);
-	cfg.service(get_image);
 	cfg.service(download_file);
+}
+
+pub fn init_routes(cfg: &mut web::ServiceConfig) {
+	cfg.service(get_image);
 }

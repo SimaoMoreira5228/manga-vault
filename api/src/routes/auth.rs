@@ -8,7 +8,7 @@ use sea_orm::EntityTrait;
 use serde::{Deserialize, Serialize};
 
 use crate::entities::prelude::Users;
-use crate::routes::user::{CreateUser, IncomingUser};
+use crate::routes::user::{CreateUser, UserResponse};
 use crate::SECRET_JWT;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -79,9 +79,10 @@ async fn login(db: web::Data<connection::Connection>, user: web::Json<CreateUser
 
 	let result = generate_token(db_user.id).unwrap();
 
-	let res_user = IncomingUser {
+	let res_user = UserResponse {
 		id: db_user.id,
 		username: db_user.username,
+		image_id: db_user.image_id,
 	};
 
 	HttpResponse::Ok()
@@ -124,9 +125,10 @@ async fn me(req: actix_web::HttpRequest, db: web::Data<connection::Connection>) 
 		.unwrap();
 
 	if let Some(user) = user {
-		HttpResponse::Ok().json(IncomingUser {
+		HttpResponse::Ok().json(UserResponse {
 			id: user.id,
 			username: user.username,
+			image_id: user.image_id,
 		})
 	} else {
 		HttpResponse::NotFound().finish()

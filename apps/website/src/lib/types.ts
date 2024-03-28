@@ -68,3 +68,9 @@ export type ReadChapter = {
 	chapter_id: number;
 	created_at: string;
 };
+
+export type User = {
+	id: number;
+	username: string;
+	image_id: string;
+};

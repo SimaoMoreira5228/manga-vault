@@ -1,6 +1,6 @@
 use std::vec;
 
-use actix_web::{get, post, web, HttpResponse, Responder};
+use actix_web::{get, patch, post, web, HttpResponse, Responder};
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DeleteResult, EntityTrait, ModelTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,13 @@ pub struct CreateUser {
 pub struct IncomingUser {
 	pub id: i32,
 	pub username: String,
+}
+
+#[derive(Serialize)]
+pub struct UserResponse {
+	pub id: i32,
+	pub username: String,
+	pub image_id: Option<i32>,
 }
 
 #[post("/users/create")]
@@ -55,9 +62,10 @@ async fn create_user(db: web::Data<connection::Connection>, user: web::Json<Crea
 		return HttpResponse::InternalServerError().body("Failed to create user");
 	}
 
-	HttpResponse::Ok().json(IncomingUser {
+	HttpResponse::Ok().json(UserResponse {
 		id: user.id,
 		username: user.username,
+		image_id: user.image_id,
 	})
 }
 
@@ -87,9 +95,10 @@ async fn get_users(db: web::Data<connection::Connection>) -> impl Responder {
 	let mut response = vec![];
 
 	for user in users {
-		response.push(IncomingUser {
+		response.push(UserResponse {
 			id: user.id,
 			username: user.username,
+			image_id: user.image_id,
 		});
 	}
 
@@ -109,9 +118,43 @@ async fn get_user(db: web::Data<connection::Connection>, id: web::Path<i32>) -> 
 
 	let user = user.unwrap();
 
-	HttpResponse::Ok().json(IncomingUser {
+	HttpResponse::Ok().json(UserResponse {
 		id: user.id,
 		username: user.username,
+		image_id: user.image_id,
+	})
+}
+
+#[derive(Deserialize)]
+struct UserImage {
+	user_id: i32,
+	image_id: i32,
+}
+
+#[patch("/users/image")]
+async fn update_user_image(db: web::Data<connection::Connection>, body: web::Json<UserImage>) -> impl Responder {
+	let user: Option<entities::users::Model> = entities::users::Entity::find_by_id(body.user_id)
+		.one(db.get_ref())
+		.await
+		.unwrap();
+
+	if user.is_none() {
+		return HttpResponse::BadRequest().body("User not found");
+	}
+
+	let user = user.unwrap();
+
+	let user = entities::users::ActiveModel {
+		image_id: Set(Some(body.image_id)),
+		..user.into()
+	};
+
+	let user: entities::users::Model = user.update(db.get_ref()).await.unwrap();
+
+	HttpResponse::Ok().json(UserResponse {
+		id: user.id,
+		username: user.username,
+		image_id: user.image_id,
 	})
 }
 
@@ -123,4 +166,5 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
 
 pub fn init_secure_routes(cfg: &mut web::ServiceConfig) {
 	cfg.service(delete_user);
+	cfg.service(update_user_image);
 }

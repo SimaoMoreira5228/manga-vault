@@ -32,6 +32,7 @@ impl Database {
 
 		url = format!("sqlite://{}?mode=rwc", config.database_path);
 		conn = sea_orm::Database::connect(url).await;
+		migration::Migrator::up(conn.as_ref().unwrap(), None).await.unwrap();
 
 		Ok(Self { conn: conn.unwrap() })
 	}

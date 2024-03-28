@@ -42,7 +42,7 @@ pub async fn run() -> std::io::Result<()> {
 					.configure(routes::manga::init_routes)
 					.configure(routes::chapter::init_routes)
 					.configure(routes::favorites::init_routes)
-					.configure(routes::files::init_routes)
+					.configure(routes::files::init_secure_routes)
 					.configure(routes::scrapper::init_routes)
 					.configure(routes::read_chapter::init_routes)
 					.configure(routes::categories::init_routes),
@@ -52,6 +52,7 @@ pub async fn run() -> std::io::Result<()> {
 					.configure(routes::auth::init_routes)
 					.configure(routes::user::init_routes),
 			)
+			.service(web::scope("/files").configure(routes::files::init_routes))
 	})
 	.bind(("0.0.0.0", CONFIG.api_port))?
 	.run()

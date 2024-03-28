@@ -81,7 +81,7 @@ impl MigrationTrait for Migration {
 				Table::create()
 					.table(Files::Table)
 					.if_not_exists()
-					.col(ColumnDef::new(Files::Id).string().not_null().primary_key())
+					.col(ColumnDef::new(Files::Id).integer().not_null().auto_increment().primary_key())
 					.col(ColumnDef::new(Files::Name).string().not_null())
 					.col(ColumnDef::new(Files::CreatedAt).date_time().not_null())
 					.to_owned(),

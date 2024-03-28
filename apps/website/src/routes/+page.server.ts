@@ -1,7 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import { api } from '$lib/axios.server';
 import type { PageServerLoad } from './$types';
-import { getUser, type User } from '$lib/utils.server';
+import { getUser } from '$lib/utils.server';
+import type { User } from '$lib/types';
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	const user = await getUser(cookies);
