@@ -1,5 +1,6 @@
 use std::env;
 
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 fn current_dir() -> std::path::PathBuf {
@@ -20,6 +21,17 @@ pub struct Config {
 	pub secret_jwt: String,
 }
 
+pub fn generate_secret() -> String {
+	let mut rng = rand::thread_rng();
+	let secret = std::iter::repeat(())
+		.map(|()| rng.sample(rand::distributions::Alphanumeric))
+		.take(24)
+		.map(char::from)
+		.collect();
+
+	secret
+}
+
 pub fn load_config() -> Config {
 	let current_dir = current_dir();
 	let config_file = format!("{}/config.json", current_dir.display());
@@ -30,7 +42,7 @@ pub fn load_config() -> Config {
 			websocket_port: 5229,
 			database_path: format!("{}/db.sqlite", current_dir.display()),
 			directory: current_dir.display().to_string(),
-			secret_jwt: "#5z3BQkA@EQ2!mM*XyYQu3XM5".to_string(),
+			secret_jwt: generate_secret(),
 		};
 
 		std::fs::write(&config_file, serde_json::to_string_pretty(&default_config_json).unwrap()).unwrap();
