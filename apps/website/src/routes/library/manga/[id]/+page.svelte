@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Globe, BookPlus, BookMarked } from 'lucide-svelte';
+	import { Globe, BookPlus, BookMarked, LucideEye, LucideEyeOff } from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import { onMount } from 'svelte';
 	import { Button, buttonVariants } from '$lib/components/ui/button';
@@ -28,7 +28,7 @@
 	};
 
 	export let data: PageData;
-	let mangaPage: costumMangaPage;
+	$: mangaPage = {} as costumMangaPage;
 	let isLoadingManga = false;
 	let isErrored = false;
 
@@ -106,6 +106,102 @@
 			location.reload();
 		}
 	}
+
+	function handleResume() {
+		const lastReadChapter = mangaPage.chapters.find((chapter) =>
+			mangaPage.readChaptersIds.includes(chapter.id)
+		);
+
+		if (lastReadChapter) {
+			const nextChapter = mangaPage.chapters.reverse().indexOf(lastReadChapter) + 1;
+
+			if (nextChapter < mangaPage.chapters.length) {
+				window.location.href = `/library/manga/${data.mangaId}/chapter/${mangaPage.chapters[nextChapter].id}`;
+			} else {
+				toast('🎉 You have read all the chapters');
+			}
+		}
+	}
+
+	function markAsRead(chapter: Chapter) {
+		try {
+			fetch(`/library/manga/${chapter.manga_id}/chapter/${chapter.id}/read`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					user_id: data.user?.id,
+					chapter_id: chapter.id,
+					manga_id: chapter.manga_id
+				})
+			});
+
+			const newReadChapters = [...mangaPage.readChaptersIds, chapter.id];
+			mangaPage.readChaptersIds = newReadChapters;
+		} catch (error) {
+			toast('❌ An error occurred while marking the chapter as read');
+		}
+	}
+
+	function markAsUnread(chapter: Chapter) {
+		try {
+			fetch(`/library/manga/${chapter.manga_id}/chapter/${chapter.id}/unread`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					user_id: data.user?.id,
+					chapter_id: chapter.id
+				})
+			});
+
+			const newReadChapters = mangaPage.readChaptersIds.filter((id) => id !== chapter.id);
+			mangaPage.readChaptersIds = newReadChapters;
+		} catch (error) {
+			toast('❌ An error occurred while marking the chapter as unread');
+		}
+	}
+
+	function markAllAsRead() {
+		try {
+			fetch(`/library/manga/${mangaPage.id}/read-all`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					user_id: data.user?.id,
+					manga_id: parseInt(mangaPage.id)
+				})
+			});
+
+			const newReadChapters = mangaPage.chapters.map((chapter) => chapter.id);
+			mangaPage.readChaptersIds = newReadChapters;
+		} catch (error) {
+			toast('❌ An error occurred while marking all chapters as read');
+		}
+	}
+
+	function markAllAsUnread() {
+		try {
+			fetch(`/library/manga/${mangaPage.id}/unread-all`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					user_id: data.user?.id,
+					manga_id: parseInt(mangaPage.id)
+				})
+			});
+
+			mangaPage.readChaptersIds = [];
+		} catch (error) {
+			toast('❌ An error occurred while marking all chapters as unread');
+		}
+	}
 </script>
 
 {#if isLoadingManga}
@@ -117,7 +213,7 @@
 	<div class="flex h-[95%] w-full flex-col items-center justify-center gap-2">
 		<p>Failed to load manga page</p>
 	</div>
-{:else if mangaPage}
+{:else if mangaPage.id}
 	<div class="flex h-full w-full flex-col justify-between gap-12 overflow-y-scroll md:flex-row">
 		<div class="flex h-[95%] w-full flex-col items-start gap-2 overflow-y-scroll md:w-2/3">
 			<img src={mangaPage.img_url} alt="" class="w-1/3 object-contain" />
@@ -192,26 +288,66 @@
 			</div>
 			<p class="text-lg">{mangaPage.description}</p>
 		</div>
-		<div class="h-[95%] w-full overflow-y-scroll">
-			<h1 class="mb-2 text-2xl font-bold">Chapters:</h1>
-			<div class="flex flex-col justify-between gap-2 overflow-y-scroll">
-				{#each mangaPage.chapters as chapter}
-					{#if mangaPage.readChaptersIds.includes(chapter.id)}
-						<a class="bg-input p-2" href="/library/manga/{mangaPage.id}/chapter/{chapter.id}">
-							<div class="flex h-full w-full flex-row items-center justify-between gap-2 px-2">
-								<p class="text-base text-gray-500">{chapter.title}</p>
-								<a href={chapter.url} target="_blank"><Globe class="h-6 w-6 text-blue-400" /></a>
-							</div>
-						</a>
-					{:else}
-						<a class="bg-input p-2" href="/library/manga/{mangaPage.id}/chapter/{chapter.id}">
-							<div class="flex h-full w-full flex-row items-center justify-between gap-2 px-2">
-								<p class="text-base">{chapter.title}</p>
-								<a href={chapter.url} target="_blank"><Globe class="h-6 w-6 text-blue-400" /></a>
-							</div>
-						</a>
-					{/if}
-				{/each}
+		<div class="flex h-full w-full flex-col">
+			<div class="h-[95%] w-full overflow-y-scroll">
+				<h1 class="mb-2 text-2xl font-bold">Chapters:</h1>
+				<div class="flex flex-col justify-between gap-2 overflow-y-scroll">
+					{#each mangaPage.chapters as chapter}
+						{#if mangaPage.readChaptersIds.includes(chapter.id)}
+							<a class="bg-input p-2" href="/library/manga/{mangaPage.id}/chapter/{chapter.id}">
+								<div class="flex h-full w-full flex-row items-center justify-between gap-2 px-2">
+									<p class="text-base text-gray-500">{chapter.title}</p>
+									<div class="flex flex-row items-center justify-center">
+										<Button
+											variant="ghost"
+											class="relative h-6 w-6"
+											on:click={(e) => {
+												e.preventDefault();
+												markAsUnread(chapter);
+											}}
+										>
+											<LucideEyeOff class="absolute h-6 w-6 text-gray-400" />
+										</Button>
+										<a href={chapter.url} target="_blank">
+											<Globe class="h-6 w-6 text-blue-400" />
+										</a>
+									</div>
+								</div>
+							</a>
+						{:else}
+							<a class="bg-input p-2" href="/library/manga/{mangaPage.id}/chapter/{chapter.id}">
+								<div class="flex h-full w-full flex-row items-center justify-between gap-2 px-2">
+									<p class="text-base">{chapter.title}</p>
+									<div class="flex flex-row">
+										<Button
+											variant="ghost"
+											class="relative h-6 w-6"
+											on:click={(e) => {
+												e.preventDefault();
+												markAsRead(chapter);
+											}}
+										>
+											<LucideEye class="absolute h-6 w-6 text-white" />
+										</Button>
+										<a href={chapter.url} target="_blank">
+											<Globe class="h-6 w-6 text-blue-400" />
+										</a>
+									</div>
+								</div>
+							</a>
+						{/if}
+					{/each}
+				</div>
+			</div>
+			<div class="mt-4 flex w-full flex-row gap-2">
+				{#if mangaPage.readChaptersIds.length > 0}
+					<Button class="w-full" on:click={handleResume}>Resume</Button>
+				{/if}
+				{#if mangaPage.readChaptersIds.length !== mangaPage.chapters.length}
+					<Button class="w-full" on:click={markAllAsRead}>Mark all as read</Button>
+				{:else}
+					<Button class="w-full" on:click={markAllAsUnread}>Mark all as unread</Button>
+				{/if}
 			</div>
 		</div>
 	</div>
