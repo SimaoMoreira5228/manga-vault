@@ -1,4 +1,4 @@
-mod downloader;
+pub mod downloader;
 mod entities;
 mod routes;
 mod starters;
@@ -19,7 +19,6 @@ lazy_static::lazy_static! {
 	static ref SECRET_JWT: String = CONFIG.secret_jwt.clone();
 }
 
-#[tokio::main]
 pub async fn run() -> std::io::Result<()> {
 	let db = connection::Database::new(&CONFIG).await.unwrap();
 	let websocket_db = Arc::new(Mutex::new(db.conn.clone()));
