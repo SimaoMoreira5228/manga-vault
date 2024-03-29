@@ -214,7 +214,7 @@
 		<p>Failed to load manga page</p>
 	</div>
 {:else if mangaPage.id}
-	<div class="flex h-full w-full flex-col justify-between gap-12 overflow-y-scroll md:flex-row">
+	<div class="flex h-full w-full flex-col justify-between gap-12 md:flex-row">
 		<div class="flex h-[95%] w-full flex-col items-start gap-2 overflow-y-scroll md:w-2/3">
 			<img src={mangaPage.img_url} alt="" class="w-1/3 object-contain" />
 			<div class="felx-col flex items-center justify-center gap-2">
@@ -288,10 +288,10 @@
 			</div>
 			<p class="text-lg">{mangaPage.description}</p>
 		</div>
-		<div class="flex h-full w-full flex-col">
-			<div class="h-[95%] w-full overflow-y-scroll">
+		<div class="flex h-full max-h-[65%] w-full flex-col md:max-h-full">
+			<div class="h-[80%] w-full overflow-y-scroll md:h-[95%]">
 				<h1 class="mb-2 text-2xl font-bold">Chapters:</h1>
-				<div class="flex flex-col justify-between gap-2 overflow-y-scroll">
+				<div class="flex flex-col justify-between gap-2">
 					{#each mangaPage.chapters as chapter}
 						{#if mangaPage.readChaptersIds.includes(chapter.id)}
 							<a class="bg-input p-2" href="/library/manga/{mangaPage.id}/chapter/{chapter.id}">

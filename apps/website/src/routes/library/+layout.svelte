@@ -16,7 +16,7 @@
 </script>
 
 <div class="flex h-full w-full flex-col overflow-y-hidden">
-	<header class="bg-input flex w-full flex-row justify-between p-2">
+	<header class="bg-input flex w-full flex-row justify-between p-2" id="header">
 		<!-- svelte-ignore a11y-missing-content -->
 		<div class="flex flex-row items-center justify-center gap-4">
 			<div id="controls" class="flex flex-row items-center justify-center gap-2"></div>
@@ -61,7 +61,7 @@
 		</div>
 	</header>
 	<div class="flex h-full justify-start">
-		<div class="bg-input flex h-full flex-col items-start justify-start">
+		<div class="bg-input flex h-full flex-col items-start justify-start" id="sidebar">
 			<a
 				href="/library"
 				class="hover:bg-background p-4 {isLibrary ? 'bg-background hover:bg-input' : ''}"
@@ -81,7 +81,7 @@
 				<Search />
 			</a>
 		</div>
-		<div class="flex h-[95%] w-full p-8">
+		<div class="flex h-[95%] w-full p-8 md:h-[95%]" id="librarySlot">
 			<slot />
 		</div>
 	</div>

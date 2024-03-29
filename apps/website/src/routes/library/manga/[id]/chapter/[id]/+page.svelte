@@ -6,9 +6,12 @@
 	import {
 		arrowBigLeftString,
 		arrowBigRightString,
-		arrowLeftToLineString
+		arrowLeftToLineString,
+		menuString
 	} from '$lib/customLucideSVGs';
+	import { MenuIcon } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
+	import { Button } from '$lib/components/ui/button';
 
 	export let data: PageData;
 	const chapter = data.chapter;
@@ -19,13 +22,24 @@
 	let isLoading = false;
 
 	let goBackButton: HTMLButtonElement;
+	let headerMenuButton: HTMLButtonElement;
+	let menuButton: HTMLButtonElement;
 	let nextChapterButton: HTMLButtonElement;
 	let previousChapterButton: HTMLButtonElement;
 	let inputDiv: HTMLDivElement;
+	let sideBar: HTMLElement | null;
+	let header: HTMLElement | null;
+	let librarySlot: HTMLElement | null;
+
+	let isSidebarShown = true;
+	let isHeaderShown = true;
 
 	onMount(async () => {
 		margin = localStorage.getItem('margin') ? parseInt(localStorage.getItem('margin') || '0') : 0;
 
+		sideBar = document.getElementById('sidebar');
+		header = document.getElementById('header');
+		librarySlot = document.getElementById('librarySlot');
 		const locationText = document.getElementById('LocationText');
 		const controls = document.getElementById('controls');
 		const otherControls = document.getElementById('otherControls');
@@ -36,6 +50,13 @@
 		}
 
 		if (controls) {
+			headerMenuButton = createButton(menuString);
+			headerMenuButton.classList.add('block', 'md:hidden');
+			headerMenuButton.addEventListener('click', () => {
+				chapterMenuButonAction();
+			});
+			controls.appendChild(headerMenuButton);
+
 			goBackButton = createButton(arrowLeftToLineString);
 			goBackButton.addEventListener('click', () => {
 				window.location.href = `/library/manga/${chapter.manga_id}`;
@@ -161,10 +182,57 @@
 		if (inputDiv) {
 			inputDiv.remove();
 		}
+
+		if (headerMenuButton) {
+			headerMenuButton.remove();
+		}
 	});
+
+	function chapterMenuButonAction() {
+		if (sideBar) {
+			if (isSidebarShown) {
+				sideBar.classList.add('hidden');
+				isSidebarShown = false;
+			} else {
+				sideBar.classList.remove('hidden');
+				isSidebarShown = true;
+			}
+		}
+
+		if (header) {
+			if (isHeaderShown) {
+				header.classList.add('hidden');
+				isHeaderShown = false;
+			} else {
+				header.classList.remove('hidden');
+				isHeaderShown = true;
+			}
+		}
+
+		if (!isSidebarShown && !isHeaderShown) {
+			if (menuButton) {
+				menuButton.classList.remove('hidden');
+			}
+			if (librarySlot) {
+				librarySlot.style.height = '100%';
+			}
+		} else {
+			if (menuButton) {
+				menuButton.classList.add('hidden');
+			}
+			if (librarySlot) {
+				librarySlot.style.height = '95%';
+			}
+		}
+	}
 </script>
 
 <div class="flex h-full w-full justify-center">
+	{#if !isHeaderShown && !isSidebarShown}
+		<Button class="absolute left-1 top-1 h-10 w-10" on:click={chapterMenuButonAction}>
+			<MenuIcon class="absolute h-6 w-6" />
+		</Button>
+	{/if}
 	<div class="flex h-full w-full flex-col items-center overflow-y-scroll" id="imagesCotainer">
 		{#if isLoading}
 			<Spinner class="h-12 w-12 text-blue-400" />
