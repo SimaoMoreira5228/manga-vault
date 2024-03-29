@@ -171,7 +171,7 @@
 		{:else if pages.length === 0 && !isLoading}
 			<p class="text-2xl font-bold">No pages found</p>
 		{:else if pages.length > 0}
-			<div class="h-full w-full" id="images">
+			<div class="flex h-full w-full flex-col" id="images">
 				{#each pages as page, i}
 					{#if page === ''}
 						<p>Page {i + 1} was not found</p>

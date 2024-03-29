@@ -167,11 +167,15 @@
 						<div
 							class="absolute inset-0 h-full w-full bg-gradient-to-b from-transparent to-black opacity-45"
 						/>
-						<div class="absolute right-1 top-1 h-6 w-fit min-w-6 rounded-sm bg-red-500 text-center">
-							<span class="flex items-center justify-center">
-								{favorite.chapters_number - favorite.read_chapters_number}
-							</span>
-						</div>
+						{#if favorite.chapters_number - favorite.read_chapters_number > 0}
+							<div
+								class="absolute right-1 top-1 h-6 w-fit min-w-6 rounded-sm bg-red-500 text-center"
+							>
+								<span class="flex items-center justify-center">
+									{favorite.chapters_number - favorite.read_chapters_number}
+								</span>
+							</div>
+						{/if}
 						<Tooltip.Root>
 							<Tooltip.Trigger class="absolute bottom-0 left-0 z-10 w-full p-1">
 								<p class="truncate pb-1 text-sm font-medium text-white">
