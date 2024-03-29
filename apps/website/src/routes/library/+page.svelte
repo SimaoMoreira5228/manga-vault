@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import { toast } from 'svelte-sonner';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { Plus } from 'lucide-svelte';
@@ -8,6 +9,7 @@
 	import type { Category, FavoitesMangaItem } from '$lib/types';
 	import Spinner from '$lib/icons/spinner.svelte';
 	import type { PageData } from './$types';
+	import { Input } from '$lib/components/ui/input';
 
 	export let data: PageData;
 	let slectedCategory = data.categories[0];
@@ -49,8 +51,39 @@
 		}
 	}
 
+	let isCreatingCategory = false;
+
 	async function addCategory() {
-		// TODO: add category
+		const categoryName = (document.getElementById('categoryName') as HTMLInputElement).value;
+		if (categoryName === '') {
+			toast('❌ Category name cannot be empty');
+			return;
+		}
+
+		try {
+			isCreatingCategory = true;
+
+			const res = await fetch('/library/category/new', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ name: categoryName, user_id: data.user.id })
+			});
+
+			if (res.ok) {
+				toast('✅ Category created successfully');
+			} else {
+				toast('❌ An error occurred while creating category');
+			}
+		} catch (error) {
+			toast('❌ An error occurred while creating category');
+		} finally {
+			isCreatingCategory = false;
+			if (!isCreatingCategory) {
+				location.reload();
+			}
+		}
 	}
 </script>
 
@@ -78,8 +111,37 @@
 					</a>
 				{/if}
 			{/each}
-			<!-- TODO: change this to a shadcn-svelte {Dialog} -->
-			<Button class="ml-4" on:click={addCategory}><Plus class="h-4 w-4" /></Button>
+			<div class="ml-4">
+				<Dialog.Root>
+					<Dialog.Trigger>
+						<Button>
+							<Plus class="h-6 w-6" />
+						</Button>
+					</Dialog.Trigger>
+					<Dialog.Content>
+						<Dialog.Header>
+							<Dialog.Title>New Category</Dialog.Title>
+						</Dialog.Header>
+						<div>
+							<Input
+								type="text"
+								class="w-full rounded-md border-2 border-gray-700 p-2"
+								placeholder="Category name"
+								id="categoryName"
+							/>
+						</div>
+						<Dialog.Footer>
+							{#if isCreatingCategory}
+								<div class="flex h-full w-full items-center justify-center">
+									<Spinner class="h-10 w-10 text-blue-400" />
+								</div>
+							{:else}
+								<Button on:click={addCategory}>Create</Button>
+							{/if}
+						</Dialog.Footer>
+					</Dialog.Content>
+				</Dialog.Root>
+			</div>
 		</div>
 		<hr class="my-4 w-full border-t-2 border-gray-700" />
 	</div>
