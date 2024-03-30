@@ -21,7 +21,7 @@
 				<img src={scrapper.img_url} alt="" class="h-8 md:h-12" />
 				<h1 class="hidden text-lg font-medium text-blue-400 md:block">{scrapper.name}</h1>
 			</div>
-			<div class="flex flex-col items-start justify-center gap-1 md:flex-row">
+			<div class="flex flex-col items-end justify-center gap-1 md:flex-row">
 				<a href="/library/sources/latest/{scrapper.id}">
 					<Button class="h-8 md:h-10">Latest</Button>
 				</a>

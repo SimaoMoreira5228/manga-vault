@@ -57,7 +57,7 @@
 			<Button on:click={search}><Search class="h-4 w-4" /></Button>
 		</div>
 	</div>
-	<div class="flex h-full w-full flex-col overflow-y-scroll">
+	<div class="flex h-full w-full flex-col overflow-y-auto">
 		{#if isLoading}
 			<div class="flex h-full w-full items-center justify-center">
 				<Spinner class="h-10 w-10 text-blue-400" />
@@ -70,7 +70,7 @@
 						<hr class="w-full border-t-2 border-blue-400" />
 					</div>
 					<div
-						class="grid grid-cols-1 gap-4 overflow-y-scroll md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8"
+						class="grid grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8"
 					>
 						{#if mangaItems.mangas.length > 0 && !isLoading}
 							{#each mangaItems.mangas as mangaItem}

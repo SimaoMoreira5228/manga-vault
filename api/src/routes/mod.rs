@@ -7,3 +7,4 @@ pub mod read_chapter;
 pub mod scrapper;
 pub mod user;
 pub mod categories;
+pub mod websocket;

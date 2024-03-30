@@ -1,12 +1,12 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import type { FavoitesMangaItem } from '$lib/types';
+import type { FavoritesMangaItem } from '$lib/types';
 import { api } from '$lib/axios.server';
 
 export const GET: RequestHandler = async ({ cookies, params }) => {
 	const token = cookies.get('token');
 
-	const mangaItems: FavoitesMangaItem[] = await api
+	const mangaItems: FavoritesMangaItem[] = await api
 		.get(`api/scrappers/${params.name}/trending/${params.page}`, {
 			headers: { Authorization: token }
 		})

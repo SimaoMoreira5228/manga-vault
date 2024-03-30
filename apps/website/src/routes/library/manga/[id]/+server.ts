@@ -1,5 +1,5 @@
 import { error, json } from '@sveltejs/kit';
-import type { FavoitesMangaItem, MangaPage, ReadChapter } from '$lib/types';
+import type { FavoritesMangaItem, MangaPage, ReadChapter } from '$lib/types';
 import { api } from '$lib/axios.server';
 import type { RequestHandler } from './$types';
 import { getUser } from '$lib/utils.server';
@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ cookies, params }) => {
 
 	let isBookmarked = false;
 	if (user !== null) {
-		const data: FavoitesMangaItem[] = await api
+		const data: FavoritesMangaItem[] = await api
 			.get(`/api/mangas/${user.id}/favorites`, { headers: { Authorization: token } })
 			.then((res) => res.data);
 

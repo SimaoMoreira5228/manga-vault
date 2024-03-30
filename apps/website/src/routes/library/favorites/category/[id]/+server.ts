@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import type { FavoitesMangaItem } from '$lib/types';
+import type { FavoritesMangaItem } from '$lib/types';
 import { api } from '$lib/axios.server';
 import type { RequestHandler } from './$types';
 import { getUser } from '$lib/utils.server';
@@ -8,7 +8,7 @@ export const GET: RequestHandler = async ({ cookies, params }) => {
 	const token = cookies.get('token');
 	const user = await getUser(cookies);
 
-	const favorites: FavoitesMangaItem[] = await api
+	const favorites: FavoritesMangaItem[] = await api
 		.get(`/api/mangas/${user?.id}/categories/${params.id}/favorites`, {
 			headers: { Authorization: token }
 		})

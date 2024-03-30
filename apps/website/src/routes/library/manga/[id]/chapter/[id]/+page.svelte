@@ -233,7 +233,7 @@
 			<MenuIcon class="absolute h-6 w-6" />
 		</Button>
 	{/if}
-	<div class="flex h-full w-full flex-col items-center overflow-y-scroll" id="imagesCotainer">
+	<div class="flex h-full w-full flex-col items-center overflow-y-auto" id="imagesCotainer">
 		{#if isLoading}
 			<Spinner class="h-12 w-12 text-blue-400" />
 		{:else if pages.length === 0 && !isLoading}

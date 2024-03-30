@@ -21,9 +21,8 @@ lazy_static::lazy_static! {
 
 pub async fn run() -> std::io::Result<()> {
 	let db = connection::Database::new(&CONFIG).await.unwrap();
-	let websocket_db = Arc::new(Mutex::new(db.conn.clone()));
 
-	tokio::spawn(starters::websocket::start(websocket_db));
+	tokio::spawn(starters::websocket::start(Arc::new(Mutex::new(db.conn.clone()))));
 	tokio::spawn(starters::website::start());
 
 	println!("HTTP server starting on port {}", CONFIG.api_port);
@@ -44,7 +43,8 @@ pub async fn run() -> std::io::Result<()> {
 					.configure(routes::files::init_secure_routes)
 					.configure(routes::scrapper::init_routes)
 					.configure(routes::read_chapter::init_routes)
-					.configure(routes::categories::init_routes),
+					.configure(routes::categories::init_routes)
+					.configure(routes::websocket::init_routes),
 			)
 			.service(
 				web::scope("/auth")

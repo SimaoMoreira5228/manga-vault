@@ -1,12 +1,12 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { onMount } from 'svelte';
-	import type { FavoitesMangaItem } from '$lib/types';
+	import type { FavoritesMangaItem } from '$lib/types';
 	import { page } from '$app/stores';
 	import Spinner from '$lib/icons/spinner.svelte';
 	import { toast } from 'svelte-sonner';
 
-	let mangaItems: FavoitesMangaItem[] = [];
+	let mangaItems: FavoritesMangaItem[] = [];
 	let scrapperPage = 1;
 
 	function normalizeTitles(title: string) {
@@ -67,7 +67,7 @@
 
 <div class="relative flex h-full w-full flex-col justify-start">
 	<div
-		class="grid grid-cols-1 gap-4 overflow-y-scroll md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8"
+		class="grid grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8"
 		id="mangaItems"
 	>
 		{#each mangaItems as mangaItem}

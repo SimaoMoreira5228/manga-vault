@@ -2,7 +2,7 @@ use connection::Connection;
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter};
 use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
@@ -28,16 +28,25 @@ pub async fn sync_favorite_mangas_from_category(
 		return;
 	}
 
-	let favorite_mangas_subquery = FavoriteMangas::find()
+	let user_favorite_mangas = FavoriteMangas::find()
 		.filter(crate::entities::favorite_mangas::Column::UserId.eq(content.user_id))
 		.filter(crate::entities::favorite_mangas::Column::CategoryId.eq(content.category_id.unwrap()))
-		.into_query();
-
-	let favorite_mangas: Vec<crate::entities::mangas::Model> = Mangas::find()
-		.filter(crate::entities::mangas::Column::Id.in_subquery(favorite_mangas_subquery))
 		.all(&db)
 		.await
 		.unwrap();
+
+	let mut favorite_mangas: Vec<crate::entities::mangas::Model> = Vec::new();
+
+	for favorite_manga in user_favorite_mangas {
+		let manga: crate::entities::mangas::Model = Mangas::find()
+			.filter(crate::entities::mangas::Column::Id.eq(favorite_manga.manga_id))
+			.one(&db)
+			.await
+			.unwrap()
+			.unwrap();
+
+		favorite_mangas.push(manga);
+	}
 
 	for favorite_manga in favorite_mangas {
 		let scrapper_type = scrappers::get_scrapper_type(&favorite_manga.scrapper);
@@ -60,7 +69,12 @@ pub async fn sync_favorite_mangas_from_category(
 		let manga_page = manga_page.unwrap();
 		let chapters = manga_page.chapters;
 		let chapters_count = chapters.len();
-		let mut read_chapters: Vec<i32> = vec![];
+		let read_chapters = ReadChapters::find()
+			.filter(crate::entities::read_chapters::Column::UserId.eq(content.user_id))
+			.filter(crate::entities::read_chapters::Column::MangaId.eq(favorite_manga.id))
+			.count(&db)
+			.await
+			.unwrap();
 
 		for chapter in chapters {
 			let db_chapter: Option<crate::entities::chapters::Model> = Chapters::find()
@@ -80,23 +94,27 @@ pub async fn sync_favorite_mangas_from_category(
 					..Default::default()
 				};
 
-				// TODO: treat this
-				let _ = active_model_chapter.insert(&db);
+				let inserted_chaper = active_model_chapter.insert(&db).await;
 
-				let read_chapter: Option<crate::entities::read_chapters::Model> = ReadChapters::find()
-					.filter(crate::entities::read_chapters::Column::UserId.eq(content.user_id))
-					.filter(crate::entities::read_chapters::Column::ChapterId.eq(db_chapter.unwrap().id))
-					.one(&db)
-					.await
-					.unwrap();
-
-				if read_chapter.is_some() {
-					read_chapters.push(read_chapter.unwrap().chapter_id);
+				if inserted_chaper.is_err() {
+					let response = SyncFavoriteMangasResponse {
+						msg_type: "sync-category".to_string(),
+						content: None,
+						error: Some("Error inserting chapter".to_string()),
+					};
+					write
+						.send(Message::Binary(serde_json::to_vec(&response).unwrap()))
+						.await
+						.unwrap();
+					continue;
 				}
 			}
 		}
 
-		// TODO: maybe update the manga (img_url, title, etc)
+		let mut favorite_manga_active = favorite_manga.clone().into_active_model();
+		favorite_manga_active.img_url = Set(manga_page.img_url.clone());
+		favorite_manga_active.updated_at = Set(chrono::Utc::now().naive_utc().to_string());
+		let new_favorite = favorite_manga_active.update(&db).await.unwrap();
 
 		drop(scrapper);
 
@@ -104,10 +122,14 @@ pub async fn sync_favorite_mangas_from_category(
 			msg_type: "sync-category".to_string(),
 			content: Some(MangaResponse {
 				title: manga_page.title,
-				url: favorite_manga.url,
+				url: new_favorite.url,
 				img_url: manga_page.img_url,
-				chapters_count,
-				read_chapters: read_chapters.len(),
+				chapters_number: chapters_count as u64,
+				read_chapters_number: read_chapters,
+				created_at: new_favorite.created_at,
+				id: new_favorite.id,
+				scrapper: new_favorite.scrapper,
+				updated_at: new_favorite.updated_at,
 			}),
 			error: None,
 		};

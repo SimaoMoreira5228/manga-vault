@@ -1,4 +1,4 @@
-export type FavoitesMangaItem = {
+export type FavoritesMangaItem = {
 	id: number;
 	title: string;
 	url: string;
@@ -73,4 +73,20 @@ export type User = {
 	id: number;
 	username: string;
 	image_id: string;
+};
+
+export type WsMessage = {
+	msg_type: string;
+	content: Content;
+};
+
+export type Content = {
+	user_id: number;
+	category_id: number | undefined;
+};
+
+export type WsResponse = {
+	msg_type: string;
+	content: FavoritesMangaItem | undefined;
+	error: string | undefined;
 };

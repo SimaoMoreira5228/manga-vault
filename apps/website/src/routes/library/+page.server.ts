@@ -3,6 +3,11 @@ import type { PageServerLoad } from './$types';
 import { getUser } from '$lib/utils.server';
 import type { Category } from '$lib/types';
 
+type WebsocketInfo = {
+	websocket_ip: string;
+	websocket_port: number;
+};
+
 export const load: PageServerLoad = async ({ cookies }) => {
 	const token = cookies.get('token');
 	const user = await getUser(cookies);
@@ -18,5 +23,13 @@ export const load: PageServerLoad = async ({ cookies }) => {
 			.then((res) => res.data);
 	}
 
-	return { categories };
+	const WebsocketInfo: WebsocketInfo = await api
+		.get('api/websocket-info', {
+			headers: {
+				Authorization: token
+			}
+		})
+		.then((res) => res.data);
+
+	return { categories, WebsocketInfo };
 };

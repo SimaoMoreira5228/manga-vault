@@ -12,9 +12,9 @@ use crate::routes::user::{CreateUser, UserResponse};
 use crate::SECRET_JWT;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-	sub: i32,
-	exp: usize,
+pub struct Claims {
+	pub sub: i32,
+	pub exp: usize,
 }
 
 struct NewTokenResponse {

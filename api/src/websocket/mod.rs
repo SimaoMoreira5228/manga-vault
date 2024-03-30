@@ -1,13 +1,14 @@
 mod sync_all;
 mod sync_category;
 
-use crate::websocket::sync_all::sync_all_favorite_mangas;
-use crate::websocket::sync_category::sync_favorite_mangas_from_category;
 use connection::Connection;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio_tungstenite::accept_async;
+
+use crate::websocket::sync_all::sync_all_favorite_mangas;
+use crate::websocket::sync_category::sync_favorite_mangas_from_category;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct WsMessage {
@@ -30,11 +31,15 @@ struct SyncFavoriteMangasResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct MangaResponse {
-	title: String,
-	url: String,
-	img_url: String,
-	chapters_count: usize,
-	read_chapters: usize,
+	pub id: i32,
+	pub title: String,
+	pub url: String,
+	pub img_url: String,
+	pub scrapper: String,
+	pub chapters_number: u64,
+	pub read_chapters_number: u64,
+	pub created_at: String,
+	pub updated_at: String,
 }
 
 pub async fn handle_connection(stream: TcpStream, db: Connection) {
@@ -48,19 +53,33 @@ pub async fn handle_connection(stream: TcpStream, db: Connection) {
 
 	let (mut write, mut read) = ws_stream.split();
 
-	println!("New websocket connection");
+	while let Some(message_result) = read.next().await {
+		match message_result {
+			Ok(message) => {
+				let message = message.into_data();
+				let message: Result<WsMessage, serde_json::Error> = serde_json::from_slice(&message);
 
-	while let Some(Ok(incoming_msg)) = read.next().await {
-		let msg: WsMessage = serde_json::from_slice(&incoming_msg.into_data()).unwrap();
+				if message.is_err() {
+					break;
+				}
 
-		match msg.msg_type.as_str() {
-			"sync-all" => {
-				sync_all_favorite_mangas(&mut write, msg.content, db.clone()).await;
+				let message = message.unwrap();
+
+				match message.msg_type.as_str() {
+					"sync-all" => {
+						sync_all_favorite_mangas(&mut write, message.content, db.clone()).await;
+					}
+					"sync-category" => {
+						sync_favorite_mangas_from_category(&mut write, message.content, db.clone()).await;
+					}
+					_ => {
+						println!("Unknown message type: {}", message.msg_type);
+					}
+				}
 			}
-			"sync-category" => {
-				sync_favorite_mangas_from_category(&mut write, msg.content, db.clone()).await;
+			Err(_) => {
+				break;
 			}
-			_ => {}
 		}
 	}
 }
