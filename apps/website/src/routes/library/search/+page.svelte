@@ -63,51 +63,53 @@
 				<Spinner class="h-10 w-10 text-blue-400" />
 			</div>
 		{:else}
-			{#each allMangaItems as mangaItems}
-				<div class="flex w-full flex-col gap-4">
-					<div class="flex w-full flex-col">
-						<h2 class="text-lg font-medium text-blue-400">{mangaItems.scraper}</h2>
-						<hr class="w-full border-t-2 border-blue-400" />
+			<div class="flex w-full flex-col gap-4">
+				{#each allMangaItems as mangaItems}
+					<div class="flex w-full flex-col gap-4">
+						<div class="flex w-full flex-col">
+							<h2 class="text-lg font-medium text-blue-400">{mangaItems.scraper}</h2>
+							<hr class="w-full border-t-2 border-blue-400" />
+						</div>
+						<div
+							class="grid grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8"
+						>
+							{#if mangaItems.mangas.length > 0 && !isLoading}
+								{#each mangaItems.mangas as mangaItem}
+									<a
+										class="flex h-full w-full items-center justify-center rounded-md"
+										href="/library/manga/{mangaItem.id}"
+									>
+										<div class="relative h-80 w-48 shadow-xl">
+											<div
+												class="absolute inset-0 h-full w-full bg-gradient-to-b from-transparent to-black opacity-45"
+											/>
+											<Tooltip.Root>
+												<Tooltip.Trigger class="absolute bottom-0 left-0 z-10 w-full p-1">
+													<p class="truncate pb-1 text-sm font-medium text-white">
+														{normalizeTitles(mangaItem.title.toString())}
+													</p>
+												</Tooltip.Trigger>
+												<Tooltip.Content>
+													<p>{normalizeTitles(mangaItem.title.toString())}</p>
+												</Tooltip.Content>
+											</Tooltip.Root>
+											<img
+												class="h-full w-full rounded-md object-cover"
+												src={mangaItem.img_url.toString()}
+												alt=""
+											/>
+										</div>
+									</a>
+								{/each}
+							{:else}
+								<div class="flex h-full w-full items-center justify-center">
+									<p class="text-lg font-medium text-blue-400">No results found</p>
+								</div>
+							{/if}
+						</div>
 					</div>
-					<div
-						class="grid grid-cols-1 gap-4 overflow-y-auto md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8"
-					>
-						{#if mangaItems.mangas.length > 0 && !isLoading}
-							{#each mangaItems.mangas as mangaItem}
-								<a
-									class="flex h-full w-full items-center justify-center rounded-md"
-									href="/library/manga/{mangaItem.id}"
-								>
-									<div class="relative h-80 w-48 shadow-xl">
-										<div
-											class="absolute inset-0 h-full w-full bg-gradient-to-b from-transparent to-black opacity-45"
-										/>
-										<Tooltip.Root>
-											<Tooltip.Trigger class="absolute bottom-0 left-0 z-10 w-full p-1">
-												<p class="truncate pb-1 text-sm font-medium text-white">
-													{normalizeTitles(mangaItem.title.toString())}
-												</p>
-											</Tooltip.Trigger>
-											<Tooltip.Content>
-												<p>{normalizeTitles(mangaItem.title.toString())}</p>
-											</Tooltip.Content>
-										</Tooltip.Root>
-										<img
-											class="h-full w-full rounded-md object-cover"
-											src={mangaItem.img_url.toString()}
-											alt=""
-										/>
-									</div>
-								</a>
-							{/each}
-						{:else}
-							<div class="flex h-full w-full items-center justify-center">
-								<p class="text-lg font-medium text-blue-400">No results found</p>
-							</div>
-						{/if}
-					</div>
-				</div>
-			{/each}
+				{/each}
+			</div>
 		{/if}
 	</div>
 </div>
