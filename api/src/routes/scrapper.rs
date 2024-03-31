@@ -42,6 +42,13 @@ async fn get_scrappers() -> impl Responder {
 #[get("/scrappers/{scrapper}/genres")]
 async fn get_scrapper_genres(scrapper: web::Path<String>) -> impl Responder {
 	let scrapper = scrappers::get_scrapper_type(&scrapper);
+
+	let scrapper = if scrapper.is_err() {
+		return HttpResponse::BadRequest().body("Invalid scrapper");
+	} else {
+		scrapper.unwrap()
+	};
+
 	let scrapper = Scrapper::new(&scrapper);
 	let genres = scrapper.scrape_genres_list().await;
 
@@ -57,6 +64,13 @@ async fn get_scrapper_latest(db: web::Data<connection::Connection>, params: web:
 	let (scrapper, page) = params.into_inner();
 
 	let scrapper_type = scrappers::get_scrapper_type(&scrapper);
+
+	let scrapper_type = if scrapper_type.is_err() {
+		return HttpResponse::BadRequest().body("Invalid scrapper");
+	} else {
+		scrapper_type.unwrap()
+	};
+
 	let scrapper = Scrapper::new(&scrapper_type);
 	let latest = scrapper.scrape_latest(page).await;
 
@@ -105,6 +119,13 @@ async fn get_scrapper_trending(db: web::Data<connection::Connection>, params: we
 	let (scrapper, page) = params.into_inner();
 
 	let scrapper_type = scrappers::get_scrapper_type(&scrapper);
+
+	let scrapper_type = if scrapper_type.is_err() {
+		return HttpResponse::BadRequest().body("Invalid scrapper");
+	} else {
+		scrapper_type.unwrap()
+	};
+
 	let scrapper = Scrapper::new(&scrapper_type);
 	let trending = scrapper.scrape_trending(page).await;
 

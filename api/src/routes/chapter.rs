@@ -1,9 +1,10 @@
 use actix_web::{get, web, HttpResponse, Responder};
+use isahc::ReadResponseExt;
 use scrappers::Scrapper;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use serde::Serialize;
 
-use crate::entities::prelude::{Chapters, Mangas};
+use crate::entities::prelude::{Chapters, Mangas, Temp};
 
 #[derive(Serialize)]
 struct ResponseChapter {
@@ -47,6 +48,13 @@ async fn get_chapter_info(db: web::Data<connection::Connection>, params: web::Pa
 		.unwrap();
 
 	let scrapper_type = scrappers::get_scrapper_type(&db_manga.as_ref().unwrap().scrapper);
+
+	let scrapper_type = if scrapper_type.is_err() {
+		return HttpResponse::BadRequest().body("Invalid scrapper");
+	} else {
+		scrapper_type.unwrap()
+	};
+
 	let scrapper = Scrapper::new(&scrapper_type);
 
 	let pages = scrapper.scrape_chapter(&db_chapter.as_ref().unwrap().url).await;
@@ -84,16 +92,50 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 		return HttpResponse::BadRequest().body("Chapter not found");
 	}
 
-	let scrapper_type = scrappers::get_scrapper_type(&db_manga.as_ref().unwrap().scrapper);
-	let scrapper = Scrapper::new(&scrapper_type);
+	let db_scrapped_pages = Temp::find()
+		.filter(crate::entities::temp::Column::Key.eq(format!("chapter_{}", db_chapter.as_ref().unwrap().id)))
+		.one(db.get_ref())
+		.await
+		.unwrap();
 
-	let scrapped_pages = scrapper.scrape_chapter(&db_chapter.as_ref().unwrap().url).await;
+	let scrapped_pages: Vec<String>;
 
-	if scrapped_pages.is_err() {
-		return HttpResponse::BadRequest().body("Error scraping chapter");
+	if db_scrapped_pages.is_none() {
+		let scrapper_type = scrappers::get_scrapper_type(&db_manga.as_ref().unwrap().scrapper);
+
+		let scrapper_type = if scrapper_type.is_err() {
+			return HttpResponse::BadRequest().body("Invalid scrapper");
+		} else {
+			scrapper_type.unwrap()
+		};
+
+		let scrapper = Scrapper::new(&scrapper_type);
+
+		let new_scrapped_pages = scrapper.scrape_chapter(&db_chapter.as_ref().unwrap().url).await;
+
+		if new_scrapped_pages.is_err() {
+			return HttpResponse::BadRequest().body("Error scraping chapter");
+		}
+
+		let new_scrapped_pages = new_scrapped_pages.unwrap();
+
+		let pages_to_temp = crate::entities::temp::ActiveModel {
+			key: Set(format!("chapter_{}", db_chapter.as_ref().unwrap().id)),
+			value: Set(serde_json::to_string(&new_scrapped_pages).unwrap()),
+			created_at: Set(chrono::Utc::now().naive_utc().to_string()),
+			..Default::default()
+		};
+
+		let insert = pages_to_temp.insert(db.get_ref()).await;
+
+		if insert.is_err() {
+			return HttpResponse::BadRequest().body("Error saving pages to temp");
+		}
+
+		scrapped_pages = new_scrapped_pages;
+	} else {
+		scrapped_pages = serde_json::from_str(&db_scrapped_pages.unwrap().value).unwrap();
 	}
-
-	let scrapped_pages = scrapped_pages.unwrap();
 
 	if page > scrapped_pages.len() as u16 {
 		return HttpResponse::BadRequest().body("Page not found");
@@ -107,7 +149,7 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 
 	let selected_page = selected_page.unwrap();
 
-	let image = reqwest::get(selected_page).await.unwrap().bytes().await.unwrap();
+	let image = isahc::get(selected_page).unwrap().bytes().unwrap();
 
 	HttpResponse::Ok().body(image)
 }

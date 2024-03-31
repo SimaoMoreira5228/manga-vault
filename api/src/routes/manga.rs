@@ -4,7 +4,7 @@ use actix_web::{get, web, HttpResponse, Responder};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 
-use crate::entities::prelude::{Chapters, Mangas};
+use crate::entities::prelude::{Chapters, Mangas, Temp};
 
 #[derive(Deserialize, Serialize)]
 struct MangaInfoResponse {
@@ -149,6 +149,13 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 	let (title, scrapper, page) = params.into_inner();
 
 	let scrapper_type = scrappers::get_scrapper_type(&scrapper);
+
+	let scrapper_type = if scrapper_type.is_err() {
+		return HttpResponse::BadRequest().body("Invalid scrapper");
+	} else {
+		scrapper_type.unwrap()
+	};
+
 	let mangas = scrappers::Scrapper::new(&scrapper_type)
 		.scrape_search(title.as_str(), page)
 		.await;
@@ -210,7 +217,7 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 	HttpResponse::Ok().json(response)
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct ScrapeMangaPageResponse {
 	title: String,
 	url: String,
@@ -235,66 +242,99 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 		return HttpResponse::BadRequest().body("Manga not found");
 	}
 
-	let scrapper_type = scrappers::get_scrapper_type(&db_manga.as_ref().unwrap().scrapper);
-	let scrapper = scrappers::Scrapper::new(&scrapper_type);
+	let cached = Temp::find()
+		.filter(crate::entities::temp::Column::Key.eq(format!("manga_{}", db_manga.as_ref().unwrap().id)))
+		.one(db.get_ref())
+		.await
+		.unwrap();
 
-	let manga = scrapper.scrape_manga(&db_manga.as_ref().unwrap().url).await;
+	let mut response: ScrapeMangaPageResponse;
 
-	if manga.is_err() {
-		return HttpResponse::BadRequest().body("Error scraping manga");
-	}
+	if cached.is_none() {
+		let scrapper_type = scrappers::get_scrapper_type(&db_manga.as_ref().unwrap().scrapper);
 
-	let manga = manga.unwrap();
+		let scrapper_type = if scrapper_type.is_err() {
+			return HttpResponse::BadRequest().body("Invalid scrapper");
+		} else {
+			scrapper_type.unwrap()
+		};
 
-	let mut response = ScrapeMangaPageResponse {
-		title: manga.title,
-		url: manga.url,
-		img_url: manga.img_url,
-		alternative_names: manga.alternative_names,
-		authors: manga.authors,
-		artists: manga.artists,
-		status: manga.status,
-		manga_type: manga.r#type,
-		release_date: manga.release_date,
-		description: manga.description,
-		genres: manga.genres,
-		chapters: vec![],
-	};
+		let scrapper = scrappers::Scrapper::new(&scrapper_type);
 
-	for chapter in manga.chapters {
-		let db_chapter: Option<crate::entities::chapters::Model> = Chapters::find()
-			.filter(crate::entities::chapters::Column::MangaId.eq(db_manga.as_ref().unwrap().id))
-			.filter(crate::entities::chapters::Column::Url.eq(&chapter.url))
-			.one(db.get_ref())
-			.await
-			.unwrap();
+		let manga = scrapper.scrape_manga(&db_manga.as_ref().unwrap().url).await;
 
-		if db_chapter.is_none() {
-			let chapter_active_model = crate::entities::chapters::ActiveModel {
-				title: Set(chapter.title.clone()),
-				url: Set(chapter.url.clone()),
-				manga_id: Set(db_manga.as_ref().unwrap().id),
-				created_at: Set(chrono::Utc::now().naive_utc().to_string()),
-				updated_at: Set(chrono::Utc::now().naive_utc().to_string()),
-				..Default::default()
-			};
+		if manga.is_err() {
+			return HttpResponse::BadRequest().body("Error scraping manga");
+		}
 
-			let insert_result = chapter_active_model.insert(db.get_ref()).await;
+		let manga = manga.unwrap();
 
-			if insert_result.is_err() {
-				println!("Error inserting chapter: {:?}", insert_result.err());
-			} else {
-				let db_chapter: crate::entities::chapters::Model = insert_result.unwrap();
+		response = ScrapeMangaPageResponse {
+			title: manga.title,
+			url: manga.url,
+			img_url: manga.img_url,
+			alternative_names: manga.alternative_names,
+			authors: manga.authors,
+			artists: manga.artists,
+			status: manga.status,
+			manga_type: manga.r#type,
+			release_date: manga.release_date,
+			description: manga.description,
+			genres: manga.genres,
+			chapters: vec![],
+		};
+
+		for chapter in manga.chapters {
+			let db_chapter: Option<crate::entities::chapters::Model> = Chapters::find()
+				.filter(crate::entities::chapters::Column::MangaId.eq(db_manga.as_ref().unwrap().id))
+				.filter(crate::entities::chapters::Column::Url.eq(&chapter.url))
+				.one(db.get_ref())
+				.await
+				.unwrap();
+
+			if db_chapter.is_none() {
+				let chapter_active_model = crate::entities::chapters::ActiveModel {
+					title: Set(chapter.title.clone()),
+					url: Set(chapter.url.clone()),
+					manga_id: Set(db_manga.as_ref().unwrap().id),
+					created_at: Set(chrono::Utc::now().naive_utc().to_string()),
+					updated_at: Set(chrono::Utc::now().naive_utc().to_string()),
+					..Default::default()
+				};
+
+				let insert_result = chapter_active_model.insert(db.get_ref()).await;
+
+				if insert_result.is_err() {
+					println!("Error inserting chapter: {:?}", insert_result.err());
+				} else {
+					let db_chapter: crate::entities::chapters::Model = insert_result.unwrap();
+
+					response.chapters.push(db_chapter);
+				}
+			}
+
+			if db_chapter.is_some() {
+				let db_chapter = db_chapter.unwrap();
 
 				response.chapters.push(db_chapter);
 			}
 		}
 
-		if db_chapter.is_some() {
-			let db_chapter = db_chapter.unwrap();
+		let manga_to_temp = crate::entities::temp::ActiveModel {
+			key: Set(format!("manga_{}", db_manga.as_ref().unwrap().id)),
+			value: Set(serde_json::to_string(&response).unwrap()),
+			created_at: Set(chrono::Utc::now().naive_utc().to_string()),
+			..Default::default()
+		};
 
-			response.chapters.push(db_chapter);
+		let insert = manga_to_temp.insert(db.get_ref()).await;
+
+		if insert.is_err() {
+			return HttpResponse::BadRequest().body("Error saving manga to temp");
 		}
+	} else {
+		let cached = cached.unwrap();
+		response = serde_json::from_str(&cached.value).unwrap();
 	}
 
 	HttpResponse::Ok().json(response)

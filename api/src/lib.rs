@@ -10,6 +10,9 @@ use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use actix_web_httpauth::middleware::HttpAuthentication;
 use config::Config;
+use connection::Connection;
+use entities::prelude::Temp;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use tokio::sync::Mutex;
 
 use crate::routes::auth::validate_token;
@@ -19,8 +22,29 @@ lazy_static::lazy_static! {
 	static ref SECRET_JWT: String = CONFIG.secret_jwt.clone();
 }
 
+async fn cleanup_old_rows(db: &Connection) -> Result<(), sea_orm::DbErr> {
+	// Calculate the timestamp 2 hours ago
+	let two_hours_ago = chrono::Utc::now() - chrono::Duration::hours(2);
+
+	// Delete rows older than 2 hours
+	Temp::delete_many()
+		.filter(crate::entities::temp::Column::CreatedAt.lt(two_hours_ago))
+		.exec(db)
+		.await?;
+
+	Ok(())
+}
+
 pub async fn run() -> std::io::Result<()> {
 	let db = connection::Database::new(&CONFIG).await.unwrap();
+	let cleanup_db = db.conn.clone();
+
+	tokio::spawn(async move {
+		loop {
+			cleanup_old_rows(&cleanup_db).await.unwrap();
+			tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+		}
+	});
 
 	tokio::spawn(starters::websocket::start(Arc::new(Mutex::new(db.conn.clone()))));
 	tokio::spawn(starters::website::start());
