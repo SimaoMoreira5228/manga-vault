@@ -50,6 +50,23 @@ pub async fn sync_favorite_mangas_from_category(
 
 	for favorite_manga in favorite_mangas {
 		let scrapper_type = scrappers::get_scrapper_type(&favorite_manga.scrapper);
+
+		let scrapper_type = if scrapper_type.is_err() {
+			return write
+				.send(Message::Binary(
+					serde_json::to_vec(&SyncFavoriteMangasResponse {
+						msg_type: "sync-all".to_string(),
+						content: None,
+						error: Some("Invalid scrapper".to_string()),
+					})
+					.unwrap(),
+				))
+				.await
+				.unwrap();
+		} else {
+			scrapper_type.unwrap()
+		};
+
 		let scrapper = scrappers::Scrapper::new(&scrapper_type);
 		let manga_page = scrapper.scrape_manga(&favorite_manga.url).await;
 
