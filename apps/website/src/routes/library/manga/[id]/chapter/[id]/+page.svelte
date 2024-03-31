@@ -10,7 +10,6 @@
 		menuString
 	} from '$lib/customLucideSVGs';
 	import { MenuIcon } from 'lucide-svelte';
-	import { toast } from 'svelte-sonner';
 	import { Button } from '$lib/components/ui/button';
 
 	export let data: PageData;
@@ -34,8 +33,18 @@
 	let isSidebarShown = true;
 	let isHeaderShown = true;
 
+	for (let i = 1; i < data.chapter.chapter_info.pages; i++) {
+		pages.push(`/library/manga/${chapter.manga_id}/chapter/${chapter.chapter_id}/page/${i}`);
+	}
+
 	onMount(async () => {
 		margin = localStorage.getItem('margin') ? parseInt(localStorage.getItem('margin') || '0') : 0;
+
+		const imagesDiv = document.getElementById('images');
+		if (imagesDiv) {
+			imagesDiv.style.paddingLeft = `${margin}%`;
+			imagesDiv.style.paddingRight = `${margin}%`;
+		}
 
 		sideBar = document.getElementById('sidebar');
 		header = document.getElementById('header');
@@ -86,7 +95,6 @@
 				margin = parseInt(marginInput.value);
 				marginLabel.innerText = `Margin: ${margin}%`;
 				localStorage.setItem('margin', margin.toString());
-				let imagesDiv = document.getElementById('images');
 				if (imagesDiv) {
 					imagesDiv.style.paddingLeft = `${margin}%`;
 					imagesDiv.style.paddingRight = `${margin}%`;
@@ -109,30 +117,6 @@
 				});
 				otherControls.appendChild(previousChapterButton);
 			}
-		}
-
-		try {
-			isLoading = true;
-
-			pages = await fetch(`/library/manga/${chapter.manga_id}/chapter/${chapter.chapter_id}`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(chapter)
-			}).then((res) => res.json());
-		} catch (error) {
-			toast('❌ An error occurred while fetching the chapter');
-		} finally {
-			isLoading = false;
-
-			setTimeout(() => {
-				const imagesDiv = document.getElementById('images');
-				if (imagesDiv) {
-					imagesDiv.style.paddingLeft = `${margin}%`;
-					imagesDiv.style.paddingRight = `${margin}%`;
-				}
-			}, 200);
 		}
 
 		const imagesContainer = document.getElementById('imagesCotainer');
@@ -238,14 +222,10 @@
 			<Spinner class="h-12 w-12 text-blue-400" />
 		{:else if pages.length === 0 && !isLoading}
 			<p class="text-2xl font-bold">No pages found</p>
-		{:else if pages.length > 0}
-			<div class="flex h-full w-full flex-col" id="images">
+		{:else if pages.length}
+			<div class="flex h-full w-full flex-col mx-[{margin}%]" id="images">
 				{#each pages as page, i}
-					{#if page === ''}
-						<p>Page {i + 1} was not found</p>
-					{:else}
-						<img src={page} alt={`Page ${i + 1}`} class="object-contain" />
-					{/if}
+					<img src={page} alt={`Page ${i + 1} Not Found`} class="object-contain" />
 				{/each}
 			</div>
 		{/if}

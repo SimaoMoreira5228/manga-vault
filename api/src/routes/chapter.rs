@@ -105,10 +105,11 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 		return HttpResponse::BadRequest().body("Page not found");
 	}
 
-	// TODO: Think about a way to n make the users fetch the image directly from the
-	// scrapper instead of the server
+	let selected_page = selected_page.unwrap();
 
-	HttpResponse::Ok().body(selected_page.unwrap().clone())
+	let image = reqwest::get(selected_page).await.unwrap().bytes().await.unwrap();
+
+	HttpResponse::Ok().body(image)
 }
 
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
