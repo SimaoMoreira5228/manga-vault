@@ -35,3 +35,4 @@ sea-orm = { version = "0.12", features = [
   "with-uuid",
 ] }
 zip = "0.6"
+isahc = "1.7"

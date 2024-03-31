@@ -5,7 +5,7 @@ use scraper::ElementRef;
 use serde::Serialize;
 use tokio::io::AsyncWriteExt;
 
-// mod manganato;
+mod manga_dex;
 mod mangaread_org;
 
 #[derive(Debug, Serialize)]
@@ -34,7 +34,7 @@ impl Scrapper {
 	pub fn new(r#type: &ScrapperType) -> Box<dyn ScrapperTraits + Send> {
 		match r#type {
 			ScrapperType::MangareadOrg => Box::new(mangaread_org::MangaReadOrgScrapper::new()),
-			// ScrapperType::Manganato => Box::new(manganato::ManganatoScrapper::new()),
+			ScrapperType::MangaDex => Box::new(manga_dex::MangaDexScrapper::new()),
 		}
 	}
 }
@@ -61,26 +61,26 @@ impl Scrapper {
 #[derive(Debug, Serialize)]
 pub enum ScrapperType {
 	MangareadOrg,
-	// Manganato,
+	MangaDex,
 }
 
-pub fn get_scrapper_type(scrapper: &str) -> ScrapperType {
+pub fn get_scrapper_type(scrapper: &str) -> Result<ScrapperType, ()> {
 	match scrapper {
-		"mangaread_org" => ScrapperType::MangareadOrg,
-		// "manganato" => ScrapperType::Manganato,
-		_ => ScrapperType::MangareadOrg,
+		"mangaread_org" => Ok(ScrapperType::MangareadOrg),
+		"manga_dex" => Ok(ScrapperType::MangaDex),
+		_ => Err(()),
 	}
 }
 
 pub fn get_scrapper_type_str(scrapper: &ScrapperType) -> &str {
 	match scrapper {
 		ScrapperType::MangareadOrg => "mangaread_org",
-		// ScrapperType::Manganato => "manganato",
+		ScrapperType::MangaDex => "manga_dex",
 	}
 }
 
 pub fn get_all_scrapper_types() -> Vec<ScrapperType> {
-	vec![ScrapperType::MangareadOrg, /* ScrapperType::Manganato */]
+	vec![ScrapperType::MangareadOrg, ScrapperType::MangaDex]
 }
 
 #[derive(Debug, Serialize)]
