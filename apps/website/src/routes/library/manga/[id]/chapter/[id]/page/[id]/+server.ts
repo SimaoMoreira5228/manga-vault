@@ -21,7 +21,8 @@ export const GET: RequestHandler = async ({ request, cookies }) => {
 
 		return new Response(resp, {
 			headers: {
-				'Content-Type': 'image/*'
+				'Content-Type': 'image/*',
+				'Cache-Control': `public, max-age=${10 * 60}`
 			}
 		});
 	} catch (e) {
