@@ -16,7 +16,7 @@
 </script>
 
 <div class="flex h-full w-full flex-col overflow-y-hidden">
-	<header class="bg-input flex w-full flex-row justify-between p-2" id="header">
+	<header class="flex w-full flex-row justify-between bg-input p-2" id="header">
 		<!-- svelte-ignore a11y-missing-content -->
 		<div class="flex flex-row items-center justify-center gap-4">
 			<div id="controls" class="flex flex-row items-center justify-center gap-2"></div>
@@ -26,13 +26,13 @@
 			<div id="otherControls" class="flex flex-row items-center justify-center gap-2"></div>
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
-					<Avatar.Root class="bg-background h-12 w-12 rounded-full">
+					<Avatar.Root class="h-12 w-12 rounded-full bg-background">
 						<Avatar.Image
 							src={`/image/${data.user.image_id}`}
 							alt=""
 							class="h-full w-full object-cover"
 						/>
-						<Avatar.Fallback class="bg-background h-full w-full rounded-lg">
+						<Avatar.Fallback class="h-full w-full rounded-lg bg-background">
 							{smallName(data.user.username)}
 						</Avatar.Fallback>
 					</Avatar.Root>
@@ -61,22 +61,22 @@
 		</div>
 	</header>
 	<div class="flex h-full justify-start">
-		<div class="bg-input flex h-full flex-col items-start justify-start" id="sidebar">
+		<div class="flex h-full flex-col items-start justify-start bg-input" id="sidebar">
 			<a
 				href="/library"
-				class="hover:bg-background p-4 {isLibrary ? 'bg-background hover:bg-input' : ''}"
+				class="p-4 hover:bg-background {isLibrary ? 'bg-background hover:bg-input' : ''}"
 			>
 				<BookMarked />
 			</a>
 			<a
 				href="/library/sources"
-				class="hover:bg-background p-4 {isLibrarySources ? 'bg-background hover:bg-input' : ''}"
+				class="p-4 hover:bg-background {isLibrarySources ? 'bg-background hover:bg-input' : ''}"
 			>
 				<FolderClosed />
 			</a>
 			<a
 				href="/library/search"
-				class="hover:bg-background p-4 {isLibrarySearch ? 'bg-background hover:bg-input' : ''}"
+				class="p-4 hover:bg-background {isLibrarySearch ? 'bg-background hover:bg-input' : ''}"
 			>
 				<Search />
 			</a>

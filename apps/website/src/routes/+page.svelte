@@ -23,9 +23,9 @@
 	{/each}
 	<a href="/users/new" class="flex flex-col items-center justify-center">
 		<div
-			class="border-primary flex flex-col items-center justify-center rounded-lg border border-dashed"
+			class="flex flex-col items-center justify-center rounded-lg border border-dashed border-primary"
 		>
-			<PlusIcon class="text-primary h-32 w-32" />
+			<PlusIcon class="h-32 w-32 text-primary" />
 		</div>
 		<p class="text-gray-500">New User</p>
 	</a>

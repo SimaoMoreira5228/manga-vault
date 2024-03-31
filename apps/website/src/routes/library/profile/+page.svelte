@@ -63,20 +63,20 @@
 
 <div class="flex h-full w-full flex-col items-center justify-start gap-4">
 	<div class="relative h-64 w-64">
-		<Avatar.Root class="bg-background h-full w-full rounded-full">
+		<Avatar.Root class="h-full w-full rounded-full bg-background">
 			{#if loadingAvatar}
 				<div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-10">
-					<Spinner class="text-primary h-12 w-12" />
+					<Spinner class="h-12 w-12 text-primary" />
 				</div>
 			{:else}
 				<Avatar.Image src={`/image/${image_id}`} alt="" class="h-full w-full object-cover" />
-				<Avatar.Fallback class="bg-input h-full w-full rounded-lg">
+				<Avatar.Fallback class="h-full w-full rounded-lg bg-input">
 					{smallName(data.user.username)}
 				</Avatar.Fallback>
 			{/if}
 		</Avatar.Root>
-		<Label for="picture" class="bg-secondary absolute bottom-5 right-5 z-20 h-6 w-6 rounded">
-			<ImagePlusIcon class="text-primary h-6 w-6" />
+		<Label for="picture" class="absolute bottom-5 right-5 z-20 h-6 w-6 rounded bg-secondary">
+			<ImagePlusIcon class="h-6 w-6 text-primary" />
 		</Label>
 		<Input
 			id="picture"
