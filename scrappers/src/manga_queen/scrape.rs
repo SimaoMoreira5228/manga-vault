@@ -332,18 +332,34 @@ impl ScrapperTraits for MangaQueenScrapper {
 			.trim()
 			.to_string();
 
-		let chapters_selector = scraper::Selector::parse("li.wp-manga-chapter a").unwrap();
-		let chapters = html
-			.select(&chapters_selector)
-			.map(|chapter| {
-				let title = chapter.text().collect::<Vec<_>>().join(" ").trim().to_string();
-				let url = chapter.value().attr("href").unwrap();
-				Chapter {
-					title,
-					url: url.to_string(),
-				}
+		let chapters_selector = scraper::Selector::parse("li.wp-manga-chapter").unwrap();
+		let mut chapters: Vec<Chapter> = Vec::new();
+		html.select(&chapters_selector).for_each(|chapter| {
+			let info_selector = chapter.select(&scraper::Selector::parse("a").unwrap()).next().unwrap();
+
+			let title = info_selector.inner_html().trim().to_string();
+
+			if title == "<!-- -->" {
+				return;
+			}
+
+			let date_selector = chapter.select(&scraper::Selector::parse("span i").unwrap()).next();
+
+			let date: String;
+
+			if date_selector.is_none() {
+				date = "New".to_string();
+			} else {
+				date = date_selector.unwrap().inner_html().trim().to_string();
+			}
+
+			let url = info_selector.value().attr("href").unwrap();
+			chapters.push(Chapter {
+				title,
+				url: url.to_string(),
+				date,
 			})
-			.collect::<Vec<Chapter>>();
+		});
 
 		Ok(MangaPage {
 			title,

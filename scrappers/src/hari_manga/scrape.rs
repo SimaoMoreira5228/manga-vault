@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use super::MangaReadOrgScrapper;
+use super::HariMangaScrapper;
 use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
 
 #[async_trait]
-impl ScrapperTraits for MangaReadOrgScrapper {
+impl ScrapperTraits for HariMangaScrapper {
 	async fn get_cookies(&self) -> Result<String, reqwest::Error> {
 		Ok("".to_string())
 	}
@@ -28,10 +28,7 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 	}
 
 	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
-		let url = format!(
-			"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=latest&paged={}",
-			page
-		);
+		let url = format!("https://harimanga.com/?s&post_type=wp-manga&m_orderby=latest&paged={}", page);
 		let res = reqwest::get(url).await?;
 		let body = res.text().await?;
 
@@ -88,7 +85,7 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 
 	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
 		let url = format!(
-			"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=trending&paged={}",
+			"https://harimanga.com/?s&post_type=wp-manga&m_orderby=trending&paged={}",
 			page
 		);
 		let res = reqwest::get(url).await?;
@@ -136,7 +133,7 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 
 	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
 		let url = format!(
-			"https://www.mangaread.org/?s={}&post_type=wp-manga&op=&author=&artist=&release=&adult=&paged={}",
+			"https://harimanga.com/?s={}&post_type=wp-manga&op=&author=&artist=&release=&adult=&paged={}",
 			query, page
 		);
 		let res = reqwest::get(url).await?;
@@ -381,13 +378,12 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 	}
 
 	async fn scrape_genres_list(&self) -> Result<Vec<Genre>, reqwest::Error> {
-		let url = "https://www.mangaread.org/";
+		let url = "https://harimanga.com/";
 		let res = reqwest::get(url).await?;
 		let body = res.text().await?;
 
 		let html = scraper::Html::parse_document(&body);
-		// search for the id menu-item-72 and then a ul with the genres
-		let genres_selector = scraper::Selector::parse("li.menu-item-72 ul.sub-menu li a").unwrap();
+		let genres_selector = scraper::Selector::parse("li.menu-item-object-wp-manga-genre a").unwrap();
 		let genres = html
 			.select(&genres_selector)
 			.map(|genre| {
@@ -406,12 +402,12 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 	async fn get_info(&self) -> Result<crate::ScrapperInfo, reqwest::Error> {
 		Ok(crate::ScrapperInfo {
 			id: self.get_scrapper_type(),
-			name: "Mangaread.org".to_string(),
-			img_url: "https://www.mangaread.org/wp-content/uploads/2017/10/log1.png".to_string(),
+			name: "Hari Manga".to_string(),
+			img_url: "https://harimanga.com/wp-content/uploads/2021/08/logo_web_hari.png".to_string(),
 		})
 	}
 
 	fn get_scrapper_type(&self) -> ScrapperType {
-		ScrapperType::MangareadOrg
+		ScrapperType::HariManga
 	}
 }

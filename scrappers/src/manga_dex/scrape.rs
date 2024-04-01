@@ -436,6 +436,7 @@ impl ScrapperTraits for MangaDexScrapper {
 
 			data.iter().for_each(|chapter| {
 				let title = chapter["attributes"]["chapter"].as_str().unwrap().to_string();
+				let date = chapter["attributes"]["readableAt"].as_str().unwrap().to_string();
 
 				let translated_language = chapter["attributes"]["translatedLanguage"].as_str().unwrap();
 
@@ -449,7 +450,7 @@ impl ScrapperTraits for MangaDexScrapper {
 
 				let url = format!("https://mangadex.org/chapter/{}", chapter["id"].as_str().unwrap());
 
-				chapters.push(Chapter { title, url });
+				chapters.push(Chapter { title, url, date });
 			});
 		}
 
@@ -477,7 +478,7 @@ impl ScrapperTraits for MangaDexScrapper {
 		Ok(crate::ScrapperInfo {
 			id: ScrapperType::MangaDex,
 			name: "MangaDex".to_string(),
-			img_url: "https://mangadex.org/img/brand/mangadex-logo.svg".to_string(),
+			img_url: "https://mangadex.org/pwa/icons/icon-180.png".to_string(),
 		})
 	}
 

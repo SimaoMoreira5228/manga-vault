@@ -8,12 +8,14 @@ use tokio::io::AsyncWriteExt;
 mod manga_dex;
 mod mangaread_org;
 mod manga_queen;
+mod hari_manga;
 
 #[derive(Debug, Serialize)]
 pub enum ScrapperType {
 	MangareadOrg,
 	MangaDex,
 	MangaQueen,
+	HariManga,
 }
 
 #[async_trait]
@@ -37,6 +39,7 @@ impl Scrapper {
 			ScrapperType::MangareadOrg => Box::new(mangaread_org::MangaReadOrgScrapper::new()),
 			ScrapperType::MangaDex => Box::new(manga_dex::MangaDexScrapper::new()),
 			ScrapperType::MangaQueen => Box::new(manga_queen::MangaQueenScrapper::new()),
+			ScrapperType::HariManga => Box::new(hari_manga::HariMangaScrapper::new()),
 		}
 	}
 }
@@ -65,6 +68,7 @@ pub fn get_scrapper_type(scrapper: &str) -> Result<ScrapperType, ()> {
 		"mangaread_org" => Ok(ScrapperType::MangareadOrg),
 		"manga_dex" => Ok(ScrapperType::MangaDex),
 		"manga_queen" => Ok(ScrapperType::MangaQueen),
+		"hari_manga" => Ok(ScrapperType::HariManga),
 		_ => Err(()),
 	}
 }
@@ -74,11 +78,12 @@ pub fn get_scrapper_type_str(scrapper: &ScrapperType) -> &str {
 		ScrapperType::MangareadOrg => "mangaread_org",
 		ScrapperType::MangaDex => "manga_dex",
 		ScrapperType::MangaQueen => "manga_queen",
+		ScrapperType::HariManga => "hari_manga",
 	}
 }
 
 pub fn get_all_scrapper_types() -> Vec<ScrapperType> {
-	vec![ScrapperType::MangareadOrg, ScrapperType::MangaDex, ScrapperType::MangaQueen]
+	vec![ScrapperType::MangareadOrg, ScrapperType::MangaDex, ScrapperType::MangaQueen, ScrapperType::HariManga]
 }
 
 #[derive(Debug, Serialize)]
@@ -108,6 +113,7 @@ pub struct MangaPage {
 pub struct Chapter {
 	pub title: String,
 	pub url: String,
+	pub date: String,
 }
 
 #[derive(Debug, Serialize)]
