@@ -5,10 +5,10 @@ use scraper::ElementRef;
 use serde::Serialize;
 use tokio::io::AsyncWriteExt;
 
-mod manga_dex;
-mod mangaread_org;
-mod manga_queen;
 mod hari_manga;
+mod manga_dex;
+mod manga_queen;
+mod mangaread_org;
 
 #[derive(Debug, Serialize)]
 pub enum ScrapperType {
@@ -83,7 +83,12 @@ pub fn get_scrapper_type_str(scrapper: &ScrapperType) -> &str {
 }
 
 pub fn get_all_scrapper_types() -> Vec<ScrapperType> {
-	vec![ScrapperType::MangareadOrg, ScrapperType::MangaDex, ScrapperType::MangaQueen, ScrapperType::HariManga]
+	vec![
+		ScrapperType::MangareadOrg,
+		ScrapperType::MangaDex,
+		ScrapperType::MangaQueen,
+		ScrapperType::HariManga,
+	]
 }
 
 #[derive(Debug, Serialize)]
@@ -131,18 +136,16 @@ pub struct ScrapperInfo {
 
 fn get_image_url(&element: &ElementRef) -> String {
 	let attrs = element.value().attrs().collect::<HashMap<&str, &str>>();
-	let img_url: &str;
-	if attrs.get("src").is_some() {
-		img_url = attrs.get("src").unwrap();
-	} else if attrs.get("data-src").is_some() {
-		img_url = attrs.get("data-src").unwrap();
-	} else if attrs.get("data-cfsrc").is_some() {
-		img_url = attrs.get("data-cfsrc").unwrap();
-	} else if attrs.get("data-lazy-src").is_some() {
-		img_url = attrs.get("data-lazy-src").unwrap();
-	} else {
-		img_url = "";
-	}
 
-	img_url.to_string()
+	if attrs.get("data-src").is_some() {
+		return attrs.get("data-src").unwrap().to_string();
+	} else if attrs.get("src").is_some() {
+		return attrs.get("src").unwrap().to_string();
+	} else if attrs.get("data-cfsrc").is_some() {
+		return attrs.get("data-cfsrc").unwrap().to_string();
+	} else if attrs.get("data-lazy-src").is_some() {
+		return attrs.get("data-lazy-src").unwrap().to_string();
+	} else {
+		return "".to_string();
+	}
 }
