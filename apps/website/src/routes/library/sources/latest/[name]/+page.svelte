@@ -83,7 +83,7 @@
 					</Tooltip.Root>
 					<img
 						class="h-full w-full rounded-md object-cover"
-						src={mangaItem.img_url.toString()}
+						src={`/image/external/${btoa(mangaItem.img_url)}`}
 						alt=""
 					/>
 				</div>

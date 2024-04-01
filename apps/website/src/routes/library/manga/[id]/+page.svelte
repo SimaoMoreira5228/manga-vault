@@ -216,7 +216,7 @@
 {:else if mangaPage.id}
 	<div class="flex h-full w-full flex-col justify-between gap-12 md:flex-row">
 		<div class="flex h-[95%] w-full flex-col items-start gap-2 overflow-y-auto md:w-2/3">
-			<img src={mangaPage.img_url} alt="" class="w-1/3 object-contain" />
+			<img src={`/image/external/${btoa(mangaPage.img_url)}`} alt="" class="w-1/3 object-contain" />
 			<div class="felx-col flex items-center justify-center gap-2">
 				<h1 class="text-2xl font-bold">
 					{mangaPage.title}

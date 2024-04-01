@@ -289,7 +289,7 @@
 						</Tooltip.Root>
 						<img
 							class="h-full w-full rounded-md object-cover"
-							src={favorite.img_url.toString()}
+							src={`/image/external/${btoa(favorite.img_url.toString())}`}
 							alt=""
 						/>
 					</div>

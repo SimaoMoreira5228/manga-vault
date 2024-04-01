@@ -16,9 +16,9 @@
 
 <div class="flex h-full w-full flex-col justify-start gap-4">
 	{#each data.scrappers as scrapper}
-		<div class="flex w-full flex-row justify-between bg-input p-4 shadow-xl">
+		<div class="bg-input flex w-full flex-row justify-between p-4 shadow-xl">
 			<div class="flex flex-row items-center gap-4">
-				<img src={scrapper.img_url} alt="" class="h-8 md:h-12" />
+				<img src={`/image/external/${btoa(scrapper.img_url)}`} alt="" class="h-8 md:h-12" />
 				<h1 class="hidden text-lg font-medium text-blue-400 md:block">{scrapper.name}</h1>
 			</div>
 			<div class="flex flex-col items-end justify-center gap-1 md:flex-row">
