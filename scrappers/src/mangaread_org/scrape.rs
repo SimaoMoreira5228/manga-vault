@@ -20,7 +20,7 @@ impl ScrapperTraits for MangaReadOrgScrapper {
 		let mut imgs: Vec<String> = Vec::new();
 
 		for img in html.select(&img_selector) {
-			let img_url = get_image_url(&img).to_string();
+			let img_url = get_image_url(&img).trim().to_string();
 			imgs.push(img_url);
 		}
 
