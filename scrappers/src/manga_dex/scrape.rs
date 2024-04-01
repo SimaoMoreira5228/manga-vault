@@ -17,23 +17,26 @@ impl ScrapperTraits for MangaDexScrapper {
 		let resp: Result<Value, serde_json::Error>;
 
 		if page == 1 {
-			resp =
-        isahc::get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art")
-            .unwrap()
-            .text()
-            .unwrap()
-            .parse();
+			let isahc_resp =
+        isahc::get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art");
+
+			if isahc_resp.is_err() {
+				return Ok(manga_items);
+			}
+
+			resp = isahc_resp.unwrap().text().unwrap().parse();
 		} else {
-			resp =
-        isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10))
-            .unwrap()
-            .text()
-            .unwrap()
-            .parse();
+			let isahc_resp =
+        isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10));
+
+			if isahc_resp.is_err() {
+				return Ok(manga_items);
+			}
+
+			resp = isahc_resp.unwrap().text().unwrap().parse();
 		}
 
 		if resp.is_err() {
-			println!("Error: {:?}", resp.err().unwrap());
 			return Ok(manga_items);
 		}
 
@@ -83,23 +86,26 @@ impl ScrapperTraits for MangaDexScrapper {
 		let resp: Result<Value, serde_json::Error>;
 
 		if page == 1 {
-			resp =
-        isahc::get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art")
-            .unwrap()
-            .text()
-            .unwrap()
-            .parse();
+			let isahc_resp =
+        isahc::get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art");
+
+			if isahc_resp.is_err() {
+				return Ok(manga_items);
+			}
+
+			resp = isahc_resp.unwrap().text().unwrap().parse();
 		} else {
-			resp =
-        isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art", page * 10))
-            .unwrap()
-            .text()
-            .unwrap()
-            .parse();
+			let isahc_resp =
+        isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art", page * 10));
+
+			if isahc_resp.is_err() {
+				return Ok(manga_items);
+			}
+
+			resp = isahc_resp.unwrap().text().unwrap().parse();
 		}
 
 		if resp.is_err() {
-			println!("Error: {:?}", resp.err().unwrap());
 			return Ok(manga_items);
 		}
 
@@ -150,23 +156,26 @@ impl ScrapperTraits for MangaDexScrapper {
 		let resp: Result<Value, serde_json::Error>;
 
 		if page == 1 {
-			resp =
-        isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset=0&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", title))
-            .unwrap()
-            .text()
-            .unwrap()
-            .parse();
+			let isahc_resp =
+        isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset=0&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", title));
+
+			if isahc_resp.is_err() {
+				return Ok(manga_items);
+			}
+
+			resp = isahc_resp.unwrap().text().unwrap().parse();
 		} else {
-			resp =
-        isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10, title))
-            .unwrap()
-            .text()
-            .unwrap()
-            .parse();
+			let isahc_resp =
+        isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10, title));
+
+			if isahc_resp.is_err() {
+				return Ok(manga_items);
+			}
+
+			resp = isahc_resp.unwrap().text().unwrap().parse();
 		}
 
 		if resp.is_err() {
-			println!("Error: {:?}", resp.err().unwrap());
 			return Ok(manga_items);
 		}
 
@@ -212,17 +221,20 @@ impl ScrapperTraits for MangaDexScrapper {
 	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>, reqwest::Error> {
 		let chapter_id = url.split("/").last().unwrap();
 
-		let resp: Result<Value, serde_json::Error> = isahc::get(format!(
+		let resp: Result<Value, serde_json::Error>;
+
+		let isahc_resp = isahc::get(format!(
 			"https://api.mangadex.org/at-home/server/{}?forcePort443=false",
 			chapter_id
-		))
-		.unwrap()
-		.text()
-		.unwrap()
-		.parse();
+		));
+
+		if isahc_resp.is_err() {
+			return Ok(vec![]);
+		}
+
+		resp = isahc_resp.unwrap().text().unwrap().parse();
 
 		if resp.is_err() {
-			println!("Error: {:?}", resp.err().unwrap());
 			return Ok(vec![]);
 		}
 
@@ -252,15 +264,29 @@ impl ScrapperTraits for MangaDexScrapper {
 	async fn scrape_manga(&self, url: &str) -> Result<MangaPage, reqwest::Error> {
 		let manga_id = url.split("/").last().unwrap();
 
-		let resp: Result<Value, serde_json::Error> =
-    isahc::get(format!("https://api.mangadex.org/manga/{}?includes%5B%5D=manga&includes%5B%5D=cover_art&includes%5B%5D=author&includes%5B%5D=artist&includes%5B%5D=tag", manga_id))
-        .unwrap()
-        .text()
-        .unwrap()
-        .parse();
+		let resp: Result<Value, serde_json::Error>;
+		let isahc_resp = isahc::get(format!("https://api.mangadex.org/manga/{}?includes%5B%5D=manga&includes%5B%5D=cover_art&includes%5B%5D=author&includes%5B%5D=artist&includes%5B%5D=tag", manga_id));
+
+		if isahc_resp.is_err() {
+			return Ok(MangaPage {
+				title: "".to_string(),
+				url: "".to_string(),
+				img_url: "".to_string(),
+				alternative_names: vec![],
+				authors: vec![],
+				artists: None,
+				status: "".to_string(),
+				r#type: None,
+				release_date: None,
+				description: "".to_string(),
+				genres: vec![],
+				chapters: vec![],
+			});
+		}
+
+		resp = isahc_resp.unwrap().text().unwrap().parse();
 
 		if resp.is_err() {
-			println!("Error: {:?}", resp.err().unwrap());
 			return Ok(MangaPage {
 				title: "".to_string(),
 				url: "".to_string(),
@@ -369,15 +395,29 @@ impl ScrapperTraits for MangaDexScrapper {
 			})
 			.collect();
 
-		let resp: Result<Value, serde_json::Error> =
-        isahc::get(format!("https://api.mangadex.org/chapter?limit=1&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc", manga_id))
-            .unwrap()
-            .text()
-            .unwrap()
-            .parse();
+		let resp: Result<Value, serde_json::Error>;
+		let isahc_resp = isahc::get(format!("https://api.mangadex.org/chapter?limit=1&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc", manga_id));
+
+		if isahc_resp.is_err() {
+			return Ok(MangaPage {
+				title: "".to_string(),
+				url: "".to_string(),
+				img_url: "".to_string(),
+				alternative_names: vec![],
+				authors: vec![],
+				artists: None,
+				status: "".to_string(),
+				r#type: None,
+				release_date: None,
+				description: "".to_string(),
+				genres: vec![],
+				chapters: vec![],
+			});
+		}
+
+		resp = isahc_resp.unwrap().text().unwrap().parse();
 
 		if resp.is_err() {
-			println!("Error: {:?}", resp.err().unwrap());
 			return Ok(MangaPage {
 				title: "".to_string(),
 				url: "".to_string(),
@@ -405,15 +445,29 @@ impl ScrapperTraits for MangaDexScrapper {
 		let chapters_url = format!("https://api.mangadex.org/chapter?limit={}&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc",chapter_limit, manga_id);
 
 		for i in 0..call_times {
-			let resp: Result<Value, serde_json::Error> =
-				isahc::get(format!("{}&offset={}", chapters_url, i * chapter_limit))
-					.unwrap()
-					.text()
-					.unwrap()
-					.parse();
+			let resp: Result<Value, serde_json::Error>;
+			let isahc_resp = isahc::get(format!("{}&offset={}", chapters_url, i * chapter_limit));
+
+			if isahc_resp.is_err() {
+				return Ok(MangaPage {
+					title: "".to_string(),
+					url: "".to_string(),
+					img_url: "".to_string(),
+					alternative_names: vec![],
+					authors: vec![],
+					artists: None,
+					status: "".to_string(),
+					r#type: None,
+					release_date: None,
+					description: "".to_string(),
+					genres: vec![],
+					chapters: vec![],
+				});
+			}
+
+			resp = isahc_resp.unwrap().text().unwrap().parse();
 
 			if resp.is_err() {
-				println!("Error: {:?}", resp.err().unwrap());
 				return Ok(MangaPage {
 					title: "".to_string(),
 					url: "".to_string(),
