@@ -1,3 +1,5 @@
+![Image](./apps/website/static/manga-vault.jpg)
+
 ## Dependencies
 
 - node.js => v20
