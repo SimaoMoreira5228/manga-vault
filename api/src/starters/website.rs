@@ -21,7 +21,7 @@ pub async fn start() {
 		app.use(handler);
 
 		app.listen({}, () => {{
-				console.log('Website is running on port {}');
+				console.log('Website is running on port http://localhost:{}');
 		}});
 ",
 		CONFIG.website_port, CONFIG.website_port

@@ -147,11 +147,16 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 		return HttpResponse::BadRequest().body("Page not found");
 	}
 
-	let selected_page = selected_page.unwrap();
+	let selected_page = selected_page.unwrap().trim();
 
-	let image = isahc::get(selected_page).unwrap().bytes().unwrap();
+	let image = isahc::get(selected_page);
 
-	HttpResponse::Ok().body(image)
+	if image.is_err() {
+		let image = reqwest::get(selected_page).await.unwrap().bytes().await.unwrap();
+		return HttpResponse::Ok().body(image);
+	}
+
+	HttpResponse::Ok().body(image.unwrap().bytes().unwrap())
 }
 
 pub fn init_routes(cfg: &mut web::ServiceConfig) {

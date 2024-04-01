@@ -49,7 +49,7 @@ pub async fn run() -> std::io::Result<()> {
 	tokio::spawn(starters::websocket::start(Arc::new(Mutex::new(db.conn.clone()))));
 	tokio::spawn(starters::website::start());
 
-	println!("HTTP server starting on port {}", CONFIG.api_port);
+	println!("HTTP server starting on port http://localhost:{}", CONFIG.api_port);
 
 	HttpServer::new(move || {
 		App::new()
