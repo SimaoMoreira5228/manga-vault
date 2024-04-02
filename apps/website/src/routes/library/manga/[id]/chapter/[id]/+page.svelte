@@ -33,8 +33,8 @@
 	let isSidebarShown = true;
 	let isHeaderShown = true;
 
-	for (let i = 1; i < data.chapter.chapter_info.pages; i++) {
-		pages.push(`/library/manga/${chapter.manga_id}/chapter/${chapter.chapter_id}/page/${i}`);
+	for (let i = 0; i < data.chapter.chapter_info.pages; i++) {
+		pages.push(`/library/manga/${chapter.manga_id}/chapter/${chapter.chapter_id}/page/${i + 1}`);
 	}
 
 	onMount(async () => {
