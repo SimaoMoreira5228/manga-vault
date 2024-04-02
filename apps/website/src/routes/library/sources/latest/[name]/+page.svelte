@@ -6,6 +6,7 @@
 	import Spinner from '$lib/icons/spinner.svelte';
 	import { normalizeTitles } from '$lib/utils';
 	import { toast } from 'svelte-sonner';
+	import { Base64 } from 'js-base64';
 
 	let mangaItems: FavoritesMangaItem[] = [];
 	let scrapperPage = 1;
@@ -83,7 +84,7 @@
 					</Tooltip.Root>
 					<img
 						class="h-full w-full rounded-md object-cover"
-						src={`/image/external/${btoa(mangaItem.img_url)}`}
+						src={`/image/external/${Base64.encode(mangaItem.img_url, true)}`}
 						alt=""
 					/>
 				</div>

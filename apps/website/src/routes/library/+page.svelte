@@ -12,6 +12,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { refresh_ccw } from '$lib/customLucideSVGs';
 	import { spinnerString } from '$lib/icons/spinnerString';
+	import { Base64 } from 'js-base64';
 
 	export let data: PageData;
 	let slectedCategory = data.categories[0];
@@ -289,7 +290,7 @@
 						</Tooltip.Root>
 						<img
 							class="h-full w-full rounded-md object-cover"
-							src={`/image/external/${btoa(favorite.img_url.toString())}`}
+							src={`/image/external/${Base64.encode(favorite.img_url.toString(), true)}`}
 							alt=""
 						/>
 					</div>

@@ -3,13 +3,16 @@ import type { allSearchedMangaItems } from '$lib/types';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ cookies, request }) => {
+export const GET: RequestHandler = async ({ cookies, request }) => {
 	const token = cookies.get('token');
 
-	const { title } = await request.json();
+	const url = request.url.split('/');
+	const title = url[5];
+	const scrapper = url[7];
+	const page = url[9];
 
 	const mangaItems: allSearchedMangaItems[] = await api
-		.get(`api/mangas/search/${title}/all`, {
+		.get(`api/mangas/search/${title}/${scrapper}/${page}`, {
 			headers: {
 				Authorization: token
 			}

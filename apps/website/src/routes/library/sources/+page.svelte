@@ -2,6 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
+	import { Base64 } from 'js-base64';
 
 	export let data: PageData;
 
@@ -18,7 +19,7 @@
 	{#each data.scrappers as scrapper}
 		<div class="bg-input flex w-full flex-row justify-between p-4 shadow-xl">
 			<div class="flex flex-row items-center gap-4">
-				<img src={`/image/external/${btoa(scrapper.img_url)}`} alt="" class="h-8 md:h-12" />
+				<img src={`/image/external/${Base64.encode(scrapper.img_url, true)}`} alt="" class="h-8 md:h-12" />
 				<h1 class="hidden text-lg font-medium text-blue-400 md:block">{scrapper.name}</h1>
 			</div>
 			<div class="flex flex-col items-end justify-center gap-1 md:flex-row">

@@ -1,8 +1,9 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { Base64 } from 'js-base64';
 
 export const GET: RequestHandler = async ({ params }) => {
-	const url = Buffer.from(params.url, 'base64').toString('utf-8');
+	const url = Base64.decode(params.url);
 
 	try {
 		const resp = await fetch(url).then((res) => res.arrayBuffer());
