@@ -12,6 +12,8 @@ impl ScrapperTraits for MangaDexScrapper {
 	}
 
 	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
+		tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
 		let mut manga_items: Vec<MangaItem> = Vec::new();
 
 		let resp: Result<Value, serde_json::Error>;
@@ -81,6 +83,8 @@ impl ScrapperTraits for MangaDexScrapper {
 	}
 
 	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
+		tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
 		let mut manga_items: Vec<MangaItem> = Vec::new();
 
 		let resp: Result<Value, serde_json::Error>;
@@ -149,6 +153,8 @@ impl ScrapperTraits for MangaDexScrapper {
 	}
 
 	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
+		tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
 		let title = query.split(" ").collect::<Vec<&str>>().join("%20");
 
 		let mut manga_items: Vec<MangaItem> = Vec::new();
@@ -219,6 +225,8 @@ impl ScrapperTraits for MangaDexScrapper {
 	}
 
 	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>, reqwest::Error> {
+		tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
 		let chapter_id = url.split("/").last().unwrap();
 
 		let resp: Result<Value, serde_json::Error>;
@@ -262,6 +270,8 @@ impl ScrapperTraits for MangaDexScrapper {
 	}
 
 	async fn scrape_manga(&self, url: &str) -> Result<MangaPage, reqwest::Error> {
+		tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
 		let manga_id = url.split("/").last().unwrap();
 
 		let resp: Result<Value, serde_json::Error>;
@@ -445,6 +455,8 @@ impl ScrapperTraits for MangaDexScrapper {
 		let chapters_url = format!("https://api.mangadex.org/chapter?limit={}&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc",chapter_limit, manga_id);
 
 		for i in 0..call_times {
+			tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
 			let resp: Result<Value, serde_json::Error>;
 			let isahc_resp = isahc::get(format!("{}&offset={}", chapters_url, i * chapter_limit));
 
