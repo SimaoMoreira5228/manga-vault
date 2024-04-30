@@ -23,11 +23,13 @@
 	let isLoadingMoreMangaItems = false;
 
 	onMount(async () => {
-		await fetchMangaItems();
-
 		let mangaItemsDiv = document.getElementById('mangaItems');
 
 		if (!mangaItemsDiv) return;
+
+		while (mangaItemsDiv.scrollHeight == mangaItemsDiv.clientHeight) {
+			await fetchMangaItems();
+		}
 
 		mangaItemsDiv.addEventListener('scroll', () => {
 			if (!mangaItemsDiv) return;
@@ -37,12 +39,6 @@
 				isPageEnd = false;
 			}
 		});
-
-		if (mangaItemsDiv.scrollHeight - mangaItemsDiv.scrollTop === mangaItemsDiv?.clientHeight) {
-			isPageEnd = true;
-		} else {
-			isPageEnd = false;
-		}
 	});
 
 	async function fetchMangaItems() {
