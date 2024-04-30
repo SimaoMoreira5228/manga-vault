@@ -1,6 +1,6 @@
 [package]
 name = "manga-vault"
-version = "0.17.3"
+version = "0.18.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -10,4 +10,6 @@ members = ["api", "config", "database/*", "scrappers"]
 
 [dependencies]
 api = { path = "api" }
+config = { path = "config" }
+connection = { path = "database/connection" }
 tokio = { version = "1", features = ["full"] }

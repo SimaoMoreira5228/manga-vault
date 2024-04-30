@@ -1013,6 +1013,7 @@ dependencies = [
 name = "connection"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "config",
  "migration",
  "scrappers",
@@ -2231,9 +2232,11 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 
 [[package]]
 name = "manga-vault"
-version = "0.17.3"
+version = "0.18.0"
 dependencies = [
  "api",
+ "config",
+ "connection",
  "tokio",
 ]
 

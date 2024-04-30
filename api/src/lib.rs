@@ -22,13 +22,11 @@ lazy_static::lazy_static! {
 	static ref SECRET_JWT: String = CONFIG.secret_jwt.clone();
 }
 
-async fn cleanup_old_rows(db: &Connection) -> Result<(), sea_orm::DbErr> {
-	// Calculate the timestamp 2 hours ago
-	let two_hours_ago = chrono::Utc::now() - chrono::Duration::hours(2);
+async fn clean_temp(db: &Connection) -> Result<(), sea_orm::DbErr> {
+	let time_now: chrono::prelude::DateTime<chrono::prelude::Utc> = chrono::Utc::now();
 
-	// Delete rows older than 2 hours
 	Temp::delete_many()
-		.filter(crate::entities::temp::Column::CreatedAt.lt(two_hours_ago))
+		.filter(crate::entities::temp::Column::ExpiresAt.lt(time_now.to_string()))
 		.exec(db)
 		.await?;
 
@@ -37,12 +35,12 @@ async fn cleanup_old_rows(db: &Connection) -> Result<(), sea_orm::DbErr> {
 
 pub async fn run() -> std::io::Result<()> {
 	let db = connection::Database::new(&CONFIG).await.unwrap();
-	let cleanup_db = db.conn.clone();
+	let clean_coon = db.conn.clone();
 
 	tokio::spawn(async move {
 		loop {
-			cleanup_old_rows(&cleanup_db).await.unwrap();
-			tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+			clean_temp(&clean_coon).await.unwrap();
+			tokio::time::sleep(tokio::time::Duration::from_secs(600)).await;
 		}
 	});
 

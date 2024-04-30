@@ -122,7 +122,7 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 		let pages_to_temp = crate::entities::temp::ActiveModel {
 			key: Set(format!("chapter_{}", db_chapter.as_ref().unwrap().id)),
 			value: Set(serde_json::to_string(&new_scrapped_pages).unwrap()),
-			created_at: Set(chrono::Utc::now().naive_utc().to_string()),
+			expires_at: Set((chrono::Utc::now() + chrono::Duration::hours(2)).to_string()),
 			..Default::default()
 		};
 

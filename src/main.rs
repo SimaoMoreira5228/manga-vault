@@ -12,5 +12,15 @@ async fn main() {
 		println!("Application is up to date");
 	}
 
+	tokio::spawn(async move {
+		let config = config::load_config();
+		loop {
+			let db = connection::Database::new(&config).await.unwrap();
+			let _ = db.backup(&config).await;
+			db.conn.close().await.unwrap();
+			tokio::time::sleep(tokio::time::Duration::from_secs(7200)).await;
+		}
+	});
+
 	api::run().await.unwrap();
 }

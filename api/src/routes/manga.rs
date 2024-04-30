@@ -323,7 +323,7 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 		let manga_to_temp = crate::entities::temp::ActiveModel {
 			key: Set(format!("manga_{}", db_manga.as_ref().unwrap().id)),
 			value: Set(serde_json::to_string(&response).unwrap()),
-			created_at: Set(chrono::Utc::now().naive_utc().to_string()),
+			expires_at: Set((chrono::Utc::now() + chrono::Duration::hours(2)).to_string()),
 			..Default::default()
 		};
 

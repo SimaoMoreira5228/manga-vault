@@ -18,6 +18,7 @@ pub struct Config {
 	pub websocket_port: u16,
 	pub websocket_ip_to_frontend: String,
 	pub database_path: String,
+	pub database_backup_folder: String,
 	pub directory: String,
 	pub secret_jwt: String,
 }
@@ -43,6 +44,7 @@ pub fn load_config() -> Config {
 			websocket_port: 5229,
 			websocket_ip_to_frontend: "localhost".to_string(),
 			database_path: format!("{}/db.sqlite", current_dir.display()),
+			database_backup_folder: format!("{}/backup", current_dir.display()),
 			directory: current_dir.display().to_string(),
 			secret_jwt: generate_secret(),
 		};

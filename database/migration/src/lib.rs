@@ -3,6 +3,7 @@ pub use sea_orm_migration::prelude::*;
 mod m20220101_000001_create_tables;
 mod m20240328_005922_add_image_id_to_user;
 mod m20240331_220133_create_temp_table;
+mod m20240430_145751_alter_temp_table;
 
 pub struct Migrator;
 
@@ -13,6 +14,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20220101_000001_create_tables::Migration),
             Box::new(m20240328_005922_add_image_id_to_user::Migration),
             Box::new(m20240331_220133_create_temp_table::Migration),
+            Box::new(m20240430_145751_alter_temp_table::Migration),
         ]
     }
 }
