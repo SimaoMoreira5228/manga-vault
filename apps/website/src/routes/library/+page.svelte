@@ -5,12 +5,12 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { Plus, RefreshCcw } from 'lucide-svelte';
 	import { onDestroy, onMount } from 'svelte';
-	import { createButton, normalizeTitles } from '$lib/utils';
-	import type { Category, FavoritesMangaItem, WsResponse } from '$lib/types';
+	import { createButton, getSortType, normalizeTitles, setSortType } from '$lib/utils';
+	import { type Category, type FavoritesMangaItem, SortType, type WsResponse } from '$lib/types';
 	import Spinner from '$lib/icons/spinner.svelte';
 	import type { PageData } from './$types';
 	import { Input } from '$lib/components/ui/input';
-	import { refresh_ccw } from '$lib/customLucideSVGs';
+	import { arrow_down_1_0, case_upper, refresh_ccw } from '$lib/customLucideSVGs';
 	import { spinnerString } from '$lib/icons/spinnerString';
 	import { Base64 } from 'js-base64';
 
@@ -18,9 +18,11 @@
 	let slectedCategory = data.categories[0];
 	$: favorites = [] as FavoritesMangaItem[];
 	let refresh_managa_items: HTMLButtonElement;
+	let changeSortType: HTMLButtonElement;
 	let otherControls: HTMLElement | null;
 	let isloading = false;
 	$: syncingCategory = false;
+	$: sortType = getSortType() || SortType.TITLE;
 
 	onMount(async () => {
 		const locationText = document.getElementById('LocationText');
@@ -36,6 +38,24 @@
 				sync('sync-all');
 			});
 			otherControls.appendChild(refresh_managa_items);
+
+			let icon = SortType.TITLE ? case_upper : arrow_down_1_0;
+
+			changeSortType = createButton(icon);
+			changeSortType.addEventListener('click', () => {
+				if (sortType === SortType.TITLE) {
+					sortType = SortType.CHAPTERS;
+					changeSortType.innerHTML = arrow_down_1_0;
+					setSortType(SortType.CHAPTERS);
+					sortType = getSortType() || SortType.TITLE;
+				} else {
+					sortType = SortType.TITLE;
+					changeSortType.innerHTML = case_upper;
+					setSortType(SortType.TITLE);
+					sortType = getSortType() || SortType.TITLE;
+				}
+			});
+			otherControls.appendChild(changeSortType);
 		}
 
 		try {
@@ -171,8 +191,20 @@
 	onDestroy(() => {
 		if (otherControls) {
 			refresh_managa_items.remove();
+			changeSortType.remove();
 		}
 	});
+
+	$: if (sortType === SortType.TITLE) {
+		favorites = favorites.sort((a, b) => a.title.localeCompare(b.title));
+	} else if (sortType === SortType.CHAPTERS) {
+		favorites = favorites
+			.sort(
+				(a, b) =>
+					a.chapters_number - a.read_chapters_number - (b.chapters_number - b.read_chapters_number)
+			)
+			.reverse();
+	}
 </script>
 
 <div class="relative flex h-full w-full flex-col justify-start">

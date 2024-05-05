@@ -1,3 +1,8 @@
+export enum SortType {
+	TITLE = 'title',
+	CHAPTERS = 'unread_chapters'
+}
+
 export type FavoritesMangaItem = {
 	id: number;
 	title: string;

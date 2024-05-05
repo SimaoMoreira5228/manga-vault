@@ -1,8 +1,10 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { cubicOut } from 'svelte/easing';
+import { browser } from '$app/environment';
 import type { TransitionConfig } from 'svelte/transition';
-import { themeStore } from './stores';
+import { themeStore, sortTypeStore } from './stores';
+import { SortType } from './types';
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
@@ -66,6 +68,24 @@ export const toggleTheme = () => {
 			return 'dark';
 		}
 	});
+};
+
+export const getSortType = (): SortType | undefined => {
+	if (!browser) return;
+	const sortType = localStorage.sortType || SortType.TITLE;
+
+	if (sortType) {
+		sortTypeStore.set(sortType);
+	}
+
+	return sortType;
+};
+
+export const setSortType = (type: SortType): SortType | undefined => {
+	if (!browser) return;
+	localStorage.sortType = type;
+	sortTypeStore.set(type);
+	return getSortType();
 };
 
 export function smallName(name: string) {
