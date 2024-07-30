@@ -16,17 +16,17 @@
 </script>
 
 <div class="flex h-full w-full flex-col justify-start gap-4">
-	{#each data.scrappers as scrapper}
+	{#each data.scrapers as scraper}
 		<div class="bg-input flex w-full flex-row justify-between p-4 shadow-xl">
 			<div class="flex flex-row items-center gap-4">
-				<img src={`/image/external/${Base64.encode(scrapper.img_url, true)}`} alt="" class="h-8 md:h-12" />
-				<h1 class="hidden text-lg font-medium text-blue-400 md:block">{scrapper.name}</h1>
+				<img src={`/image/external/${Base64.encode(scraper.img_url, true)}`} alt="" class="h-8 md:h-12" />
+				<h1 class="hidden text-lg font-medium text-blue-400 md:block">{scraper.name}</h1>
 			</div>
 			<div class="flex flex-col items-end justify-center gap-1 md:flex-row">
-				<a href="/library/sources/latest/{scrapper.id}">
+				<a href="/library/sources/latest/{scraper.id}">
 					<Button class="h-8 md:h-10">Latest</Button>
 				</a>
-				<a href="/library/sources/trending/{scrapper.id}">
+				<a href="/library/sources/trending/{scraper.id}">
 					<Button class="h-8 md:h-10">Trending</Button>
 				</a>
 			</div>

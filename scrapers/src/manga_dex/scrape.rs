@@ -3,11 +3,11 @@ use async_trait::async_trait;
 use isahc::ReadResponseExt;
 use serde_json::Value;
 
-use super::MangaDexScrapper;
-use crate::{Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
+use super::MangaDexScraper;
+use crate::{Chapter, Genre, MangaItem, MangaPage, ScraperTraits, ScraperType};
 
 #[async_trait]
-impl ScrapperTraits for MangaDexScrapper {
+impl ScraperTraits for MangaDexScraper {
 	async fn get_cookies(&self) -> Result<String> {
 		Ok("".to_string())
 	}
@@ -650,15 +650,15 @@ impl ScrapperTraits for MangaDexScrapper {
 		todo!();
 	}
 
-	async fn get_info(&self) -> Result<crate::ScrapperInfo> {
-		Ok(crate::ScrapperInfo {
-			id: ScrapperType::MangaDex,
+	async fn get_info(&self) -> Result<crate::ScraperInfo> {
+		Ok(crate::ScraperInfo {
+			id: ScraperType::MangaDex,
 			name: "MangaDex".to_string(),
 			img_url: "https://mangadex.org/pwa/icons/icon-180.png".to_string(),
 		})
 	}
 
-	fn get_scrapper_type(&self) -> ScrapperType {
-		ScrapperType::MangaDex
+	fn get_scraper_type(&self) -> ScraperType {
+		ScraperType::MangaDex
 	}
 }

@@ -63,7 +63,7 @@ pub async fn run() -> std::io::Result<()> {
 					.configure(routes::chapter::init_routes)
 					.configure(routes::favorites::init_routes)
 					.configure(routes::files::init_secure_routes)
-					.configure(routes::scrapper::init_routes)
+					.configure(routes::scraper::init_routes)
 					.configure(routes::read_chapter::init_routes)
 					.configure(routes::categories::init_routes)
 					.configure(routes::websocket::init_routes),

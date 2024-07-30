@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 tokio-tungstenite = "0.23.1"
 config = { path = "../config" }
-scrappers = { path = "../scrappers" }
+scrapers = { path = "../scrapers" }
 connection = { path = "../database/connection" }
 actix-web = "4"
 actix-multipart = "0.7.2"
@@ -27,12 +27,12 @@ futures-util = "0.3"
 infer = "0.16.0"
 reqwest = "0.12"
 sea-orm = { version = "0.12", features = [
-  "sqlx-sqlite",
-  "runtime-tokio-rustls",
-  "macros",
-  "with-chrono",
-  "with-json",
-  "with-uuid",
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-chrono",
+    "with-json",
+    "with-uuid",
 ] }
 zip = "2.1.5"
 isahc = "1.7"

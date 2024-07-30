@@ -427,7 +427,7 @@ dependencies = [
  "jsonwebtoken",
  "lazy_static",
  "reqwest",
- "scrappers",
+ "scrapers",
  "sea-orm",
  "serde",
  "serde_json",
@@ -1026,7 +1026,7 @@ dependencies = [
  "chrono",
  "config",
  "migration",
- "scrappers",
+ "scrapers",
  "sea-orm",
  "serde",
  "serde_json",
@@ -3319,7 +3319,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "scrappers"
+name = "scrapers"
 version = "0.0.1"
 dependencies = [
  "anyhow",

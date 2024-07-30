@@ -35,7 +35,7 @@ struct MangaResponse {
 	pub title: String,
 	pub url: String,
 	pub img_url: String,
-	pub scrapper: String,
+	pub scraper: String,
 	pub chapters_number: u64,
 	pub read_chapters_number: u64,
 	pub created_at: String,

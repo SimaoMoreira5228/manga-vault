@@ -12,7 +12,7 @@ struct MangaInfoResponse {
 	title: String,
 	url: String,
 	img_url: String,
-	scrapper: String,
+	scraper: String,
 	created_at: String,
 	updated_at: String,
 	chapters: Vec<crate::entities::chapters::Model>,
@@ -38,7 +38,7 @@ async fn get_manga_info(db: web::Data<connection::Connection>, id: web::Path<i32
 		title: manga.title,
 		url: manga.url,
 		img_url: manga.img_url,
-		scrapper: manga.scrapper,
+		scraper: manga.scraper,
 		created_at: manga.created_at,
 		updated_at: manga.updated_at,
 		chapters,
@@ -60,7 +60,7 @@ struct ResponseManga {
 	title: String,
 	url: String,
 	img_url: String,
-	scrapper: String,
+	scraper: String,
 	created_at: String,
 	updated_at: String,
 }
@@ -74,13 +74,11 @@ struct SearchAllResponse {
 #[get("/mangas/search/{title}/all")]
 async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title: web::Path<String>) -> impl Responder {
 	let mut response: Vec<SearchAllResponse> = vec![];
-	let all_scrappers_types = scrappers::get_all_scrapper_types();
+	let all_scrapers_types = scrapers::get_all_scraper_types();
 
-	for scrapper_type in all_scrappers_types {
+	for scraper_type in all_scrapers_types {
 		let mut searched_mangas: Vec<ResponseManga> = vec![];
-		let mangas = scrappers::Scrapper::new(&scrapper_type)
-			.scrape_search(title.as_str(), 1)
-			.await;
+		let mangas = scrapers::Scraper::new(&scraper_type).scrape_search(title.as_str(), 1).await;
 
 		if mangas.is_err() {
 			continue;
@@ -90,7 +88,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 
 		for manga in mangas {
 			let db_manga: Option<crate::entities::mangas::Model> = Mangas::find()
-				.filter(crate::entities::mangas::Column::Scrapper.eq(scrappers::get_scrapper_type_str(&scrapper_type)))
+				.filter(crate::entities::mangas::Column::Scraper.eq(scrapers::get_scraper_type_str(&scraper_type)))
 				.filter(crate::entities::mangas::Column::Url.eq(&manga.url))
 				.one(db.get_ref())
 				.await
@@ -101,7 +99,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 					title: Set(manga.title.clone()),
 					url: Set(manga.url.clone()),
 					img_url: Set(manga.img_url.clone()),
-					scrapper: Set(scrappers::get_scrapper_type_str(&scrapper_type).to_string()),
+					scraper: Set(scrapers::get_scraper_type_str(&scraper_type).to_string()),
 					created_at: Set(chrono::Utc::now().naive_utc().to_string()),
 					updated_at: Set(chrono::Utc::now().naive_utc().to_string()),
 					..Default::default()
@@ -114,7 +112,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 					title: new_db_manga.title,
 					url: new_db_manga.url,
 					img_url: new_db_manga.img_url,
-					scrapper: new_db_manga.scrapper,
+					scraper: new_db_manga.scraper,
 					created_at: new_db_manga.created_at,
 					updated_at: new_db_manga.updated_at,
 				});
@@ -128,7 +126,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 					title: db_manga.title,
 					url: db_manga.url,
 					img_url: db_manga.img_url,
-					scrapper: db_manga.scrapper,
+					scraper: db_manga.scraper,
 					created_at: db_manga.created_at,
 					updated_at: db_manga.updated_at,
 				});
@@ -136,7 +134,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 		}
 
 		response.push(SearchAllResponse {
-			scraper: scrappers::get_scrapper_type_str(&scrapper_type).to_string(),
+			scraper: scrapers::get_scraper_type_str(&scraper_type).to_string(),
 			mangas: searched_mangas,
 		});
 	}
@@ -144,19 +142,19 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 	HttpResponse::Ok().json(response)
 }
 
-#[get("/mangas/search/{title}/{scrapper}/{page}")]
+#[get("/mangas/search/{title}/{scraper}/{page}")]
 async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<(String, String, u16)>) -> impl Responder {
-	let (title, scrapper, page) = params.into_inner();
+	let (title, scraper, page) = params.into_inner();
 
-	let scrapper_type = scrappers::get_scrapper_type(&scrapper);
+	let scraper_type = scrapers::get_scraper_type(&scraper);
 
-	let scrapper_type = if scrapper_type.is_err() {
-		return HttpResponse::BadRequest().body("Invalid scrapper");
+	let scraper_type = if scraper_type.is_err() {
+		return HttpResponse::BadRequest().body("Invalid scraper");
 	} else {
-		scrapper_type.unwrap()
+		scraper_type.unwrap()
 	};
 
-	let mangas = scrappers::Scrapper::new(&scrapper_type)
+	let mangas = scrapers::Scraper::new(&scraper_type)
 		.scrape_search(title.as_str(), page)
 		.await;
 
@@ -169,7 +167,7 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 
 	for manga in mangas {
 		let db_manga: Option<crate::entities::mangas::Model> = Mangas::find()
-			.filter(crate::entities::mangas::Column::Scrapper.eq(scrappers::get_scrapper_type_str(&scrapper_type)))
+			.filter(crate::entities::mangas::Column::Scraper.eq(scrapers::get_scraper_type_str(&scraper_type)))
 			.filter(crate::entities::mangas::Column::Url.eq(&manga.url))
 			.one(db.get_ref())
 			.await
@@ -180,7 +178,7 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 				title: Set(manga.title.clone()),
 				url: Set(manga.url.clone()),
 				img_url: Set(manga.img_url.clone()),
-				scrapper: Set(scrappers::get_scrapper_type_str(&scrapper_type).to_string()),
+				scraper: Set(scrapers::get_scraper_type_str(&scraper_type).to_string()),
 				created_at: Set(chrono::Utc::now().naive_utc().to_string()),
 				updated_at: Set(chrono::Utc::now().naive_utc().to_string()),
 				..Default::default()
@@ -193,7 +191,7 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 				title: new_db_manga.title,
 				url: new_db_manga.url,
 				img_url: new_db_manga.img_url,
-				scrapper: new_db_manga.scrapper,
+				scraper: new_db_manga.scraper,
 				created_at: new_db_manga.created_at,
 				updated_at: new_db_manga.updated_at,
 			});
@@ -207,7 +205,7 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 				title: db_manga.title,
 				url: db_manga.url,
 				img_url: db_manga.img_url,
-				scrapper: db_manga.scrapper,
+				scraper: db_manga.scraper,
 				created_at: db_manga.created_at,
 				updated_at: db_manga.updated_at,
 			});
@@ -251,17 +249,17 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 	let mut response: ScrapeMangaPageResponse;
 
 	if cached.is_none() {
-		let scrapper_type = scrappers::get_scrapper_type(&db_manga.as_ref().unwrap().scrapper);
+		let scraper_type = scrapers::get_scraper_type(&db_manga.as_ref().unwrap().scraper);
 
-		let scrapper_type = if scrapper_type.is_err() {
-			return HttpResponse::BadRequest().body("Invalid scrapper");
+		let scraper_type = if scraper_type.is_err() {
+			return HttpResponse::BadRequest().body("Invalid scraper");
 		} else {
-			scrapper_type.unwrap()
+			scraper_type.unwrap()
 		};
 
-		let scrapper = scrappers::Scrapper::new(&scrapper_type);
+		let scraper = scrapers::Scraper::new(&scraper_type);
 
-		let manga = scrapper.scrape_manga(&db_manga.as_ref().unwrap().url).await;
+		let manga = scraper.scrape_manga(&db_manga.as_ref().unwrap().url).await;
 
 		if manga.is_err() {
 			return HttpResponse::BadRequest().body("Error scraping manga");

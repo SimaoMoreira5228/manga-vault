@@ -1,6 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
 use isahc::ReadResponseExt;
-use scrappers::Scrapper;
+use scrapers::Scraper;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use serde::Serialize;
 
@@ -47,17 +47,17 @@ async fn get_chapter_info(db: web::Data<connection::Connection>, params: web::Pa
 		.await
 		.unwrap();
 
-	let scrapper_type = scrappers::get_scrapper_type(&db_manga.as_ref().unwrap().scrapper);
+	let scraper_type = scrapers::get_scraper_type(&db_manga.as_ref().unwrap().scraper);
 
-	let scrapper_type = if scrapper_type.is_err() {
-		return HttpResponse::BadRequest().body("Invalid scrapper");
+	let scraper_type = if scraper_type.is_err() {
+		return HttpResponse::BadRequest().body("Invalid scraper");
 	} else {
-		scrapper_type.unwrap()
+		scraper_type.unwrap()
 	};
 
-	let scrapper = Scrapper::new(&scrapper_type);
+	let scraper = Scraper::new(&scraper_type);
 
-	let pages = scrapper.scrape_chapter(&db_chapter.as_ref().unwrap().url).await;
+	let pages = scraper.scrape_chapter(&db_chapter.as_ref().unwrap().url).await;
 
 	if pages.is_err() {
 		return HttpResponse::BadRequest().body("Error scraping chapter");
@@ -101,17 +101,17 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 	let scrapped_pages: Vec<String>;
 
 	if db_scrapped_pages.is_none() {
-		let scrapper_type = scrappers::get_scrapper_type(&db_manga.as_ref().unwrap().scrapper);
+		let scraper_type = scrapers::get_scraper_type(&db_manga.as_ref().unwrap().scraper);
 
-		let scrapper_type = if scrapper_type.is_err() {
-			return HttpResponse::BadRequest().body("Invalid scrapper");
+		let scraper_type = if scraper_type.is_err() {
+			return HttpResponse::BadRequest().body("Invalid scraper");
 		} else {
-			scrapper_type.unwrap()
+			scraper_type.unwrap()
 		};
 
-		let scrapper = Scrapper::new(&scrapper_type);
+		let scraper = Scraper::new(&scraper_type);
 
-		let new_scrapped_pages = scrapper.scrape_chapter(&db_chapter.as_ref().unwrap().url).await;
+		let new_scrapped_pages = scraper.scrape_chapter(&db_chapter.as_ref().unwrap().url).await;
 
 		if new_scrapped_pages.is_err() {
 			return HttpResponse::BadRequest().body("Error scraping chapter");

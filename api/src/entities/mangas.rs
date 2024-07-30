@@ -11,7 +11,7 @@ pub struct Model {
 	pub title: String,
 	pub url: String,
 	pub img_url: String,
-	pub scrapper: String,
+	pub scraper: String,
 	pub created_at: String,
 	pub updated_at: String,
 }

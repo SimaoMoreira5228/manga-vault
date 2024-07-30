@@ -49,26 +49,26 @@ pub async fn sync_favorite_mangas_from_category(
 	}
 
 	for favorite_manga in favorite_mangas {
-		let scrapper_type = scrappers::get_scrapper_type(&favorite_manga.scrapper);
+		let scraper_type = scrapers::get_scraper_type(&favorite_manga.scraper);
 
-		let scrapper_type = if scrapper_type.is_err() {
+		let scraper_type = if scraper_type.is_err() {
 			return write
 				.send(Message::Binary(
 					serde_json::to_vec(&SyncFavoriteMangasResponse {
 						msg_type: "sync-all".to_string(),
 						content: None,
-						error: Some("Invalid scrapper".to_string()),
+						error: Some("Invalid scraper".to_string()),
 					})
 					.unwrap(),
 				))
 				.await
 				.unwrap();
 		} else {
-			scrapper_type.unwrap()
+			scraper_type.unwrap()
 		};
 
-		let scrapper = scrappers::Scrapper::new(&scrapper_type);
-		let manga_page = scrapper.scrape_manga(&favorite_manga.url).await;
+		let scraper = scrapers::Scraper::new(&scraper_type);
+		let manga_page = scraper.scrape_manga(&favorite_manga.url).await;
 
 		if manga_page.is_err() {
 			let response = SyncFavoriteMangasResponse {
@@ -133,7 +133,7 @@ pub async fn sync_favorite_mangas_from_category(
 		favorite_manga_active.updated_at = Set(chrono::Utc::now().naive_utc().to_string());
 		let new_favorite = favorite_manga_active.update(&db).await.unwrap();
 
-		drop(scrapper);
+		drop(scraper);
 
 		let response = SyncFavoriteMangasResponse {
 			msg_type: "sync-category".to_string(),
@@ -145,7 +145,7 @@ pub async fn sync_favorite_mangas_from_category(
 				read_chapters_number: read_chapters,
 				created_at: new_favorite.created_at,
 				id: new_favorite.id,
-				scrapper: new_favorite.scrapper,
+				scraper: new_favorite.scraper.to_string(),
 				updated_at: new_favorite.updated_at,
 			}),
 			error: None,

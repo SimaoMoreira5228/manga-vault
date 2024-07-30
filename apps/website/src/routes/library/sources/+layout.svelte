@@ -26,13 +26,13 @@
 
 	$: {
 		if (sourceName) {
-			data.scrappers.forEach((scrapper) => {
-				if (scrapper.id === sourceName) {
+			data.scrapers.forEach((scraper) => {
+				if (scraper.id === sourceName) {
 					if (sourceNameText) {
 						sourceNameDiv?.classList.remove('hidden');
 						sourceNameText.classList.remove('hidden');
 
-						sourceNameText.innerHTML = 'Source - ' + scrapper.name;
+						sourceNameText.innerHTML = 'Source - ' + scraper.name;
 					}
 				}
 			});

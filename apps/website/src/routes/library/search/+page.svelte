@@ -36,14 +36,14 @@
 
 		const title = (document.getElementById('title') as HTMLInputElement).value;
 
-		for (const scrapper of data.scrappers) {
-			const response = await fetch(`/library/search/${title}/scapper/${scrapper.id}/page/1`);
+		for (const scraper of data.scrapers) {
+			const response = await fetch(`/library/search/${title}/scaper/${scraper.id}/page/1`);
 			const data = await response.json();
 
 			allMangaItems = [
 				...allMangaItems,
 				{
-					scraper: scrapper.id,
+					scraper: scraper.id,
 					mangas: data
 				}
 			];

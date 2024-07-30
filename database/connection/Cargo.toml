@@ -7,15 +7,15 @@ edition = "2021"
 
 [dependencies]
 config = { path = "../../config" }
-scrappers = { path = "../../scrappers" }
+scrapers = { path = "../../scrapers" }
 migration = { path = "../migration" }
 sea-orm = { version = "0.12", features = [
-  "sqlx-sqlite",
-  "runtime-tokio-rustls",
-  "macros",
-  "with-chrono",
-  "with-json",
-  "with-uuid",
+    "sqlx-sqlite",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-chrono",
+    "with-json",
+    "with-uuid",
 ] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

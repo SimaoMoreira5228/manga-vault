@@ -6,13 +6,13 @@ use crate::entities::categories;
 use crate::entities::prelude::Categories;
 
 #[derive(Deserialize)]
-struct CreateCategoryResquest {
+struct CreateCategoryRequest {
 	name: String,
 	user_id: i32,
 }
 
 #[derive(Deserialize)]
-struct PatchCategoryResquest {
+struct PatchCategoryRequest {
 	name: String,
 }
 
@@ -27,7 +27,7 @@ struct CreateCategoryResponse {
 #[post("/categories/create")]
 async fn create_category(
 	db: web::Data<connection::Connection>,
-	category_request: web::Json<CreateCategoryResquest>,
+	category_request: web::Json<CreateCategoryRequest>,
 ) -> impl Responder {
 	let category = categories::ActiveModel {
 		name: Set(category_request.name.clone()),
@@ -73,7 +73,7 @@ async fn delete_category(db: web::Data<connection::Connection>, params: web::Pat
 async fn update_category(
 	db: web::Data<connection::Connection>,
 	params: web::Path<i32>,
-	category_request: web::Json<PatchCategoryResquest>,
+	category_request: web::Json<PatchCategoryRequest>,
 ) -> impl Responder {
 	let category_id = params.into_inner();
 
@@ -168,5 +168,5 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
 	cfg.service(update_category);
 	cfg.service(get_categories);
 	cfg.service(get_category);
-  cfg.service(get_user_categories);
+	cfg.service(get_user_categories);
 }

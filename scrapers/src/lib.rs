@@ -12,7 +12,7 @@ mod manga_queen;
 mod mangaread_org;
 
 #[derive(Debug, Serialize)]
-pub enum ScrapperType {
+pub enum ScraperType {
 	MangareadOrg,
 	MangaDex,
 	MangaQueen,
@@ -20,7 +20,7 @@ pub enum ScrapperType {
 }
 
 #[async_trait]
-pub trait ScrapperTraits {
+pub trait ScraperTraits {
 	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>>;
 	async fn get_cookies(&self) -> Result<String>;
 	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>>;
@@ -28,24 +28,24 @@ pub trait ScrapperTraits {
 	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>>;
 	async fn scrape_manga(&self, url: &str) -> Result<MangaPage>;
 	async fn scrape_genres_list(&self) -> Result<Vec<Genre>>;
-	async fn get_info(&self) -> Result<ScrapperInfo>;
-	fn get_scrapper_type(&self) -> ScrapperType;
+	async fn get_info(&self) -> Result<ScraperInfo>;
+	fn get_scraper_type(&self) -> ScraperType;
 }
 
-pub struct Scrapper;
+pub struct Scraper;
 
-impl Scrapper {
-	pub fn new(r#type: &ScrapperType) -> Box<dyn ScrapperTraits + Send> {
+impl Scraper {
+	pub fn new(r#type: &ScraperType) -> Box<dyn ScraperTraits + Send> {
 		match r#type {
-			ScrapperType::MangareadOrg => Box::new(mangaread_org::MangaReadOrgScrapper::new()),
-			ScrapperType::MangaDex => Box::new(manga_dex::MangaDexScrapper::new()),
-			ScrapperType::MangaQueen => Box::new(manga_queen::MangaQueenScrapper::new()),
-			ScrapperType::HariManga => Box::new(hari_manga::HariMangaScrapper::new()),
+			ScraperType::MangareadOrg => Box::new(mangaread_org::MangaReadOrgScraper::new()),
+			ScraperType::MangaDex => Box::new(manga_dex::MangaDexScraper::new()),
+			ScraperType::MangaQueen => Box::new(manga_queen::MangaQueenScraper::new()),
+			ScraperType::HariManga => Box::new(hari_manga::HariMangaScraper::new()),
 		}
 	}
 }
 
-impl Scrapper {
+impl Scraper {
 	pub async fn download_img(url: &str) -> Result<(), reqwest::Error> {
 		let res = reqwest::get(url).await;
 		if res.is_err() {
@@ -64,31 +64,31 @@ impl Scrapper {
 	}
 }
 
-pub fn get_scrapper_type(scrapper: &str) -> Result<ScrapperType, ()> {
-	match scrapper {
-		"mangaread_org" => Ok(ScrapperType::MangareadOrg),
-		"manga_dex" => Ok(ScrapperType::MangaDex),
-		"manga_queen" => Ok(ScrapperType::MangaQueen),
-		"hari_manga" => Ok(ScrapperType::HariManga),
+pub fn get_scraper_type(scrp: &str) -> Result<ScraperType, ()> {
+	match scrp {
+		"mangaread_org" => Ok(ScraperType::MangareadOrg),
+		"manga_dex" => Ok(ScraperType::MangaDex),
+		"manga_queen" => Ok(ScraperType::MangaQueen),
+		"hari_manga" => Ok(ScraperType::HariManga),
 		_ => Err(()),
 	}
 }
 
-pub fn get_scrapper_type_str(scrapper: &ScrapperType) -> &str {
-	match scrapper {
-		ScrapperType::MangareadOrg => "mangaread_org",
-		ScrapperType::MangaDex => "manga_dex",
-		ScrapperType::MangaQueen => "manga_queen",
-		ScrapperType::HariManga => "hari_manga",
+pub fn get_scraper_type_str(scrp: &ScraperType) -> &str {
+	match scrp {
+		ScraperType::MangareadOrg => "mangaread_org",
+		ScraperType::MangaDex => "manga_dex",
+		ScraperType::MangaQueen => "manga_queen",
+		ScraperType::HariManga => "hari_manga",
 	}
 }
 
-pub fn get_all_scrapper_types() -> Vec<ScrapperType> {
+pub fn get_all_scraper_types() -> Vec<ScraperType> {
 	vec![
-		ScrapperType::MangareadOrg,
-		ScrapperType::MangaDex,
-		ScrapperType::MangaQueen,
-		ScrapperType::HariManga,
+		ScraperType::MangareadOrg,
+		ScraperType::MangaDex,
+		ScraperType::MangaQueen,
+		ScraperType::HariManga,
 	]
 }
 
@@ -129,8 +129,8 @@ pub struct Genre {
 }
 
 #[derive(Debug, Serialize)]
-pub struct ScrapperInfo {
-	pub id: ScrapperType,
+pub struct ScraperInfo {
+	pub id: ScraperType,
 	pub name: String,
 	pub img_url: String,
 }

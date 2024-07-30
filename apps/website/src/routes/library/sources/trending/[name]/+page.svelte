@@ -8,7 +8,7 @@
 	import { Base64 } from 'js-base64';
 
 	let mangaItems: FavoritesMangaItem[] = [];
-	let scrapperPage = 1;
+	let scraperPage = 1;
 
 	function normalizeTitles(title: string) {
 		const words = title.toLowerCase().split(' ');
@@ -45,10 +45,10 @@
 		try {
 			isLoadingMoreMangaItems = true;
 
-			const res = await fetch(`/library/sources/trending/${$page.params.name}/${scrapperPage}`);
+			const res = await fetch(`/library/sources/trending/${$page.params.name}/${scraperPage}`);
 
 			const data = await res.json();
-			scrapperPage++;
+			scraperPage++;
 			mangaItems = [...mangaItems, ...data];
 		} catch (error) {
 			toast('❌ An error occurred while fetching the manga items');

@@ -69,7 +69,7 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Mangas::Title).string().not_null())
 					.col(ColumnDef::new(Mangas::Url).string().not_null())
 					.col(ColumnDef::new(Mangas::ImgUrl).string().not_null())
-					.col(ColumnDef::new(Mangas::Scrapper).string().not_null())
+					.col(ColumnDef::new(Mangas::Scraper).string().not_null())
 					.col(ColumnDef::new(Mangas::CreatedAt).date_time().not_null())
 					.col(ColumnDef::new(Mangas::UpdatedAt).date_time().not_null())
 					.to_owned(),
@@ -239,7 +239,7 @@ enum Mangas {
 	Title,
 	Url,
 	ImgUrl,
-	Scrapper,
+	Scraper,
 	CreatedAt,
 	UpdatedAt,
 }

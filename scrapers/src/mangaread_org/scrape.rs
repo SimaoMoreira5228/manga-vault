@@ -1,18 +1,18 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 
-use super::HariMangaScrapper;
-use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
+use super::MangaReadOrgScraper;
+use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScraperTraits, ScraperType};
 
 #[async_trait]
-impl ScrapperTraits for HariMangaScrapper {
+impl ScraperTraits for MangaReadOrgScraper {
 	async fn get_cookies(&self) -> Result<String> {
 		Ok("".to_string())
 	}
 
 	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>> {
-		let res = reqwest::get(url).await?;
-		let body = res.text().await?;
+		let res = reqwest::get(url).await.context("Failed to get response")?;
+		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
 		let img_selector = scraper::Selector::parse("img.wp-manga-chapter-img").unwrap();
@@ -27,8 +27,11 @@ impl ScrapperTraits for HariMangaScrapper {
 	}
 
 	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>> {
-		let url = format!("https://harimanga.com/?s&post_type=wp-manga&m_orderby=latest&paged={}", page);
-		let res = reqwest::get(url).await.context("Failed to get latest manga")?;
+		let url = format!(
+			"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=latest&paged={}",
+			page
+		);
+		let res = reqwest::get(url).await.context("Failed to get response")?;
 		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
@@ -58,7 +61,7 @@ impl ScrapperTraits for HariMangaScrapper {
 				let url = div
 					.select(&scraper::Selector::parse("div.post-title h3.h4 a").unwrap())
 					.next()
-					.context("Failed to get url from html")?;
+					.context("Failed to get url")?;
 
 				let url = url.value().attr("href").context("Failed to get url")?;
 
@@ -76,10 +79,10 @@ impl ScrapperTraits for HariMangaScrapper {
 
 	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>> {
 		let url = format!(
-			"https://harimanga.com/?s&post_type=wp-manga&m_orderby=trending&paged={}",
+			"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=trending&paged={}",
 			page
 		);
-		let res = reqwest::get(url).await.context("Failed to get trending manga")?;
+		let res = reqwest::get(url).await.context("Failed to get response")?;
 		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
@@ -91,7 +94,6 @@ impl ScrapperTraits for HariMangaScrapper {
 			let contet_divs = mangas_div
 				.select(&content_divs_selector)
 				.collect::<Vec<scraper::ElementRef>>();
-
 			for div in contet_divs {
 				let img_url_div = div
 					.select(&scraper::Selector::parse("img.img-responsive").unwrap())
@@ -106,11 +108,10 @@ impl ScrapperTraits for HariMangaScrapper {
 					.context("Failed to get title")?;
 
 				let title = title.text().collect::<Vec<_>>().join(" ");
-
 				let url = div
 					.select(&scraper::Selector::parse("div.post-title h3.h4 a").unwrap())
 					.next()
-					.context("Failed to get url from html")?;
+					.context("Failed to get url")?;
 
 				let url = url.value().attr("href").context("Failed to get url")?;
 
@@ -129,10 +130,10 @@ impl ScrapperTraits for HariMangaScrapper {
 
 	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>> {
 		let url = format!(
-			"https://harimanga.com/?s={}&post_type=wp-manga&op=&author=&artist=&release=&adult=&paged={}",
+			"https://www.mangaread.org/?s={}&post_type=wp-manga&op=&author=&artist=&release=&adult=&paged={}",
 			query, page
 		);
-		let res = reqwest::get(url).await.context("Failed to get search manga")?;
+		let res = reqwest::get(url).await.context("Failed to get response")?;
 		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
@@ -144,13 +145,11 @@ impl ScrapperTraits for HariMangaScrapper {
 			let contet_divs = mangas_div
 				.select(&content_divs_selector)
 				.collect::<Vec<scraper::ElementRef>>();
-
 			for div in contet_divs {
 				let img_url_div = div
 					.select(&scraper::Selector::parse("img.img-responsive").unwrap())
 					.next()
 					.context("Failed to get image url")?;
-
 				let img_url = get_image_url(&img_url_div);
 
 				let title = div
@@ -159,10 +158,11 @@ impl ScrapperTraits for HariMangaScrapper {
 					.context("Failed to get title")?;
 
 				let title = title.text().collect::<Vec<_>>().join(" ");
+
 				let url = div
 					.select(&scraper::Selector::parse("div.post-title h3.h4 a").unwrap())
 					.next()
-					.context("Failed to get url from html")?;
+					.context("Failed to get url")?;
 
 				let url = url.value().attr("href").context("Failed to get url")?;
 
@@ -180,7 +180,7 @@ impl ScrapperTraits for HariMangaScrapper {
 	}
 
 	async fn scrape_manga(&self, url: &str) -> Result<MangaPage> {
-		let res = reqwest::get(url).await.context("Failed to get manga")?;
+		let res = reqwest::get(url).await.context("Failed to get response")?;
 		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
@@ -245,7 +245,7 @@ impl ScrapperTraits for HariMangaScrapper {
 			if div
 				.select(&scraper::Selector::parse("div.summary-heading").unwrap())
 				.next()
-				.context("Failed to get heading")?
+				.context("Failed to get summary heading")?
 				.text()
 				.filter(|x| x.contains("Type"))
 				.count() > 0
@@ -253,7 +253,7 @@ impl ScrapperTraits for HariMangaScrapper {
 				r#type = Some(
 					div.select(&scraper::Selector::parse("div.summary-content").unwrap())
 						.next()
-						.context("Failed to get content")?
+						.context("Failed to get summary content")?
 						.text()
 						.collect::<Vec<_>>()
 						.join(" ")
@@ -263,7 +263,7 @@ impl ScrapperTraits for HariMangaScrapper {
 			} else if {
 				div.select(&scraper::Selector::parse("div.summary-heading").unwrap())
 					.next()
-					.context("Failed to get heading")?
+					.context("Failed to get summary heading")?
 					.text()
 					.filter(|x| x.contains("Alternative"))
 					.count()
@@ -272,7 +272,7 @@ impl ScrapperTraits for HariMangaScrapper {
 				alternative_names = div
 					.select(&scraper::Selector::parse("div.summary-content").unwrap())
 					.next()
-					.context("Failed to get content")?
+					.context("Failed to get summary content")?
 					.text()
 					.collect::<Vec<_>>()
 					.join(" ")
@@ -288,7 +288,7 @@ impl ScrapperTraits for HariMangaScrapper {
 			if div
 				.select(&scraper::Selector::parse("div.summary-heading").unwrap())
 				.next()
-				.context("Failed to get heading")?
+				.context("Failed to get summary heading")?
 				.text()
 				.filter(|x| x.contains("Status"))
 				.count() > 0
@@ -296,7 +296,7 @@ impl ScrapperTraits for HariMangaScrapper {
 				status = div
 					.select(&scraper::Selector::parse("div.summary-content").unwrap())
 					.next()
-					.context("Failed to get content")?
+					.context("Failed to get summary content")?
 					.text()
 					.collect::<Vec<_>>()
 					.join(" ")
@@ -305,7 +305,7 @@ impl ScrapperTraits for HariMangaScrapper {
 			} else if div
 				.select(&scraper::Selector::parse("div.summary-heading").unwrap())
 				.next()
-				.context("Failed to get heading")?
+				.context("Failed to get summary heading")?
 				.text()
 				.filter(|x| x.contains("Release"))
 				.count() > 0
@@ -313,13 +313,13 @@ impl ScrapperTraits for HariMangaScrapper {
 				release_date = Some(
 					div.select(&scraper::Selector::parse("div.summary-content").unwrap())
 						.next()
-						.context("Failed to get content")?
+						.context("Failed to get summary content")?
 						.text()
 						.collect::<Vec<_>>()
 						.join(" ")
 						.trim()
 						.parse::<String>()
-						.context("Failed to parse date")?,
+						.context("Failed to parse release date")?,
 				);
 			}
 		}
@@ -337,19 +337,16 @@ impl ScrapperTraits for HariMangaScrapper {
 
 		let chapters_selector = scraper::Selector::parse("li.wp-manga-chapter").unwrap();
 		let mut chapters: Vec<Chapter> = Vec::new();
-		html.select(&chapters_selector).for_each(|chapter| {
-			let info_selector = chapter.select(&scraper::Selector::parse("a").unwrap()).next();
-
-			if info_selector.is_none() {
-				return;
-			}
-
-			let info_selector = info_selector.unwrap();
+		for chapter in html.select(&chapters_selector) {
+			let info_selector = chapter
+				.select(&scraper::Selector::parse("a").unwrap())
+				.next()
+				.context("Failed to get chapter info")?;
 
 			let title = info_selector.inner_html().trim().to_string();
 
 			if title == "<!-- -->" {
-				return;
+				continue;
 			}
 
 			let date_selector = chapter.select(&scraper::Selector::parse("span i").unwrap()).next();
@@ -359,23 +356,20 @@ impl ScrapperTraits for HariMangaScrapper {
 			if date_selector.is_none() {
 				date = "New".to_string();
 			} else {
-				date = date_selector.unwrap().inner_html().trim().to_string();
+				date = date_selector
+					.context("Failed to get chapter date")?
+					.inner_html()
+					.trim()
+					.to_string();
 			}
 
-			let url = info_selector.value().attr("href");
-
-			if url.is_none() {
-				return;
-			}
-
-			let url = url.unwrap();
-
+			let url = info_selector.value().attr("href").context("Failed to get chapter url")?;
 			chapters.push(Chapter {
 				title,
 				url: url.to_string(),
 				date,
 			})
-		});
+		}
 
 		Ok(MangaPage {
 			title,
@@ -394,27 +388,17 @@ impl ScrapperTraits for HariMangaScrapper {
 	}
 
 	async fn scrape_genres_list(&self) -> Result<Vec<Genre>> {
-		let url = "https://harimanga.com/";
-		let res = reqwest::get(url).await.context("Failed to get genres")?;
+		let url = "https://www.mangaread.org/";
+		let res = reqwest::get(url).await.context("Failed to get response")?;
 		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
-		let genres_selector = scraper::Selector::parse("li.menu-item-object-wp-manga-genre a").unwrap();
+		let genres_selector = scraper::Selector::parse("li.menu-item-72 ul.sub-menu li a").unwrap();
 		let genres = html
 			.select(&genres_selector)
 			.map(|genre| {
 				let name = genre.text().collect::<Vec<_>>().join(" ");
-				let url = genre.value().attr("href");
-
-				if url.is_none() {
-					return Genre {
-						name,
-						url: "".to_string(),
-					};
-				}
-
-				let url = url.unwrap();
-
+				let url = genre.value().attr("href").unwrap_or("");
 				Genre {
 					name,
 					url: url.to_string(),
@@ -425,15 +409,15 @@ impl ScrapperTraits for HariMangaScrapper {
 		Ok(genres)
 	}
 
-	async fn get_info(&self) -> Result<crate::ScrapperInfo> {
-		Ok(crate::ScrapperInfo {
-			id: self.get_scrapper_type(),
-			name: "Hari Manga".to_string(),
-			img_url: "https://harimanga.com/wp-content/uploads/2021/08/logo_web_hari.png".to_string(),
+	async fn get_info(&self) -> Result<crate::ScraperInfo> {
+		Ok(crate::ScraperInfo {
+			id: self.get_scraper_type(),
+			name: "Mangaread.org".to_string(),
+			img_url: "https://www.mangaread.org/wp-content/uploads/2017/10/log1.png".to_string(),
 		})
 	}
 
-	fn get_scrapper_type(&self) -> ScrapperType {
-		ScrapperType::HariManga
+	fn get_scraper_type(&self) -> ScraperType {
+		ScraperType::MangareadOrg
 	}
 }

@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 
-use super::MangaQueenScrapper;
-use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
+use super::MangaQueenScraper;
+use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScraperTraits, ScraperType};
 
 #[async_trait]
-impl ScrapperTraits for MangaQueenScrapper {
+impl ScraperTraits for MangaQueenScraper {
 	async fn get_cookies(&self) -> Result<String> {
 		Ok("".to_string())
 	}
@@ -408,15 +408,15 @@ impl ScrapperTraits for MangaQueenScrapper {
 		Ok(genres)
 	}
 
-	async fn get_info(&self) -> Result<crate::ScrapperInfo> {
-		Ok(crate::ScrapperInfo {
-			id: self.get_scrapper_type(),
+	async fn get_info(&self) -> Result<crate::ScraperInfo> {
+		Ok(crate::ScraperInfo {
+			id: self.get_scraper_type(),
 			name: "Manga Queen".to_string(),
 			img_url: "https://mangaqueen.com/wp-content/uploads/2022/11/logoq1.png".to_string(),
 		})
 	}
 
-	fn get_scrapper_type(&self) -> ScrapperType {
-		ScrapperType::MangaQueen
+	fn get_scraper_type(&self) -> ScraperType {
+		ScraperType::MangaQueen
 	}
 }
