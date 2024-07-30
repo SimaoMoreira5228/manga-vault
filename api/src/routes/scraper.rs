@@ -12,7 +12,7 @@ struct GetScrappersResponse {
 	img_url: String,
 }
 
-#[get("/scrappers")]
+#[get("/scrapers")]
 async fn get_scrappers() -> impl Responder {
 	let all_scrappers = scrappers::get_all_scrapper_types();
 
@@ -23,7 +23,7 @@ async fn get_scrappers() -> impl Responder {
 		let scrapper_info = scrapper.get_info().await;
 
 		if scrapper_info.is_err() {
-			return HttpResponse::BadRequest().body("Error getting scrappers");
+			return HttpResponse::BadRequest().body("Error getting scrapers");
 		}
 
 		let scrapper_info = scrapper_info.unwrap();
@@ -39,7 +39,7 @@ async fn get_scrappers() -> impl Responder {
 	HttpResponse::Ok().json(response)
 }
 
-#[get("/scrappers/{scrapper}/genres")]
+#[get("/scrapers/{scrapper}/genres")]
 async fn get_scrapper_genres(scrapper: web::Path<String>) -> impl Responder {
 	let scrapper = scrappers::get_scrapper_type(&scrapper);
 
@@ -59,7 +59,7 @@ async fn get_scrapper_genres(scrapper: web::Path<String>) -> impl Responder {
 	HttpResponse::Ok().json(genres.unwrap())
 }
 
-#[get("/scrappers/{scrapper}/latest/{page}")]
+#[get("/scrapers/{scrapper}/latest/{page}")]
 async fn get_scrapper_latest(db: web::Data<connection::Connection>, params: web::Path<(String, u16)>) -> impl Responder {
 	let (scrapper, page) = params.into_inner();
 
@@ -114,7 +114,7 @@ async fn get_scrapper_latest(db: web::Data<connection::Connection>, params: web:
 	HttpResponse::Ok().json(response)
 }
 
-#[get("/scrappers/{scrapper}/trending/{page}")]
+#[get("/scrapers/{scrapper}/trending/{page}")]
 async fn get_scrapper_trending(db: web::Data<connection::Connection>, params: web::Path<(String, u16)>) -> impl Responder {
 	let (scrapper, page) = params.into_inner();
 
