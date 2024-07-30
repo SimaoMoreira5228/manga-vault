@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use isahc::ReadResponseExt;
 use serde_json::Value;
@@ -7,11 +8,11 @@ use crate::{Chapter, Genre, MangaItem, MangaPage, ScrapperTraits, ScrapperType};
 
 #[async_trait]
 impl ScrapperTraits for MangaDexScrapper {
-	async fn get_cookies(&self) -> Result<String, reqwest::Error> {
+	async fn get_cookies(&self) -> Result<String> {
 		Ok("".to_string())
 	}
 
-	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
+	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>> {
 		tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
 		let mut manga_items: Vec<MangaItem> = Vec::new();
@@ -26,7 +27,11 @@ impl ScrapperTraits for MangaDexScrapper {
 				return Ok(manga_items);
 			}
 
-			resp = isahc_resp.unwrap().text().unwrap().parse();
+			resp = isahc_resp
+				.context("Failed to get response")?
+				.text()
+				.context("Failed to get html")?
+				.parse();
 		} else {
 			let isahc_resp =
         isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10));
@@ -35,7 +40,11 @@ impl ScrapperTraits for MangaDexScrapper {
 				return Ok(manga_items);
 			}
 
-			resp = isahc_resp.unwrap().text().unwrap().parse();
+			resp = isahc_resp
+				.context("Failed to get response")?
+				.text()
+				.context("Failed to get html")?
+				.parse();
 		}
 
 		if resp.is_err() {
@@ -44,17 +53,27 @@ impl ScrapperTraits for MangaDexScrapper {
 
 		let resp = resp.unwrap();
 
-		let data = resp["data"].as_array().unwrap();
+		let data = resp["data"].as_array().context("expected data to be an array")?;
 
 		for item in data {
-			let manga_id = item["id"].as_str().unwrap();
+			let manga_id = item["id"].as_str().context("expected id to be a string")?;
 
-			let relationships = item["relationships"].as_array().unwrap();
+			let relationships = item["relationships"]
+				.as_array()
+				.context("expected relationships to be an array")?;
 			let mut cover_id: &str = "";
 
 			relationships.iter().for_each(|relationship| {
-				if relationship["type"].as_str().unwrap() == "cover_art" {
-					cover_id = relationship["attributes"]["fileName"].as_str().unwrap();
+				let r#type = relationship["type"].as_str();
+
+				if r#type.is_none() {
+					return;
+				}
+
+				let r#type = r#type.unwrap();
+
+				if r#type == "cover_art" {
+					cover_id = relationship["attributes"]["fileName"].as_str().unwrap_or("");
 				}
 			});
 
@@ -63,13 +82,13 @@ impl ScrapperTraits for MangaDexScrapper {
 			// remove the "" from the title
 			let title = item["attributes"]["title"]
 				.as_object()
-				.unwrap()
+				.context("expected title to be an object")?
 				.iter()
 				.next()
-				.unwrap()
+				.context("expected title to have at least one key")?
 				.1
 				.as_str()
-				.unwrap();
+				.context("expected title to be a string")?;
 
 			let url = format!("https://mangadex.org/title/{}", manga_id);
 			manga_items.push(MangaItem {
@@ -82,7 +101,7 @@ impl ScrapperTraits for MangaDexScrapper {
 		return Ok(manga_items);
 	}
 
-	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
+	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>> {
 		tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
 		let mut manga_items: Vec<MangaItem> = Vec::new();
@@ -97,7 +116,11 @@ impl ScrapperTraits for MangaDexScrapper {
 				return Ok(manga_items);
 			}
 
-			resp = isahc_resp.unwrap().text().unwrap().parse();
+			resp = isahc_resp
+				.context("Failed to get response")?
+				.text()
+				.context("Failed to get html")?
+				.parse();
 		} else {
 			let isahc_resp =
         isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art", page * 10));
@@ -106,7 +129,11 @@ impl ScrapperTraits for MangaDexScrapper {
 				return Ok(manga_items);
 			}
 
-			resp = isahc_resp.unwrap().text().unwrap().parse();
+			resp = isahc_resp
+				.context("Failed to get response")?
+				.text()
+				.context("Failed to get html")?
+				.parse();
 		}
 
 		if resp.is_err() {
@@ -115,17 +142,27 @@ impl ScrapperTraits for MangaDexScrapper {
 
 		let resp = resp.unwrap();
 
-		let data = resp["data"].as_array().unwrap();
+		let data = resp["data"].as_array().context("expected data to be an array")?;
 
 		for item in data {
-			let manga_id = item["id"].as_str().unwrap();
+			let manga_id = item["id"].as_str().context("expected id to be a string")?;
 
-			let relationships = item["relationships"].as_array().unwrap();
+			let relationships = item["relationships"]
+				.as_array()
+				.context("expected relationships to be an array")?;
 			let mut cover_id: &str = "";
 
 			relationships.iter().for_each(|relationship| {
-				if relationship["type"].as_str().unwrap() == "cover_art" {
-					cover_id = relationship["attributes"]["fileName"].as_str().unwrap();
+				let r#type = relationship["type"].as_str();
+
+				if r#type.is_none() {
+					return;
+				}
+
+				let r#type = r#type.unwrap();
+
+				if r#type == "cover_art" {
+					cover_id = relationship["attributes"]["fileName"].as_str().unwrap_or("");
 				}
 			});
 
@@ -133,13 +170,13 @@ impl ScrapperTraits for MangaDexScrapper {
 
 			let title = item["attributes"]["title"]
 				.as_object()
-				.unwrap()
+				.context("expected title to be an object")?
 				.iter()
 				.next()
-				.unwrap()
+				.context("expected title to have at least one key")?
 				.1
 				.as_str()
-				.unwrap();
+				.context("expected title to be a string")?;
 
 			let url = format!("https://mangadex.org/title/{}", manga_id);
 			manga_items.push(MangaItem {
@@ -152,7 +189,7 @@ impl ScrapperTraits for MangaDexScrapper {
 		return Ok(manga_items);
 	}
 
-	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
+	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>> {
 		tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
 		let title = query.split(" ").collect::<Vec<&str>>().join("%20");
@@ -169,7 +206,11 @@ impl ScrapperTraits for MangaDexScrapper {
 				return Ok(manga_items);
 			}
 
-			resp = isahc_resp.unwrap().text().unwrap().parse();
+			resp = isahc_resp
+				.context("Failed to get response")?
+				.text()
+				.context("Failed to get html")?
+				.parse();
 		} else {
 			let isahc_resp =
         isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10, title));
@@ -178,7 +219,11 @@ impl ScrapperTraits for MangaDexScrapper {
 				return Ok(manga_items);
 			}
 
-			resp = isahc_resp.unwrap().text().unwrap().parse();
+			resp = isahc_resp
+				.context("Failed to get response")?
+				.text()
+				.context("Failed to get html")?
+				.parse();
 		}
 
 		if resp.is_err() {
@@ -187,17 +232,27 @@ impl ScrapperTraits for MangaDexScrapper {
 
 		let resp = resp.unwrap();
 
-		let data = resp["data"].as_array().unwrap();
+		let data = resp["data"].as_array().context("expected data to be an array")?;
 
 		for item in data {
-			let manga_id = item["id"].as_str().unwrap();
+			let manga_id = item["id"].as_str().context("expected id to be a string")?;
 
-			let relationships = item["relationships"].as_array().unwrap();
+			let relationships = item["relationships"]
+				.as_array()
+				.context("expected relationships to be an array")?;
 			let mut cover_id: &str = "";
 
 			relationships.iter().for_each(|relationship| {
-				if relationship["type"].as_str().unwrap() == "cover_art" {
-					cover_id = relationship["attributes"]["fileName"].as_str().unwrap();
+				let r#type = relationship["type"].as_str();
+
+				if r#type.is_none() {
+					return;
+				}
+
+				let r#type = r#type.unwrap();
+
+				if r#type == "cover_art" {
+					cover_id = relationship["attributes"]["fileName"].as_str().unwrap_or("");
 				}
 			});
 
@@ -205,13 +260,13 @@ impl ScrapperTraits for MangaDexScrapper {
 
 			let title = item["attributes"]["title"]
 				.as_object()
-				.unwrap()
+				.context("expected title to be an object")?
 				.iter()
 				.next()
-				.unwrap()
+				.context("expected title to have at least one key")?
 				.1
 				.as_str()
-				.unwrap();
+				.context("expected title to be a string")?;
 
 			let url = format!("https://mangadex.org/title/{}", manga_id);
 			manga_items.push(MangaItem {
@@ -224,10 +279,10 @@ impl ScrapperTraits for MangaDexScrapper {
 		return Ok(manga_items);
 	}
 
-	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>, reqwest::Error> {
+	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>> {
 		tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
-		let chapter_id = url.split("/").last().unwrap();
+		let chapter_id = url.split("/").last().context("Failed to get chapter id")?;
 
 		let resp: Result<Value, serde_json::Error>;
 
@@ -240,7 +295,11 @@ impl ScrapperTraits for MangaDexScrapper {
 			return Ok(vec![]);
 		}
 
-		resp = isahc_resp.unwrap().text().unwrap().parse();
+		resp = isahc_resp
+			.context("Failed to get response")?
+			.text()
+			.context("Failed to get html")?
+			.parse();
 
 		if resp.is_err() {
 			return Ok(vec![]);
@@ -248,31 +307,33 @@ impl ScrapperTraits for MangaDexScrapper {
 
 		let resp = resp.unwrap();
 
-		let chapter_data = resp["chapter"].as_object();
+		let chapter_data = resp["chapter"].as_object().context("expected chapter to be an object")?;
 
-		let chapter_data = chapter_data.unwrap();
+		let hash = chapter_data["hash"].as_str().context("expected hash to be a string")?;
 
-		let hash = chapter_data["hash"].as_str().unwrap();
-
-		let data = chapter_data["data"].as_array().unwrap();
+		let data = chapter_data["data"].as_array().context("expected data to be an array")?;
 
 		let mut pages: Vec<String> = vec![];
 
 		data.iter().for_each(|page| {
-			pages.push(format!(
-				"https://uploads.mangadex.org/data/{}/{}",
-				hash,
-				page.as_str().unwrap()
-			));
+			let page = page.as_str();
+
+			if page.is_none() {
+				return;
+			}
+
+			let page = page.unwrap();
+
+			pages.push(format!("https://uploads.mangadex.org/data/{}/{}", hash, page));
 		});
 
 		Ok(pages)
 	}
 
-	async fn scrape_manga(&self, url: &str) -> Result<MangaPage, reqwest::Error> {
+	async fn scrape_manga(&self, url: &str) -> Result<MangaPage> {
 		tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
-		let manga_id = url.split("/").last().unwrap();
+		let manga_id = url.split("/").last().context("Failed to get manga id")?;
 
 		let resp: Result<Value, serde_json::Error>;
 		let isahc_resp = isahc::get(format!("https://api.mangadex.org/manga/{}?includes%5B%5D=manga&includes%5B%5D=cover_art&includes%5B%5D=author&includes%5B%5D=artist&includes%5B%5D=tag", manga_id));
@@ -294,7 +355,11 @@ impl ScrapperTraits for MangaDexScrapper {
 			});
 		}
 
-		resp = isahc_resp.unwrap().text().unwrap().parse();
+		resp = isahc_resp
+			.context("Failed to get response")?
+			.text()
+			.context("Failed to get html")?
+			.parse();
 
 		if resp.is_err() {
 			return Ok(MangaPage {
@@ -315,95 +380,123 @@ impl ScrapperTraits for MangaDexScrapper {
 
 		let resp = resp.unwrap();
 
-		let data = resp["data"].as_object().unwrap();
+		let data = resp["data"].as_object().context("expected data to be an object")?;
 
 		let title = data["attributes"]["title"]
 			.as_object()
-			.unwrap()
+			.context("expected title to be an object")?
 			.iter()
 			.next()
-			.unwrap()
+			.context("expected title to have at least one key")?
 			.1
 			.as_str()
-			.unwrap();
+			.context("expected title to be a string")?;
 
-		let relationships = data["relationships"].as_array().unwrap();
+		let relationships = data["relationships"]
+			.as_array()
+			.context("expected relationships to be an array")?;
 		let mut cover_id: &str = "";
 
 		relationships.iter().for_each(|relationship| {
-			if relationship["type"].as_str().unwrap() == "cover_art" {
-				cover_id = relationship["attributes"]["fileName"].as_str().unwrap();
+			let r#type = relationship["type"].as_str();
+
+			if r#type.is_none() {
+				return;
+			}
+
+			let r#type = r#type.unwrap();
+
+			if r#type == "cover_art" {
+				cover_id = relationship["attributes"]["fileName"].as_str().unwrap_or("");
 			}
 		});
 
 		let img_url = format!("https://mangadex.org/covers/{}/{}.512.jpg", manga_id, cover_id);
 
-		let alternative_names: Vec<String> = data["attributes"]["altTitles"]
+		let alt_titles = data["attributes"]["altTitles"]
 			.as_array()
-			.unwrap()
+			.context("expected altTitles to be an array")?;
+
+		let alternative_names: Vec<String> = alt_titles
 			.iter()
 			.map(|alt_title| {
-				alt_title
-					.as_object()
-					.unwrap()
+				let alt_title_obj = alt_title.as_object().context("expected altTitle to be an object")?;
+
+				alt_title_obj
 					.iter()
 					.next()
-					.unwrap()
+					.context("expected altTitle object to have at least one key-value pair")?
 					.1
 					.as_str()
-					.unwrap()
-					.to_string()
+					.context("expected altTitle value to be a string")
+					.map(|s| s.to_string())
+			})
+			.collect::<Result<Vec<String>>>()?;
+
+		let authors_vec: Result<Vec<String>> = data["relationships"]
+			.as_array()
+			.context("expected relationships to be an array")?
+			.iter()
+			.filter(|relationship| relationship["type"].as_str().unwrap_or("") == "author")
+			.map(|author| {
+				author["attributes"]["name"]
+					.as_str()
+					.context("expected author name to be a string")
+					.map(|s| s.to_string())
 			})
 			.collect();
+		let authors_vec = authors_vec?;
 
-		let authors_vec: Vec<String> = data["relationships"]
+		let artists_vec: Result<Vec<String>> = data["relationships"]
 			.as_array()
-			.unwrap()
+			.context("expected relationships to be an array")?
 			.iter()
-			.filter(|relationship| relationship["type"].as_str().unwrap() == "author")
-			.map(|author| author["attributes"]["name"].as_str().unwrap().to_string())
+			.filter(|relationship| relationship["type"].as_str().unwrap_or("") == "artist")
+			.map(|artist| {
+				artist["attributes"]["name"]
+					.as_str()
+					.context("expected artist name to be a string")
+					.map(|s| s.to_string())
+			})
 			.collect();
+		let artists_vec = artists_vec?;
 
-		let artists_vec: Vec<String> = data["relationships"]
-			.as_array()
-			.unwrap()
-			.iter()
-			.filter(|relationship| relationship["type"].as_str().unwrap() == "artist")
-			.map(|artist| artist["attributes"]["name"].as_str().unwrap().to_string())
-			.collect();
-
-		let status = data["attributes"]["status"].as_str().unwrap().to_string();
+		let status = data["attributes"]["status"]
+			.as_str()
+			.context("expected status to be a string")?
+			.to_string();
 
 		let release_date = data["attributes"]["year"].as_i64().map(|i| i.to_string());
 
 		let description = data["attributes"]["description"]
 			.as_object()
-			.unwrap()
+			.context("expected description to be an object")?
 			.iter()
 			.next()
-			.unwrap()
+			.context("expected description object to have at least one key-value pair")?
 			.1
 			.as_str()
-			.unwrap()
+			.context("expected description value to be a string")?
 			.to_string();
 
-		let genres: Vec<String> = data["attributes"]["tags"]
+		let genres: Result<Vec<String>> = data["attributes"]["tags"]
 			.as_array()
-			.unwrap()
+			.context("expected tags to be an array")?
 			.iter()
 			.map(|tag| {
 				tag["attributes"]["name"]
 					.as_object()
-					.unwrap()
+					.context("expected tag name to be an object")?
 					.iter()
 					.next()
-					.unwrap()
+					.context("expected tag name object to have at least one key-value pair")?
 					.1
 					.as_str()
-					.unwrap()
-					.to_string()
+					.context("expected tag name value to be a string")
+					.map(|s| s.to_string())
 			})
 			.collect();
+		let genres = genres?;
 
 		let resp: Result<Value, serde_json::Error>;
 		let isahc_resp = isahc::get(format!("https://api.mangadex.org/chapter?limit=1&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc", manga_id));
@@ -425,7 +518,11 @@ impl ScrapperTraits for MangaDexScrapper {
 			});
 		}
 
-		resp = isahc_resp.unwrap().text().unwrap().parse();
+		resp = isahc_resp
+			.context("Failed to get response")?
+			.text()
+			.context("Failed to get html")?
+			.parse();
 
 		if resp.is_err() {
 			return Ok(MangaPage {
@@ -446,7 +543,7 @@ impl ScrapperTraits for MangaDexScrapper {
 
 		let resp = resp.unwrap();
 
-		let total_chapters = resp["total"].as_i64().unwrap();
+		let total_chapters = resp["total"].as_i64().context("expected total to be an integer")?;
 		let chapter_limit = 100;
 		let call_times = (total_chapters as f64 / chapter_limit as f64).ceil() as i64;
 
@@ -477,7 +574,11 @@ impl ScrapperTraits for MangaDexScrapper {
 				});
 			}
 
-			resp = isahc_resp.unwrap().text().unwrap().parse();
+			resp = isahc_resp
+				.context("Failed to get response")?
+				.text()
+				.context("Failed to get html")?
+				.parse();
 
 			if resp.is_err() {
 				return Ok(MangaPage {
@@ -498,26 +599,35 @@ impl ScrapperTraits for MangaDexScrapper {
 
 			let resp = resp.unwrap();
 
-			let data = resp["data"].as_array().unwrap();
+			let data = resp["data"].as_array().context("expected data to be an array")?;
 
-			data.iter().for_each(|chapter| {
-				let title = chapter["attributes"]["chapter"].as_str().unwrap().to_string();
-				let date = chapter["attributes"]["readableAt"].as_str().unwrap().to_string();
+			for chapter in data {
+				let title = chapter["attributes"]["chapter"]
+					.as_str()
+					.context("expected chapter to be a string")?
+					.to_string();
+				let date = chapter["attributes"]["readableAt"]
+					.as_str()
+					.context("expected readableAt to be a string")?
+					.to_string();
 
 				let translated_language = chapter["attributes"]["translatedLanguage"].as_str().unwrap();
 
 				if translated_language != "en" {
-					return;
+					continue;
 				}
 
 				if chapters.iter().any(|c| c.title == title) {
-					return;
+					continue;
 				}
 
-				let url = format!("https://mangadex.org/chapter/{}", chapter["id"].as_str().unwrap());
+				let url = format!(
+					"https://mangadex.org/chapter/{}",
+					chapter["id"].as_str().context("expected id to be a string")?
+				);
 
 				chapters.push(Chapter { title, url, date });
-			});
+			}
 		}
 
 		Ok(MangaPage {
@@ -536,11 +646,11 @@ impl ScrapperTraits for MangaDexScrapper {
 		})
 	}
 
-	async fn scrape_genres_list(&self) -> Result<Vec<Genre>, reqwest::Error> {
-		todo!()
+	async fn scrape_genres_list(&self) -> Result<Vec<Genre>> {
+		todo!();
 	}
 
-	async fn get_info(&self) -> Result<crate::ScrapperInfo, reqwest::Error> {
+	async fn get_info(&self) -> Result<crate::ScrapperInfo> {
 		Ok(crate::ScrapperInfo {
 			id: ScrapperType::MangaDex,
 			name: "MangaDex".to_string(),

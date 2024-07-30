@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::Result;
 use async_trait::async_trait;
 use scraper::ElementRef;
 use serde::Serialize;
@@ -20,14 +21,14 @@ pub enum ScrapperType {
 
 #[async_trait]
 pub trait ScrapperTraits {
-	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>, reqwest::Error>;
-	async fn get_cookies(&self) -> Result<String, reqwest::Error>;
-	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error>;
-	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error>;
-	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>, reqwest::Error>;
-	async fn scrape_manga(&self, url: &str) -> Result<MangaPage, reqwest::Error>;
-	async fn scrape_genres_list(&self) -> Result<Vec<Genre>, reqwest::Error>;
-	async fn get_info(&self) -> Result<ScrapperInfo, reqwest::Error>;
+	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>>;
+	async fn get_cookies(&self) -> Result<String>;
+	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>>;
+	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>>;
+	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>>;
+	async fn scrape_manga(&self, url: &str) -> Result<MangaPage>;
+	async fn scrape_genres_list(&self) -> Result<Vec<Genre>>;
+	async fn get_info(&self) -> Result<ScrapperInfo>;
 	fn get_scrapper_type(&self) -> ScrapperType;
 }
 
@@ -138,13 +139,13 @@ fn get_image_url(&element: &ElementRef) -> String {
 	let attrs = element.value().attrs().collect::<HashMap<&str, &str>>();
 
 	if attrs.get("data-src").is_some() {
-		return attrs.get("data-src").unwrap().to_string();
+		return attrs.get("data-src").unwrap_or(&"").to_string();
 	} else if attrs.get("src").is_some() {
-		return attrs.get("src").unwrap().to_string();
+		return attrs.get("src").unwrap_or(&"").to_string();
 	} else if attrs.get("data-cfsrc").is_some() {
-		return attrs.get("data-cfsrc").unwrap().to_string();
+		return attrs.get("data-cfsrc").unwrap_or(&"").to_string();
 	} else if attrs.get("data-lazy-src").is_some() {
-		return attrs.get("data-lazy-src").unwrap().to_string();
+		return attrs.get("data-lazy-src").unwrap_or(&"").to_string();
 	} else {
 		return "".to_string();
 	}

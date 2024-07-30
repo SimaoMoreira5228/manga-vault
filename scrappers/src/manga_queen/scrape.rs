@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 
 use super::MangaQueenScrapper;
@@ -5,13 +6,13 @@ use crate::{get_image_url, Chapter, Genre, MangaItem, MangaPage, ScrapperTraits,
 
 #[async_trait]
 impl ScrapperTraits for MangaQueenScrapper {
-	async fn get_cookies(&self) -> Result<String, reqwest::Error> {
+	async fn get_cookies(&self) -> Result<String> {
 		Ok("".to_string())
 	}
 
-	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>, reqwest::Error> {
-		let res = reqwest::get(url).await?;
-		let body = res.text().await?;
+	async fn scrape_chapter(&self, url: &str) -> Result<Vec<String>> {
+		let res = reqwest::get(url).await.context("Failed to get response")?;
+		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
 		let img_selector = scraper::Selector::parse("img.wp-manga-chapter-img").unwrap();
@@ -25,10 +26,10 @@ impl ScrapperTraits for MangaQueenScrapper {
 		Ok(imgs)
 	}
 
-	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
+	async fn scrape_latest(&self, page: u16) -> Result<Vec<MangaItem>> {
 		let url = format!("https://mangaqueen.com/?s&post_type=wp-manga&m_orderby=latest&paged={}", page);
-		let res = reqwest::get(url).await?;
-		let body = res.text().await?;
+		let res = reqwest::get(url).await.context("Failed to get response")?;
+		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
 		let mangas_div_selector = scraper::Selector::parse("div.c-tabs-item").unwrap();
@@ -43,20 +44,23 @@ impl ScrapperTraits for MangaQueenScrapper {
 				let img_url_div = div
 					.select(&scraper::Selector::parse("img.img-responsive").unwrap())
 					.next()
-					.unwrap();
+					.context("Failed to get image url")?;
 
 				let img_url = get_image_url(&img_url_div);
 
 				let title = div
 					.select(&scraper::Selector::parse("div.post-title h3.h4").unwrap())
 					.next()
-					.unwrap();
+					.context("Failed to get title")?;
+
 				let title = title.text().collect::<Vec<_>>().join(" ");
+
 				let url = div
 					.select(&scraper::Selector::parse("div.post-title h3.h4 a").unwrap())
 					.next()
-					.unwrap();
-				let url = url.value().attr("href").unwrap();
+					.context("Failed to get url")?;
+
+				let url = url.value().attr("href").context("Failed to get url")?;
 
 				let manga_item = MangaItem {
 					title,
@@ -70,13 +74,13 @@ impl ScrapperTraits for MangaQueenScrapper {
 		Ok(manga_items)
 	}
 
-	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
+	async fn scrape_trending(&self, page: u16) -> Result<Vec<MangaItem>> {
 		let url = format!(
 			"https://mangaqueen.com/?s&post_type=wp-manga&m_orderby=trending&paged={}",
 			page
 		);
-		let res = reqwest::get(url).await?;
-		let body = res.text().await?;
+		let res = reqwest::get(url).await.context("Failed to get response")?;
+		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
 		let mangas_div_selector = scraper::Selector::parse("div.c-tabs-item").unwrap();
@@ -91,19 +95,23 @@ impl ScrapperTraits for MangaQueenScrapper {
 				let img_url_div = div
 					.select(&scraper::Selector::parse("img.img-responsive").unwrap())
 					.next()
-					.unwrap();
+					.context("Failed to get image url")?;
+
 				let img_url = get_image_url(&img_url_div);
 
 				let title = div
 					.select(&scraper::Selector::parse("div.post-title h3.h4").unwrap())
 					.next()
-					.unwrap();
+					.context("Failed to get title")?;
+
 				let title = title.text().collect::<Vec<_>>().join(" ");
+
 				let url = div
 					.select(&scraper::Selector::parse("div.post-title h3.h4 a").unwrap())
 					.next()
-					.unwrap();
-				let url = url.value().attr("href").unwrap();
+					.context("Failed to get url")?;
+
+				let url = url.value().attr("href").context("Failed to get url")?;
 
 				let manga_item = MangaItem {
 					title: title.to_string(),
@@ -118,13 +126,13 @@ impl ScrapperTraits for MangaQueenScrapper {
 		Ok(manga_items)
 	}
 
-	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>, reqwest::Error> {
+	async fn scrape_search(&self, query: &str, page: u16) -> Result<Vec<MangaItem>> {
 		let url = format!(
 			"https://mangaqueen.com/?s={}&post_type=wp-manga&op=&author=&artist=&release=&adult=&paged={}",
 			query, page
 		);
-		let res = reqwest::get(url).await?;
-		let body = res.text().await?;
+		let res = reqwest::get(url).await.context("Failed to get response")?;
+		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
 		let mangas_div_selector = scraper::Selector::parse("div.c-tabs-item").unwrap();
@@ -139,19 +147,23 @@ impl ScrapperTraits for MangaQueenScrapper {
 				let img_url_div = div
 					.select(&scraper::Selector::parse("img.img-responsive").unwrap())
 					.next()
-					.unwrap();
+					.context("Failed to get image url")?;
+
 				let img_url = get_image_url(&img_url_div);
 
 				let title = div
 					.select(&scraper::Selector::parse("div.post-title h3.h4").unwrap())
 					.next()
-					.unwrap();
+					.context("Failed to get title")?;
+
 				let title = title.text().collect::<Vec<_>>().join(" ");
+
 				let url = div
 					.select(&scraper::Selector::parse("div.post-title h3.h4 a").unwrap())
 					.next()
-					.unwrap();
-				let url = url.value().attr("href").unwrap();
+					.context("Failed to get url")?;
+
+				let url = url.value().attr("href").context("Failed to get url")?;
 
 				let manga_item = MangaItem {
 					title: title.to_string(),
@@ -166,9 +178,9 @@ impl ScrapperTraits for MangaQueenScrapper {
 		Ok(manga_items)
 	}
 
-	async fn scrape_manga(&self, url: &str) -> Result<MangaPage, reqwest::Error> {
-		let res = reqwest::get(url).await?;
-		let body = res.text().await?;
+	async fn scrape_manga(&self, url: &str) -> Result<MangaPage> {
+		let res = reqwest::get(url).await.context("Failed to get response")?;
+		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
 
@@ -176,7 +188,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 		let title = html
 			.select(&tittle_selector)
 			.next()
-			.unwrap()
+			.context("Failed to get title")?
 			.text()
 			.collect::<Vec<_>>()
 			.join(" ")
@@ -184,10 +196,13 @@ impl ScrapperTraits for MangaQueenScrapper {
 			.to_string();
 
 		let img_selector = scraper::Selector::parse("div.summary_image img").unwrap();
-		let img_url = get_image_url(&html.select(&img_selector).next().unwrap());
+		let img_url = get_image_url(&html.select(&img_selector).next().context("Failed to get image url")?);
 
 		let summary_content_selector = scraper::Selector::parse("div.summary_content_wrap div.summary_content").unwrap();
-		let summary_content_div = html.select(&summary_content_selector).next().unwrap();
+		let summary_content_div = html
+			.select(&summary_content_selector)
+			.next()
+			.context("Failed to get summary content")?;
 		let post_content_item_selector = scraper::Selector::parse("div.post-content div.post-content_item").unwrap();
 		let post_content_item = summary_content_div.select(&post_content_item_selector);
 		let mut genres: Vec<String> = Vec::new();
@@ -229,7 +244,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 			if div
 				.select(&scraper::Selector::parse("div.summary-heading").unwrap())
 				.next()
-				.unwrap()
+				.context("Failed to get summary heading")?
 				.text()
 				.filter(|x| x.contains("Type"))
 				.count() > 0
@@ -237,7 +252,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 				r#type = Some(
 					div.select(&scraper::Selector::parse("div.summary-content").unwrap())
 						.next()
-						.unwrap()
+						.context("Failed to get summary content")?
 						.text()
 						.collect::<Vec<_>>()
 						.join(" ")
@@ -247,7 +262,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 			} else if {
 				div.select(&scraper::Selector::parse("div.summary-heading").unwrap())
 					.next()
-					.unwrap()
+					.context("Failed to get summary heading")?
 					.text()
 					.filter(|x| x.contains("Alternative"))
 					.count()
@@ -256,7 +271,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 				alternative_names = div
 					.select(&scraper::Selector::parse("div.summary-content").unwrap())
 					.next()
-					.unwrap()
+					.context("Failed to get summary content")?
 					.text()
 					.collect::<Vec<_>>()
 					.join(" ")
@@ -272,7 +287,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 			if div
 				.select(&scraper::Selector::parse("div.summary-heading").unwrap())
 				.next()
-				.unwrap()
+				.context("Failed to get summary heading")?
 				.text()
 				.filter(|x| x.contains("Status"))
 				.count() > 0
@@ -280,7 +295,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 				status = div
 					.select(&scraper::Selector::parse("div.summary-content").unwrap())
 					.next()
-					.unwrap()
+					.context("Failed to get summary content")?
 					.text()
 					.collect::<Vec<_>>()
 					.join(" ")
@@ -289,7 +304,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 			} else if div
 				.select(&scraper::Selector::parse("div.summary-heading").unwrap())
 				.next()
-				.unwrap()
+				.context("Failed to get summary heading")?
 				.text()
 				.filter(|x| x.contains("Release"))
 				.count() > 0
@@ -297,13 +312,13 @@ impl ScrapperTraits for MangaQueenScrapper {
 				release_date = Some(
 					div.select(&scraper::Selector::parse("div.summary-content").unwrap())
 						.next()
-						.unwrap()
+						.context("Failed to get summary content")?
 						.text()
 						.collect::<Vec<_>>()
 						.join(" ")
 						.trim()
 						.parse::<String>()
-						.unwrap(),
+						.context("Failed to parse release date")?,
 				);
 			}
 		}
@@ -312,7 +327,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 		let description = html
 			.select(&description_selector)
 			.next()
-			.unwrap()
+			.context("Failed to get description")?
 			.text()
 			.collect::<Vec<_>>()
 			.join(" ")
@@ -321,13 +336,16 @@ impl ScrapperTraits for MangaQueenScrapper {
 
 		let chapters_selector = scraper::Selector::parse("li.wp-manga-chapter").unwrap();
 		let mut chapters: Vec<Chapter> = Vec::new();
-		html.select(&chapters_selector).for_each(|chapter| {
-			let info_selector = chapter.select(&scraper::Selector::parse("a").unwrap()).next().unwrap();
+		for chapter in html.select(&chapters_selector) {
+			let info_selector = chapter
+				.select(&scraper::Selector::parse("a").unwrap())
+				.next()
+				.context("Failed to get chapter info")?;
 
 			let title = info_selector.inner_html().trim().to_string();
 
 			if title == "<!-- -->" {
-				return;
+				continue;
 			}
 
 			let date_selector = chapter.select(&scraper::Selector::parse("span i").unwrap()).next();
@@ -337,16 +355,20 @@ impl ScrapperTraits for MangaQueenScrapper {
 			if date_selector.is_none() {
 				date = "New".to_string();
 			} else {
-				date = date_selector.unwrap().inner_html().trim().to_string();
+				date = date_selector
+					.context("Failed to get chapter date")?
+					.inner_html()
+					.trim()
+					.to_string();
 			}
 
-			let url = info_selector.value().attr("href").unwrap();
+			let url = info_selector.value().attr("href").context("Failed to get chapter url")?;
 			chapters.push(Chapter {
 				title,
 				url: url.to_string(),
 				date,
 			})
-		});
+		}
 
 		Ok(MangaPage {
 			title,
@@ -364,10 +386,10 @@ impl ScrapperTraits for MangaQueenScrapper {
 		})
 	}
 
-	async fn scrape_genres_list(&self) -> Result<Vec<Genre>, reqwest::Error> {
+	async fn scrape_genres_list(&self) -> Result<Vec<Genre>> {
 		let url = "https://mangaqueen.com/";
-		let res = reqwest::get(url).await?;
-		let body = res.text().await?;
+		let res = reqwest::get(url).await.context("Failed to get response")?;
+		let body = res.text().await.context("Failed to get html")?;
 
 		let html = scraper::Html::parse_document(&body);
 		let genres_selector = scraper::Selector::parse("li.menu-item-3386 ul.sub-menu li a").unwrap();
@@ -375,7 +397,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 			.select(&genres_selector)
 			.map(|genre| {
 				let name = genre.text().collect::<Vec<_>>().join(" ");
-				let url = genre.value().attr("href").unwrap();
+				let url = genre.value().attr("href").unwrap_or("");
 				Genre {
 					name,
 					url: url.to_string(),
@@ -386,7 +408,7 @@ impl ScrapperTraits for MangaQueenScrapper {
 		Ok(genres)
 	}
 
-	async fn get_info(&self) -> Result<crate::ScrapperInfo, reqwest::Error> {
+	async fn get_info(&self) -> Result<crate::ScrapperInfo> {
 		Ok(crate::ScrapperInfo {
 			id: self.get_scrapper_type(),
 			name: "Manga Queen".to_string(),
