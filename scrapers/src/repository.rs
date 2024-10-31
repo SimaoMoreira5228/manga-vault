@@ -20,9 +20,15 @@ enum PluginState {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct DownloadOptions {
+	pub windows: String,
+	pub linux: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct RepositoryPlugin {
 	pub name: String,
-	pub url: String,
+	pub urls: DownloadOptions,
 	pub version: String,
 	pub state: PluginState,
 	pub build_state: BuildState,
@@ -31,7 +37,6 @@ struct RepositoryPlugin {
 #[derive(Debug, Deserialize, Serialize)]
 struct Repository {
 	pub name: String,
-	pub url: String,
 	pub plugins: Vec<RepositoryPlugin>,
 }
 
@@ -79,7 +84,14 @@ pub fn load_repos() -> anyhow::Result<()> {
 						"{}/{}/{}-{}.so",
 						CONFIG.plugins_folder, repo.name, plugin.name, plugin.version
 					);
-					let plugin_data = reqwest::blocking::get(&plugin.url).unwrap().bytes().unwrap();
+
+					let url = if cfg!(target_os = "windows") {
+						&plugin.urls.windows
+					} else {
+						&plugin.urls.linux
+					};
+
+					let plugin_data = reqwest::blocking::get(url).unwrap().bytes().unwrap();
 					std::fs::write(&plugin_file, plugin_data).unwrap();
 				}
 			} else {
@@ -87,7 +99,14 @@ pub fn load_repos() -> anyhow::Result<()> {
 					"{}/{}/{}-{}.so",
 					CONFIG.plugins_folder, repo.name, plugin.name, plugin.version
 				);
-				let plugin_data = reqwest::blocking::get(&plugin.url).unwrap().bytes().unwrap();
+
+				let url = if cfg!(target_os = "windows") {
+					&plugin.urls.windows
+				} else {
+					&plugin.urls.linux
+				};
+
+				let plugin_data = reqwest::blocking::get(url).unwrap().bytes().unwrap();
 				std::fs::write(&plugin_file, plugin_data).unwrap();
 			}
 		}

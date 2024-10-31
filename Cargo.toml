@@ -7,6 +7,7 @@ edition = "2021"
 
 [workspace]
 members = ["api", "config", "database/*", "scrapers"]
+exclude = ["scrapers/mangaread_org"]
 
 [dependencies]
 api = { path = "api" }

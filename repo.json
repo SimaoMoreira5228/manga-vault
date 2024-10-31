@@ -1,0 +1,15 @@
+{
+  "name": "dewn's plugins",
+  "plugins": [
+    {
+      "name": "mangaread_org",
+      "urls": {
+        "windows": "https://files.catbox.moe/xyvu7o.dll",
+        "linux": "https://files.catbox.moe/5l2d7c.so"
+      },
+      "version": "0.1.0",
+      "state": "updated",
+      "build_state": "beta"
+    }
+  ]
+}
