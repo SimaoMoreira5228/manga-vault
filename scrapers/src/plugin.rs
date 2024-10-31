@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-use anyhow::Context;
 use crate::types::{Genre, MangaItem, MangaPage, ScraperInfo};
+use anyhow::Context;
+use std::path::PathBuf;
 
 #[derive(Clone, Debug)]
 pub struct Plugin {
@@ -19,6 +19,7 @@ impl Plugin {
 	}
 
 	pub fn get_cookies(&self) -> anyhow::Result<String> {
+		tracing::info!("[{}] Getting cookies", self.name);
 		unsafe {
 			let lib = libloading::Library::new(&self.file).context("Could not load library")?;
 
@@ -30,6 +31,8 @@ impl Plugin {
 	}
 
 	pub fn scrape_chapter(&self, url: String) -> anyhow::Result<Vec<String>> {
+		tracing::info!("[{}] Scraping chapter: {}", self.name, url);
+
 		unsafe {
 			let lib = libloading::Library::new(&self.file).context("Could not load library")?;
 
@@ -41,6 +44,8 @@ impl Plugin {
 	}
 
 	pub fn scrape_latest(&self, page: u16) -> anyhow::Result<Vec<MangaItem>> {
+		tracing::info!("[{}] Scraping latest: {}", self.name, page);
+
 		unsafe {
 			let lib = libloading::Library::new(&self.file).context("Could not load library")?;
 
@@ -52,6 +57,8 @@ impl Plugin {
 	}
 
 	pub fn scrape_trending(&self, page: u16) -> anyhow::Result<Vec<MangaItem>> {
+		tracing::info!("[{}] Scraping trending: {}", self.name, page);
+
 		unsafe {
 			let lib = libloading::Library::new(&self.file).context("Could not load library")?;
 
@@ -63,6 +70,8 @@ impl Plugin {
 	}
 
 	pub fn scrape_search(&self, query: &str, page: u16) -> anyhow::Result<Vec<MangaItem>> {
+		tracing::info!("[{}] Scraping search: {} - {}", self.name, query, page);
+
 		unsafe {
 			let lib = libloading::Library::new(&self.file).context("Could not load library")?;
 
@@ -74,6 +83,8 @@ impl Plugin {
 	}
 
 	pub fn scrape_manga(&self, url: &str) -> anyhow::Result<MangaPage> {
+		tracing::info!("[{}] Scraping manga: {}", self.name, url);
+
 		unsafe {
 			let lib = libloading::Library::new(&self.file).context("Could not load library")?;
 
@@ -85,6 +96,8 @@ impl Plugin {
 	}
 
 	pub fn scrape_genres_list(&self) -> anyhow::Result<Vec<Genre>> {
+		tracing::info!("[{}] Scraping genres list", self.name);
+
 		unsafe {
 			let lib = libloading::Library::new(&self.file).context("Could not load library")?;
 
@@ -96,6 +109,8 @@ impl Plugin {
 	}
 
 	pub fn get_info(&self) -> anyhow::Result<ScraperInfo> {
+		tracing::info!("[{}] Getting info", self.name);
+
 		unsafe {
 			let lib = libloading::Library::new(&self.file).context("Could not load library")?;
 
@@ -107,6 +122,8 @@ impl Plugin {
 	}
 
 	pub fn get_scraper_type(&self) -> anyhow::Result<String> {
+		tracing::info!("[{}] Getting scraper type", self.name);
+
 		unsafe {
 			let lib = libloading::Library::new(&self.file).context("Could not load library")?;
 

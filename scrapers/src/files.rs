@@ -19,13 +19,13 @@ pub fn handle_files(
 	let mut watcher = match RecommendedWatcher::new(tx, notify::Config::default()) {
 		std::result::Result::Ok(watcher) => watcher,
 		Err(e) => {
-			println!("Failed to create watcher: {:?}", e);
+			tracing::error!("Failed to create watcher: {:?}", e);
 			return;
 		}
 	};
 
 	if let Err(e) = watcher.watch(Path::new(&CONFIG.plugins_folder), notify::RecursiveMode::Recursive) {
-		println!("Failed to watch folder: {:?}", e);
+		tracing::error!("Failed to watch folder: {:?}", e);
 		return;
 	}
 
@@ -33,14 +33,14 @@ pub fn handle_files(
 		let plugins = plugins.clone();
 		let modification_tracker = modification_tracker.clone();
 		match res {
-			std::result::Result::Ok(res) => {
+			Ok(res) => {
 				let runtime = tokio::runtime::Runtime::new().unwrap();
 
 				runtime.block_on(async {
 					handle_file_event(res, plugins, modification_tracker).await;
 				});
 			}
-			std::result::Result::Err(e) => println!("watcher error: {:?}", e),
+			Err(e) => tracing::error!("watcher error: {:?}", e),
 		}
 	}
 }
@@ -54,7 +54,7 @@ async fn handle_file_event(
 
 	match event.kind {
 		notify::EventKind::Modify(_) | notify::EventKind::Create(_) => {
-			for path in event.paths {
+			for path in event.clone().paths {
 				if let Some(ext) = path.extension() {
 					if !PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
 						continue;
@@ -73,6 +73,7 @@ async fn handle_file_event(
 									modification.last_modified = now;
 									true
 								} else {
+									tracing::debug!("File {:?} Event {:?} Skipped", path, event.kind);
 									false
 								}
 							}
@@ -86,10 +87,10 @@ async fn handle_file_event(
 						}
 					};
 
+					tracing::debug!("File {:?} Event {:?} Started Processing", path, event.kind);
+
 					if should_process {
-						if let Err(e) = process_plugin_file(&path, plugins.clone()).await {
-							eprintln!("Error processing plugin {}: {:?}", path.display(), e);
-						}
+						let _ = process_plugin_file(&path, plugins.clone()).await;
 
 						let mut tracker = modification_tracker.write().await;
 						if let Some(entry) = tracker.get_mut(&path) {
@@ -105,7 +106,7 @@ async fn handle_file_event(
 					if PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
 						let mut plugins = plugins.write().await;
 						plugins.retain(|_, p| p.file.to_str() != path.to_str());
-						println!("Unloaded plugin {}", path.display());
+						tracing::info!("Unloaded plugin {}", path.display());
 
 						let mut tracker = modification_tracker.write().await;
 						tracker.remove(&path);
@@ -122,11 +123,11 @@ async fn process_plugin_file(path: &Path, plugins: Arc<RwLock<HashMap<String, Pl
 
 	match load_plugin_file(plugins.clone(), path.to_path_buf()).await {
 		Ok(_) => {
-			println!("Successfully reloaded plugin: {}", path.display());
+			tracing::info!("Successfully reloaded plugin: {}", path.display());
 			Ok(())
 		}
 		Err(e) => {
-			eprintln!("Failed to reload plugin {}: {:?}", path.display(), e);
+			tracing::error!("Failed to reload plugin {}: {:?}", path.display(), e);
 			Err(e)
 		}
 	}

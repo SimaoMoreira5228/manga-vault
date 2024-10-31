@@ -10,7 +10,7 @@ use crate::websocket::handle_connection;
 pub async fn start(db: Arc<Mutex<Connection>>) {
   let listener = TcpListener::bind(format!("0.0.0.0:{}", CONFIG.websocket_port)).await.unwrap();
 
-  println!("Websocket server running on port http://localhost:{}", CONFIG.websocket_port);
+  tracing::info!("Websocket server running on port http://localhost:{}", CONFIG.websocket_port);
 
   while let Ok((stream, _)) = listener.accept().await {
     let db_clone = Arc::clone(&db);

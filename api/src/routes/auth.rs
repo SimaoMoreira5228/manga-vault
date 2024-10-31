@@ -2,6 +2,7 @@ use actix_web::cookie::Cookie;
 use actix_web::dev::ServiceRequest;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
+use config::CONFIG;
 use cookie::time::OffsetDateTime;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use sea_orm::EntityTrait;
@@ -24,7 +25,7 @@ struct NewTokenResponse {
 
 fn generate_token(user_id: i32) -> Result<NewTokenResponse, jsonwebtoken::errors::Error> {
 	let exp = chrono::Utc::now()
-		.checked_add_signed(chrono::Duration::hours(24))
+		.checked_add_signed(chrono::Duration::days(CONFIG.jwt_duration_days as i64))
 		.expect("valid timestamp")
 		.timestamp();
 	let claims = Claims {

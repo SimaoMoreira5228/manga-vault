@@ -15,3 +15,5 @@ config = { path = "config" }
 connection = { path = "database/connection" }
 scrapers = { path = "scrapers" }
 tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3.0"

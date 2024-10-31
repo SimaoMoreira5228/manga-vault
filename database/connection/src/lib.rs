@@ -20,7 +20,9 @@ impl Database {
 			migration::Migrator::fresh(conn.as_ref().unwrap()).await.unwrap();
 
 			if conn.is_err() {
-				return Err(Box::new(conn.err().unwrap()));
+				let err = conn.err().unwrap();
+				tracing::error!("Failed to connect to database: {:?}", &err);
+				return Err(Box::new(err));
 			}
 
 			return Ok(Self { conn: conn.unwrap() });
@@ -29,13 +31,16 @@ impl Database {
 		let result = conn.unwrap().close().await;
 
 		if result.is_err() {
-			return Err(Box::new(result.err().unwrap()));
+			let err = result.err().unwrap();
+			tracing::error!("Failed to close read-only connection: {:?}", &err);
+			return Err(Box::new(err));
 		}
 
 		url = format!("sqlite://{}?mode=rwc", CONFIG.database_path);
 		conn = sea_orm::Database::connect(url).await;
 		migration::Migrator::up(conn.as_ref().unwrap(), None).await.unwrap();
 
+		tracing::info!("Database connected");
 		Ok(Self { conn: conn.unwrap() })
 	}
 
@@ -48,8 +53,9 @@ impl Database {
 			std::fs::create_dir_all(backup_path)?;
 		}
 
-		fs::copy(&CONFIG.database_path, backup_path.join(backup_filename))?;
+		fs::copy(&CONFIG.database_path, backup_path.join(&backup_filename))?;
 
+		tracing::info!("Database backed up to: {}", backup_filename);
 		Ok(())
 	}
 }

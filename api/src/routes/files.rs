@@ -22,8 +22,8 @@ async fn upload_file(db: web::Data<connection::Connection>, mut payload: Multipa
 	let mut data = Vec::new();
 
 	while let Some(item) = payload.next().await {
-		let mut field = item.unwrap().inspect_err(|e| println!("Error: {}", e)).map_err(|e| {
-			println!("Error: {}", e);
+		let mut field = item.unwrap().map_err(|e| {
+			tracing::error!("Failed while uploading file: {:?}", e);
 			HttpResponse::InternalServerError().body("Error")
 		});
 		while let Some(chunk) = field.next().await {
@@ -53,7 +53,7 @@ async fn upload_file(db: web::Data<connection::Connection>, mut payload: Multipa
 	.await;
 
 	if inserted.is_err() {
-		println!("Failed to insert file {:?}", inserted.err().unwrap());
+		tracing::error!("Failed to insert file {:?}", inserted.err().unwrap());
 		return HttpResponse::InternalServerError().body("Failed to insert file");
 	}
 

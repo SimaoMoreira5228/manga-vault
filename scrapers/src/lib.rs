@@ -32,6 +32,8 @@ pub struct PluginManager {
 }
 
 fn read_dir(path: &PathBuf, level: i8, callback: impl FnOnce(PathBuf) + Send + Clone + 'static) {
+	tracing::debug!("Reading directory: {}", path.display());
+
 	for entry in std::fs::read_dir(path).unwrap() {
 		let entry = entry.unwrap();
 		let path = entry.path();
@@ -48,6 +50,8 @@ fn read_dir(path: &PathBuf, level: i8, callback: impl FnOnce(PathBuf) + Send + C
 
 impl PluginManager {
 	pub async fn new() -> Self {
+		tracing::info!("Creating plugin manager");
+
 		let manager = Self {
 			plugins: Arc::new(RwLock::new(HashMap::new())),
 			modification_tracker: Arc::new(RwLock::new(HashMap::new())),
@@ -59,7 +63,10 @@ impl PluginManager {
 	}
 
 	async fn initialize(&self) -> anyhow::Result<()> {
+		tracing::info!("Initializing plugin manager");
+
 		if !std::fs::exists(CONFIG.plugins_folder.clone())? {
+			tracing::debug!("Creating plugins folder: {}", CONFIG.plugins_folder);
 			std::fs::create_dir_all(CONFIG.plugins_folder.clone())?;
 		}
 
@@ -95,6 +102,8 @@ impl PluginManager {
 }
 
 async fn load_plugin_file(plugins: Arc<RwLock<HashMap<String, Plugin>>>, file: PathBuf) -> anyhow::Result<()> {
+	tracing::info!("Processing plugin file: {}", file.display());
+
 	if plugins.read().await.values().any(|p| p.file == file) {
 		plugins.write().await.retain(|_, p| p.file != file);
 	}

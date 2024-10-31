@@ -24,7 +24,18 @@ pub fn generate_secret() -> String {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TracingLevel {
+	Trace,
+	Debug,
+	Info,
+	Warn,
+	Error,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
+	pub jwt_duration_days: u16,
 	pub website_port: u16,
 	pub api_port: u16,
 	pub websocket_port: u16,
@@ -35,10 +46,12 @@ pub struct Config {
 	pub repositories: Vec<String>,
 	pub directory: String,
 	pub secret_jwt: String,
+	pub tracing_level: TracingLevel,
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct PartialConfig {
+	pub jwt_duration_days: Option<u16>,
 	pub website_port: Option<u16>,
 	pub api_port: Option<u16>,
 	pub websocket_port: Option<u16>,
@@ -49,12 +62,14 @@ pub struct PartialConfig {
 	pub repositories: Option<Vec<String>>,
 	pub directory: Option<String>,
 	pub secret_jwt: Option<String>,
+	pub tracing_level: Option<TracingLevel>,
 }
 
 impl Default for Config {
 	fn default() -> Self {
 		let current_dir = current_dir();
 		Config {
+			jwt_duration_days: 5,
 			website_port: 5227,
 			api_port: 5228,
 			websocket_port: 5229,
@@ -65,6 +80,7 @@ impl Default for Config {
 			repositories: vec![],
 			directory: current_dir.display().to_string(),
 			secret_jwt: generate_secret(),
+			tracing_level: TracingLevel::Info,
 		}
 	}
 }
@@ -73,6 +89,7 @@ impl Config {
 	fn from_partial(partial: PartialConfig) -> Self {
 		let default = Config::default();
 		Config {
+			jwt_duration_days: partial.jwt_duration_days.unwrap_or(default.jwt_duration_days),
 			website_port: partial.website_port.unwrap_or(default.website_port),
 			api_port: partial.api_port.unwrap_or(default.api_port),
 			websocket_port: partial.websocket_port.unwrap_or(default.websocket_port),
@@ -83,6 +100,7 @@ impl Config {
 			repositories: partial.repositories.unwrap_or(default.repositories),
 			directory: partial.directory.unwrap_or(default.directory),
 			secret_jwt: partial.secret_jwt.unwrap_or(default.secret_jwt),
+			tracing_level: partial.tracing_level.unwrap_or(default.tracing_level),
 		}
 	}
 }

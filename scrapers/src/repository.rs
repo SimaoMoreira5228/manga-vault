@@ -48,10 +48,12 @@ struct PluginNameInternal {
 
 pub fn load_repos() -> anyhow::Result<()> {
 	for repo_url in &CONFIG.repositories {
-		println!("Loading repository: {}", repo_url);
-		let repo = reqwest::blocking::get(repo_url).unwrap().json::<Repository>().unwrap();
+		tracing::debug!("Loading repository: {}", repo_url);
+
+		let repo = reqwest::blocking::get(repo_url)?.json::<Repository>()?;
 
 		if !std::fs::exists(format!("{}/{}", CONFIG.plugins_folder, repo.name))? {
+			tracing::debug!("Creating repository folder: {}", repo.name);
 			std::fs::create_dir_all(format!("{}/{}", CONFIG.plugins_folder, repo.name))?;
 		}
 
@@ -70,6 +72,7 @@ pub fn load_repos() -> anyhow::Result<()> {
 				for ext in PLUGIN_FILE_EXTENSIONS {
 					let plugin_file = format!("{}/{}/{}.{}", CONFIG.plugins_folder, repo.name, int_plugin.name, ext);
 					if std::fs::exists(&plugin_file)? {
+						tracing::debug!("Removing plugin: {}", plugin_file);
 						std::fs::remove_file(&plugin_file)?;
 					}
 				}
@@ -81,6 +84,8 @@ pub fn load_repos() -> anyhow::Result<()> {
 
 			if let Some(internal_plugin) = internal_plugin {
 				if internal_plugin.version != plugin.version {
+					tracing::info!("Updating plugin: {}", plugin.name);
+
 					let plugin_file = if cfg!(target_os = "windows") {
 						format!("{}/{}/{}.dll", CONFIG.plugins_folder, repo.name, plugin.name)
 					} else {
@@ -93,10 +98,12 @@ pub fn load_repos() -> anyhow::Result<()> {
 						&plugin.urls.linux
 					};
 
-					let plugin_data = reqwest::blocking::get(url).unwrap().bytes().unwrap();
-					std::fs::write(&plugin_file, plugin_data).unwrap();
+					let plugin_data = reqwest::blocking::get(url)?.bytes()?;
+					std::fs::write(&plugin_file, plugin_data)?;
 				}
 			} else {
+				tracing::info!("Downloading plugin: {}", plugin.name);
+
 				let plugin_file = if cfg!(target_os = "windows") {
 					format!("{}/{}/{}.dll", CONFIG.plugins_folder, repo.name, plugin.name)
 				} else {
@@ -109,11 +116,12 @@ pub fn load_repos() -> anyhow::Result<()> {
 					&plugin.urls.linux
 				};
 
-				let plugin_data = reqwest::blocking::get(url).unwrap().bytes().unwrap();
-				std::fs::write(&plugin_file, plugin_data).unwrap();
+				let plugin_data = reqwest::blocking::get(url)?.bytes()?;
+				std::fs::write(&plugin_file, plugin_data)?;
 			}
 		}
 
+		tracing::debug!("Writing internal plugins file: {}", internal_plugins_file);
 		let internal_plugins: Vec<PluginNameInternal> = repo
 			.plugins
 			.iter()

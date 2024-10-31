@@ -15,6 +15,7 @@ use entities::prelude::Temp;
 use once_cell::sync::Lazy;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use tokio::sync::Mutex;
+use tracing_actix_web::TracingLogger;
 
 use crate::routes::auth::validate_token;
 
@@ -45,12 +46,12 @@ pub async fn run() -> std::io::Result<()> {
 	tokio::spawn(starters::websocket::start(Arc::new(Mutex::new(db.conn.clone()))));
 	tokio::spawn(starters::website::start());
 
-	println!("HTTP server starting on port http://localhost:{}", CONFIG.api_port);
+	tracing::info!("HTTP server starting on port http://localhost:{}", CONFIG.api_port);
 
 	HttpServer::new(move || {
 		App::new()
 			.wrap(Cors::permissive())
-			.wrap(actix_web::middleware::Logger::default())
+			.wrap(TracingLogger::default())
 			.app_data(web::Data::new(db.conn.clone()))
 			.service(
 				web::scope("/api")

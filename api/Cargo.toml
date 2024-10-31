@@ -36,3 +36,5 @@ sea-orm = { version = "0.12", features = [
 ] }
 zip = "2.1.5"
 isahc = "1.7"
+tracing-actix-web = "0.7"
+tracing = "0.1"

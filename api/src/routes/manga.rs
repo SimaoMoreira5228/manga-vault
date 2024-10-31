@@ -304,7 +304,7 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 				let insert_result = chapter_active_model.insert(db.get_ref()).await;
 
 				if insert_result.is_err() {
-					println!("Error inserting chapter: {:?}", insert_result.err());
+					tracing::error!("Error inserting chapter: {:?}", insert_result.err());
 				} else {
 					let db_chapter: crate::entities::chapters::Model = insert_result.unwrap();
 
