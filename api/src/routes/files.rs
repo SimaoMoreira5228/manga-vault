@@ -3,12 +3,12 @@ use std::path::Path;
 
 use actix_multipart::Multipart;
 use actix_web::{get, post, web, HttpResponse, Responder};
+use config::CONFIG;
 use futures_util::{StreamExt, TryStreamExt};
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, EntityTrait};
 
 use crate::entities::prelude::Files;
-use crate::CONFIG;
 
 #[post("/upload")]
 async fn upload_file(db: web::Data<connection::Connection>, mut payload: Multipart) -> impl Responder {

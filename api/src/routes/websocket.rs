@@ -1,7 +1,6 @@
 use actix_web::{get, HttpResponse, Responder};
+use config::CONFIG;
 use serde_json::json;
-
-use crate::CONFIG;
 
 #[get("/websocket-info")]
 async fn get_websocket_info() -> impl Responder {

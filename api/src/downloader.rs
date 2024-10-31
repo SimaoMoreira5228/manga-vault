@@ -3,10 +3,9 @@ use std::{
 	io::BufRead,
 };
 
+use config::CONFIG;
 use reqwest::{header, Client};
 use serde_json::Value;
-
-use crate::CONFIG;
 
 pub async fn downloader(path: &str, owner: &str, repo: &str) -> Result<(), Box<dyn std::error::Error>> {
 	let release_url = format!("https://api.github.com/repos/{}/{}/releases/latest", owner, repo);

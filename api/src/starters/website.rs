@@ -1,10 +1,9 @@
 use std::fs::{self, DirEntry};
 use std::process::Stdio;
 
+use config::CONFIG;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
-
-use crate::CONFIG;
 
 pub async fn start() {
 	let contents = format!(
