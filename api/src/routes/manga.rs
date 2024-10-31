@@ -228,6 +228,7 @@ struct ScrapeMangaPageResponse {
 	description: String,
 	genres: Vec<String>,
 	chapters: Vec<crate::entities::chapters::Model>,
+	scraped: bool,
 }
 
 #[get("/mangas/scrape/{id}")]
@@ -239,20 +240,38 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 		return HttpResponse::BadRequest().body("Manga not found");
 	}
 
+	let db_manga = db_manga.unwrap();
+
 	let cached = Temp::find()
-		.filter(crate::entities::temp::Column::Key.eq(format!("manga_{}", db_manga.as_ref().unwrap().id)))
+		.filter(crate::entities::temp::Column::Key.eq(format!("manga_{}", db_manga.id)))
 		.one(db.get_ref())
 		.await
 		.unwrap();
 
-	let mut response: ScrapeMangaPageResponse;
+	let mut response: ScrapeMangaPageResponse = ScrapeMangaPageResponse {
+		title: db_manga.title.clone(),
+		url: db_manga.url.clone(),
+		img_url: db_manga.img_url.clone(),
+		alternative_names: vec![],
+		authors: vec![],
+		artists: None,
+		status: "".to_string(),
+		manga_type: None,
+		release_date: None,
+		description: "".to_string(),
+		genres: vec![],
+		chapters: vec![],
+		scraped: false,
+	};
+
+	response.chapters = Chapters::find()
+		.filter(crate::entities::chapters::Column::MangaId.eq(db_manga.id.clone()))
+		.all(db.get_ref())
+		.await
+		.unwrap();
 
 	if cached.is_none() {
-		let plugin = PLUGIN_MANAGER
-			.get()
-			.unwrap()
-			.get_plugin(&db_manga.as_ref().unwrap().scraper)
-			.await;
+		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.scraper).await;
 
 		let plugin = if plugin.is_none() {
 			return HttpResponse::BadRequest().body("Invalid scraper");
@@ -260,10 +279,10 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 			plugin.unwrap()
 		};
 
-		let manga = plugin.scrape_manga(&db_manga.as_ref().unwrap().url);
+		let manga = plugin.scrape_manga(&db_manga.url.clone());
 
 		if manga.is_err() {
-			return HttpResponse::BadRequest().body("Error scraping manga");
+			return HttpResponse::Ok().json(response);
 		}
 
 		let manga = manga.unwrap();
@@ -281,11 +300,12 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 			description: manga.description,
 			genres: manga.genres,
 			chapters: vec![],
+			scraped: true,
 		};
 
 		for chapter in manga.chapters {
 			let db_chapter: Option<crate::entities::chapters::Model> = Chapters::find()
-				.filter(crate::entities::chapters::Column::MangaId.eq(db_manga.as_ref().unwrap().id))
+				.filter(crate::entities::chapters::Column::MangaId.eq(db_manga.id))
 				.filter(crate::entities::chapters::Column::Url.eq(&chapter.url))
 				.one(db.get_ref())
 				.await
@@ -295,7 +315,7 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 				let chapter_active_model = crate::entities::chapters::ActiveModel {
 					title: Set(chapter.title.clone()),
 					url: Set(chapter.url.clone()),
-					manga_id: Set(db_manga.as_ref().unwrap().id),
+					manga_id: Set(db_manga.id),
 					created_at: Set(chrono::Utc::now().naive_utc().to_string()),
 					updated_at: Set(chrono::Utc::now().naive_utc().to_string()),
 					..Default::default()
@@ -320,7 +340,7 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 		}
 
 		let manga_to_temp = crate::entities::temp::ActiveModel {
-			key: Set(format!("manga_{}", db_manga.as_ref().unwrap().id)),
+			key: Set(format!("manga_{}", db_manga.id)),
 			value: Set(serde_json::to_string(&response).unwrap()),
 			expires_at: Set((chrono::Utc::now() + chrono::Duration::hours(2)).to_string()),
 			..Default::default()
@@ -329,7 +349,7 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 		let insert = manga_to_temp.insert(db.get_ref()).await;
 
 		if insert.is_err() {
-			return HttpResponse::BadRequest().body("Error saving manga to temp");
+			return HttpResponse::Ok().json(response);
 		}
 	} else {
 		let cached = cached.unwrap();

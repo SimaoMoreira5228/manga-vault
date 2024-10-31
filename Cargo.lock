@@ -2247,7 +2247,7 @@ dependencies = [
 
 [[package]]
 name = "manga-vault"
-version = "0.18.5"
+version = "0.18.6"
 dependencies = [
  "api",
  "config",
