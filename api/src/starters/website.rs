@@ -103,6 +103,6 @@ pub async fn start() {
 			break;
 		}
 		let s = std::str::from_utf8(&buf[..n]).unwrap();
-		tracing::trace!("{}", s);
+		tracing::info!("{}", s);
 	}
 }
