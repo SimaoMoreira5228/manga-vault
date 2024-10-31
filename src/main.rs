@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use scrapers::{PluginManager, PLUGIN_MANAGER};
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
@@ -13,14 +17,16 @@ async fn main() {
 	}
 
 	tokio::spawn(async move {
-		let config = config::load_config();
 		loop {
 			tokio::time::sleep(tokio::time::Duration::from_secs(7200)).await;
-			let db = connection::Database::new(&config).await.unwrap();
-			let _ = db.backup(&config).await;
+			let db = connection::Database::new().await.unwrap();
+			let _ = db.backup().await;
 			db.conn.close().await.unwrap();
 		}
 	});
+
+	let manager = PluginManager::new();
+	PLUGIN_MANAGER.set(Arc::new(manager.await)).unwrap();
 
 	api::run().await.unwrap();
 }

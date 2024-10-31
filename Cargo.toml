@@ -12,4 +12,5 @@ members = ["api", "config", "database/*", "scrapers"]
 api = { path = "api" }
 config = { path = "config" }
 connection = { path = "database/connection" }
+scrapers = { path = "scrapers" }
 tokio = { version = "1", features = ["full"] }

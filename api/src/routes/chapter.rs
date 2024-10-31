@@ -1,6 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
 use isahc::ReadResponseExt;
-use scrapers::Scraper;
+use scrapers::PLUGIN_MANAGER;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use serde::Serialize;
 
@@ -47,17 +47,15 @@ async fn get_chapter_info(db: web::Data<connection::Connection>, params: web::Pa
 		.await
 		.unwrap();
 
-	let scraper_type = scrapers::get_scraper_type(&db_manga.as_ref().unwrap().scraper);
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.as_ref().unwrap().scraper).await;
 
-	let scraper_type = if scraper_type.is_err() {
+	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");
 	} else {
-		scraper_type.unwrap()
+		plugin.unwrap()
 	};
 
-	let scraper = Scraper::new(&scraper_type);
-
-	let pages = scraper.scrape_chapter(&db_chapter.as_ref().unwrap().url).await;
+	let pages = plugin.scrape_chapter(db_chapter.as_ref().unwrap().url.to_string());
 
 	if pages.is_err() {
 		return HttpResponse::BadRequest().body("Error scraping chapter");
@@ -101,17 +99,15 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 	let scrapped_pages: Vec<String>;
 
 	if db_scrapped_pages.is_none() {
-		let scraper_type = scrapers::get_scraper_type(&db_manga.as_ref().unwrap().scraper);
+		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.as_ref().unwrap().scraper).await;
 
-		let scraper_type = if scraper_type.is_err() {
+		let plugin = if plugin.is_none() {
 			return HttpResponse::BadRequest().body("Invalid scraper");
 		} else {
-			scraper_type.unwrap()
+			plugin.unwrap()
 		};
 
-		let scraper = Scraper::new(&scraper_type);
-
-		let new_scrapped_pages = scraper.scrape_chapter(&db_chapter.as_ref().unwrap().url).await;
+		let new_scrapped_pages = plugin.scrape_chapter(db_chapter.as_ref().unwrap().url.to_string());
 
 		if new_scrapped_pages.is_err() {
 			return HttpResponse::BadRequest().body("Error scraping chapter");

@@ -9,18 +9,16 @@ use std::sync::Arc;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use actix_web_httpauth::middleware::HttpAuthentication;
-use config::Config;
+use config::CONFIG;
 use connection::Connection;
 use entities::prelude::Temp;
+use once_cell::sync::Lazy;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use tokio::sync::Mutex;
 
 use crate::routes::auth::validate_token;
 
-lazy_static::lazy_static! {
-	static ref CONFIG: Config = config::load_config();
-	static ref SECRET_JWT: String = CONFIG.secret_jwt.clone();
-}
+static SECRET_JWT: Lazy<String> = Lazy::new(||CONFIG.secret_jwt.clone());
 
 async fn clean_temp(db: &Connection) -> Result<(), sea_orm::DbErr> {
 	let time_now: chrono::prelude::DateTime<chrono::prelude::Utc> = chrono::Utc::now();
@@ -34,7 +32,7 @@ async fn clean_temp(db: &Connection) -> Result<(), sea_orm::DbErr> {
 }
 
 pub async fn run() -> std::io::Result<()> {
-	let db = connection::Database::new(&CONFIG).await.unwrap();
+	let db = connection::Database::new().await.unwrap();
 	let clean_coon = db.conn.clone();
 
 	tokio::spawn(async move {

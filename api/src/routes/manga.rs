@@ -1,6 +1,7 @@
 use std::vec;
 
 use actix_web::{get, web, HttpResponse, Responder};
+use scrapers::PLUGIN_MANAGER;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 
@@ -74,11 +75,11 @@ struct SearchAllResponse {
 #[get("/mangas/search/{title}/all")]
 async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title: web::Path<String>) -> impl Responder {
 	let mut response: Vec<SearchAllResponse> = vec![];
-	let all_scrapers_types = scrapers::get_all_scraper_types();
+	let plugins = PLUGIN_MANAGER.get().unwrap().get_plugins().await;
 
-	for scraper_type in all_scrapers_types {
+	for plugin in plugins.values() {
 		let mut searched_mangas: Vec<ResponseManga> = vec![];
-		let mangas = scrapers::Scraper::new(&scraper_type).scrape_search(title.as_str(), 1).await;
+		let mangas = plugin.scrape_search(title.as_str(), 1);
 
 		if mangas.is_err() {
 			continue;
@@ -88,7 +89,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 
 		for manga in mangas {
 			let db_manga: Option<crate::entities::mangas::Model> = Mangas::find()
-				.filter(crate::entities::mangas::Column::Scraper.eq(scrapers::get_scraper_type_str(&scraper_type)))
+				.filter(crate::entities::mangas::Column::Scraper.eq(plugin.name.clone()))
 				.filter(crate::entities::mangas::Column::Url.eq(&manga.url))
 				.one(db.get_ref())
 				.await
@@ -99,7 +100,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 					title: Set(manga.title.clone()),
 					url: Set(manga.url.clone()),
 					img_url: Set(manga.img_url.clone()),
-					scraper: Set(scrapers::get_scraper_type_str(&scraper_type).to_string()),
+					scraper: Set(plugin.name.clone()),
 					created_at: Set(chrono::Utc::now().naive_utc().to_string()),
 					updated_at: Set(chrono::Utc::now().naive_utc().to_string()),
 					..Default::default()
@@ -134,7 +135,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 		}
 
 		response.push(SearchAllResponse {
-			scraper: scrapers::get_scraper_type_str(&scraper_type).to_string(),
+			scraper: plugin.name.clone(),
 			mangas: searched_mangas,
 		});
 	}
@@ -146,17 +147,15 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<(String, String, u16)>) -> impl Responder {
 	let (title, scraper, page) = params.into_inner();
 
-	let scraper_type = scrapers::get_scraper_type(&scraper);
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper).await;
 
-	let scraper_type = if scraper_type.is_err() {
+	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");
 	} else {
-		scraper_type.unwrap()
+		plugin.unwrap()
 	};
 
-	let mangas = scrapers::Scraper::new(&scraper_type)
-		.scrape_search(title.as_str(), page)
-		.await;
+	let mangas = plugin.scrape_search(title.as_str(), page);
 
 	if mangas.is_err() {
 		return HttpResponse::BadRequest().body("Error scraping manga");
@@ -167,7 +166,7 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 
 	for manga in mangas {
 		let db_manga: Option<crate::entities::mangas::Model> = Mangas::find()
-			.filter(crate::entities::mangas::Column::Scraper.eq(scrapers::get_scraper_type_str(&scraper_type)))
+			.filter(crate::entities::mangas::Column::Scraper.eq(plugin.name.clone()))
 			.filter(crate::entities::mangas::Column::Url.eq(&manga.url))
 			.one(db.get_ref())
 			.await
@@ -178,7 +177,7 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 				title: Set(manga.title.clone()),
 				url: Set(manga.url.clone()),
 				img_url: Set(manga.img_url.clone()),
-				scraper: Set(scrapers::get_scraper_type_str(&scraper_type).to_string()),
+				scraper: Set(plugin.name.clone()),
 				created_at: Set(chrono::Utc::now().naive_utc().to_string()),
 				updated_at: Set(chrono::Utc::now().naive_utc().to_string()),
 				..Default::default()
@@ -249,17 +248,19 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 	let mut response: ScrapeMangaPageResponse;
 
 	if cached.is_none() {
-		let scraper_type = scrapers::get_scraper_type(&db_manga.as_ref().unwrap().scraper);
+		let plugin = PLUGIN_MANAGER
+			.get()
+			.unwrap()
+			.get_plugin(&db_manga.as_ref().unwrap().scraper)
+			.await;
 
-		let scraper_type = if scraper_type.is_err() {
+		let plugin = if plugin.is_none() {
 			return HttpResponse::BadRequest().body("Invalid scraper");
 		} else {
-			scraper_type.unwrap()
+			plugin.unwrap()
 		};
 
-		let scraper = scrapers::Scraper::new(&scraper_type);
-
-		let manga = scraper.scrape_manga(&db_manga.as_ref().unwrap().url).await;
+		let manga = plugin.scrape_manga(&db_manga.as_ref().unwrap().url);
 
 		if manga.is_err() {
 			return HttpResponse::BadRequest().body("Error scraping manga");

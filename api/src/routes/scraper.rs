@@ -1,5 +1,5 @@
 use actix_web::{get, web, HttpResponse, Responder};
-use scrapers::Scraper;
+use scrapers::PLUGIN_MANAGER;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::Serialize;
 
@@ -14,13 +14,12 @@ struct GetScrapersResponse {
 
 #[get("/scrapers")]
 async fn get_scrapers() -> impl Responder {
-	let all_scrapers = scrapers::get_all_scraper_types();
+	let plugins = PLUGIN_MANAGER.get().unwrap().get_plugins().await;
 
 	let mut response: Vec<GetScrapersResponse> = vec![];
 
-	for scraper in all_scrapers {
-		let scraper = Scraper::new(&scraper);
-		let scraper_info = scraper.get_info().await;
+	for plugin in plugins.values() {
+		let scraper_info = plugin.get_info();
 
 		if scraper_info.is_err() {
 			return HttpResponse::BadRequest().body("Error getting scrapers");
@@ -29,7 +28,7 @@ async fn get_scrapers() -> impl Responder {
 		let scraper_info = scraper_info.unwrap();
 
 		let scraper_response = GetScrapersResponse {
-			id: scrapers::get_scraper_type_str(&scraper_info.id).to_string(),
+			id: plugin.name.clone(),
 			name: scraper_info.name,
 			img_url: scraper_info.img_url,
 		};
@@ -41,16 +40,15 @@ async fn get_scrapers() -> impl Responder {
 
 #[get("/scrapers/{scraper}/genres")]
 async fn get_scraper_genres(scraper: web::Path<String>) -> impl Responder {
-	let scraper = scrapers::get_scraper_type(&scraper);
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper).await;
 
-	let scraper = if scraper.is_err() {
+	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");
 	} else {
-		scraper.unwrap()
+		plugin.unwrap()
 	};
 
-	let scraper = Scraper::new(&scraper);
-	let genres = scraper.scrape_genres_list().await;
+	let genres = plugin.scrape_genres_list();
 
 	if genres.is_err() {
 		return HttpResponse::BadRequest().body("Error getting genres");
@@ -63,16 +61,15 @@ async fn get_scraper_genres(scraper: web::Path<String>) -> impl Responder {
 async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::Path<(String, u16)>) -> impl Responder {
 	let (scraper, page) = params.into_inner();
 
-	let scraper_type = scrapers::get_scraper_type(&scraper);
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper).await;
 
-	let scraper_type = if scraper_type.is_err() {
+	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");
 	} else {
-		scraper_type.unwrap()
+		plugin.unwrap()
 	};
 
-	let scraper = Scraper::new(&scraper_type);
-	let latest = scraper.scrape_latest(page).await;
+	let latest = plugin.scrape_latest(page);
 
 	let mut response: Vec<crate::entities::mangas::Model> = vec![];
 
@@ -82,7 +79,7 @@ async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::
 
 	for manga in latest.as_ref().unwrap() {
 		let db_manga: Option<crate::entities::mangas::Model> = Mangas::find()
-			.filter(crate::entities::mangas::Column::Scraper.eq(scrapers::get_scraper_type_str(&scraper_type)))
+			.filter(crate::entities::mangas::Column::Scraper.eq(plugin.name.clone()))
 			.filter(crate::entities::mangas::Column::Url.eq(&manga.url))
 			.one(db.get_ref())
 			.await
@@ -93,7 +90,7 @@ async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::
 				title: Set(manga.title.clone()),
 				url: Set(manga.url.clone()),
 				img_url: Set(manga.img_url.clone()),
-				scraper: Set(scrapers::get_scraper_type_str(&scraper_type).to_string()),
+				scraper: Set(plugin.name.clone()),
 				created_at: Set(chrono::Utc::now().to_string()),
 				updated_at: Set(chrono::Utc::now().to_string()),
 				..Default::default()
@@ -118,16 +115,15 @@ async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::
 async fn get_scraper_trending(db: web::Data<connection::Connection>, params: web::Path<(String, u16)>) -> impl Responder {
 	let (scraper, page) = params.into_inner();
 
-	let scraper_type = scrapers::get_scraper_type(&scraper);
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper).await;
 
-	let scraper_type = if scraper_type.is_err() {
+	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");
 	} else {
-		scraper_type.unwrap()
+		plugin.unwrap()
 	};
 
-	let scraper = Scraper::new(&scraper_type);
-	let trending = scraper.scrape_trending(page).await;
+	let trending = plugin.scrape_trending(page);
 
 	let mut response: Vec<crate::entities::mangas::Model> = vec![];
 
@@ -137,7 +133,7 @@ async fn get_scraper_trending(db: web::Data<connection::Connection>, params: web
 
 	for manga in trending.as_ref().unwrap() {
 		let db_manga: Option<crate::entities::mangas::Model> = Mangas::find()
-			.filter(crate::entities::mangas::Column::Scraper.eq(scrapers::get_scraper_type_str(&scraper_type)))
+			.filter(crate::entities::mangas::Column::Scraper.eq(plugin.name.clone()))
 			.filter(crate::entities::mangas::Column::Url.eq(&manga.url))
 			.one(db.get_ref())
 			.await
@@ -148,7 +144,7 @@ async fn get_scraper_trending(db: web::Data<connection::Connection>, params: web
 				title: Set(manga.title.clone()),
 				url: Set(manga.url.clone()),
 				img_url: Set(manga.img_url.clone()),
-				scraper: Set(scrapers::get_scraper_type_str(&scraper_type).to_string()),
+				scraper: Set(plugin.name.clone()),
 				created_at: Set(chrono::Utc::now().to_string()),
 				updated_at: Set(chrono::Utc::now().to_string()),
 				..Default::default()
