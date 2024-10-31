@@ -52,10 +52,8 @@ async fn handle_file_event(
 ) {
 	const DEBOUNCE_DURATION: Duration = Duration::from_secs(1);
 
-	println!("{:?}", event.kind);
-
 	match event.kind {
-		notify::EventKind::Modify(_) => {
+		notify::EventKind::Modify(_) | notify::EventKind::Create(_) => {
 			for path in event.paths {
 				if let Some(ext) = path.extension() {
 					if !PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {

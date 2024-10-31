@@ -62,7 +62,7 @@ impl Default for Config {
 			database_path: format!("{}/db.sqlite", current_dir.display()),
 			database_backup_folder: format!("{}/backup", current_dir.display()),
 			plugins_folder: format!("{}/plugins", current_dir.display()),
-			repositories: vec!["".to_string()],
+			repositories: vec![],
 			directory: current_dir.display().to_string(),
 			secret_jwt: generate_secret(),
 		}

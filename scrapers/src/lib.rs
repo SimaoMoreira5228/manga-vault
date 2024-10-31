@@ -31,6 +31,21 @@ pub struct PluginManager {
 	modification_tracker: Arc<RwLock<HashMap<PathBuf, FileModification>>>,
 }
 
+fn read_dir(path: &PathBuf, level: i8, callback: impl FnOnce(PathBuf) + Send + Clone + 'static) {
+	for entry in std::fs::read_dir(path).unwrap() {
+		let entry = entry.unwrap();
+		let path = entry.path();
+
+		let call = callback.clone();
+
+		if path.is_dir() && level >= 0 {
+			read_dir(&path, level - 1, callback.clone());
+		} else {
+			call(path);
+		}
+	}
+}
+
 impl PluginManager {
 	pub async fn new() -> Self {
 		let manager = Self {
@@ -50,17 +65,14 @@ impl PluginManager {
 
 		repository::load_repos()?;
 
-		for entry in std::fs::read_dir(CONFIG.plugins_folder.clone())? {
-			let entry = entry.context("Could not get entry")?;
-			let path = entry.path();
-			if path.is_file() {
-				if let Some(ext) = path.extension() {
-					if PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
-						load_plugin_file(self.plugins.clone(), path).await?;
-					}
+		let plugins = self.plugins.clone();
+		read_dir(&PathBuf::from(&CONFIG.plugins_folder), 1, |path| {
+			if let Some(ext) = path.extension() {
+				if PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
+					tokio::spawn(async move { load_plugin_file(plugins, path).await });
 				}
 			}
-		}
+		});
 
 		let plugins = self.plugins.clone();
 		let modification_tracker = self.modification_tracker.clone();
