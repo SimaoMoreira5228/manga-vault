@@ -2,18 +2,19 @@ use std::sync::Arc;
 
 use scrapers::{PluginManager, PLUGIN_MANAGER};
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+const MANGA_VAULT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
 async fn main() {
 	let latest_version = api::downloader::get_version("SimaoMoreira5228", "manga-vault").await.unwrap();
 
-	if latest_version != VERSION {
-		panic!(
-			"Please update the application to the latest version https://github.com/SimaoMoreira5228/manga-vault/releases/latest"
+	if latest_version != MANGA_VAULT_VERSION {
+		println!(
+			"There is a new version of manga_vault at: https://github.com/SimaoMoreira5228/manga-vault/releases/latest"
 		);
 	} else {
 		println!("Application is up to date");
+		api::downloader::update_website().await;
 	}
 
 	tokio::spawn(async move {
