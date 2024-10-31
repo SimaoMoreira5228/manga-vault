@@ -58,6 +58,7 @@ export type MangaPage = {
     description: string;
     genres: string[];
     chapters: Chapter[];
+    scraped?: boolean;
 };
 
 export type Category = {
