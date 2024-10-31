@@ -1,11 +1,11 @@
 {
-  "name": "dewn's plugins",
+  "name": "dewn_plugins",
   "plugins": [
     {
       "name": "mangaread_org",
       "urls": {
-        "windows": "https://files.catbox.moe/xyvu7o.dll",
-        "linux": "https://files.catbox.moe/5l2d7c.so"
+        "windows": "https://files.catbox.moe/hfz3pv.dll",
+        "linux": "https://files.catbox.moe/um0hnz.so"
       },
       "version": "0.1.0",
       "state": "updated",

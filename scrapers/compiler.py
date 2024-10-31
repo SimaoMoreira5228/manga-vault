@@ -1,7 +1,7 @@
 import json
 import subprocess
 
-current_path = "/".join(__file__.split("/")[:-2])
+current_path = "/".join(__file__.split("/")[:-1])
 manga_vault_path = "/".join(current_path.split("/")[:-1])
 
 def build_windows(path):
@@ -61,7 +61,7 @@ def get_build_state(path):
     return "alpha"
 
 repo_file_content = {
-  "name": "dewn's plugins",
+  "name": "dewn_plugins",
 	"plugins": [
 		{
 			"name": "mangaread_org",
