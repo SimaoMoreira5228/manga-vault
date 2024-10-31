@@ -92,7 +92,7 @@ pub async fn start() {
 				break;
 			}
 			let s = std::str::from_utf8(&buf[..n]).unwrap();
-			println!("{}", s);
+			tracing::error!("{}", s);
 		}
 	});
 
@@ -103,6 +103,6 @@ pub async fn start() {
 			break;
 		}
 		let s = std::str::from_utf8(&buf[..n]).unwrap();
-		println!("{}", s);
+		tracing::trace!("{}", s);
 	}
 }
