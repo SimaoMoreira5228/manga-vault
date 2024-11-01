@@ -19,7 +19,7 @@ use tracing_actix_web::TracingLogger;
 
 use crate::routes::auth::validate_token;
 
-static SECRET_JWT: Lazy<String> = Lazy::new(||CONFIG.secret_jwt.clone());
+static SECRET_JWT: Lazy<String> = Lazy::new(|| CONFIG.api.secret_jwt.clone());
 
 async fn clean_temp(db: &Connection) -> Result<(), sea_orm::DbErr> {
 	let time_now: chrono::prelude::DateTime<chrono::prelude::Utc> = chrono::Utc::now();
@@ -46,7 +46,7 @@ pub async fn run() -> std::io::Result<()> {
 	tokio::spawn(starters::websocket::start(Arc::new(Mutex::new(db.conn.clone()))));
 	tokio::spawn(starters::website::start());
 
-	tracing::info!("HTTP server starting on port http://localhost:{}", CONFIG.api_port);
+	tracing::info!("HTTP server starting on port http://localhost:{}", CONFIG.api.api_port);
 
 	HttpServer::new(move || {
 		App::new()
@@ -74,7 +74,7 @@ pub async fn run() -> std::io::Result<()> {
 			)
 			.service(web::scope("/files").configure(routes::files::init_routes))
 	})
-	.bind(("0.0.0.0", CONFIG.api_port))?
+	.bind(("0.0.0.0", CONFIG.api.api_port))?
 	.run()
 	.await
 }

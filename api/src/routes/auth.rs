@@ -25,7 +25,7 @@ struct NewTokenResponse {
 
 fn generate_token(user_id: i32) -> Result<NewTokenResponse, jsonwebtoken::errors::Error> {
 	let exp = chrono::Utc::now()
-		.checked_add_signed(chrono::Duration::days(CONFIG.jwt_duration_days as i64))
+		.checked_add_signed(chrono::Duration::days(CONFIG.api.jwt_duration_days as i64))
 		.expect("valid timestamp")
 		.timestamp();
 	let claims = Claims {

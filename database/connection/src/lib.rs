@@ -11,11 +11,11 @@ pub struct Database {
 
 impl Database {
 	pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
-		let mut url = format!("sqlite://{}?mode=ro", CONFIG.database_path);
+		let mut url = format!("sqlite://{}?mode=ro", CONFIG.database.database_path);
 		let mut conn = sea_orm::Database::connect(url).await;
 
 		if conn.is_err() {
-			url = format!("sqlite://{}?mode=rwc", CONFIG.database_path);
+			url = format!("sqlite://{}?mode=rwc", CONFIG.database.database_path);
 			conn = sea_orm::Database::connect(url).await;
 			migration::Migrator::fresh(conn.as_ref().unwrap()).await.unwrap();
 
@@ -36,7 +36,7 @@ impl Database {
 			return Err(Box::new(err));
 		}
 
-		url = format!("sqlite://{}?mode=rwc", CONFIG.database_path);
+		url = format!("sqlite://{}?mode=rwc", CONFIG.database.database_path);
 		conn = sea_orm::Database::connect(url).await;
 		migration::Migrator::up(conn.as_ref().unwrap(), None).await.unwrap();
 
@@ -47,13 +47,13 @@ impl Database {
 	pub async fn backup(&self) -> Result<(), Box<dyn std::error::Error>> {
 		let timestamp = chrono::Utc::now().format("%Y-%m-%d_%H-%M").to_string();
 		let backup_filename = format!("backup-{}.sqlite", timestamp);
-		let backup_path = Path::new(&CONFIG.database_backup_folder);
+		let backup_path = Path::new(&CONFIG.database.database_backup_folder);
 
 		if !backup_path.exists() {
 			std::fs::create_dir_all(backup_path)?;
 		}
 
-		fs::copy(&CONFIG.database_path, backup_path.join(&backup_filename))?;
+		fs::copy(&CONFIG.database.database_path, backup_path.join(&backup_filename))?;
 
 		tracing::info!("Database backed up to: {}", backup_filename);
 		Ok(())

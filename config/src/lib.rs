@@ -34,34 +34,45 @@ pub enum TracingLevel {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Config {
-	pub jwt_duration_days: u16,
-	pub website_port: u16,
+pub struct ApiConfig {
 	pub api_port: u16,
+	pub secret_jwt: String,
+	pub jwt_duration_days: u16,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct WebsocketConfig {
 	pub websocket_port: u16,
 	pub websocket_ip_to_frontend: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseConfig {
 	pub database_path: String,
 	pub database_backup_folder: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Config {
+	pub website_port: u16,
+	pub api: ApiConfig,
+	pub websocket: WebsocketConfig,
+	pub database: DatabaseConfig,
 	pub plugins_folder: String,
 	pub repositories: Vec<String>,
 	pub directory: String,
-	pub secret_jwt: String,
 	pub tracing_level: TracingLevel,
 }
 
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct PartialConfig {
-	pub jwt_duration_days: Option<u16>,
 	pub website_port: Option<u16>,
-	pub api_port: Option<u16>,
-	pub websocket_port: Option<u16>,
-	pub websocket_ip_to_frontend: Option<String>,
-	pub database_path: Option<String>,
-	pub database_backup_folder: Option<String>,
+	pub api: Option<ApiConfig>,
+	pub websocket: Option<WebsocketConfig>,
+	pub database: Option<DatabaseConfig>,
 	pub plugins_folder: Option<String>,
 	pub repositories: Option<Vec<String>>,
 	pub directory: Option<String>,
-	pub secret_jwt: Option<String>,
 	pub tracing_level: Option<TracingLevel>,
 }
 
@@ -69,17 +80,23 @@ impl Default for Config {
 	fn default() -> Self {
 		let current_dir = current_dir();
 		Config {
-			jwt_duration_days: 5,
 			website_port: 5227,
-			api_port: 5228,
-			websocket_port: 5229,
-			websocket_ip_to_frontend: "localhost".to_string(),
-			database_path: format!("{}/db.sqlite", current_dir.display()),
-			database_backup_folder: format!("{}/backup", current_dir.display()),
+			api: ApiConfig {
+				api_port: 5228,
+				secret_jwt: generate_secret(),
+				jwt_duration_days: 7,
+			},
+			websocket: WebsocketConfig {
+				websocket_port: 5229,
+				websocket_ip_to_frontend: "localhost".to_string(),
+			},
+			database: DatabaseConfig {
+				database_path: format!("{}/database.db", current_dir.display()),
+				database_backup_folder: format!("{}/backups", current_dir.display()),
+			},
 			plugins_folder: format!("{}/plugins", current_dir.display()),
 			repositories: vec![],
 			directory: current_dir.display().to_string(),
-			secret_jwt: generate_secret(),
 			tracing_level: TracingLevel::Info,
 		}
 	}
@@ -89,17 +106,13 @@ impl Config {
 	fn from_partial(partial: PartialConfig) -> Self {
 		let default = Config::default();
 		Config {
-			jwt_duration_days: partial.jwt_duration_days.unwrap_or(default.jwt_duration_days),
 			website_port: partial.website_port.unwrap_or(default.website_port),
-			api_port: partial.api_port.unwrap_or(default.api_port),
-			websocket_port: partial.websocket_port.unwrap_or(default.websocket_port),
-			websocket_ip_to_frontend: partial.websocket_ip_to_frontend.unwrap_or(default.websocket_ip_to_frontend),
-			database_path: partial.database_path.unwrap_or(default.database_path),
-			database_backup_folder: partial.database_backup_folder.unwrap_or(default.database_backup_folder),
+			api: partial.api.unwrap_or(default.api),
+			websocket: partial.websocket.unwrap_or(default.websocket),
+			database: partial.database.unwrap_or(default.database),
 			plugins_folder: partial.plugins_folder.unwrap_or(default.plugins_folder),
 			repositories: partial.repositories.unwrap_or(default.repositories),
 			directory: partial.directory.unwrap_or(default.directory),
-			secret_jwt: partial.secret_jwt.unwrap_or(default.secret_jwt),
 			tracing_level: partial.tracing_level.unwrap_or(default.tracing_level),
 		}
 	}

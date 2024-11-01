@@ -23,11 +23,11 @@ async fn main() {
 	let latest_version = api::downloader::get_version("SimaoMoreira5228", "manga-vault").await.unwrap();
 
 	if latest_version != MANGA_VAULT_VERSION {
-		tracing::info!(
+		tracing::warn!(
 			"There is a new version of manga_vault at: https://github.com/SimaoMoreira5228/manga-vault/releases/latest"
 		);
 	} else {
-		tracing::warn!("Application is up to date");
+		tracing::info!("Application is up to date");
 		api::downloader::update_website().await;
 	}
 

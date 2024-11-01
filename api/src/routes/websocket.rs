@@ -4,8 +4,8 @@ use serde_json::json;
 
 #[get("/websocket-info")]
 async fn get_websocket_info() -> impl Responder {
-	let websocket_ip = CONFIG.websocket_ip_to_frontend.clone();
-	let websocket_port = CONFIG.websocket_port;
+	let websocket_ip = CONFIG.websocket.websocket_ip_to_frontend.clone();
+	let websocket_port = CONFIG.websocket.websocket_port;
 
 	HttpResponse::Ok().json(json!({
 	  "websocket_ip": websocket_ip,
