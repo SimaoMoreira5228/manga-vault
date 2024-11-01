@@ -1,10 +1,9 @@
 use std::fs::{self, DirEntry};
 use std::process::Stdio;
 
+use config::CONFIG;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
-
-use crate::CONFIG;
 
 pub async fn start() {
 	let contents = format!(
@@ -93,7 +92,7 @@ pub async fn start() {
 				break;
 			}
 			let s = std::str::from_utf8(&buf[..n]).unwrap();
-			println!("{}", s);
+			tracing::error!("{}", s);
 		}
 	});
 
@@ -104,6 +103,6 @@ pub async fn start() {
 			break;
 		}
 		let s = std::str::from_utf8(&buf[..n]).unwrap();
-		println!("{}", s);
+		tracing::info!("{}", s);
 	}
 }

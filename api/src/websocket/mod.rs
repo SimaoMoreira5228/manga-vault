@@ -46,7 +46,7 @@ pub async fn handle_connection(stream: TcpStream, db: Connection) {
 	let ws_stream = accept_async(stream).await;
 
 	if ws_stream.is_err() {
-		println!("Error creating websocket connection: {}", ws_stream.err().unwrap());
+		tracing::error!("Error creating websocket connection: {}", ws_stream.err().unwrap());
 		return;
 	}
 	let ws_stream = ws_stream.unwrap();
@@ -73,7 +73,7 @@ pub async fn handle_connection(stream: TcpStream, db: Connection) {
 						sync_favorite_mangas_from_category(&mut write, message.content, db.clone()).await;
 					}
 					_ => {
-						println!("Unknown message type: {}", message.msg_type);
+						tracing::warn!("Unknown message type: {}", message.msg_type);
 					}
 				}
 			}
