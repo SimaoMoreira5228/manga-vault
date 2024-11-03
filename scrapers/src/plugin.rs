@@ -10,7 +10,7 @@ pub struct Plugin {
 }
 
 impl Plugin {
-	pub(crate) fn new(name: &'static str, version: &'static str, file: String) -> Self {
+	pub(crate) fn new(name: String, version: String, file: String) -> Self {
 		Self {
 			name: name.to_string(),
 			version: version.to_string(),

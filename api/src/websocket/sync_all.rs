@@ -36,7 +36,7 @@ pub async fn sync_all_favorite_mangas(
 	}
 
 	for favorite_manga in favorite_mangas {
-		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&favorite_manga.scraper).await;
+		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&favorite_manga.scraper);
 
 		let plugin = if plugin.is_none() {
 			return write

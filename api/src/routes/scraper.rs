@@ -14,7 +14,7 @@ struct GetScrapersResponse {
 
 #[get("/scrapers")]
 async fn get_scrapers() -> impl Responder {
-	let plugins = PLUGIN_MANAGER.get().unwrap().get_plugins().await;
+	let plugins = PLUGIN_MANAGER.get().unwrap().get_plugins();
 
 	let mut response: Vec<GetScrapersResponse> = vec![];
 
@@ -40,7 +40,7 @@ async fn get_scrapers() -> impl Responder {
 
 #[get("/scrapers/{scraper}/genres")]
 async fn get_scraper_genres(scraper: web::Path<String>) -> impl Responder {
-	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper).await;
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
 
 	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");
@@ -61,7 +61,7 @@ async fn get_scraper_genres(scraper: web::Path<String>) -> impl Responder {
 async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::Path<(String, u16)>) -> impl Responder {
 	let (scraper, page) = params.into_inner();
 
-	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper).await;
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
 
 	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");
@@ -115,7 +115,7 @@ async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::
 async fn get_scraper_trending(db: web::Data<connection::Connection>, params: web::Path<(String, u16)>) -> impl Responder {
 	let (scraper, page) = params.into_inner();
 
-	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper).await;
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
 
 	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");

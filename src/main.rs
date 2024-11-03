@@ -40,8 +40,7 @@ async fn main() {
 		}
 	});
 
-	let manager = PluginManager::new();
-	PLUGIN_MANAGER.set(Arc::new(manager.await)).unwrap();
+	PLUGIN_MANAGER.set(Arc::new(PluginManager::new())).unwrap();
 
 	api::run().await.unwrap();
 }

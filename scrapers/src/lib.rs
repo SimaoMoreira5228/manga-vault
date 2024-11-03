@@ -2,27 +2,25 @@ use anyhow::Context;
 use config::CONFIG;
 use files::handle_files;
 use plugin::Plugin;
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Instant};
-use tokio::sync::{OnceCell, RwLock};
+use std::{
+	collections::HashMap,
+	path::PathBuf,
+	sync::{Arc, OnceLock, RwLock},
+	time::Instant,
+};
 
 mod files;
 mod plugin;
 mod repository;
 mod types;
 
-pub static PLUGIN_MANAGER: OnceCell<Arc<PluginManager>> = OnceCell::const_new();
+pub static PLUGIN_MANAGER: OnceLock<Arc<PluginManager>> = OnceLock::new();
 pub(crate) const PLUGIN_FILE_EXTENSIONS: [&str; 3] = ["so", "dll", "dylib"];
 
 #[derive(Debug)]
 struct FileModification {
 	last_modified: Instant,
 	is_processing: bool,
-}
-
-#[derive(Clone)]
-struct LoadedPlugin {
-	name: String,
-	version: String,
 }
 
 #[derive(Debug)]
@@ -49,7 +47,7 @@ fn read_dir(path: &PathBuf, level: i8, callback: impl FnOnce(PathBuf) + Send + C
 }
 
 impl PluginManager {
-	pub async fn new() -> Self {
+	pub fn new() -> Self {
 		tracing::info!("Creating plugin manager");
 
 		let manager = Self {
@@ -57,12 +55,12 @@ impl PluginManager {
 			modification_tracker: Arc::new(RwLock::new(HashMap::new())),
 		};
 
-		manager.initialize().await.unwrap();
+		manager.initialize().unwrap();
 
 		manager
 	}
 
-	async fn initialize(&self) -> anyhow::Result<()> {
+	fn initialize(&self) -> anyhow::Result<()> {
 		tracing::info!("Initializing plugin manager");
 
 		if !std::fs::exists(CONFIG.plugins_folder.clone())? {
@@ -76,7 +74,14 @@ impl PluginManager {
 		read_dir(&PathBuf::from(&CONFIG.plugins_folder), 1, |path| {
 			if let Some(ext) = path.extension() {
 				if PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
-					tokio::spawn(async move { load_plugin_file(plugins, path).await });
+					match load_plugin_file(plugins, path.clone()) {
+						Ok(_) => {
+							tracing::info!("Successfully load plugin: {}", path.display());
+						}
+						Err(e) => {
+							tracing::error!("Failed to load plugin {}: {:?}", path.display(), e);
+						}
+					}
 				}
 			}
 		});
@@ -90,55 +95,48 @@ impl PluginManager {
 		Ok(())
 	}
 
-	pub async fn get_plugins(&self) -> HashMap<String, Plugin> {
-		let plugins = self.plugins.read().await;
+	pub fn get_plugins(&self) -> HashMap<String, Plugin> {
+		let plugins = self.plugins.read().unwrap();
 		plugins.clone()
 	}
 
-	pub async fn get_plugin(&self, name: &str) -> Option<Plugin> {
-		let plugins = self.plugins.read().await;
+	pub fn get_plugin(&self, name: &str) -> Option<Plugin> {
+		let plugins = self.plugins.read().unwrap();
 		plugins.get(name).cloned()
 	}
 }
 
-async fn load_plugin_file(plugins: Arc<RwLock<HashMap<String, Plugin>>>, file: PathBuf) -> anyhow::Result<()> {
+fn load_plugin_file(plugins: Arc<RwLock<HashMap<String, Plugin>>>, file: PathBuf) -> anyhow::Result<()> {
 	tracing::info!("Processing plugin file: {}", file.display());
 
-	if plugins.read().await.values().any(|p| p.file == file) {
-		plugins.write().await.retain(|_, p| p.file != file);
+	if plugins.read().unwrap().values().any(|p| p.file == file) {
+		plugins.write().unwrap().retain(|_, p| p.file != file);
 	}
 
 	let file_clone = file.clone();
 
-	let plugin_info = tokio::task::spawn_blocking(move || -> anyhow::Result<LoadedPlugin> {
-		unsafe {
-			let lib =
-				libloading::Library::new(&file_clone).context(format!("Could not load library {}", file_clone.display()))?;
+	let plugin_name: String;
+	let plugin_version: String;
 
-			let plugin_name: libloading::Symbol<*const &'static str> = lib
-				.get(b"PLUGIN_NAME")
-				.context(format!("Could not get plugin name for {}", file_clone.display()))?;
+	unsafe {
+		let lib =
+			libloading::Library::new(&file_clone).context(format!("Could not load library {}", file_clone.display()))?;
 
-			let plugin_version: libloading::Symbol<*const &'static str> = lib
-				.get(b"PLUGIN_VERSION")
-				.context(format!("Could not get plugin version for {}", file_clone.display()))?;
+		let name: libloading::Symbol<*const &'static str> = lib
+			.get(b"PLUGIN_NAME")
+			.context(format!("Could not get plugin name for {}", file_clone.display()))?;
 
-			Ok(LoadedPlugin {
-				name: (**plugin_name).to_string(),
-				version: (**plugin_version).to_string(),
-			})
-		}
-	})
-	.await
-	.context("Failed to join plugin loading task")??;
+		let version: libloading::Symbol<*const &'static str> = lib
+			.get(b"PLUGIN_VERSION")
+			.context(format!("Could not get plugin version for {}", file_clone.display()))?;
 
-	let plugin = Plugin::new(
-		Box::leak(plugin_info.name.clone().into_boxed_str()),
-		Box::leak(plugin_info.version.into_boxed_str()),
-		file.display().to_string(),
-	);
+		plugin_name = (**name).to_string();
+		plugin_version = (**version).to_string();
+	}
 
-	plugins.write().await.insert(plugin_info.name, plugin);
+	let plugin = Plugin::new(plugin_name.clone(), plugin_version, file.display().to_string());
+
+	plugins.write().unwrap().insert(plugin_name, plugin);
 
 	Ok(())
 }

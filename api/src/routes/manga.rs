@@ -75,7 +75,7 @@ struct SearchAllResponse {
 #[get("/mangas/search/{title}/all")]
 async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title: web::Path<String>) -> impl Responder {
 	let mut response: Vec<SearchAllResponse> = vec![];
-	let plugins = PLUGIN_MANAGER.get().unwrap().get_plugins().await;
+	let plugins = PLUGIN_MANAGER.get().unwrap().get_plugins();
 
 	for plugin in plugins.values() {
 		let mut searched_mangas: Vec<ResponseManga> = vec![];
@@ -147,7 +147,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<(String, String, u16)>) -> impl Responder {
 	let (title, scraper, page) = params.into_inner();
 
-	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper).await;
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
 
 	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");
@@ -271,7 +271,7 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 		.unwrap();
 
 	if cached.is_none() {
-		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.scraper).await;
+		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.scraper);
 
 		let plugin = if plugin.is_none() {
 			return HttpResponse::BadRequest().body("Invalid scraper");

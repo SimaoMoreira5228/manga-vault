@@ -47,7 +47,7 @@ async fn get_chapter_info(db: web::Data<connection::Connection>, params: web::Pa
 		.await
 		.unwrap();
 
-	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.as_ref().unwrap().scraper).await;
+	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.as_ref().unwrap().scraper);
 
 	let plugin = if plugin.is_none() {
 		return HttpResponse::BadRequest().body("Invalid scraper");
@@ -99,7 +99,7 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 	let scrapped_pages: Vec<String>;
 
 	if db_scrapped_pages.is_none() {
-		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.as_ref().unwrap().scraper).await;
+		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.as_ref().unwrap().scraper);
 
 		let plugin = if plugin.is_none() {
 			return HttpResponse::BadRequest().body("Invalid scraper");

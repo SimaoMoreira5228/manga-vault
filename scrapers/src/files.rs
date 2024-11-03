@@ -1,13 +1,12 @@
 use std::{
 	collections::HashMap,
 	path::{Path, PathBuf},
-	sync::Arc,
+	sync::{Arc, RwLock},
 	time::{Duration, Instant},
 };
 
 use config::CONFIG;
 use notify::{RecommendedWatcher, Watcher};
-use tokio::sync::RwLock;
 
 use crate::{load_plugin_file, plugin::Plugin, FileModification, PLUGIN_FILE_EXTENSIONS};
 
@@ -34,18 +33,14 @@ pub fn handle_files(
 		let modification_tracker = modification_tracker.clone();
 		match res {
 			Ok(res) => {
-				let runtime = tokio::runtime::Runtime::new().unwrap();
-
-				runtime.block_on(async {
-					handle_file_event(res, plugins, modification_tracker).await;
-				});
+				handle_file_event(res, plugins, modification_tracker);
 			}
 			Err(e) => tracing::error!("watcher error: {:?}", e),
 		}
 	}
 }
 
-async fn handle_file_event(
+fn handle_file_event(
 	event: notify::Event,
 	plugins: Arc<RwLock<HashMap<String, Plugin>>>,
 	modification_tracker: Arc<RwLock<HashMap<PathBuf, FileModification>>>,
@@ -61,7 +56,7 @@ async fn handle_file_event(
 					}
 
 					let should_process = {
-						let mut tracker = modification_tracker.write().await;
+						let mut tracker = modification_tracker.write().unwrap();
 						let entry = tracker.entry(path.clone());
 
 						match entry {
@@ -90,9 +85,9 @@ async fn handle_file_event(
 					tracing::debug!("File {:?} Event {:?} Started Processing", path, event.kind);
 
 					if should_process {
-						let _ = process_plugin_file(&path, plugins.clone()).await;
+						let _ = process_plugin_file(&path, plugins.clone());
 
-						let mut tracker = modification_tracker.write().await;
+						let mut tracker = modification_tracker.write().unwrap();
 						if let Some(entry) = tracker.get_mut(&path) {
 							entry.is_processing = false;
 						}
@@ -104,11 +99,11 @@ async fn handle_file_event(
 			for path in event.paths {
 				if let Some(ext) = path.extension() {
 					if PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
-						let mut plugins = plugins.write().await;
+						let mut plugins = plugins.write().unwrap();
 						plugins.retain(|_, p| p.file.to_str() != path.to_str());
 						tracing::info!("Unloaded plugin {}", path.display());
 
-						let mut tracker = modification_tracker.write().await;
+						let mut tracker = modification_tracker.write().unwrap();
 						tracker.remove(&path);
 					}
 				}
@@ -118,10 +113,10 @@ async fn handle_file_event(
 	}
 }
 
-async fn process_plugin_file(path: &Path, plugins: Arc<RwLock<HashMap<String, Plugin>>>) -> anyhow::Result<()> {
-	tokio::time::sleep(Duration::from_millis(100)).await;
+fn process_plugin_file(path: &Path, plugins: Arc<RwLock<HashMap<String, Plugin>>>) -> anyhow::Result<()> {
+	std::thread::sleep(Duration::from_millis(100));
 
-	match load_plugin_file(plugins.clone(), path.to_path_buf()).await {
+	match load_plugin_file(plugins.clone(), path.to_path_buf()) {
 		Ok(_) => {
 			tracing::info!("Successfully reloaded plugin: {}", path.display());
 			Ok(())
