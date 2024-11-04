@@ -40,7 +40,7 @@ fn read_dir(path: &PathBuf, level: i8, callback: impl FnOnce(PathBuf) + Send + C
 
 		if path.is_dir() && level >= 0 {
 			read_dir(&path, level - 1, callback.clone());
-		} else {
+		} else if path.is_file() {
 			call(path);
 		}
 	}
