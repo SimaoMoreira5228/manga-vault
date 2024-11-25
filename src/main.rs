@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
-use config::CONFIG;
+use config::{TracingLevel, CONFIG};
 use scrapers::{PluginManager, PLUGIN_MANAGER};
-use tracing::Level;
 use tracing_subscriber::FmtSubscriber;
 
 const MANGA_VAULT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -10,13 +9,7 @@ const MANGA_VAULT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[tokio::main]
 async fn main() {
 	let subscriber = FmtSubscriber::builder()
-		.with_max_level(match CONFIG.tracing_level {
-			config::TracingLevel::Trace => Level::TRACE,
-			config::TracingLevel::Debug => Level::DEBUG,
-			config::TracingLevel::Info => Level::INFO,
-			config::TracingLevel::Warn => Level::WARN,
-			config::TracingLevel::Error => Level::ERROR,
-		})
+		.with_max_level(TracingLevel::to_tracing_level(&CONFIG.tracing_level))
 		.finish();
 	tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 

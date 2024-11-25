@@ -33,6 +33,18 @@ pub enum TracingLevel {
 	Error,
 }
 
+impl TracingLevel {
+		pub fn to_tracing_level(&self) -> tracing::Level {
+			match self {
+				TracingLevel::Trace => tracing::Level::TRACE,
+				TracingLevel::Debug => tracing::Level::DEBUG,
+				TracingLevel::Info => tracing::Level::INFO,
+				TracingLevel::Warn => tracing::Level::WARN,
+				TracingLevel::Error => tracing::Level::ERROR,
+			}
+		}
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ApiConfig {
 	pub api_port: u16,
