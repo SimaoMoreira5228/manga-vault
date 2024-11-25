@@ -60,6 +60,19 @@ impl PluginManager {
 		manager
 	}
 
+	pub fn new_no_update() -> Self {
+		tracing::info!("Creating plugin manager without updating");
+
+		let manager = Self {
+			plugins: Arc::new(RwLock::new(HashMap::new())),
+			modification_tracker: Arc::new(RwLock::new(HashMap::new())),
+		};
+
+		manager.initialize_no_update().unwrap();
+
+		manager
+	}
+
 	fn initialize(&self) -> anyhow::Result<()> {
 		tracing::info!("Initializing plugin manager");
 
@@ -69,6 +82,39 @@ impl PluginManager {
 		}
 
 		repository::load_repos()?;
+
+		let plugins = self.plugins.clone();
+		read_dir(&PathBuf::from(&CONFIG.plugins_folder), 1, |path| {
+			if let Some(ext) = path.extension() {
+				if PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
+					match load_plugin_file(plugins, path.clone()) {
+						Ok(_) => {
+							tracing::info!("Successfully load plugin: {}", path.display());
+						}
+						Err(e) => {
+							tracing::error!("Failed to load plugin {}: {:?}", path.display(), e);
+						}
+					}
+				}
+			}
+		});
+
+		let plugins = self.plugins.clone();
+		let modification_tracker = self.modification_tracker.clone();
+		std::thread::spawn(move || {
+			handle_files(plugins, modification_tracker);
+		});
+
+		Ok(())
+	}
+
+	fn initialize_no_update(&self) -> anyhow::Result<()> {
+		tracing::info!("Initializing plugin manager without updating");
+
+		if !std::fs::exists(CONFIG.plugins_folder.clone())? {
+			tracing::debug!("Creating plugins folder: {}", CONFIG.plugins_folder);
+			std::fs::create_dir_all(CONFIG.plugins_folder.clone())?;
+		}
 
 		let plugins = self.plugins.clone();
 		read_dir(&PathBuf::from(&CONFIG.plugins_folder), 1, |path| {
