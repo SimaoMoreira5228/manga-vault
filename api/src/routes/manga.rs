@@ -1,7 +1,7 @@
 use std::vec;
 
 use actix_web::{get, web, HttpResponse, Responder};
-use scrapers::PLUGIN_MANAGER;
+use scraper_core::PLUGIN_MANAGER;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 
@@ -149,10 +149,10 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 
 	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
 
-	let plugin = if plugin.is_none() {
-		return HttpResponse::BadRequest().body("Invalid scraper");
+	let plugin = if let Some(p) = plugin {
+		p
 	} else {
-		plugin.unwrap()
+		return HttpResponse::BadRequest().body("Invalid scraper");
 	};
 
 	let mangas = plugin.scrape_search(title.as_str(), page);
@@ -265,7 +265,7 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 	};
 
 	response.chapters = Chapters::find()
-		.filter(crate::entities::chapters::Column::MangaId.eq(db_manga.id.clone()))
+		.filter(crate::entities::chapters::Column::MangaId.eq(db_manga.id))
 		.all(db.get_ref())
 		.await
 		.unwrap();
@@ -273,10 +273,10 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 	if cached.is_none() {
 		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.scraper);
 
-		let plugin = if plugin.is_none() {
-			return HttpResponse::BadRequest().body("Invalid scraper");
+		let plugin = if let Some(p) = plugin {
+			p
 		} else {
-			plugin.unwrap()
+			return HttpResponse::BadRequest().body("Invalid scraper");
 		};
 
 		let manga = plugin.scrape_manga(&db_manga.url.clone());

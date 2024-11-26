@@ -1,7 +1,7 @@
 import json
 import subprocess
 
-scrapers = ["mangaread_org"]
+scrapers = ["mangaread_org", "manga_dex"]
 
 current_path = "/".join(__file__.split("/")[:-1])
 manga_vault_path = "/".join(current_path.split("/")[:-1])
@@ -75,7 +75,6 @@ repo_file_content = {
 
 for scraper in scrapers:
     path = f"{current_path}/{scraper}"
-
     data = {
         "name": scraper,
         "urls": {

@@ -1,5 +1,5 @@
 use actix_web::{get, web, HttpResponse, Responder};
-use scrapers::PLUGIN_MANAGER;
+use scraper_core::PLUGIN_MANAGER;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::Serialize;
 
@@ -42,10 +42,10 @@ async fn get_scrapers() -> impl Responder {
 async fn get_scraper_genres(scraper: web::Path<String>) -> impl Responder {
 	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
 
-	let plugin = if plugin.is_none() {
-		return HttpResponse::BadRequest().body("Invalid scraper");
+	let plugin = if let Some(p) = plugin {
+		p
 	} else {
-		plugin.unwrap()
+		return HttpResponse::BadRequest().body("Invalid scraper");
 	};
 
 	let genres = plugin.scrape_genres_list();
@@ -63,10 +63,10 @@ async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::
 
 	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
 
-	let plugin = if plugin.is_none() {
-		return HttpResponse::BadRequest().body("Invalid scraper");
+	let plugin = if let Some(p) = plugin {
+		p
 	} else {
-		plugin.unwrap()
+		return HttpResponse::BadRequest().body("Invalid scraper");
 	};
 
 	let latest = plugin.scrape_latest(page);
@@ -117,10 +117,10 @@ async fn get_scraper_trending(db: web::Data<connection::Connection>, params: web
 
 	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
 
-	let plugin = if plugin.is_none() {
-		return HttpResponse::BadRequest().body("Invalid scraper");
+	let plugin = if let Some(p) = plugin {
+		p
 	} else {
-		plugin.unwrap()
+		return HttpResponse::BadRequest().body("Invalid scraper");
 	};
 
 	let trending = plugin.scrape_trending(page);

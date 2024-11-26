@@ -9,7 +9,7 @@ edition = "2021"
 tokio-tungstenite = "0.24.0"
 once_cell = "1.20"
 config = { path = "../config" }
-scrapers = { path = "../scrapers" }
+scraper_core = { path = "../scrapers/scraper_core" }
 connection = { path = "../database/connection" }
 actix-web = "4"
 actix-multipart = "0.7.2"

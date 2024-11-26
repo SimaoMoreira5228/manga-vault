@@ -3,7 +3,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::env;
 
-pub static CONFIG: Lazy<Config> = Lazy::new(|| load_config());
+pub static CONFIG: Lazy<Config> = Lazy::new(load_config);
 
 fn current_dir() -> std::path::PathBuf {
 	env::current_exe()

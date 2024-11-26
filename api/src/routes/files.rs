@@ -16,7 +16,7 @@ async fn upload_file(db: web::Data<connection::Connection>, mut payload: Multipa
 
 	let path = Path::new(&path);
 	if !path.exists() {
-		std::fs::create_dir_all(&path).expect("Failed to create uploads directory");
+		std::fs::create_dir_all(path).expect("Failed to create uploads directory");
 	}
 
 	let mut data = Vec::new();

@@ -1,6 +1,6 @@
 use actix_web::{get, web, HttpResponse, Responder};
 use isahc::ReadResponseExt;
-use scrapers::PLUGIN_MANAGER;
+use scraper_core::PLUGIN_MANAGER;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use serde::Serialize;
 
@@ -49,10 +49,10 @@ async fn get_chapter_info(db: web::Data<connection::Connection>, params: web::Pa
 
 	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.as_ref().unwrap().scraper);
 
-	let plugin = if plugin.is_none() {
-		return HttpResponse::BadRequest().body("Invalid scraper");
+	let plugin = if let Some(p) = plugin {
+		p
 	} else {
-		plugin.unwrap()
+		return HttpResponse::BadRequest().body("Invalid scraper");
 	};
 
 	let pages = plugin.scrape_chapter(db_chapter.as_ref().unwrap().url.to_string());
@@ -101,10 +101,10 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 	if db_scrapped_pages.is_none() {
 		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.as_ref().unwrap().scraper);
 
-		let plugin = if plugin.is_none() {
-			return HttpResponse::BadRequest().body("Invalid scraper");
+		let plugin = if let Some(p) = plugin {
+			p
 		} else {
-			plugin.unwrap()
+			return HttpResponse::BadRequest().body("Invalid scraper");
 		};
 
 		let new_scrapped_pages = plugin.scrape_chapter(db_chapter.as_ref().unwrap().url.to_string());

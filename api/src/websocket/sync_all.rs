@@ -1,7 +1,7 @@
 use connection::Connection;
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
-use scrapers::PLUGIN_MANAGER;
+use scraper_core::PLUGIN_MANAGER;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use tokio::net::TcpStream;
@@ -38,7 +38,9 @@ pub async fn sync_all_favorite_mangas(
 	for favorite_manga in favorite_mangas {
 		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&favorite_manga.scraper);
 
-		let plugin = if plugin.is_none() {
+		let plugin = if let Some(p) = plugin {
+			p
+		} else {
 			return write
 				.send(Message::Binary(
 					serde_json::to_vec(&SyncFavoriteMangasResponse {
@@ -50,8 +52,6 @@ pub async fn sync_all_favorite_mangas(
 				))
 				.await
 				.unwrap();
-		} else {
-			plugin.unwrap()
 		};
 
 		let manga_page = plugin.scrape_manga(&favorite_manga.url);

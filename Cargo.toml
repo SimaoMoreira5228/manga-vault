@@ -6,14 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace]
-members = ["api", "config", "database/*", "scrapers"]
-exclude = ["scrapers/mangaread_org"]
+members = ["api", "config", "database/*", "scrapers/*"]
+exclude = ["scrapers/mangaread_org", "scrapers/manga_dex"]
 
 [dependencies]
 api = { path = "api" }
 config = { path = "config" }
 connection = { path = "database/connection" }
-scrapers = { path = "scrapers" }
+scraper_core = { path = "scrapers/scraper_core" }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.3.0"

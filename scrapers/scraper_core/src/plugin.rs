@@ -1,4 +1,4 @@
-use crate::types::{Genre, MangaItem, MangaPage, ScraperInfo};
+use scraper_types::{Genre, MangaItem, MangaPage, ScraperInfo};
 use anyhow::Context;
 use std::path::PathBuf;
 

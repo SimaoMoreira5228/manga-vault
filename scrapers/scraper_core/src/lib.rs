@@ -12,7 +12,6 @@ use std::{
 mod files;
 mod plugin;
 mod repository;
-mod types;
 
 pub static PLUGIN_MANAGER: OnceLock<Arc<PluginManager>> = OnceLock::new();
 pub(crate) const PLUGIN_FILE_EXTENSIONS: [&str; 3] = ["so", "dll", "dylib"];
@@ -43,6 +42,12 @@ fn read_dir(path: &PathBuf, level: i8, callback: impl FnOnce(PathBuf) + Send + C
 		} else if path.is_file() {
 			call(path);
 		}
+	}
+}
+
+impl Default for PluginManager {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 

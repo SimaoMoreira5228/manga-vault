@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 config = { path = "../../config" }
-scrapers = { path = "../../scrapers" }
+scraper_core = { path = "../../scrapers/scraper_core" }
 migration = { path = "../migration" }
 sea-orm = { version = "0.12", features = [
     "sqlx-sqlite",
