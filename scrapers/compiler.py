@@ -84,7 +84,7 @@ for scraper in scrapers:
         "version": get_plugin_version(path),
         "state": "updated",
         "build_state": get_build_state(path),
-    },
+    }
 
     repo_file_content["plugins"].append(data)
 

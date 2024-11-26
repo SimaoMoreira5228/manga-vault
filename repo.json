@@ -1,29 +1,25 @@
 {
   "name": "dewn_plugins",
   "plugins": [
-    [
-      {
-        "name": "mangaread_org",
-        "urls": {
-          "windows": "https://files.catbox.moe/yiavby.dll",
-          "linux": "https://files.catbox.moe/k52rfj.so"
-        },
-        "version": "0.1.0",
-        "state": "updated",
-        "build_state": "beta"
-      }
-    ],
-    [
-      {
-        "name": "manga_dex",
-        "urls": {
-          "windows": "https://files.catbox.moe/hefpe4.dll",
-          "linux": "https://files.catbox.moe/hk2btc.so"
-        },
-        "version": "0.1.0",
-        "state": "updated",
-        "build_state": "beta"
-      }
-    ]
+    {
+      "name": "mangaread_org",
+      "urls": {
+        "windows": "https://files.catbox.moe/wmwj98.dll",
+        "linux": "https://files.catbox.moe/k52rfj.so"
+      },
+      "version": "0.1.0",
+      "state": "updated",
+      "build_state": "beta"
+    },
+    {
+      "name": "manga_dex",
+      "urls": {
+        "windows": "https://files.catbox.moe/kk7fro.dll",
+        "linux": "https://files.catbox.moe/hk2btc.so"
+      },
+      "version": "0.1.0",
+      "state": "updated",
+      "build_state": "beta"
+    }
   ]
 }
