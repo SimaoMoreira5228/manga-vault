@@ -29,7 +29,7 @@ async fn main() {
 
 	tokio::spawn(async move {
 		loop {
-			tokio::time::sleep(tokio::time::Duration::from_secs(2 * 3600)).await;
+			tokio::time::sleep(tokio::time::Duration::from_secs(CONFIG.database.backup_time as u64 * 3600)).await;
 			let db = connection::Database::new().await.unwrap();
 			let _ = db.backup().await;
 			db.conn.close().await.unwrap();

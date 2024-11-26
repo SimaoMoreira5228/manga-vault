@@ -60,6 +60,7 @@ pub struct WebsocketConfig {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DatabaseConfig {
+	pub backup_time: u16,
 	pub database_path: String,
 	pub database_backup_folder: String,
 }
@@ -103,6 +104,7 @@ impl Default for Config {
 				websocket_ip_to_frontend: "localhost".to_string(),
 			},
 			database: DatabaseConfig {
+				backup_time: 2,
 				database_path: format!("{}/database.db", current_dir.display()),
 				database_backup_folder: format!("{}/backups", current_dir.display()),
 			},
