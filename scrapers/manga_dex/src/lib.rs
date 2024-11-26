@@ -2,9 +2,14 @@ use isahc::ReadResponseExt;
 use once_cell::sync::Lazy;
 use scraper_types::{Chapter, Genre, MangaItem, MangaPage, ScraperInfo};
 use serde_json::Value;
-use std::{sync::Mutex, time::Instant, vec};
+use std::{
+	sync::Mutex,
+	time::{Duration, Instant},
+	vec,
+};
 
 static COOLDOWN: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+static RATE_LIMIT_COUNTER: Lazy<Mutex<u8>> = Lazy::new(|| Mutex::new(0));
 
 #[no_mangle]
 pub static PLUGIN_NAME: &str = env!("CARGO_PKG_NAME");
@@ -12,12 +17,22 @@ pub static PLUGIN_NAME: &str = env!("CARGO_PKG_NAME");
 #[no_mangle]
 pub static PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn apply_cooldown() {
+fn get(url: impl AsRef<str>) -> Result<Value, serde_json::Error> {
 	let mut cooldown = COOLDOWN.lock().unwrap();
-	if cooldown.elapsed().as_secs() < 1 {
-		std::thread::sleep(std::time::Duration::from_secs(1));
+	let mut rate_limit_counter = RATE_LIMIT_COUNTER.lock().unwrap();
+
+	if *rate_limit_counter >= 4 && cooldown.elapsed() < Duration::from_secs(1) {
+		std::thread::sleep(std::time::Duration::from_secs(2));
 	}
+
 	*cooldown = Instant::now();
+	*rate_limit_counter += 1;
+
+	let mut resp = isahc::get(url.as_ref()).unwrap();
+
+	let text = resp.text().unwrap();
+
+	text.parse()
 }
 
 #[no_mangle]
@@ -27,40 +42,12 @@ pub extern "Rust" fn get_cookies() -> String {
 
 #[no_mangle]
 pub extern "Rust" fn scrape_trending(page: u16) -> Vec<MangaItem> {
-	apply_cooldown();
-
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
-		let isahc_resp =
-			isahc::get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art");
-
-		if isahc_resp.is_err() {
-			return manga_items;
-		}
-
-		isahc_resp
-			.map_err(|e| eprintln!("Failed to get response: {}", e))
-			.unwrap()
-			.text()
-			.map_err(|e| eprintln!("Failed to get html: {}", e))
-			.unwrap()
-			.parse()
+		get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art")
 	} else {
-		let isahc_resp =
-			isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10));
-
-		if isahc_resp.is_err() {
-			return manga_items;
-		}
-
-		isahc_resp
-			.map_err(|e| eprintln!("Failed to get response: {}", e))
-			.unwrap()
-			.text()
-			.map_err(|e| eprintln!("Failed to get html: {}", e))
-			.unwrap()
-			.parse()
+		get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10))
 	};
 
 	if resp.is_err() {
@@ -122,40 +109,12 @@ pub extern "Rust" fn scrape_trending(page: u16) -> Vec<MangaItem> {
 
 #[no_mangle]
 pub extern "Rust" fn scrape_latest(page: u16) -> Vec<MangaItem> {
-	apply_cooldown();
-
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
-		let isahc_resp =
-			isahc::get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art");
-
-		if isahc_resp.is_err() {
-			return manga_items;
-		}
-
-		isahc_resp
-			.map_err(|e| eprintln!("Failed to get response: {}", e))
-			.unwrap()
-			.text()
-			.map_err(|e| eprintln!("Failed to get html: {}", e))
-			.unwrap()
-			.parse()
+		get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art")
 	} else {
-		let isahc_resp =
-			isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art", page * 10));
-
-		if isahc_resp.is_err() {
-			return manga_items;
-		}
-
-		isahc_resp
-			.map_err(|e| eprintln!("Failed to get response: {}", e))
-			.unwrap()
-			.text()
-			.map_err(|e| eprintln!("Failed to get html: {}", e))
-			.unwrap()
-			.parse()
+		get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art", page * 10))
 	};
 
 	if resp.is_err() {
@@ -217,42 +176,14 @@ pub extern "Rust" fn scrape_latest(page: u16) -> Vec<MangaItem> {
 
 #[no_mangle]
 pub extern "Rust" fn scrape_search(query: String, page: u16) -> Vec<MangaItem> {
-	apply_cooldown();
-
 	let title = query.split(" ").collect::<Vec<&str>>().join("%20");
 
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
-		let isahc_resp =
-			isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset=0&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", title));
-
-		if isahc_resp.is_err() {
-			return manga_items;
-		}
-
-		isahc_resp
-			.map_err(|e| eprintln!("Failed to get response: {}", e))
-			.unwrap()
-			.text()
-			.map_err(|e| eprintln!("Failed to get html: {}", e))
-			.unwrap()
-			.parse()
+		get(format!("https://api.mangadex.org/manga?limit=10&offset=0&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", title))
 	} else {
-		let isahc_resp =
-			isahc::get(format!("https://api.mangadex.org/manga?limit=10&offset={}&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10, title));
-
-		if isahc_resp.is_err() {
-			return manga_items;
-		}
-
-		isahc_resp
-			.map_err(|e| eprintln!("Failed to get response: {}", e))
-			.unwrap()
-			.text()
-			.map_err(|e| eprintln!("Failed to get html: {}", e))
-			.unwrap()
-			.parse()
+		get(format!("https://api.mangadex.org/manga?limit=10&offset={}&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10, title))
 	};
 
 	if resp.is_err() {
@@ -315,8 +246,6 @@ pub extern "Rust" fn scrape_search(query: String, page: u16) -> Vec<MangaItem> {
 
 #[no_mangle]
 pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
-	apply_cooldown();
-
 	let chapter_id = url.split("/").last();
 
 	if chapter_id.is_none() {
@@ -325,24 +254,10 @@ pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 
 	let chapter_id = chapter_id.unwrap();
 
-	let resp: Result<Value, serde_json::Error>;
-
-	let isahc_resp = isahc::get(format!(
+	let resp = get(format!(
 		"https://api.mangadex.org/at-home/server/{}?forcePort443=false",
 		chapter_id
 	));
-
-	if isahc_resp.is_err() {
-		return vec![];
-	}
-
-	resp = isahc_resp
-		.map_err(|e| eprintln!("Failed to get response: {}", e))
-		.unwrap()
-		.text()
-		.map_err(|e| eprintln!("Failed to get html: {}", e))
-		.unwrap()
-		.parse();
 
 	if resp.is_err() {
 		return vec![];
@@ -393,8 +308,6 @@ pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 
 #[no_mangle]
 pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
-	apply_cooldown();
-
 	let manga_id = url.split("/").last();
 
 	let manga_page = MangaPage {
@@ -418,20 +331,7 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 
 	let manga_id = manga_id.unwrap();
 
-	let resp: Result<Value, serde_json::Error>;
-	let isahc_resp = isahc::get(format!("https://api.mangadex.org/manga/{}?includes%5B%5D=manga&includes%5B%5D=cover_art&includes%5B%5D=author&includes%5B%5D=artist&includes%5B%5D=tag", manga_id));
-
-	if isahc_resp.is_err() {
-		return manga_page;
-	}
-
-	resp = isahc_resp
-		.map_err(|e| eprintln!("Failed to get response: {}", e))
-		.unwrap()
-		.text()
-		.map_err(|e| eprintln!("Failed to get html: {}", e))
-		.unwrap()
-		.parse();
+	let resp = get(format!("https://api.mangadex.org/manga/{}?includes%5B%5D=manga&includes%5B%5D=cover_art&includes%5B%5D=author&includes%5B%5D=artist&includes%5B%5D=tag", manga_id));
 
 	if resp.is_err() {
 		return manga_page;
@@ -575,20 +475,7 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 		})
 		.collect();
 
-	let resp: Result<Value, serde_json::Error>;
-	let isahc_resp = isahc::get(format!("https://api.mangadex.org/chapter?limit=1&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc", manga_id));
-
-	if isahc_resp.is_err() {
-		return manga_page;
-	}
-
-	resp = isahc_resp
-		.map_err(|e| eprintln!("Failed to get response: {}", e))
-		.unwrap()
-		.text()
-		.map_err(|e| eprintln!("Failed to get html: {}", e))
-		.unwrap()
-		.parse();
+	let resp = get(format!("https://api.mangadex.org/chapter?limit=1&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc", manga_id));
 
 	if resp.is_err() {
 		return manga_page;
@@ -605,22 +492,7 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 	let chapters_url = format!("https://api.mangadex.org/chapter?limit={}&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc",chapter_limit, manga_id);
 
 	for i in 0..call_times {
-		std::thread::sleep(std::time::Duration::from_secs(1));
-
-		let resp: Result<Value, serde_json::Error>;
-		let isahc_resp = isahc::get(format!("{}&offset={}", chapters_url, i * chapter_limit));
-
-		if isahc_resp.is_err() {
-			return manga_page;
-		}
-
-		resp = isahc_resp
-			.map_err(|e| eprintln!("Failed to get response: {}", e))
-			.unwrap()
-			.text()
-			.map_err(|e| eprintln!("Failed to get html: {}", e))
-			.unwrap()
-			.parse();
+		let resp = get(format!("{}&offset={}", chapters_url, i * chapter_limit));
 
 		if resp.is_err() {
 			return manga_page;
