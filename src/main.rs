@@ -24,7 +24,7 @@ async fn main() {
 	} else {
 		tracing::info!("Application is up to date");
 		api::downloader::update_website().await;
-		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new()));
+		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new().await));
 	}
 
 	tokio::spawn(async move {

@@ -26,14 +26,8 @@ pub struct PluginManager {
 	modification_tracker: Arc<RwLock<HashMap<PathBuf, FileModification>>>,
 }
 
-impl Default for PluginManager {
-	fn default() -> Self {
-		Self::new()
-	}
-}
-
 impl PluginManager {
-	pub fn new() -> Self {
+	pub async fn new() -> Self {
 		tracing::info!("Creating plugin manager");
 
 		let manager = Self {
@@ -41,7 +35,7 @@ impl PluginManager {
 			modification_tracker: Arc::new(RwLock::new(HashMap::new())),
 		};
 
-		manager.initialize().unwrap();
+		manager.initialize().await.unwrap();
 
 		manager
 	}
@@ -59,7 +53,7 @@ impl PluginManager {
 		manager
 	}
 
-	fn initialize(&self) -> anyhow::Result<()> {
+	async fn initialize(&self) -> anyhow::Result<()> {
 		tracing::info!("Initializing plugin manager");
 
 		if !std::fs::exists(CONFIG.plugins_folder.clone())? {
@@ -67,7 +61,7 @@ impl PluginManager {
 			std::fs::create_dir_all(CONFIG.plugins_folder.clone())?;
 		}
 
-		repository::load_repos()?;
+		repository::load_repos().await?;
 
 		let plugins = self.plugins.clone();
 		files::read_dir(&PathBuf::from(&CONFIG.plugins_folder), 1, |path| {

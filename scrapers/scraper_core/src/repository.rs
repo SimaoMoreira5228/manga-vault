@@ -47,11 +47,11 @@ struct PluginNameInternal {
 	version: String,
 }
 
-pub fn load_repos() -> anyhow::Result<()> {
+pub async fn load_repos() -> anyhow::Result<()> {
 	for repo_url in &CONFIG.repositories {
 		tracing::debug!("Loading repository: {}", repo_url);
 
-		let repo = reqwest::blocking::get(repo_url)?.json::<Repository>()?;
+		let repo = reqwest::get(repo_url).await.unwrap().json::<Repository>().await.unwrap();
 
 		if !std::fs::exists(format!("{}/{}", CONFIG.plugins_folder, repo.name))? {
 			tracing::debug!("Creating repository folder: {}", repo.name);
@@ -103,8 +103,8 @@ pub fn load_repos() -> anyhow::Result<()> {
 						format!("{}/{}/{}.so", CONFIG.plugins_folder, repo.name, plugin.name)
 					};
 
-					let plugin_data = reqwest::blocking::get(url)?.bytes()?;
-					std::fs::write(&plugin_file, plugin_data)?;
+					let plugin_data = reqwest::get(url).await.unwrap().bytes().await?;
+					tokio::fs::write(&plugin_file, plugin_data).await?;
 				}
 			} else {
 				tracing::info!("Downloading plugin: {}", plugin.name);
@@ -125,8 +125,8 @@ pub fn load_repos() -> anyhow::Result<()> {
 					format!("{}/{}/{}.so", CONFIG.plugins_folder, repo.name, plugin.name)
 				};
 
-				let plugin_data = reqwest::blocking::get(url)?.bytes()?;
-				std::fs::write(&plugin_file, plugin_data)?;
+				let plugin_data = reqwest::get(url).await.unwrap().bytes().await?;
+				tokio::fs::write(&plugin_file, plugin_data).await?;
 			}
 		}
 
@@ -139,7 +139,7 @@ pub fn load_repos() -> anyhow::Result<()> {
 				version: p.version.clone(),
 			})
 			.collect();
-		std::fs::write(&internal_plugins_file, &serde_json::to_string(&internal_plugins)?)?;
+		tokio::fs::write(&internal_plugins_file, &serde_json::to_string(&internal_plugins)?).await?;
 	}
 
 	Ok(())
