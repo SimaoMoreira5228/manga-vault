@@ -37,19 +37,19 @@ impl DynamicLibPlugin {
 		self.call_lib_function::<String, Vec<String>, fn(String) -> Vec<String>>("scrape_chapter", url)
 	}
 
-	pub fn scrape_latest(&self, page: i32) -> anyhow::Result<Vec<MangaItem>> {
+	pub fn scrape_latest(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		tracing::info!("[{}] Scraping latest: {}", self.name, page);
-		self.call_lib_function::<i32, Vec<MangaItem>, fn(i32) -> Vec<MangaItem>>("scrape_latest", page)
+		self.call_lib_function::<u32, Vec<MangaItem>, fn(u32) -> Vec<MangaItem>>("scrape_latest", page)
 	}
 
-	pub fn scrape_trending(&self, page: i32) -> anyhow::Result<Vec<MangaItem>> {
+	pub fn scrape_trending(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		tracing::info!("[{}] Scraping trending: {}", self.name, page);
-		self.call_lib_function::<i32, Vec<MangaItem>, fn(i32) -> Vec<MangaItem>>("scrape_trending", page)
+		self.call_lib_function::<u32, Vec<MangaItem>, fn(u32) -> Vec<MangaItem>>("scrape_trending", page)
 	}
 
-	pub fn scrape_search(&self, query: &str, page: i32) -> anyhow::Result<Vec<MangaItem>> {
+	pub fn scrape_search(&self, query: &str, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		tracing::info!("[{}] Scraping search: {} - {}", self.name, query, page);
-		self.call_lib_function::<(String, i32), Vec<MangaItem>, fn((String, i32)) -> Vec<MangaItem>>(
+		self.call_lib_function::<(String, u32), Vec<MangaItem>, fn((String, u32)) -> Vec<MangaItem>>(
 			"scrape_search",
 			(query.to_string(), page),
 		)

@@ -28,8 +28,9 @@ pub static PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[no_mangle]
 pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 	let res = reqwest::blocking::get(url)
-		.map_err(|e| println!("Error while getting response on scrape_chapter: {}", e))
+		.map_err(|e| println!("Error while getting response on scrape_manga: {}", e))
 		.unwrap();
+
 	let body = res.text().map_err(|e| println!("Error while getting html: {}", e)).unwrap();
 
 	let html = scraper::Html::parse_document(&body);
@@ -46,10 +47,7 @@ pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 
 #[no_mangle]
 pub extern "Rust" fn scrape_latest(page: u32) -> Vec<MangaItem> {
-	let url = format!(
-		"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=latest&paged={}",
-		page
-	);
+	let url = format!("https://harimanga.me/?s&post_type=wp-manga&m_orderby=latest&paged={}", page);
 	let res = reqwest::blocking::get(url)
 		.map_err(|e| println!("Error while getting response on scrape_latest: {}", e))
 		.unwrap();
@@ -87,7 +85,7 @@ pub extern "Rust" fn scrape_latest(page: u32) -> Vec<MangaItem> {
 			let url = url.value().attr("href").unwrap();
 
 			let manga_item = MangaItem {
-				title: title.to_string(),
+				title,
 				img_url: img_url.to_string(),
 				url: url.to_string(),
 			};
@@ -95,16 +93,12 @@ pub extern "Rust" fn scrape_latest(page: u32) -> Vec<MangaItem> {
 			manga_items.push(manga_item);
 		}
 	}
-
 	manga_items
 }
 
 #[no_mangle]
 pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
-	let url = format!(
-		"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=trending&paged={}",
-		page
-	);
+	let url = format!("https://harimanga.me/?s&post_type=wp-manga&m_orderby=trending&paged={}", page);
 	let res = reqwest::blocking::get(url)
 		.map_err(|e| println!("Error while getting response on scrape_trending: {}", e))
 		.unwrap();
@@ -119,6 +113,7 @@ pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
 		let contet_divs = mangas_div
 			.select(&content_divs_selector)
 			.collect::<Vec<scraper::ElementRef>>();
+
 		for div in contet_divs {
 			let img_url_div = div
 				.select(&scraper::Selector::parse("img.img-responsive").unwrap())
@@ -133,6 +128,7 @@ pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
 				.unwrap();
 
 			let title = title.text().collect::<Vec<_>>().join(" ");
+
 			let url = div
 				.select(&scraper::Selector::parse("div.post-title h3.h4 a").unwrap())
 				.next()
@@ -156,53 +152,46 @@ pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
 #[no_mangle]
 pub extern "Rust" fn scrape_search((query, page): (String, u32)) -> Vec<MangaItem> {
 	let url = format!(
-		"https://www.mangaread.org/?s={}&post_type=wp-manga&op=&author=&artist=&release=&adult=&paged={}",
-		query, page
+		"https://harimanga.me/page/{}/?s={}&post_type=wp-manga&op&author&artist&release&adult",
+		page, query
 	);
 	let res = reqwest::blocking::get(url)
 		.map_err(|e| println!("Error while getting response on scrape_search: {}", e))
 		.unwrap();
-
 	let body = res.text().map_err(|e| println!("Error while getting html: {}", e)).unwrap();
 
 	let html = scraper::Html::parse_document(&body);
-	let mangas_div_selector = scraper::Selector::parse("div.c-tabs-item").unwrap();
+	let mangas_div_selector =
+		scraper::Selector::parse("div.search-wrap div.tab-content-wrap div.c-tabs-item div.c-tabs-item__content").unwrap();
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
-	for mangas_div in html.select(&mangas_div_selector) {
-		let content_divs_selector = scraper::Selector::parse("div.c-tabs-item__content").unwrap();
-		let contet_divs = mangas_div
-			.select(&content_divs_selector)
-			.collect::<Vec<scraper::ElementRef>>();
-		for div in contet_divs {
-			let img_url_div = div
-				.select(&scraper::Selector::parse("img.img-responsive").unwrap())
-				.next()
-				.unwrap();
-			let img_url = get_image_url(&img_url_div);
+	for div in html.select(&mangas_div_selector) {
+		let img_url_div = div
+			.select(&scraper::Selector::parse("img.img-responsive").unwrap())
+			.next()
+			.unwrap();
 
-			let title = div
-				.select(&scraper::Selector::parse("div.post-title h3.h4").unwrap())
-				.next()
-				.unwrap();
+		let img_url = get_image_url(&img_url_div);
 
-			let title = title.text().collect::<Vec<_>>().join(" ");
+		let title = div
+			.select(&scraper::Selector::parse("div.post-title h3.h4").unwrap())
+			.next()
+			.unwrap();
+		let title = title.text().collect::<Vec<_>>().join(" ");
 
-			let url = div
-				.select(&scraper::Selector::parse("div.post-title h3.h4 a").unwrap())
-				.next()
-				.unwrap();
+		let url = div
+			.select(&scraper::Selector::parse("div.post-title h3.h4 a").unwrap())
+			.next()
+			.unwrap();
+		let url = url.value().attr("href").unwrap();
 
-			let url = url.value().attr("href").unwrap();
+		let manga_item = MangaItem {
+			title: title.to_string(),
+			img_url: img_url.to_string(),
+			url: url.to_string(),
+		};
 
-			let manga_item = MangaItem {
-				title: title.to_string(),
-				img_url: img_url.to_string(),
-				url: url.to_string(),
-			};
-
-			manga_items.push(manga_item);
-		}
+		manga_items.push(manga_item);
 	}
 
 	manga_items
@@ -213,7 +202,6 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 	let res = reqwest::blocking::get(url.clone())
 		.map_err(|e| println!("Error while getting response on scrape_manga: {}", e))
 		.unwrap();
-
 	let body = res.text().map_err(|e| println!("Error while getting html: {}", e)).unwrap();
 
 	let html = scraper::Html::parse_document(&body);
@@ -367,29 +355,45 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 
 	let chapters_selector = scraper::Selector::parse("li.wp-manga-chapter").unwrap();
 	let mut chapters: Vec<Chapter> = Vec::new();
-	for chapter in html.select(&chapters_selector) {
-		let info_selector = chapter.select(&scraper::Selector::parse("a").unwrap()).next().unwrap();
+	html.select(&chapters_selector).for_each(|chapter| {
+		let info_selector = chapter.select(&scraper::Selector::parse("a").unwrap()).next();
+
+		if info_selector.is_none() {
+			return;
+		}
+
+		let info_selector = info_selector.unwrap();
 
 		let title = info_selector.inner_html().trim().to_string();
 
 		if title == "<!-- -->" {
-			continue;
+			return;
 		}
 
 		let date_selector = chapter.select(&scraper::Selector::parse("span i").unwrap()).next();
 
-		let date = if let Some(d) = date_selector {
-			d.inner_html().trim().to_string()
+		let date: String;
+
+		if date_selector.is_none() {
+			date = "New".to_string();
 		} else {
-			"New".to_string()
-		};
+			date = date_selector.unwrap().inner_html().trim().to_string();
+		}
+
+		let url = info_selector.value().attr("href");
+
+		if url.is_none() {
+			return;
+		}
+
+		let url = url.unwrap();
 
 		chapters.push(Chapter {
 			title,
-			url: info_selector.value().attr("href").unwrap().to_string(),
+			url: url.to_string(),
 			date,
-		});
-	}
+		})
+	});
 
 	MangaPage {
 		title,
@@ -403,25 +407,35 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 		description,
 		genres,
 		chapters: chapters.into_iter().rev().collect(),
-		url: url.to_string(),
+		url,
 	}
 }
 
 #[no_mangle]
 pub extern "Rust" fn scrape_genres_list() -> Vec<Genre> {
-	let url = "https://www.mangaread.org/";
+	let url = "https://harimanga.me/";
 	let res = reqwest::blocking::get(url)
 		.map_err(|e| println!("Error while getting response on scrape_genres_list: {}", e))
 		.unwrap();
 	let body = res.text().map_err(|e| println!("Error while getting html: {}", e)).unwrap();
 
 	let html = scraper::Html::parse_document(&body);
-	let genres_selector = scraper::Selector::parse("li.menu-item-72 ul.sub-menu li a").unwrap();
+	let genres_selector = scraper::Selector::parse("li.menu-item-object-wp-manga-genre a").unwrap();
 	let genres = html
 		.select(&genres_selector)
 		.map(|genre| {
 			let name = genre.text().collect::<Vec<_>>().join(" ");
-			let url = genre.value().attr("href").unwrap_or("");
+			let url = genre.value().attr("href");
+
+			if url.is_none() {
+				return Genre {
+					name,
+					url: "".to_string(),
+				};
+			}
+
+			let url = url.unwrap();
+
 			Genre {
 				name,
 				url: url.to_string(),
@@ -435,8 +449,8 @@ pub extern "Rust" fn scrape_genres_list() -> Vec<Genre> {
 #[no_mangle]
 pub extern "Rust" fn get_info() -> ScraperInfo {
 	ScraperInfo {
-		id: "mangaread_org".to_string(),
-		name: "Mangaread.org".to_string(),
-		img_url: "https://www.mangaread.org/wp-content/uploads/2017/10/log1.png".to_string(),
+		id: "hari_manga".to_string(),
+		name: "Hari Manga".to_string(),
+		img_url: "https://harimanga.me/wp-content/uploads/2021/08/logo_web_hari.png".to_string(),
 	}
 }

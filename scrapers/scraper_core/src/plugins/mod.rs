@@ -5,8 +5,8 @@ mod globals;
 pub mod lua;
 
 pub enum PluginType {
-  Lua,
-  Dynamic,
+	Lua,
+	Dynamic,
 }
 
 #[derive(Debug, Clone)]
@@ -16,7 +16,7 @@ pub enum Plugin {
 }
 
 impl Plugin {
-	pub async fn scrape_latest(&self, page: i32) -> anyhow::Result<Vec<MangaItem>> {
+	pub async fn scrape_latest(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		match self {
 			Plugin::Lua(lua_plugin) => lua_plugin.scrape_latest(page).await,
 			Plugin::Dynamic(dynamic_plugin) => dynamic_plugin.scrape_latest(page),
@@ -30,14 +30,14 @@ impl Plugin {
 		}
 	}
 
-	pub async fn scrape_trending(&self, page: i32) -> anyhow::Result<Vec<MangaItem>> {
+	pub async fn scrape_trending(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		match self {
 			Plugin::Lua(lua_plugin) => lua_plugin.scrape_trending(page).await,
 			Plugin::Dynamic(dynamic_plugin) => dynamic_plugin.scrape_trending(page),
 		}
 	}
 
-	pub async fn scrape_search(&self, query: String, page: i32) -> anyhow::Result<Vec<MangaItem>> {
+	pub async fn scrape_search(&self, query: String, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		match self {
 			Plugin::Lua(lua_plugin) => lua_plugin.scrape_search(query, page).await,
 			Plugin::Dynamic(dynamic_plugin) => dynamic_plugin.scrape_search(&query, page),
@@ -51,14 +51,14 @@ impl Plugin {
 		}
 	}
 
-	pub async  fn scrape_genres_list(&self) -> anyhow::Result<Vec<Genre>> {
+	pub async fn scrape_genres_list(&self) -> anyhow::Result<Vec<Genre>> {
 		match self {
 			Plugin::Lua(lua_plugin) => lua_plugin.scrape_genres_list().await,
 			Plugin::Dynamic(dynamic_plugin) => dynamic_plugin.scrape_genres_list(),
 		}
 	}
 
-	pub async  fn get_info(&self) -> anyhow::Result<ScraperInfo> {
+	pub async fn get_info(&self) -> anyhow::Result<ScraperInfo> {
 		match self {
 			Plugin::Lua(lua_plugin) => lua_plugin.get_info().await,
 			Plugin::Dynamic(dynamic_plugin) => dynamic_plugin.get_info(),

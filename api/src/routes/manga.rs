@@ -146,7 +146,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 }
 
 #[get("/mangas/search/{title}/{scraper}/{page}")]
-async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<(String, String, i32)>) -> impl Responder {
+async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<(String, String, u32)>) -> impl Responder {
 	let (title, scraper, page) = params.into_inner();
 
 	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);

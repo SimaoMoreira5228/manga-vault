@@ -1,7 +1,7 @@
 import json
 import subprocess
 
-rust_scrapers = ["mangaread_org", "manga_dex"]
+rust_scrapers = ["mangaread_org", "manga_dex", "hari_manga"]
 lua_scrapers = ["manhuafast"]
 
 current_path = "/".join(__file__.split("/")[:-1])

@@ -58,7 +58,7 @@ async fn get_scraper_genres(scraper: web::Path<String>) -> impl Responder {
 }
 
 #[get("/scrapers/{scraper}/latest/{page}")]
-async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::Path<(String, i32)>) -> impl Responder {
+async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::Path<(String, u32)>) -> impl Responder {
 	let (scraper, page) = params.into_inner();
 
 	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
@@ -114,7 +114,7 @@ async fn get_scraper_latest(db: web::Data<connection::Connection>, params: web::
 }
 
 #[get("/scrapers/{scraper}/trending/{page}")]
-async fn get_scraper_trending(db: web::Data<connection::Connection>, params: web::Path<(String, i32)>) -> impl Responder {
+async fn get_scraper_trending(db: web::Data<connection::Connection>, params: web::Path<(String, u32)>) -> impl Responder {
 	let (scraper, page) = params.into_inner();
 
 	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);

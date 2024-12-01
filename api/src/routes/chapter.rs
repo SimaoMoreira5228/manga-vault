@@ -9,7 +9,7 @@ use crate::entities::prelude::{Chapters, Mangas, Temp};
 #[derive(Serialize)]
 struct ResponseChapter {
 	title: String,
-	pages: u16,
+	pages: u32,
 	next_chapter: Option<i32>,
 	previous_chapter: Option<i32>,
 }
@@ -65,7 +65,7 @@ async fn get_chapter_info(db: web::Data<connection::Connection>, params: web::Pa
 
 	let response = ResponseChapter {
 		title: db_chapter.as_ref().unwrap().title.clone(),
-		pages: pages.len() as u16,
+		pages: pages.len() as u32,
 		next_chapter: next_chapter.map(|chapter| chapter.id),
 		previous_chapter: previous_chapter.map(|chapter| chapter.id),
 	};
@@ -74,7 +74,7 @@ async fn get_chapter_info(db: web::Data<connection::Connection>, params: web::Pa
 }
 
 #[get("/mangas/{manga_id}/chapters/{chapter_id}/pages/{page}")]
-async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Path<(i32, i32, u16)>) -> impl Responder {
+async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Path<(i32, i32, u32)>) -> impl Responder {
 	let (manga_id, chapter_id, page) = params.into_inner();
 
 	let db_manga: Option<crate::entities::mangas::Model> = Mangas::find_by_id(manga_id).one(db.get_ref()).await.unwrap();
@@ -133,7 +133,7 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 		scrapped_pages = serde_json::from_str(&db_scrapped_pages.unwrap().value).unwrap();
 	}
 
-	if page > scrapped_pages.len() as u16 {
+	if page > scrapped_pages.len() as u32 {
 		return HttpResponse::BadRequest().body("Page not found");
 	}
 

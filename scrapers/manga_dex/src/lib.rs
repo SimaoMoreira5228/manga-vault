@@ -36,7 +36,7 @@ fn get(url: impl AsRef<str>) -> Result<Value, serde_json::Error> {
 }
 
 #[no_mangle]
-pub extern "Rust" fn scrape_trending(page: i32) -> Vec<MangaItem> {
+pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
@@ -103,7 +103,7 @@ pub extern "Rust" fn scrape_trending(page: i32) -> Vec<MangaItem> {
 }
 
 #[no_mangle]
-pub extern "Rust" fn scrape_latest(page: i32) -> Vec<MangaItem> {
+pub extern "Rust" fn scrape_latest(page: u32) -> Vec<MangaItem> {
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
@@ -170,7 +170,7 @@ pub extern "Rust" fn scrape_latest(page: i32) -> Vec<MangaItem> {
 }
 
 #[no_mangle]
-pub extern "Rust" fn scrape_search(query: String, page: i32) -> Vec<MangaItem> {
+pub extern "Rust" fn scrape_search((query, page): (String, u32)) -> Vec<MangaItem> {
 	let title = query.split(" ").collect::<Vec<&str>>().join("%20");
 
 	let mut manga_items: Vec<MangaItem> = Vec::new();
