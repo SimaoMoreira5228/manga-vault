@@ -5,10 +5,113 @@ use std::{
 	time::{Duration, Instant},
 };
 
+use anyhow::Context;
 use config::CONFIG;
 use notify::{RecommendedWatcher, Watcher};
 
-use crate::{load_plugin_file, plugin::Plugin, FileModification, PLUGIN_FILE_EXTENSIONS};
+use crate::{
+	plugins::{dynlib::DynamicLibPlugin, lua::LuaPlugin, Plugin, PluginType},
+	FileModification, PLUGIN_FILE_EXTENSIONS,
+};
+
+pub fn read_dir(path: &PathBuf, level: i8, callback: impl FnOnce(PathBuf) + Send + Clone + 'static) {
+	tracing::debug!("Reading directory: {}", path.display());
+
+	for entry in std::fs::read_dir(path).unwrap() {
+		let entry = entry.unwrap();
+		let path = entry.path();
+
+		let call = callback.clone();
+
+		if path.is_dir() && level >= 0 {
+			read_dir(&path, level - 1, callback.clone());
+		} else if path.is_file() {
+			call(path);
+		}
+	}
+}
+
+pub fn load_plugin_file(
+	plugins: Arc<RwLock<HashMap<String, Plugin>>>,
+	file: PathBuf,
+	plugin_type: PluginType,
+) -> anyhow::Result<()> {
+	tracing::info!("Processing plugin file: {}", file.display());
+
+	match plugin_type {
+		PluginType::Lua => {
+			if plugins.read().unwrap().values().any(|p| match p {
+				Plugin::Lua(p) => p.file == file,
+				_ => false,
+			}) {
+				plugins.write().unwrap().retain(|_, p| match p {
+					Plugin::Lua(p) => p.file != file,
+					_ => true,
+				});
+			}
+
+			let runtime = mlua::Lua::new();
+
+			runtime.load(file.clone()).exec()?;
+
+			let name: mlua::String = runtime.globals().get("PLUGIN_NAME")?;
+			let version: mlua::String = runtime.globals().get("PLUGIN_VERSION")?;
+
+			let plugin_name = name.to_str().unwrap().to_string();
+			let plugin_version = version.to_str().unwrap().to_string();
+
+			let plugin = Plugin::Lua(LuaPlugin::new(
+				plugin_name.clone(),
+				plugin_version,
+				file.to_str().unwrap().to_string(),
+			).unwrap());
+
+			plugins.write().unwrap().insert(plugin_name, plugin);
+		}
+		PluginType::Dynamic => {
+			if plugins.read().unwrap().values().any(|p| match p {
+				Plugin::Dynamic(p) => p.file == file,
+				_ => false,
+			}) {
+				plugins.write().unwrap().retain(|_, p| match p {
+					Plugin::Dynamic(p) => p.file != file,
+					_ => true,
+				});
+			}
+
+			let file_clone = file.clone();
+
+			let plugin_name: String;
+			let plugin_version: String;
+
+			unsafe {
+				let lib = libloading::Library::new(&file_clone)
+					.context(format!("Could not load library {}", file_clone.display()))?;
+
+				let name: libloading::Symbol<*const &'static str> = lib
+					.get(b"PLUGIN_NAME")
+					.context(format!("Could not get plugin name for {}", file_clone.display()))?;
+
+				let version: libloading::Symbol<*const &'static str> = lib
+					.get(b"PLUGIN_VERSION")
+					.context(format!("Could not get plugin version for {}", file_clone.display()))?;
+
+				plugin_name = (**name).to_string();
+				plugin_version = (**version).to_string();
+			}
+
+			let plugin = Plugin::Dynamic(DynamicLibPlugin::new(
+				plugin_name.clone(),
+				plugin_version,
+				file.to_str().unwrap().to_string(),
+			));
+
+			plugins.write().unwrap().insert(plugin_name, plugin);
+		}
+	}
+
+	Ok(())
+}
 
 pub fn handle_files(
 	plugins: Arc<RwLock<HashMap<String, Plugin>>>,
@@ -85,7 +188,11 @@ fn handle_file_event(
 					tracing::debug!("File {:?} Event {:?} Started Processing", path, event.kind);
 
 					if should_process {
-						let _ = process_plugin_file(&path, plugins.clone());
+						if path.extension().unwrap() == "lua" {
+							let _ = process_plugin_file(&path, plugins.clone(), PluginType::Lua);
+						} else {
+							let _ = process_plugin_file(&path, plugins.clone(), PluginType::Dynamic);
+						}
 
 						let mut tracker = modification_tracker.write().unwrap();
 						if let Some(entry) = tracker.get_mut(&path) {
@@ -100,7 +207,10 @@ fn handle_file_event(
 				if let Some(ext) = path.extension() {
 					if PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
 						let mut plugins = plugins.write().unwrap();
-						plugins.retain(|_, p| p.file.to_str() != path.to_str());
+						plugins.retain(|_, p| match p {
+							Plugin::Dynamic(p) => p.file.to_str() != path.to_str(),
+							Plugin::Lua(p) => p.file.to_str() != path.to_str(),
+						});
 						tracing::info!("Unloaded plugin {}", path.display());
 
 						let mut tracker = modification_tracker.write().unwrap();
@@ -113,10 +223,14 @@ fn handle_file_event(
 	}
 }
 
-fn process_plugin_file(path: &Path, plugins: Arc<RwLock<HashMap<String, Plugin>>>) -> anyhow::Result<()> {
+fn process_plugin_file(
+	path: &Path,
+	plugins: Arc<RwLock<HashMap<String, Plugin>>>,
+	plugin_type: PluginType,
+) -> anyhow::Result<()> {
 	std::thread::sleep(Duration::from_millis(100));
 
-	match load_plugin_file(plugins.clone(), path.to_path_buf()) {
+	match load_plugin_file(plugins.clone(), path.to_path_buf(), plugin_type) {
 		Ok(_) => {
 			tracing::info!("Successfully reloaded plugin: {}", path.display());
 			Ok(())

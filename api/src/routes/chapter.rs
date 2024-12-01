@@ -55,7 +55,7 @@ async fn get_chapter_info(db: web::Data<connection::Connection>, params: web::Pa
 		return HttpResponse::BadRequest().body("Invalid scraper");
 	};
 
-	let pages = plugin.scrape_chapter(db_chapter.as_ref().unwrap().url.to_string());
+	let pages = plugin.scrape_chapter(db_chapter.as_ref().unwrap().url.to_string()).await;
 
 	if pages.is_err() {
 		return HttpResponse::BadRequest().body("Error scraping chapter");
@@ -107,7 +107,7 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 			return HttpResponse::BadRequest().body("Invalid scraper");
 		};
 
-		let new_scrapped_pages = plugin.scrape_chapter(db_chapter.as_ref().unwrap().url.to_string());
+		let new_scrapped_pages = plugin.scrape_chapter(db_chapter.as_ref().unwrap().url.to_string()).await;
 
 		if new_scrapped_pages.is_err() {
 			return HttpResponse::BadRequest().body("Error scraping chapter");

@@ -20,11 +20,11 @@ async fn main() {
 			"There is a new version of manga_vault at: https://github.com/SimaoMoreira5228/manga-vault/releases/latest"
 		);
 
-		PLUGIN_MANAGER.set(Arc::new(PluginManager::new_no_update())).unwrap();
+		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new_no_update()));
 	} else {
 		tracing::info!("Application is up to date");
 		api::downloader::update_website().await;
-		PLUGIN_MANAGER.set(Arc::new(PluginManager::new())).unwrap();
+		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new()));
 	}
 
 	tokio::spawn(async move {

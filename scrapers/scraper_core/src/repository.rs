@@ -21,8 +21,9 @@ enum PluginState {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DownloadOptions {
-	pub windows: String,
-	pub linux: String,
+	pub windows: Option<String>,
+	pub linux: Option<String>,
+	pub lua: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -86,16 +87,20 @@ pub fn load_repos() -> anyhow::Result<()> {
 				if internal_plugin.version != plugin.version {
 					tracing::info!("Updating plugin: {}", plugin.name);
 
-					let plugin_file = if cfg!(target_os = "windows") {
+					let url = if let Some(lua) = &plugin.urls.lua {
+						lua
+					} else if cfg!(target_os = "windows") {
+						plugin.urls.windows.as_ref().unwrap()
+					} else {
+						plugin.urls.linux.as_ref().unwrap()
+					};
+
+					let plugin_file = if let Some(_lua) = &plugin.urls.lua {
+						format!("{}/{}/{}.lua", CONFIG.plugins_folder, repo.name, plugin.name)
+					} else if cfg!(target_os = "windows") {
 						format!("{}/{}/{}.dll", CONFIG.plugins_folder, repo.name, plugin.name)
 					} else {
 						format!("{}/{}/{}.so", CONFIG.plugins_folder, repo.name, plugin.name)
-					};
-
-					let url = if cfg!(target_os = "windows") {
-						&plugin.urls.windows
-					} else {
-						&plugin.urls.linux
 					};
 
 					let plugin_data = reqwest::blocking::get(url)?.bytes()?;
@@ -104,16 +109,20 @@ pub fn load_repos() -> anyhow::Result<()> {
 			} else {
 				tracing::info!("Downloading plugin: {}", plugin.name);
 
-				let plugin_file = if cfg!(target_os = "windows") {
+				let url = if let Some(lua) = &plugin.urls.lua {
+					lua
+				} else if cfg!(target_os = "windows") {
+					plugin.urls.windows.as_ref().unwrap()
+				} else {
+					plugin.urls.linux.as_ref().unwrap()
+				};
+
+				let plugin_file = if let Some(_lua) = &plugin.urls.lua {
+					format!("{}/{}/{}.lua", CONFIG.plugins_folder, repo.name, plugin.name)
+				} else if cfg!(target_os = "windows") {
 					format!("{}/{}/{}.dll", CONFIG.plugins_folder, repo.name, plugin.name)
 				} else {
 					format!("{}/{}/{}.so", CONFIG.plugins_folder, repo.name, plugin.name)
-				};
-
-				let url = if cfg!(target_os = "windows") {
-					&plugin.urls.windows
-				} else {
-					&plugin.urls.linux
 				};
 
 				let plugin_data = reqwest::blocking::get(url)?.bytes()?;

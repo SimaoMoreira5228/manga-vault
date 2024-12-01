@@ -36,12 +36,7 @@ fn get(url: impl AsRef<str>) -> Result<Value, serde_json::Error> {
 }
 
 #[no_mangle]
-pub extern "Rust" fn get_cookies() -> String {
-	"".to_string()
-}
-
-#[no_mangle]
-pub extern "Rust" fn scrape_trending(page: u16) -> Vec<MangaItem> {
+pub extern "Rust" fn scrape_trending(page: i32) -> Vec<MangaItem> {
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
@@ -108,7 +103,7 @@ pub extern "Rust" fn scrape_trending(page: u16) -> Vec<MangaItem> {
 }
 
 #[no_mangle]
-pub extern "Rust" fn scrape_latest(page: u16) -> Vec<MangaItem> {
+pub extern "Rust" fn scrape_latest(page: i32) -> Vec<MangaItem> {
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
@@ -175,7 +170,7 @@ pub extern "Rust" fn scrape_latest(page: u16) -> Vec<MangaItem> {
 }
 
 #[no_mangle]
-pub extern "Rust" fn scrape_search(query: String, page: u16) -> Vec<MangaItem> {
+pub extern "Rust" fn scrape_search(query: String, page: i32) -> Vec<MangaItem> {
 	let title = query.split(" ").collect::<Vec<&str>>().join("%20");
 
 	let mut manga_items: Vec<MangaItem> = Vec::new();
@@ -318,7 +313,7 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 		authors: vec![],
 		artists: None,
 		status: "".to_string(),
-		r#type: None,
+		manga_type: None,
 		release_date: None,
 		description: "".to_string(),
 		genres: vec![],
@@ -530,7 +525,7 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 		authors: authors_vec,
 		artists: Some(artists_vec),
 		status,
-		r#type: None,
+		manga_type: None,
 		release_date,
 		description,
 		genres,
@@ -550,9 +545,4 @@ pub extern "Rust" fn get_info() -> ScraperInfo {
 		name: "MangaDex".to_string(),
 		img_url: "https://mangadex.org/pwa/icons/icon-180.png".to_string(),
 	}
-}
-
-#[no_mangle]
-pub extern "Rust" fn get_scraper_type() -> String {
-	"mangaread_org".to_string()
 }

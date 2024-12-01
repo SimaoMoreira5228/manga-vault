@@ -79,17 +79,19 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 
 	for plugin in plugins.values() {
 		let mut searched_mangas: Vec<ResponseManga> = vec![];
-		let mangas = plugin.scrape_search(title.as_str(), 1);
+
+		let mangas = plugin.scrape_search(title.to_string(), 1).await;
 
 		if mangas.is_err() {
 			continue;
 		}
 
 		let mangas = mangas.unwrap();
+		let plugin_id = plugin.get_info().await.unwrap().id.clone();
 
 		for manga in mangas {
 			let db_manga: Option<crate::entities::mangas::Model> = Mangas::find()
-				.filter(crate::entities::mangas::Column::Scraper.eq(plugin.name.clone()))
+				.filter(crate::entities::mangas::Column::Scraper.eq(plugin_id.clone()))
 				.filter(crate::entities::mangas::Column::Url.eq(&manga.url))
 				.one(db.get_ref())
 				.await
@@ -100,7 +102,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 					title: Set(manga.title.clone()),
 					url: Set(manga.url.clone()),
 					img_url: Set(manga.img_url.clone()),
-					scraper: Set(plugin.name.clone()),
+					scraper: Set(plugin_id.clone()),
 					created_at: Set(chrono::Utc::now().naive_utc().to_string()),
 					updated_at: Set(chrono::Utc::now().naive_utc().to_string()),
 					..Default::default()
@@ -135,7 +137,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 		}
 
 		response.push(SearchAllResponse {
-			scraper: plugin.name.clone(),
+			scraper: plugin_id,
 			mangas: searched_mangas,
 		});
 	}
@@ -144,7 +146,7 @@ async fn search_mangas_all_scrapers(db: web::Data<connection::Connection>, title
 }
 
 #[get("/mangas/search/{title}/{scraper}/{page}")]
-async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<(String, String, u16)>) -> impl Responder {
+async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<(String, String, i32)>) -> impl Responder {
 	let (title, scraper, page) = params.into_inner();
 
 	let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&scraper);
@@ -155,7 +157,7 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 		return HttpResponse::BadRequest().body("Invalid scraper");
 	};
 
-	let mangas = plugin.scrape_search(title.as_str(), page);
+	let mangas = plugin.scrape_search(title.to_string(), page).await;
 
 	if mangas.is_err() {
 		return HttpResponse::BadRequest().body("Error scraping manga");
@@ -163,10 +165,11 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 
 	let mangas = mangas.unwrap();
 	let mut response: Vec<ResponseManga> = vec![];
+	let plugin_id = plugin.get_info().await.unwrap().id.clone();
 
 	for manga in mangas {
 		let db_manga: Option<crate::entities::mangas::Model> = Mangas::find()
-			.filter(crate::entities::mangas::Column::Scraper.eq(plugin.name.clone()))
+			.filter(crate::entities::mangas::Column::Scraper.eq(plugin_id.clone()))
 			.filter(crate::entities::mangas::Column::Url.eq(&manga.url))
 			.one(db.get_ref())
 			.await
@@ -177,7 +180,7 @@ async fn search_mangas(db: web::Data<connection::Connection>, params: web::Path<
 				title: Set(manga.title.clone()),
 				url: Set(manga.url.clone()),
 				img_url: Set(manga.img_url.clone()),
-				scraper: Set(plugin.name.clone()),
+				scraper: Set(plugin_id.clone()),
 				created_at: Set(chrono::Utc::now().naive_utc().to_string()),
 				updated_at: Set(chrono::Utc::now().naive_utc().to_string()),
 				..Default::default()
@@ -279,7 +282,7 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 			return HttpResponse::BadRequest().body("Invalid scraper");
 		};
 
-		let manga = plugin.scrape_manga(&db_manga.url.clone());
+		let manga = plugin.scrape_manga(db_manga.url.clone()).await;
 
 		if manga.is_err() {
 			return HttpResponse::Ok().json(response);
@@ -295,7 +298,7 @@ async fn get_manga(db: web::Data<connection::Connection>, id: web::Path<i32>) ->
 			authors: manga.authors,
 			artists: manga.artists,
 			status: manga.status,
-			manga_type: manga.r#type,
+			manga_type: manga.manga_type,
 			release_date: manga.release_date,
 			description: manga.description,
 			genres: manga.genres,

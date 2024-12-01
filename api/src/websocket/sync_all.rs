@@ -54,7 +54,7 @@ pub async fn sync_all_favorite_mangas(
 				.unwrap();
 		};
 
-		let manga_page = plugin.scrape_manga(&favorite_manga.url);
+		let manga_page = plugin.scrape_manga(favorite_manga.url.clone()).await;
 
 		if manga_page.is_err() {
 			let response = SyncFavoriteMangasResponse {

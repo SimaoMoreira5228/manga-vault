@@ -4,8 +4,8 @@
     {
       "name": "mangaread_org",
       "urls": {
-        "windows": "https://files.catbox.moe/uhy13w.dll",
-        "linux": "https://files.catbox.moe/pwcw1n.so"
+        "windows": "https://files.catbox.moe/wh1bfe.dll",
+        "linux": "https://files.catbox.moe/gukyh0.so"
       },
       "version": "0.2.0",
       "state": "updated",
@@ -14,10 +14,19 @@
     {
       "name": "manga_dex",
       "urls": {
-        "windows": "https://files.catbox.moe/y9g82t.dll",
-        "linux": "https://files.catbox.moe/o1ajec.so"
+        "windows": "https://files.catbox.moe/fj8gi7.dll",
+        "linux": "https://files.catbox.moe/8s7y0b.so"
       },
       "version": "0.2.0",
+      "state": "updated",
+      "build_state": "beta"
+    },
+    {
+      "name": "manhuafast",
+      "urls": {
+        "lua": "https://files.catbox.moe/bi3907.lua"
+      },
+      "version": "0.1.0",
       "state": "updated",
       "build_state": "beta"
     }

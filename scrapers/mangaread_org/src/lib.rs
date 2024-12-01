@@ -26,11 +26,6 @@ pub static PLUGIN_NAME: &str = env!("CARGO_PKG_NAME");
 pub static PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[no_mangle]
-pub extern "Rust" fn get_cookies() -> String {
-	"".to_string()
-}
-
-#[no_mangle]
 pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 	let res = reqwest::blocking::get(url)
 		.map_err(|e| println!("Error while getting response on scrape_chapter: {}", e))
@@ -50,7 +45,7 @@ pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 }
 
 #[no_mangle]
-pub extern "Rust" fn scrape_latest(page: u16) -> Vec<MangaItem> {
+pub extern "Rust" fn scrape_latest(page: i32) -> Vec<MangaItem> {
 	let url = format!(
 		"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=latest&paged={}",
 		page
@@ -105,7 +100,7 @@ pub extern "Rust" fn scrape_latest(page: u16) -> Vec<MangaItem> {
 }
 
 #[no_mangle]
-pub extern "Rust" fn scrape_trending(page: u16) -> Vec<MangaItem> {
+pub extern "Rust" fn scrape_trending(page: i32) -> Vec<MangaItem> {
 	let url = format!(
 		"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=trending&paged={}",
 		page
@@ -159,7 +154,7 @@ pub extern "Rust" fn scrape_trending(page: u16) -> Vec<MangaItem> {
 }
 
 #[no_mangle]
-pub extern "Rust" fn scrape_search(query: String, page: u16) -> Vec<MangaItem> {
+pub extern "Rust" fn scrape_search(query: String, page: i32) -> Vec<MangaItem> {
 	let url = format!(
 		"https://www.mangaread.org/?s={}&post_type=wp-manga&op=&author=&artist=&release=&adult=&paged={}",
 		query, page
@@ -403,7 +398,7 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 		authors,
 		artists,
 		status,
-		r#type,
+		manga_type: r#type,
 		release_date,
 		description,
 		genres,
@@ -444,9 +439,4 @@ pub extern "Rust" fn get_info() -> ScraperInfo {
 		name: "Mangaread.org".to_string(),
 		img_url: "https://www.mangaread.org/wp-content/uploads/2017/10/log1.png".to_string(),
 	}
-}
-
-#[no_mangle]
-pub extern "Rust" fn get_scraper_type() -> String {
-	"mangaread_org".to_string()
 }

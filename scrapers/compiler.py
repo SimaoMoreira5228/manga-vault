@@ -1,7 +1,8 @@
 import json
 import subprocess
 
-scrapers = ["mangaread_org", "manga_dex"]
+rust_scrapers = ["mangaread_org", "manga_dex"]
+lua_scrapers = ["manhuafast"]
 
 current_path = "/".join(__file__.split("/")[:-1])
 manga_vault_path = "/".join(current_path.split("/")[:-1])
@@ -15,7 +16,9 @@ def build_windows(path):
                 project_name = line.split("=")[1].strip().strip('"')
                 break
 
-    subprocess.run(["cargo", "build", "--release", "--target", "x86_64-pc-windows-gnu"], cwd=path)
+    subprocess.run(
+        ["cargo", "build", "--release", "--target", "x86_64-pc-windows-gnu"], cwd=path
+    )
 
     return f"{path}/target/x86_64-pc-windows-gnu/release/{project_name}.dll"
 
@@ -36,10 +39,14 @@ def build_linux(path):
 def upload_to_catbox_with_curl(file_path):
     url = "https://catbox.moe/user/api.php"
     command = [
-        "curl", "-X", "POST", url,
-
-        "-F", f"fileToUpload=@{file_path}",
-        "-F", "reqtype=fileupload"
+        "curl",
+        "-X",
+        "POST",
+        url,
+        "-F",
+        f"fileToUpload=@{file_path}",
+        "-F",
+        "reqtype=fileupload",
     ]
 
     result = subprocess.run(command, capture_output=True, text=True)
@@ -58,6 +65,13 @@ def get_plugin_version(path):
                 return line.split("=")[1].strip().strip('"')
 
 
+def get_plugin_version_lua(path):
+    with open(path, "r") as file:
+        for line in file:
+            if "PLUGIN_VERSION" in line:
+                return line.split("=")[1].strip().strip('"')
+
+
 def get_build_state(path):
     version = get_plugin_version(path)
     if int(version[0]) > 0:
@@ -68,18 +82,25 @@ def get_build_state(path):
         return "alpha"
 
 
-repo_file_content = {
-    "name": "dewn_plugins",
-    "plugins": []
-}
+def get_build_state_lua(path):
+    version = get_plugin_version_lua(path)
+    if int(version[0]) > 0:
+        return "stable"
+    elif int(version[2]) > 0:
+        return "beta"
+    else:
+        return "alpha"
 
-for scraper in scrapers:
+
+repo_file_content = {"name": "dewn_plugins", "plugins": []}
+
+for scraper in rust_scrapers:
     path = f"{current_path}/{scraper}"
     data = {
         "name": scraper,
         "urls": {
             "windows": upload_to_catbox_with_curl(build_windows(path)),
-            "linux": upload_to_catbox_with_curl(build_linux(path))
+            "linux": upload_to_catbox_with_curl(build_linux(path)),
         },
         "version": get_plugin_version(path),
         "state": "updated",
@@ -87,5 +108,18 @@ for scraper in scrapers:
     }
 
     repo_file_content["plugins"].append(data)
+
+for scraper in lua_scrapers:
+    path = f"{current_path}/{scraper}/{scraper}.lua"
+    data = {
+        "name": scraper,
+        "urls": {"lua": upload_to_catbox_with_curl(path)},
+        "version": get_plugin_version_lua(path),
+        "state": "updated",
+        "build_state": get_build_state_lua(path),
+    }
+
+    repo_file_content["plugins"].append(data)
+
 
 json.dump(repo_file_content, open(f"{manga_vault_path}/repo.json", "w"), indent=2)
