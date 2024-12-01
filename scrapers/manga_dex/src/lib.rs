@@ -541,7 +541,7 @@ pub extern "Rust" fn scrape_genres_list() -> Vec<Genre> {
 #[no_mangle]
 pub extern "Rust" fn get_info() -> ScraperInfo {
 	ScraperInfo {
-		id: "mangaread_org".to_string(),
+		id: "manga_dex".to_string(),
 		name: "MangaDex".to_string(),
 		img_url: "https://mangadex.org/pwa/icons/icon-180.png".to_string(),
 	}
