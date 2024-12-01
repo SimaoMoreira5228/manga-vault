@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global
 
 PLUGIN_NAME = "manhuafast"
-PLUGIN_VERSION = "0.1.0"
+PLUGIN_VERSION = "0.1.1"
 
 local function reverseTable(t)
   local reversed = {}
@@ -13,7 +13,7 @@ local function reverseTable(t)
 end
 
 function Scrape_chapter(url)
-  local html = http.get_as_text(url)
+  local html = http.get(url).text
 
   local img_selector = "img.wp-manga-chapter-img"
   local img_elements = scraping.select_elements(html, img_selector)
@@ -30,7 +30,7 @@ end
 
 function Scrape_latest(page)
   local url = "https://manhuafast.com/page/" .. tostring(page) .. "/?s&post_type=wp-manga&m_orderby=latest"
-  local html = http.get_as_text(url)
+  local html = http.get(url).text
 
   local manga_divs = scraping.select_elements(html, "div.c-tabs-item")
   local manga_items = {}
@@ -62,7 +62,7 @@ end
 
 function Scrape_trending(page)
   local url = "https://manhuafast.com/page/" .. tostring(page) .. "/?s&post_type=wp-manga&m_orderby=trending"
-  local html = http.get_as_text(url)
+  local html = http.get(url).text
 
   local manga_divs = scraping.select_elements(html, "div.c-tabs-item")
   local manga_items = {}
@@ -95,7 +95,7 @@ end
 function Scrape_search(query, page)
   local url = "https://manhuafast.com/page/" ..
       tostring(page) .. "/?s=" .. query .. "&post_type=wp-manga&op&author&artist&release&adult"
-  local html = http.get_as_text(url)
+  local html = http.get(url).text
 
   local manga_divs = scraping.select_elements(html, "div.c-tabs-item")
   local manga_items = {}
@@ -126,7 +126,7 @@ function Scrape_search(query, page)
 end
 
 function Scrape_manga(url)
-  local html = http.get_as_text(url)
+  local html = http.get(url).text
 
   local title = scraping.get_text(scraping.select_elements(html, "div.post-title h1")[1]) or ""
   local img_url = scraping.get_image_url(scraping.select_elements(html, "div.summary_image img")[1]) or ""
@@ -168,7 +168,7 @@ function Scrape_manga(url)
       ["X-Requested-With"] = "XMLHttpRequest"
     },
     ""
-  )
+  ).text
 
   for _, chapter in ipairs(scraping.select_elements(chapters_html, "div.listing-chapters_wrap ul li")) do
     local chapter_title = scraping.get_text(scraping.select_elements(chapter, "a")[1]) or ""
@@ -197,7 +197,7 @@ end
 
 function Scrape_genres_list()
   local url = "https://manhuafast.com/?s=&post_type=wp-manga"
-  local html = http.get_as_text(url)
+  local html = http.get(url).text
 
   local genres = {}
   for _, genre_element in ipairs(scraping.select_elements(html, "div.checkbox-group div.checkbox label")) do

@@ -1,33 +1,57 @@
 use std::collections::HashMap;
 
-use mlua::Lua;
+use mlua::{Lua, LuaSerdeExt, Table};
+
+fn create_response_table(lua: &Lua, text: String) -> mlua::Result<Table> {
+    let response_table = lua.create_table()?;
+    response_table.set("text", text.clone())?;
+
+    let json: serde_json::Value;
+    match serde_json::from_str(&text) {
+        Ok(value) => json = value,
+        Err(_) => json = serde_json::Value::Null,
+    }
+    response_table.set("json", lua.to_value(&json)?)?;
+
+    Ok(response_table)
+}
 
 pub(crate) fn load(lua: &Lua) -> anyhow::Result<()> {
     let http_table = lua.create_table()?;
 
-    http_table.set(
-        "get_as_text",
-        lua.create_function(|_, url: String| {
-            reqwest::blocking::get(&url)
+    let lua_clone = lua.clone();
+    http_table.set("get", {
+        let lua_clone = lua_clone.clone();
+        lua.create_function(move |_, url: String| {
+            let resp = reqwest::blocking::get(&url)
                 .and_then(|res| res.text())
-                .map_err(|e| mlua::Error::external(format!("HTTP Error: {}", e)))
-        })?,
-    )?;
+                .map_err(|e| mlua::Error::external(format!("HTTP Error: {}", e)));
 
-    http_table.set(
-        "post",
-        lua.create_function(|_, (url, body): (String, String)| {
+            match resp {
+                Ok(text) => create_response_table(&lua_clone.clone(), text),
+                Err(e) => Err(e),
+            }
+        })
+    }?)?;
+
+    http_table.set("post", {
+        let lua_clone = lua_clone.clone();
+        lua.create_function(move |_, (url, body): (String, String)| {
             let client = reqwest::blocking::Client::new();
-            let response = client.post(url).body(body).send().unwrap();
+            let response = client.post(url).body(body).send();
 
-            Ok(response.text().unwrap())
-        })?,
-    )?;
+            match response {
+                Ok(res) => create_response_table(&lua_clone.clone(), res.text().unwrap()),
+                Err(e) => Err(mlua::Error::external(format!("HTTP Error: {}", e))),
+            }
+        })
+    }?)?;
 
     http_table.set(
         "post_custom_headers",
         lua.create_function(
-            |_, (url, custom_headers, body): (String, HashMap<String, String>, String)| {
+            move |_, (url, custom_headers, body): (String, HashMap<String, String>, String)| {
+                let lua_clone = lua_clone.clone();
                 let headers = custom_headers
                     .iter()
                     .map(|(k, v)| {
@@ -38,9 +62,12 @@ pub(crate) fn load(lua: &Lua) -> anyhow::Result<()> {
                     .collect();
 
                 let client = reqwest::blocking::Client::new();
-                let response = client.post(url).headers(headers).body(body).send().unwrap();
+                let response = client.post(url).headers(headers).body(body).send();
 
-                Ok(response.text().unwrap())
+                match response {
+                    Ok(res) => create_response_table(&lua_clone.clone(), res.text().unwrap()),
+                    Err(e) => Err(mlua::Error::external(format!("HTTP Error: {}", e))),
+                }
             },
         )?,
     )?;
