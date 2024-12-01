@@ -14,10 +14,10 @@
     {
       "name": "manga_dex",
       "urls": {
-        "windows": "https://files.catbox.moe/hul3b6.dll",
-        "linux": "https://files.catbox.moe/agyrqg.so"
+        "windows": "https://files.catbox.moe/65uoqd.dll",
+        "linux": "https://files.catbox.moe/b5ouui.so"
       },
-      "version": "0.2.1",
+      "version": "0.2.2",
       "state": "updated",
       "build_state": "beta"
     },
