@@ -51,7 +51,7 @@ pub async fn run() -> std::io::Result<()> {
 	HttpServer::new(move || {
 		App::new()
 			.wrap(Cors::permissive())
-			// .wrap(TracingLogger::default())
+			.wrap(TracingLogger::default())
 			.app_data(web::Data::new(db.conn.clone()))
 			.service(
 				web::scope("/api")
