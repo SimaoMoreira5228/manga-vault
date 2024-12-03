@@ -1,5 +1,4 @@
 use actix_web::{get, web, HttpResponse, Responder};
-use isahc::ReadResponseExt;
 use scraper_core::PLUGIN_MANAGER;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set};
 use serde::Serialize;
