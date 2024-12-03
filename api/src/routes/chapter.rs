@@ -148,7 +148,7 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 	headers.insert("Referer", db_manga.url.parse().unwrap());
 
 	let image = client.get(selected_page).send().await.unwrap().bytes().await.unwrap();
-	return HttpResponse::Ok().body(image);
+	HttpResponse::Ok().body(image)
 }
 
 pub fn init_routes(cfg: &mut web::ServiceConfig) {

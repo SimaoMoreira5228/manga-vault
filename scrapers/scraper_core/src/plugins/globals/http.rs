@@ -6,11 +6,10 @@ fn create_response_table(lua: &Lua, text: String) -> mlua::Result<Table> {
     let response_table = lua.create_table()?;
     response_table.set("text", text.clone())?;
 
-    let json: serde_json::Value;
-    match serde_json::from_str(&text) {
-        Ok(value) => json = value,
-        Err(_) => json = serde_json::Value::Null,
-    }
+    let json: serde_json::Value = match serde_json::from_str(&text) {
+        Ok(value) => value,
+        Err(_) => serde_json::Value::Null,
+    };
     response_table.set("json", lua.to_value(&json)?)?;
 
     Ok(response_table)
