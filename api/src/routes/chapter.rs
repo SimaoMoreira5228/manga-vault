@@ -77,21 +77,20 @@ async fn get_chapter_info(db: web::Data<connection::Connection>, params: web::Pa
 async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Path<(i32, i32, u32)>) -> impl Responder {
 	let (manga_id, chapter_id, page) = params.into_inner();
 
-	let db_manga: Option<crate::entities::mangas::Model> = Mangas::find_by_id(manga_id).one(db.get_ref()).await.unwrap();
-
-	if db_manga.is_none() {
+	let db_manga = if let Some(manga) = Mangas::find_by_id(manga_id).one(db.get_ref()).await.unwrap() {
+		manga
+	} else {
 		return HttpResponse::BadRequest().body("Manga not found");
-	}
+	};
 
-	let db_chapter: Option<crate::entities::chapters::Model> =
-		Chapters::find_by_id(chapter_id).one(db.get_ref()).await.unwrap();
-
-	if db_chapter.is_none() {
+	let db_chapter = if let Some(chapter) = Chapters::find_by_id(chapter_id).one(db.get_ref()).await.unwrap() {
+		chapter
+	} else {
 		return HttpResponse::BadRequest().body("Chapter not found");
-	}
+	};
 
 	let db_scrapped_pages = Temp::find()
-		.filter(crate::entities::temp::Column::Key.eq(format!("chapter_{}", db_chapter.as_ref().unwrap().id)))
+		.filter(crate::entities::temp::Column::Key.eq(format!("chapter_{}", db_chapter.id)))
 		.one(db.get_ref())
 		.await
 		.unwrap();
@@ -99,7 +98,7 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 	let scrapped_pages: Vec<String>;
 
 	if db_scrapped_pages.is_none() {
-		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.as_ref().unwrap().scraper);
+		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&db_manga.scraper);
 
 		let plugin = if let Some(p) = plugin {
 			p
@@ -107,7 +106,7 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 			return HttpResponse::BadRequest().body("Invalid scraper");
 		};
 
-		let new_scrapped_pages = plugin.scrape_chapter(db_chapter.as_ref().unwrap().url.to_string()).await;
+		let new_scrapped_pages = plugin.scrape_chapter(db_chapter.url).await;
 
 		if new_scrapped_pages.is_err() {
 			return HttpResponse::BadRequest().body("Error scraping chapter");
@@ -116,7 +115,7 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 		let new_scrapped_pages = new_scrapped_pages.unwrap();
 
 		let pages_to_temp = crate::entities::temp::ActiveModel {
-			key: Set(format!("chapter_{}", db_chapter.as_ref().unwrap().id)),
+			key: Set(format!("chapter_{}", db_chapter.id)),
 			value: Set(serde_json::to_string(&new_scrapped_pages).unwrap()),
 			expires_at: Set((chrono::Utc::now() + chrono::Duration::hours(2)).to_string()),
 			..Default::default()
@@ -145,14 +144,12 @@ async fn get_chapter_page(db: web::Data<connection::Connection>, params: web::Pa
 
 	let selected_page = selected_page.unwrap().trim();
 
-	let image = isahc::get(selected_page);
+	let client = reqwest::Client::new();
+	let mut headers = reqwest::header::HeaderMap::new();
+	headers.insert("Referer", db_manga.url.parse().unwrap());
 
-	if image.is_err() {
-		let image = reqwest::get(selected_page).await.unwrap().bytes().await.unwrap();
-		return HttpResponse::Ok().body(image);
-	}
-
-	HttpResponse::Ok().body(image.unwrap().bytes().unwrap())
+	let image = client.get(selected_page).send().await.unwrap().bytes().await.unwrap();
+	return HttpResponse::Ok().body(image);
 }
 
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
