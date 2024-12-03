@@ -14,7 +14,7 @@
     {
       "name": "manga_dex",
       "urls": {
-        "windows": "https://files.catbox.moe/65uoqd.dll",
+        "windows": "https://files.catbox.moe/jz3liq.dll",
         "linux": "https://files.catbox.moe/b5ouui.so"
       },
       "version": "0.2.2",
