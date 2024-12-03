@@ -1,11 +1,9 @@
-use isahc::ReadResponseExt;
 use once_cell::sync::Lazy;
+use reqwest::{blocking::Client, header::HeaderMap};
 use scraper_types::{Chapter, Genre, MangaItem, MangaPage, ScraperInfo};
 use serde_json::Value;
 use std::{
-	sync::Mutex,
-	time::{Duration, Instant},
-	vec,
+	env, sync::Mutex, time::{Duration, Instant}, vec
 };
 
 static COOLDOWN: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
@@ -27,12 +25,19 @@ fn get(url: impl AsRef<str>) -> Result<Value, serde_json::Error> {
 
 	*cooldown = Instant::now();
 	*rate_limit_counter += 1;
+	let mut headers = HeaderMap::new();
+	headers.insert("user-agent", format!("Tachiyomi MangaVault_manga_dex_lib-{}", PLUGIN_VERSION).parse().unwrap());
+	headers.insert("referer", "https://mangadex.org".parse().unwrap());
+	headers.insert("origin", "https://mangadex.org".parse().unwrap());
+	headers.insert("Extra", format!("{} MangaVault_manga_dex_lib-{}", std::env::consts::OS, PLUGIN_VERSION).parse().unwrap());
 
-	let mut resp = isahc::get(url.as_ref()).unwrap();
+	let client = Client::builder()
+		.default_headers(headers)
+		.build()
+		.unwrap();
 
-	let text = resp.text().unwrap();
-
-	text.parse()
+	let resp = client.get(url.as_ref()).send().unwrap().text().unwrap();
+	resp.parse()
 }
 
 #[no_mangle]
