@@ -1,6 +1,7 @@
 use connection::Connection;
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
+use scraper_core::PLUGIN_MANAGER;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use tokio::net::TcpStream;
@@ -35,9 +36,11 @@ pub async fn sync_all_favorite_mangas(
 	}
 
 	for favorite_manga in favorite_mangas {
-		let scraper_type = scrapers::get_scraper_type(&favorite_manga.scraper);
+		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&favorite_manga.scraper);
 
-		let scraper_type = if scraper_type.is_err() {
+		let plugin = if let Some(p) = plugin {
+			p
+		} else {
 			return write
 				.send(Message::Binary(
 					serde_json::to_vec(&SyncFavoriteMangasResponse {
@@ -49,12 +52,9 @@ pub async fn sync_all_favorite_mangas(
 				))
 				.await
 				.unwrap();
-		} else {
-			scraper_type.unwrap()
 		};
 
-		let scraper = scrapers::Scraper::new(&scraper_type);
-		let manga_page = scraper.scrape_manga(&favorite_manga.url).await;
+		let manga_page = plugin.scrape_manga(favorite_manga.url.clone()).await;
 
 		if manga_page.is_err() {
 			let response = SyncFavoriteMangasResponse {
@@ -90,8 +90,20 @@ pub async fn sync_all_favorite_mangas(
 					..Default::default()
 				};
 
-				// TODO: treat this
-				let _ = active_model_chapter.insert(&db).await;
+				let res = active_model_chapter.insert(&db).await;
+
+				if res.is_err() {
+					let response = SyncFavoriteMangasResponse {
+						msg_type: "sync-all".to_string(),
+						content: None,
+						error: Some("Error saving chapter".to_string()),
+					};
+					write
+						.send(Message::Binary(serde_json::to_vec(&response).unwrap()))
+						.await
+						.unwrap();
+					continue;
+				}
 			}
 		}
 
@@ -99,8 +111,6 @@ pub async fn sync_all_favorite_mangas(
 		favorite_manga_active.img_url = Set(manga_page.img_url.clone());
 		favorite_manga_active.updated_at = Set(chrono::Utc::now().naive_utc().to_string());
 		let _ = favorite_manga_active.update(&db).await.unwrap();
-
-		drop(scraper);
 	}
 
 	let response = SyncFavoriteMangasResponse {
