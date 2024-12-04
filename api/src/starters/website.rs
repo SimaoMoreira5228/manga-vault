@@ -1,11 +1,9 @@
 use std::fs::{self, DirEntry};
-use std::io::BufRead;
 use std::process::Stdio;
 
+use config::CONFIG;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
-
-use crate::{downloader, CONFIG};
 
 pub async fn start() {
 	let contents = format!(
@@ -33,73 +31,31 @@ pub async fn start() {
 	}
 
 	let website_path = std::path::Path::new(&website_dir);
-	let entries = fs::read_dir(&website_path).unwrap();
+	let entries = fs::read_dir(website_path).unwrap();
 	let mut server_file: Option<DirEntry> = None;
-	let mut website_version_file: Option<DirEntry> = None;
-	let mut website_build_folder: Option<DirEntry> = None;
 	for entry in entries {
 		let file = entry.unwrap();
 		let file_name = file.file_name();
 		let file_name = file_name.to_str().unwrap();
 		if file_name == "server.js" {
-			server_file = Some(file);
-			continue;
-		} else if file_name == "version.txt" {
-			website_version_file = Some(file);
-			continue;
-		} else if file_name == "build" {
-			website_build_folder = Some(file);
-			continue;
+			server_file = Some(file)
 		}
 	}
 
-	if !server_file.is_some() {
+	if server_file.is_none() {
 		fs::write(format!("{}/server.js", website_dir), contents).unwrap();
-	}
-
-	let latest_version = downloader::get_version("SimaoMoreira5228", "manga-vault").await.unwrap();
-
-	if !website_version_file.is_some() {
-		if website_build_folder.is_some() {
-			fs::remove_dir_all(format!("{}/build", website_dir)).unwrap();
-		}
-
-		downloader::downloader(&website_dir, "SimaoMoreira5228", "manga-vault")
-			.await
-			.unwrap();
-		downloader::unzip_file(format!("{}/website.zip", website_dir).as_str(), &CONFIG.directory)
-			.await
-			.unwrap();
-		fs::write(format!("{}/version.txt", website_dir), latest_version).unwrap();
-	} else if website_version_file.is_some() {
-		let file = fs::File::open(format!("{}/version.txt", website_dir)).unwrap();
-		let version = std::io::BufReader::new(file).lines().next().unwrap().unwrap();
-
-		if version != latest_version {
-			if website_build_folder.is_some() {
-				fs::remove_dir_all(format!("{}/build", website_dir)).unwrap();
-			}
-
-			downloader::downloader(&website_dir, "SimaoMoreira5228", "manga-vault")
-				.await
-				.unwrap();
-			downloader::unzip_file(format!("{}/website.zip", website_dir).as_str(), &CONFIG.directory)
-				.await
-				.unwrap();
-			fs::write(format!("{}/version.txt", website_dir), latest_version).unwrap();
-		}
 	}
 
 	if cfg!(target_os = "windows") {
 		Command::new("cmd")
-			.args(&["/C", "npm", "ci", "--omit", "dev"])
+			.args(["/C", "npm", "ci", "--omit", "dev"])
 			.current_dir(&website_dir)
 			.output()
 			.await
 			.expect("Failed to install dependencies");
 	} else {
 		Command::new("npm")
-			.args(&["ci", "--omit", "dev"])
+			.args(["ci", "--omit", "dev"])
 			.current_dir(&website_dir)
 			.output()
 			.await
@@ -108,7 +64,7 @@ pub async fn start() {
 
 	let output = if cfg!(target_os = "windows") {
 		Command::new("cmd")
-			.args(&["/C", "node", "-r", "dotenv/config", "server.js"])
+			.args(["/C", "node", "-r", "dotenv/config", "server.js"])
 			.current_dir(&website_dir)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
@@ -116,7 +72,7 @@ pub async fn start() {
 			.expect("Failed to start website")
 	} else {
 		Command::new("node")
-			.args(&["-r", "dotenv/config", "server.js"])
+			.args(["-r", "dotenv/config", "server.js"])
 			.current_dir(&website_dir)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
@@ -135,7 +91,7 @@ pub async fn start() {
 				break;
 			}
 			let s = std::str::from_utf8(&buf[..n]).unwrap();
-			println!("{}", s);
+			tracing::error!("{}", s);
 		}
 	});
 
@@ -146,6 +102,6 @@ pub async fn start() {
 			break;
 		}
 		let s = std::str::from_utf8(&buf[..n]).unwrap();
-		println!("{}", s);
+		tracing::info!("{}", s);
 	}
 }
