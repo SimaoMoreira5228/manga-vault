@@ -161,13 +161,13 @@ function Scrape_manga(url)
     chapters_url = url .. "/ajax/chapters/"
   end
 
-  local chapters_html = http.post_custom_headers(
+  local chapters_html = http.post(
     chapters_url,
+    "",
     {
       ["Referer"] = "https://manhuafast.com/",
       ["X-Requested-With"] = "XMLHttpRequest"
-    },
-    ""
+    }
   ).text
 
   for _, chapter in ipairs(scraping.select_elements(chapters_html, "div.listing-chapters_wrap ul li")) do

@@ -4,8 +4,8 @@
     {
       "name": "mangaread_org",
       "urls": {
-        "windows": "https://files.catbox.moe/xget25.dll",
-        "linux": "https://files.catbox.moe/hrexa8.so"
+        "windows": "https://files.catbox.moe/0wo67j.dll",
+        "linux": "https://files.catbox.moe/sbsdrl.so"
       },
       "version": "0.2.1",
       "state": "updated",
@@ -14,8 +14,8 @@
     {
       "name": "manga_dex",
       "urls": {
-        "windows": "https://files.catbox.moe/jz3liq.dll",
-        "linux": "https://files.catbox.moe/b5ouui.so"
+        "windows": "https://files.catbox.moe/n2yh65.dll",
+        "linux": "https://files.catbox.moe/dxzwuy.so"
       },
       "version": "0.2.2",
       "state": "updated",
@@ -24,8 +24,8 @@
     {
       "name": "hari_manga",
       "urls": {
-        "windows": "https://files.catbox.moe/qrad70.dll",
-        "linux": "https://files.catbox.moe/j5rsc3.so"
+        "windows": "https://files.catbox.moe/xtrpov.dll",
+        "linux": "https://files.catbox.moe/5o64bn.so"
       },
       "version": "0.1.0",
       "state": "updated",
@@ -34,7 +34,7 @@
     {
       "name": "manhuafast",
       "urls": {
-        "lua": "https://files.catbox.moe/468l6h.lua"
+        "lua": "https://files.catbox.moe/urwzp6.lua"
       },
       "version": "0.1.1",
       "state": "updated",

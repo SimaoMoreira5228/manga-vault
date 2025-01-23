@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use config::{TracingLevel, CONFIG};
-use scraper_core::{PluginManager, PLUGIN_MANAGER};
+use config::{CONFIG, TracingLevel};
+use scraper_core::{PLUGIN_MANAGER, PluginManager};
 use tracing_subscriber::FmtSubscriber;
 
 const MANGA_VAULT_VERSION: &str = env!("CARGO_PKG_VERSION");
