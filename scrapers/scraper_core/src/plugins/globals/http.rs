@@ -50,7 +50,6 @@ pub(crate) fn load(lua: &Lua) -> anyhow::Result<()> {
 		lua.create_function(
 			move |lua, (url, body, headers_map): (String, String, Option<HashMap<String, String>>)| {
 				let headers_map = headers_map.unwrap_or_default();
-				println!("Headers: {:?}", headers_map);
 
 				let headers = headers_map
 					.iter()
@@ -63,8 +62,6 @@ pub(crate) fn load(lua: &Lua) -> anyhow::Result<()> {
 
 				let client = reqwest::blocking::Client::new();
 				let response = client.post(url).headers(headers).body(body).send();
-
-                println!("Response: {:?}", response);
 
 				match response {
 					Ok(res) => create_response_table(&lua, res.text().unwrap()),
