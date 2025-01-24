@@ -1,6 +1,7 @@
 use connection::Connection;
 use futures_util::stream::SplitSink;
 use futures_util::SinkExt;
+use scraper_core::PLUGIN_MANAGER;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter};
 use tokio::net::TcpStream;
@@ -49,9 +50,11 @@ pub async fn sync_favorite_mangas_from_category(
 	}
 
 	for favorite_manga in favorite_mangas {
-		let scraper_type = scrapers::get_scraper_type(&favorite_manga.scraper);
+		let plugin = PLUGIN_MANAGER.get().unwrap().get_plugin(&favorite_manga.scraper);
 
-		let scraper_type = if scraper_type.is_err() {
+		let plugin = if let Some(p) = plugin {
+			p
+		} else {
 			return write
 				.send(Message::Binary(
 					serde_json::to_vec(&SyncFavoriteMangasResponse {
@@ -63,12 +66,9 @@ pub async fn sync_favorite_mangas_from_category(
 				))
 				.await
 				.unwrap();
-		} else {
-			scraper_type.unwrap()
 		};
 
-		let scraper = scrapers::Scraper::new(&scraper_type);
-		let manga_page = scraper.scrape_manga(&favorite_manga.url).await;
+		let manga_page = plugin.scrape_manga(favorite_manga.url.clone()).await;
 
 		if manga_page.is_err() {
 			let response = SyncFavoriteMangasResponse {
@@ -132,8 +132,6 @@ pub async fn sync_favorite_mangas_from_category(
 		favorite_manga_active.img_url = Set(manga_page.img_url.clone());
 		favorite_manga_active.updated_at = Set(chrono::Utc::now().naive_utc().to_string());
 		let new_favorite = favorite_manga_active.update(&db).await.unwrap();
-
-		drop(scraper);
 
 		let response = SyncFavoriteMangasResponse {
 			msg_type: "sync-category".to_string(),

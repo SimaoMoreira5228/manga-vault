@@ -2,6 +2,7 @@ use actix_web::cookie::Cookie;
 use actix_web::dev::ServiceRequest;
 use actix_web::{get, post, web, HttpResponse, Responder};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
+use config::CONFIG;
 use cookie::time::OffsetDateTime;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use sea_orm::EntityTrait;
@@ -24,7 +25,7 @@ struct NewTokenResponse {
 
 fn generate_token(user_id: i32) -> Result<NewTokenResponse, jsonwebtoken::errors::Error> {
 	let exp = chrono::Utc::now()
-		.checked_add_signed(chrono::Duration::hours(24))
+		.checked_add_signed(chrono::Duration::days(CONFIG.api.jwt_duration_days as i64))
 		.expect("valid timestamp")
 		.timestamp();
 	let claims = Claims {
@@ -34,13 +35,10 @@ fn generate_token(user_id: i32) -> Result<NewTokenResponse, jsonwebtoken::errors
 
 	let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(SECRET_JWT.as_ref()));
 
-	if token.is_err() {
-		return Err(token.err().unwrap());
+	if let Ok(token) = token {
+		Ok(NewTokenResponse { token, exp })
 	} else {
-		return Ok(NewTokenResponse {
-			token: token.unwrap(),
-			exp,
-		});
+		Err(token.err().unwrap())
 	}
 }
 
@@ -50,7 +48,7 @@ pub async fn validate_token(
 ) -> Result<ServiceRequest, (actix_web::Error, ServiceRequest)> {
 	let token = credentials.token();
 	let validation = Validation::default();
-	match decode::<Claims>(&token, &DecodingKey::from_secret(SECRET_JWT.as_ref()), &validation) {
+	match decode::<Claims>(token, &DecodingKey::from_secret(SECRET_JWT.as_ref()), &validation) {
 		Ok(_) => Ok(req),
 		Err(_) => Err((actix_web::error::ErrorUnauthorized("Invalid token"), req)),
 	}
@@ -119,10 +117,7 @@ async fn me(req: actix_web::HttpRequest, db: web::Data<connection::Connection>) 
 
 	let user_id = decoded_token.unwrap().claims.sub;
 
-	let user: Option<crate::entities::users::Model> = Users::find_by_id(user_id)
-		.one(db.get_ref())
-		.await
-		.unwrap();
+	let user: Option<crate::entities::users::Model> = Users::find_by_id(user_id).one(db.get_ref()).await.unwrap();
 
 	if let Some(user) = user {
 		HttpResponse::Ok().json(UserResponse {

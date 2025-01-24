@@ -1,12 +1,9 @@
-use std::{
-	fs::{self, DirEntry},
-	io::BufRead,
-};
+use std::fs::{self, DirEntry};
+use std::io::BufRead;
 
+use config::CONFIG;
 use reqwest::{header, Client};
 use serde_json::Value;
-
-use crate::CONFIG;
 
 pub async fn downloader(path: &str, owner: &str, repo: &str) -> Result<(), Box<dyn std::error::Error>> {
 	let release_url = format!("https://api.github.com/repos/{}/{}/releases/latest", owner, repo);
@@ -80,7 +77,7 @@ pub async fn update_website() {
 	}
 
 	let website_path = std::path::Path::new(&website_dir);
-	let entries = fs::read_dir(&website_path).unwrap();
+	let entries = fs::read_dir(website_path).unwrap();
 	let mut website_version_file: Option<DirEntry> = None;
 	let mut website_build_folder: Option<DirEntry> = None;
 	for entry in entries {
@@ -95,7 +92,7 @@ pub async fn update_website() {
 	}
 	let latest_version = get_version("SimaoMoreira5228", "manga-vault").await.unwrap();
 
-	if !website_version_file.is_some() {
+	if website_version_file.is_none() {
 		if website_build_folder.is_some() {
 			fs::remove_dir_all(format!("{}/build", website_dir)).unwrap();
 		}

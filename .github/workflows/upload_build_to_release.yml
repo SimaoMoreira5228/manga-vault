@@ -1,0 +1,53 @@
+name: Upload Manga Vault Build to Release
+
+on:
+  release:
+    types: released
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  security-events: write
+
+jobs:
+  build-and-upload-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+      - name: Build
+        run: cargo build --release
+
+      - name: install windows target
+        run: rustup target add x86_64-pc-windows-gnu
+
+      - name: Build Windows
+        run: cargo build --release --target x86_64-pc-windows-gnu
+
+      - name: Upload Release Asset Linux
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: target/release/manga-vault
+          asset_name: manga-vault
+          asset_content_type: application/octet-stream
+
+      - name: Upload Release Asset Windows
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: target/x86_64-pc-windows-gnu/release/manga-vault.exe
+          asset_name: manga-vault.exe
+          asset_content_type: application/octet-stream

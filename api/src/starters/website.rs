@@ -1,10 +1,9 @@
 use std::fs::{self, DirEntry};
 use std::process::Stdio;
 
+use config::CONFIG;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
-
-use crate::CONFIG;
 
 pub async fn start() {
 	let contents = format!(
@@ -32,32 +31,31 @@ pub async fn start() {
 	}
 
 	let website_path = std::path::Path::new(&website_dir);
-	let entries = fs::read_dir(&website_path).unwrap();
+	let entries = fs::read_dir(website_path).unwrap();
 	let mut server_file: Option<DirEntry> = None;
 	for entry in entries {
 		let file = entry.unwrap();
 		let file_name = file.file_name();
 		let file_name = file_name.to_str().unwrap();
-		match file_name {
-			"server.js" => server_file = Some(file),
-			_ => (),
+		if file_name == "server.js" {
+			server_file = Some(file)
 		}
 	}
 
-	if !server_file.is_some() {
+	if server_file.is_none() {
 		fs::write(format!("{}/server.js", website_dir), contents).unwrap();
 	}
 
 	if cfg!(target_os = "windows") {
 		Command::new("cmd")
-			.args(&["/C", "npm", "ci", "--omit", "dev"])
+			.args(["/C", "npm", "ci", "--omit", "dev"])
 			.current_dir(&website_dir)
 			.output()
 			.await
 			.expect("Failed to install dependencies");
 	} else {
 		Command::new("npm")
-			.args(&["ci", "--omit", "dev"])
+			.args(["ci", "--omit", "dev"])
 			.current_dir(&website_dir)
 			.output()
 			.await
@@ -66,7 +64,7 @@ pub async fn start() {
 
 	let output = if cfg!(target_os = "windows") {
 		Command::new("cmd")
-			.args(&["/C", "node", "-r", "dotenv/config", "server.js"])
+			.args(["/C", "node", "-r", "dotenv/config", "server.js"])
 			.current_dir(&website_dir)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
@@ -74,7 +72,7 @@ pub async fn start() {
 			.expect("Failed to start website")
 	} else {
 		Command::new("node")
-			.args(&["-r", "dotenv/config", "server.js"])
+			.args(["-r", "dotenv/config", "server.js"])
 			.current_dir(&website_dir)
 			.stdout(Stdio::piped())
 			.stderr(Stdio::piped())
@@ -93,7 +91,7 @@ pub async fn start() {
 				break;
 			}
 			let s = std::str::from_utf8(&buf[..n]).unwrap();
-			println!("{}", s);
+			tracing::error!("{}", s);
 		}
 	});
 
@@ -104,6 +102,6 @@ pub async fn start() {
 			break;
 		}
 		let s = std::str::from_utf8(&buf[..n]).unwrap();
-		println!("{}", s);
+		tracing::info!("{}", s);
 	}
 }

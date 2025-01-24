@@ -1,0 +1,44 @@
+{
+  "name": "dewn_plugins",
+  "plugins": [
+    {
+      "name": "mangaread_org",
+      "urls": {
+        "windows": "https://files.catbox.moe/0wo67j.dll",
+        "linux": "https://files.catbox.moe/sbsdrl.so"
+      },
+      "version": "0.2.1",
+      "state": "updated",
+      "build_state": "beta"
+    },
+    {
+      "name": "manga_dex",
+      "urls": {
+        "windows": "https://files.catbox.moe/n2yh65.dll",
+        "linux": "https://files.catbox.moe/dxzwuy.so"
+      },
+      "version": "0.2.2",
+      "state": "updated",
+      "build_state": "beta"
+    },
+    {
+      "name": "hari_manga",
+      "urls": {
+        "windows": "https://files.catbox.moe/xtrpov.dll",
+        "linux": "https://files.catbox.moe/5o64bn.so"
+      },
+      "version": "0.1.0",
+      "state": "updated",
+      "build_state": "beta"
+    },
+    {
+      "name": "manhuafast",
+      "urls": {
+        "lua": "https://files.catbox.moe/urwzp6.lua"
+      },
+      "version": "0.1.1",
+      "state": "updated",
+      "build_state": "beta"
+    }
+  ]
+}
