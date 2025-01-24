@@ -14,5 +14,10 @@ scraper_types = { path = "../scraper_types" }
 notify = "7.0"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 tracing = "0.1"
-mlua = { version = "0.10", features = ["lua54", "serialize", "anyhow", "vendored"] }
+mlua = { version = "0.10", features = [
+  "lua54",
+  "serialize",
+  "anyhow",
+  "vendored",
+] }
 scraper = "0.21"

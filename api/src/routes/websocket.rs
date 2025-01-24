@@ -14,5 +14,5 @@ async fn get_websocket_info() -> impl Responder {
 }
 
 pub fn init_routes(cfg: &mut actix_web::web::ServiceConfig) {
-  cfg.service(get_websocket_info);
+	cfg.service(get_websocket_info);
 }

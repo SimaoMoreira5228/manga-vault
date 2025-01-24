@@ -1,12 +1,11 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::{Arc, OnceLock, RwLock};
+use std::time::Instant;
+
 use config::CONFIG;
 use files::handle_files;
 use plugins::{Plugin, PluginType};
-use std::{
-	collections::HashMap,
-	path::PathBuf,
-	sync::{Arc, OnceLock, RwLock},
-	time::Instant,
-};
 
 mod files;
 pub mod plugins;

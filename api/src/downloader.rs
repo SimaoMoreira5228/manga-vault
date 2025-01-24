@@ -1,7 +1,5 @@
-use std::{
-	fs::{self, DirEntry},
-	io::BufRead,
-};
+use std::fs::{self, DirEntry};
+use std::io::BufRead;
 
 use config::CONFIG;
 use reqwest::{header, Client};

@@ -1,4 +1,5 @@
-use std::{fs, io::Read};
+use std::fs;
+use std::io::Read;
 
 use mlua::Lua;
 use scraper_types::{Genre, MangaItem, MangaPage, ScraperInfo};

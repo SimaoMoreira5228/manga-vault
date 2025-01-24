@@ -1,7 +1,8 @@
+use std::env;
+
 use once_cell::sync::Lazy;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::env;
 
 pub static CONFIG: Lazy<Config> = Lazy::new(load_config);
 
@@ -34,15 +35,15 @@ pub enum TracingLevel {
 }
 
 impl TracingLevel {
-		pub fn to_tracing_level(&self) -> tracing::Level {
-			match self {
-				TracingLevel::Trace => tracing::Level::TRACE,
-				TracingLevel::Debug => tracing::Level::DEBUG,
-				TracingLevel::Info => tracing::Level::INFO,
-				TracingLevel::Warn => tracing::Level::WARN,
-				TracingLevel::Error => tracing::Level::ERROR,
-			}
+	pub fn to_tracing_level(&self) -> tracing::Level {
+		match self {
+			TracingLevel::Trace => tracing::Level::TRACE,
+			TracingLevel::Debug => tracing::Level::DEBUG,
+			TracingLevel::Info => tracing::Level::INFO,
+			TracingLevel::Warn => tracing::Level::WARN,
+			TracingLevel::Error => tracing::Level::ERROR,
 		}
+	}
 }
 
 #[derive(Debug, Deserialize, Serialize)]

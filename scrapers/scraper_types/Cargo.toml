@@ -5,4 +5,9 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-mlua = { version = "0.10", features = ["lua54", "serialize", "send", "vendored"] }
+mlua = { version = "0.10", features = [
+  "lua54",
+  "serialize",
+  "send",
+  "vendored",
+] }

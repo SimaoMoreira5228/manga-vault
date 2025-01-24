@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use anyhow::Context;
 use scraper_types::{Genre, MangaItem, MangaPage, ScraperInfo};
-use std::path::PathBuf;
 
 #[derive(Clone, Debug)]
 pub struct DynamicLibPlugin {

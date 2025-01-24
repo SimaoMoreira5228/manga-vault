@@ -1,18 +1,16 @@
-use std::{
-	collections::HashMap,
-	path::{Path, PathBuf},
-	sync::{Arc, RwLock},
-	time::{Duration, Instant},
-};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use config::CONFIG;
 use notify::{RecommendedWatcher, Watcher};
 
-use crate::{
-	plugins::{dynlib::DynamicLibPlugin, lua::LuaPlugin, Plugin, PluginType},
-	FileModification, PLUGIN_FILE_EXTENSIONS,
-};
+use crate::plugins::dynlib::DynamicLibPlugin;
+use crate::plugins::lua::LuaPlugin;
+use crate::plugins::{Plugin, PluginType};
+use crate::{FileModification, PLUGIN_FILE_EXTENSIONS};
 
 pub fn read_dir(path: &PathBuf, level: i8, callback: impl FnOnce(PathBuf) + Send + Clone + 'static) {
 	tracing::debug!("Reading directory: {}", path.display());
@@ -60,11 +58,9 @@ pub fn load_plugin_file(
 			let plugin_name = name.to_str().unwrap().to_string();
 			let plugin_version = version.to_str().unwrap().to_string();
 
-			let plugin = Plugin::Lua(LuaPlugin::new(
-				plugin_name.clone(),
-				plugin_version,
-				file.to_str().unwrap().to_string(),
-			).unwrap());
+			let plugin = Plugin::Lua(
+				LuaPlugin::new(plugin_name.clone(), plugin_version, file.to_str().unwrap().to_string()).unwrap(),
+			);
 
 			plugins.write().unwrap().insert(plugin_name, plugin);
 		}
