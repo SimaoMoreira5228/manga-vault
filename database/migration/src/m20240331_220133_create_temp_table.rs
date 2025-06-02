@@ -11,7 +11,13 @@ impl MigrationTrait for Migration {
 				Table::create()
 					.table(Temp::Table)
 					.if_not_exists()
-					.col(ColumnDef::new(Temp::Id).integer().not_null().auto_increment().primary_key())
+					.col(
+						ColumnDef::new(Temp::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key(),
+					)
 					.col(ColumnDef::new(Temp::Key).text().not_null())
 					.col(ColumnDef::new(Temp::Value).text().not_null())
 					.col(ColumnDef::new(Temp::CreatedAt).text().not_null())

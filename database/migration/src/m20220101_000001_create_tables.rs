@@ -11,7 +11,13 @@ impl MigrationTrait for Migration {
 				Table::create()
 					.table(Users::Table)
 					.if_not_exists()
-					.col(ColumnDef::new(Users::Id).integer().not_null().auto_increment().primary_key())
+					.col(
+						ColumnDef::new(Users::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key(),
+					)
 					.col(ColumnDef::new(Users::Username).string().not_null())
 					.col(ColumnDef::new(Users::HashedPassword).string().not_null())
 					.col(ColumnDef::new(Users::CreatedAt).date_time().not_null())
@@ -65,7 +71,13 @@ impl MigrationTrait for Migration {
 				Table::create()
 					.table(Mangas::Table)
 					.if_not_exists()
-					.col(ColumnDef::new(Mangas::Id).integer().not_null().auto_increment().primary_key())
+					.col(
+						ColumnDef::new(Mangas::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key(),
+					)
 					.col(ColumnDef::new(Mangas::Title).string().not_null())
 					.col(ColumnDef::new(Mangas::Url).string().not_null())
 					.col(ColumnDef::new(Mangas::ImgUrl).string().not_null())
@@ -81,7 +93,13 @@ impl MigrationTrait for Migration {
 				Table::create()
 					.table(Files::Table)
 					.if_not_exists()
-					.col(ColumnDef::new(Files::Id).integer().not_null().auto_increment().primary_key())
+					.col(
+						ColumnDef::new(Files::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key(),
+					)
 					.col(ColumnDef::new(Files::Name).string().not_null())
 					.col(ColumnDef::new(Files::CreatedAt).date_time().not_null())
 					.to_owned(),

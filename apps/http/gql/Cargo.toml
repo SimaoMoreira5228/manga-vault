@@ -1,0 +1,24 @@
+[package]
+name = "gql-api"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "manga-vault-gql"
+path = "src/main.rs"
+
+[dependencies]
+async-graphql = { version = "7.0.14", features = ["tracing", "chrono"] }
+async-graphql-axum = "7.0.14"
+tokio = { version = "1", features = ["full"] }
+axum = "0.8.1"
+tracing = "0.1.41"
+jsonwebtoken = "9.3.0"
+thiserror = "2.0.11"
+bcrypt = "0.17.0"
+chrono = "0.4.39"
+tower-http = { version = "0.6.2", features = ["cors"] }
+serde = { version = "1", features = ["derive"] }

@@ -1,3 +1,6 @@
+use std::path::{Path, PathBuf};
+
+use anyhow::{Context, Result};
 use config::CONFIG;
 use serde::{Deserialize, Serialize};
 
@@ -21,24 +24,25 @@ enum PluginState {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DownloadOptions {
-	pub windows: Option<String>,
-	pub linux: Option<String>,
-	pub lua: Option<String>,
+	windows: Option<String>,
+	macos: Option<String>,
+	linux: Option<String>,
+	lua: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct RepositoryPlugin {
-	pub name: String,
-	pub urls: DownloadOptions,
-	pub version: String,
-	pub state: PluginState,
-	pub build_state: BuildState,
+	name: String,
+	urls: DownloadOptions,
+	version: String,
+	state: PluginState,
+	build_state: BuildState,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Repository {
-	pub name: String,
-	pub plugins: Vec<RepositoryPlugin>,
+	name: String,
+	plugins: Vec<RepositoryPlugin>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -47,100 +51,160 @@ struct PluginNameInternal {
 	version: String,
 }
 
-pub async fn load_repos() -> anyhow::Result<()> {
-	for repo_url in &CONFIG.repositories {
-		tracing::debug!("Loading repository: {}", repo_url);
+pub async fn load_repos() -> Result<()> {
+	for repo_config in &CONFIG.repositories {
+		tracing::debug!("Loading repository: {}", repo_config.url);
 
-		let repo = reqwest::get(repo_url).await.unwrap().json::<Repository>().await.unwrap();
+		let repo = fetch_repository(&repo_config.url).await?;
+		let filtered_plugins = filter_plugins(&repo.plugins, repo_config)?;
 
-		if !std::fs::exists(format!("{}/{}", CONFIG.plugins_folder, repo.name))? {
-			tracing::debug!("Creating repository folder: {}", repo.name);
-			std::fs::create_dir_all(format!("{}/{}", CONFIG.plugins_folder, repo.name))?;
-		}
+		let repo_dir = PathBuf::from(&CONFIG.plugins_folder).join(&repo.name);
+		ensure_directory_exists(&repo_dir)?;
 
-		let internal_plugins_file = format!("{}/{}/plugins.json", CONFIG.plugins_folder, repo.name);
-		let internal_plugins = if std::fs::exists(&internal_plugins_file)? {
-			let internal_plugins = std::fs::read_to_string(&internal_plugins_file)?;
-			serde_json::from_str::<Vec<PluginNameInternal>>(&internal_plugins)?
-		} else {
-			let internal_plugins: Vec<PluginNameInternal> = Vec::new();
-			std::fs::write(&internal_plugins_file, &serde_json::to_string(&internal_plugins)?)?;
-			internal_plugins
-		};
+		let internal_plugins = load_internal_plugins(&repo_dir).await?;
+		cleanup_old_plugins(&repo_dir, &internal_plugins, &filtered_plugins).await?;
 
-		for int_plugin in &internal_plugins {
-			if !repo.plugins.iter().any(|p| p.name == int_plugin.name) {
-				for ext in PLUGIN_FILE_EXTENSIONS {
-					let plugin_file = format!("{}/{}/{}.{}", CONFIG.plugins_folder, repo.name, int_plugin.name, ext);
-					if std::fs::exists(&plugin_file)? {
-						tracing::debug!("Removing plugin: {}", plugin_file);
-						std::fs::remove_file(&plugin_file)?;
-					}
+		download_new_plugins(&repo_dir, &repo.name, filtered_plugins, &internal_plugins).await?;
+	}
+	Ok(())
+}
+
+async fn fetch_repository(url: &str) -> Result<Repository> {
+	reqwest::get(url)
+		.await
+		.context("Failed to fetch repository")?
+		.json()
+		.await
+		.context("Failed to parse repository data")
+}
+
+fn filter_plugins<'a>(
+	plugins: &'a [RepositoryPlugin],
+	config: &config::RepositoryConfig,
+) -> Result<Vec<&'a RepositoryPlugin>> {
+	let filtered = plugins
+		.iter()
+		.filter(|p| {
+			let in_whitelist = config.whitelist.as_ref().map(|wl| wl.contains(&p.name)).unwrap_or(true);
+
+			let in_blacklist = config
+				.blacklist
+				.as_ref()
+				.map(|bl| bl.contains(&p.name))
+				.unwrap_or(false);
+
+			in_whitelist && !in_blacklist
+		})
+		.collect::<Vec<_>>();
+
+	if filtered.is_empty() {
+		tracing::warn!("No plugins remaining after filtering for repository");
+	}
+	Ok(filtered)
+}
+
+fn ensure_directory_exists(path: &Path) -> Result<()> {
+	if !path.exists() {
+		tracing::debug!("Creating repository directory: {}", path.display());
+		std::fs::create_dir_all(path).with_context(|| format!("Failed to create directory: {}", path.display()))?;
+	}
+	Ok(())
+}
+
+async fn load_internal_plugins(repo_dir: &Path) -> Result<Vec<PluginNameInternal>> {
+	let internal_path = repo_dir.join("plugins.json");
+	if internal_path.exists() {
+		let content = tokio::fs::read_to_string(&internal_path)
+			.await
+			.with_context(|| format!("Failed to read {}", internal_path.display()))?;
+		serde_json::from_str(&content).with_context(|| format!("Failed to parse {}", internal_path.display()))
+	} else {
+		Ok(Vec::new())
+	}
+}
+
+async fn cleanup_old_plugins(
+	repo_dir: &Path,
+	internal_plugins: &[PluginNameInternal],
+	repo_plugins: &[&RepositoryPlugin],
+) -> Result<()> {
+	for int_plugin in internal_plugins {
+		if !repo_plugins.iter().any(|p| p.name == int_plugin.name) {
+			for ext in PLUGIN_FILE_EXTENSIONS {
+				let plugin_file = repo_dir.join(format!("{}.{}", int_plugin.name, ext));
+				if plugin_file.exists() {
+					tracing::debug!("Removing obsolete plugin: {}", plugin_file.display());
+					tokio::fs::remove_file(&plugin_file)
+						.await
+						.with_context(|| format!("Failed to remove {}", plugin_file.display()))?;
 				}
 			}
 		}
+	}
+	Ok(())
+}
 
-		for plugin in &repo.plugins {
-			let internal_plugin = internal_plugins.iter().find(|p| p.name == plugin.name);
+async fn download_new_plugins(
+	repo_dir: &Path,
+	repo_name: &str,
+	plugins: Vec<&RepositoryPlugin>,
+	internal_plugins: &[PluginNameInternal],
+) -> Result<()> {
+	let internal_path = repo_dir.join("plugins.json");
+	let mut new_internal = Vec::with_capacity(plugins.len());
 
-			if let Some(internal_plugin) = internal_plugin {
-				if internal_plugin.version != plugin.version {
-					tracing::info!("Updating plugin: {}", plugin.name);
-
-					let url = if let Some(lua) = &plugin.urls.lua {
-						lua
-					} else if cfg!(target_os = "windows") {
-						plugin.urls.windows.as_ref().unwrap()
-					} else {
-						plugin.urls.linux.as_ref().unwrap()
-					};
-
-					let plugin_file = if let Some(_lua) = &plugin.urls.lua {
-						format!("{}/{}/{}.lua", CONFIG.plugins_folder, repo.name, plugin.name)
-					} else if cfg!(target_os = "windows") {
-						format!("{}/{}/{}.dll", CONFIG.plugins_folder, repo.name, plugin.name)
-					} else {
-						format!("{}/{}/{}.so", CONFIG.plugins_folder, repo.name, plugin.name)
-					};
-
-					let plugin_data = reqwest::get(url).await.unwrap().bytes().await?;
-					tokio::fs::write(&plugin_file, plugin_data).await?;
-				}
-			} else {
-				tracing::info!("Downloading plugin: {}", plugin.name);
-
-				let url = if let Some(lua) = &plugin.urls.lua {
-					lua
-				} else if cfg!(target_os = "windows") {
-					plugin.urls.windows.as_ref().unwrap()
-				} else {
-					plugin.urls.linux.as_ref().unwrap()
-				};
-
-				let plugin_file = if let Some(_lua) = &plugin.urls.lua {
-					format!("{}/{}/{}.lua", CONFIG.plugins_folder, repo.name, plugin.name)
-				} else if cfg!(target_os = "windows") {
-					format!("{}/{}/{}.dll", CONFIG.plugins_folder, repo.name, plugin.name)
-				} else {
-					format!("{}/{}/{}.so", CONFIG.plugins_folder, repo.name, plugin.name)
-				};
-
-				let plugin_data = reqwest::get(url).await.unwrap().bytes().await?;
-				tokio::fs::write(&plugin_file, plugin_data).await?;
+	for plugin in plugins {
+		if let Some(existing) = internal_plugins.iter().find(|p| p.name == plugin.name) {
+			if existing.version == plugin.version {
+				new_internal.push(PluginNameInternal {
+					name: plugin.name.clone(),
+					version: plugin.version.clone(),
+				});
+				continue;
 			}
 		}
 
-		tracing::debug!("Writing internal plugins file: {}", internal_plugins_file);
-		let internal_plugins: Vec<PluginNameInternal> = repo
-			.plugins
-			.iter()
-			.map(|p| PluginNameInternal {
-				name: p.name.clone(),
-				version: p.version.clone(),
-			})
-			.collect();
-		tokio::fs::write(&internal_plugins_file, &serde_json::to_string(&internal_plugins)?).await?;
+		let (url, extension) = get_download_info(plugin)?;
+		let plugin_file = repo_dir.join(format!("{}.{}", plugin.name, extension));
+
+		tracing::info!("Downloading {} plugin: {}", repo_name, plugin.name);
+		let data = reqwest::get(url)
+			.await
+			.context("Failed to download plugin")?
+			.bytes()
+			.await
+			.context("Failed to read plugin bytes")?;
+
+		tokio::fs::write(&plugin_file, data)
+			.await
+			.with_context(|| format!("Failed to write {}", plugin_file.display()))?;
+
+		new_internal.push(PluginNameInternal {
+			name: plugin.name.clone(),
+			version: plugin.version.clone(),
+		});
 	}
 
+	let content = serde_json::to_string_pretty(&new_internal)?;
+	tokio::fs::write(&internal_path, content)
+		.await
+		.with_context(|| format!("Failed to write {}", internal_path.display()))?;
+
 	Ok(())
+}
+
+fn get_download_info(plugin: &RepositoryPlugin) -> Result<(&str, &'static str)> {
+	if let Some(lua_url) = &plugin.urls.lua {
+		Ok((lua_url, "lua"))
+	} else {
+		#[cfg(target_os = "windows")]
+		let (url, ext) = (plugin.urls.windows.as_deref(), "dll");
+		#[cfg(target_os = "macos")]
+		let (url, ext) = (plugin.urls.macos.as_deref(), "dylib");
+		#[cfg(target_os = "linux")]
+		let (url, ext) = (plugin.urls.linux.as_deref(), "so");
+
+		url.map(|u| (u, ext))
+			.with_context(|| format!("No valid download URL for {}", plugin.name))
+	}
 }

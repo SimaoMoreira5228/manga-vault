@@ -11,10 +11,10 @@ use std::{
 static COOLDOWN: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
 static RATE_LIMIT_COUNTER: Lazy<Mutex<u8>> = Lazy::new(|| Mutex::new(0));
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static PLUGIN_NAME: &str = env!("CARGO_PKG_NAME");
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn get(url: impl AsRef<str>) -> Result<Value, serde_json::Error> {
@@ -35,14 +35,19 @@ fn get(url: impl AsRef<str>) -> Result<Value, serde_json::Error> {
 	text.parse()
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
-		get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art")
+		get(
+			"https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art",
+		)
 	} else {
-		get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10))
+		get(format!(
+			"https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art",
+			page * 10
+		))
 	};
 
 	if resp.is_err() {
@@ -102,14 +107,19 @@ pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
 	manga_items
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_latest(page: u32) -> Vec<MangaItem> {
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
-		get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art")
+		get(
+			"https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art",
+		)
 	} else {
-		get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art", page * 10))
+		get(format!(
+			"https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art",
+			page * 10
+		))
 	};
 
 	if resp.is_err() {
@@ -169,16 +179,23 @@ pub extern "Rust" fn scrape_latest(page: u32) -> Vec<MangaItem> {
 	manga_items
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_search((query, page): (String, u32)) -> Vec<MangaItem> {
 	let title = query.split(" ").collect::<Vec<&str>>().join("%20");
 
 	let mut manga_items: Vec<MangaItem> = Vec::new();
 
 	let resp: Result<Value, serde_json::Error> = if page == 1 {
-		get(format!("https://api.mangadex.org/manga?limit=10&offset=0&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", title))
+		get(format!(
+			"https://api.mangadex.org/manga?limit=10&offset=0&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art",
+			title
+		))
 	} else {
-		get(format!("https://api.mangadex.org/manga?limit=10&offset={}&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10, title))
+		get(format!(
+			"https://api.mangadex.org/manga?limit=10&offset={}&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art",
+			page * 10,
+			title
+		))
 	};
 
 	if resp.is_err() {
@@ -239,7 +256,7 @@ pub extern "Rust" fn scrape_search((query, page): (String, u32)) -> Vec<MangaIte
 	manga_items
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 	let chapter_id = url.split("/").last();
 
@@ -301,7 +318,7 @@ pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 	pages
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 	let manga_id = url.split("/").last();
 
@@ -326,7 +343,10 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 
 	let manga_id = manga_id.unwrap();
 
-	let resp = get(format!("https://api.mangadex.org/manga/{}?includes%5B%5D=manga&includes%5B%5D=cover_art&includes%5B%5D=author&includes%5B%5D=artist&includes%5B%5D=tag", manga_id));
+	let resp = get(format!(
+		"https://api.mangadex.org/manga/{}?includes%5B%5D=manga&includes%5B%5D=cover_art&includes%5B%5D=author&includes%5B%5D=artist&includes%5B%5D=tag",
+		manga_id
+	));
 
 	if resp.is_err() {
 		return manga_page;
@@ -470,7 +490,10 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 		})
 		.collect();
 
-	let resp = get(format!("https://api.mangadex.org/chapter?limit=1&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc", manga_id));
+	let resp = get(format!(
+		"https://api.mangadex.org/chapter?limit=1&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc",
+		manga_id
+	));
 
 	if resp.is_err() {
 		return manga_page;
@@ -484,7 +507,10 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 
 	let mut chapters: Vec<Chapter> = vec![];
 
-	let chapters_url = format!("https://api.mangadex.org/chapter?limit={}&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc",chapter_limit, manga_id);
+	let chapters_url = format!(
+		"https://api.mangadex.org/chapter?limit={}&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc",
+		chapter_limit, manga_id
+	);
 
 	for i in 0..call_times {
 		let resp = get(format!("{}&offset={}", chapters_url, i * chapter_limit));
@@ -533,12 +559,12 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 	}
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_genres_list() -> Vec<Genre> {
 	todo!();
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn get_info() -> ScraperInfo {
 	ScraperInfo {
 		id: "manga_dex".to_string(),

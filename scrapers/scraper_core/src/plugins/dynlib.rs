@@ -19,7 +19,7 @@ impl DynamicLibPlugin {
 		}
 	}
 
-	fn call_lib_function<Args, Ret, F>(&self, symbol: &str, args: Args) -> anyhow::Result<Ret>
+	async fn call_lib_function<Args, Ret, F>(&self, symbol: &str, args: Args) -> anyhow::Result<Ret>
 	where
 		F: Fn(Args) -> Ret,
 		F: 'static,
@@ -33,41 +33,48 @@ impl DynamicLibPlugin {
 		}
 	}
 
-	pub fn scrape_chapter(&self, url: String) -> anyhow::Result<Vec<String>> {
+	pub async fn scrape_chapter(&self, url: String) -> anyhow::Result<Vec<String>> {
 		tracing::info!("[{}] Scraping chapter: {}", self.name, url);
 		self.call_lib_function::<String, Vec<String>, fn(String) -> Vec<String>>("scrape_chapter", url)
+			.await
 	}
 
-	pub fn scrape_latest(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
+	pub async fn scrape_latest(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		tracing::info!("[{}] Scraping latest: {}", self.name, page);
 		self.call_lib_function::<u32, Vec<MangaItem>, fn(u32) -> Vec<MangaItem>>("scrape_latest", page)
+			.await
 	}
 
-	pub fn scrape_trending(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
+	pub async fn scrape_trending(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		tracing::info!("[{}] Scraping trending: {}", self.name, page);
 		self.call_lib_function::<u32, Vec<MangaItem>, fn(u32) -> Vec<MangaItem>>("scrape_trending", page)
+			.await
 	}
 
-	pub fn scrape_search(&self, query: &str, page: u32) -> anyhow::Result<Vec<MangaItem>> {
+	pub async fn scrape_search(&self, query: String, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		tracing::info!("[{}] Scraping search: {} - {}", self.name, query, page);
 		self.call_lib_function::<(String, u32), Vec<MangaItem>, fn((String, u32)) -> Vec<MangaItem>>(
 			"scrape_search",
-			(query.to_string(), page),
+			(query, page),
 		)
+		.await
 	}
 
-	pub fn scrape_manga(&self, url: &str) -> anyhow::Result<MangaPage> {
+	pub async fn scrape_manga(&self, url: String) -> anyhow::Result<MangaPage> {
 		tracing::info!("[{}] Scraping manga: {}", self.name, url);
-		self.call_lib_function::<String, MangaPage, fn(String) -> MangaPage>("scrape_manga", url.to_string())
+		self.call_lib_function::<String, MangaPage, fn(String) -> MangaPage>("scrape_manga", url)
+			.await
 	}
 
-	pub fn scrape_genres_list(&self) -> anyhow::Result<Vec<Genre>> {
+	pub async fn scrape_genres_list(&self) -> anyhow::Result<Vec<Genre>> {
 		tracing::info!("[{}] Scraping genres list", self.name);
 		self.call_lib_function::<(), Vec<Genre>, fn(()) -> Vec<Genre>>("scrape_genres_list", ())
+			.await
 	}
 
-	pub fn get_info(&self) -> anyhow::Result<ScraperInfo> {
+	pub async fn get_info(&self) -> anyhow::Result<ScraperInfo> {
 		tracing::info!("[{}] Getting info", self.name);
 		self.call_lib_function::<(), ScraperInfo, fn(()) -> ScraperInfo>("get_info", ())
+			.await
 	}
 }

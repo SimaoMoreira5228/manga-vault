@@ -1,30 +1,29 @@
 use std::env;
+use std::path::PathBuf;
 
 use once_cell::sync::Lazy;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-pub static CONFIG: Lazy<Config> = Lazy::new(load_config);
+pub static CONFIG: Lazy<Config> = Lazy::new(Config::load);
 
-fn current_dir() -> std::path::PathBuf {
+fn current_exe_parent_dir() -> PathBuf {
 	env::current_exe()
-		.unwrap()
+		.expect("Failed to get executable path")
 		.parent()
-		.expect("Failed to get current directory")
+		.expect("Executable has no parent directory")
 		.to_path_buf()
 }
 
-pub fn generate_secret() -> String {
-	let mut rng = rand::thread_rng();
-	let secret: String = std::iter::repeat(())
-		.map(|()| rng.sample(rand::distributions::Alphanumeric))
+fn generate_secret() -> String {
+	rand::thread_rng()
+		.sample_iter(rand::distributions::Alphanumeric)
 		.take(24)
 		.map(char::from)
-		.collect();
-	secret
+		.collect()
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TracingLevel {
 	Trace,
@@ -34,120 +33,139 @@ pub enum TracingLevel {
 	Error,
 }
 
+impl Default for TracingLevel {
+	fn default() -> Self {
+		Self::Info
+	}
+}
+
 impl TracingLevel {
 	pub fn to_tracing_level(&self) -> tracing::Level {
 		match self {
-			TracingLevel::Trace => tracing::Level::TRACE,
-			TracingLevel::Debug => tracing::Level::DEBUG,
-			TracingLevel::Info => tracing::Level::INFO,
-			TracingLevel::Warn => tracing::Level::WARN,
-			TracingLevel::Error => tracing::Level::ERROR,
+			Self::Trace => tracing::Level::TRACE,
+			Self::Debug => tracing::Level::DEBUG,
+			Self::Info => tracing::Level::INFO,
+			Self::Warn => tracing::Level::WARN,
+			Self::Error => tracing::Level::ERROR,
 		}
 	}
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ApiConfig {
+	#[serde(default)]
 	pub api_port: u16,
+	#[serde(default = "generate_secret")]
 	pub secret_jwt: String,
+	#[serde(default)]
 	pub jwt_duration_days: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct WebsocketConfig {
+	#[serde(default)]
 	pub websocket_port: u16,
+	#[serde(default)]
 	pub websocket_ip_to_frontend: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DatabaseConfig {
+	#[serde(default)]
 	pub backup_time: u16,
+	#[serde(default)]
 	pub database_path: String,
+	#[serde(default)]
 	pub database_backup_folder: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Config {
-	pub website_port: u16,
-	pub api: ApiConfig,
-	pub websocket: WebsocketConfig,
-	pub database: DatabaseConfig,
-	pub plugins_folder: String,
-	pub repositories: Vec<String>,
-	pub directory: String,
-	pub tracing_level: TracingLevel,
+pub struct RepositoryConfig {
+	pub url: String,
+	pub whitelist: Option<Vec<String>>,
+	pub blacklist: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Default)]
-pub struct PartialConfig {
-	pub website_port: Option<u16>,
-	pub api: Option<ApiConfig>,
-	pub websocket: Option<WebsocketConfig>,
-	pub database: Option<DatabaseConfig>,
-	pub plugins_folder: Option<String>,
-	pub repositories: Option<Vec<String>>,
-	pub directory: Option<String>,
-	pub tracing_level: Option<TracingLevel>,
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(default)]
+pub struct Config {
+	#[serde(default)]
+	pub website_port: u16,
+	#[serde(default)]
+	pub api: ApiConfig,
+	#[serde(default)]
+	pub websocket: WebsocketConfig,
+	#[serde(default)]
+	pub database: DatabaseConfig,
+	#[serde(default)]
+	pub plugins_folder: String,
+	#[serde(default)]
+	pub repositories: Vec<RepositoryConfig>,
+	#[serde(default)]
+	pub directory: String,
+	#[serde(default)]
+	pub tracing_level: TracingLevel,
+	#[serde(default)]
+	pub headless: Option<String>,
+}
+
+impl Default for ApiConfig {
+	fn default() -> Self {
+		Self {
+			api_port: 5228,
+			secret_jwt: generate_secret(),
+			jwt_duration_days: 7,
+		}
+	}
+}
+
+impl Default for WebsocketConfig {
+	fn default() -> Self {
+		Self {
+			websocket_port: 5229,
+			websocket_ip_to_frontend: "localhost".into(),
+		}
+	}
+}
+
+impl Default for DatabaseConfig {
+	fn default() -> Self {
+		Self {
+			backup_time: 2,
+			database_path: format!("{}/database.db", current_exe_parent_dir().display()),
+			database_backup_folder: format!("{}/backups", current_exe_parent_dir().display()),
+		}
+	}
 }
 
 impl Default for Config {
 	fn default() -> Self {
-		let current_dir = current_dir();
-		Config {
+		Self {
 			website_port: 5227,
-			api: ApiConfig {
-				api_port: 5228,
-				secret_jwt: generate_secret(),
-				jwt_duration_days: 7,
-			},
-			websocket: WebsocketConfig {
-				websocket_port: 5229,
-				websocket_ip_to_frontend: "localhost".to_string(),
-			},
-			database: DatabaseConfig {
-				backup_time: 2,
-				database_path: format!("{}/database.db", current_dir.display()),
-				database_backup_folder: format!("{}/backups", current_dir.display()),
-			},
-			plugins_folder: format!("{}/plugins", current_dir.display()),
-			repositories: vec![],
-			directory: current_dir.display().to_string(),
-			tracing_level: TracingLevel::Info,
+			api: ApiConfig::default(),
+			websocket: WebsocketConfig::default(),
+			database: DatabaseConfig::default(),
+			plugins_folder: format!("{}/plugins", current_exe_parent_dir().display()),
+			repositories: Vec::new(),
+			directory: current_exe_parent_dir().display().to_string(),
+			tracing_level: TracingLevel::default(),
+			headless: None,
 		}
 	}
 }
 
 impl Config {
-	fn from_partial(partial: PartialConfig) -> Self {
-		let default = Config::default();
-		Config {
-			website_port: partial.website_port.unwrap_or(default.website_port),
-			api: partial.api.unwrap_or(default.api),
-			websocket: partial.websocket.unwrap_or(default.websocket),
-			database: partial.database.unwrap_or(default.database),
-			plugins_folder: partial.plugins_folder.unwrap_or(default.plugins_folder),
-			repositories: partial.repositories.unwrap_or(default.repositories),
-			directory: partial.directory.unwrap_or(default.directory),
-			tracing_level: partial.tracing_level.unwrap_or(default.tracing_level),
+	pub fn load() -> Self {
+		let config_path = current_exe_parent_dir().join("config.json");
+
+		if !config_path.exists() {
+			let config = Config::default();
+			let json = serde_json::to_string_pretty(&config).expect("Failed to serialize default config");
+			std::fs::write(&config_path, json).expect("Failed to write default config");
+			return config;
 		}
+
+		let json = std::fs::read_to_string(&config_path).expect("Failed to read config file");
+		serde_json::from_str(&json).expect("Invalid config file format")
 	}
-}
-
-fn load_config() -> Config {
-	let current_dir = current_dir();
-	let config_file = format!("{}/config.json", current_dir.display());
-
-	let loaded_config: Option<PartialConfig> = if std::path::Path::new(&config_file).exists() {
-		let config_string = std::fs::read_to_string(&config_file).ok();
-		config_string.and_then(|contents| serde_json::from_str(&contents).ok())
-	} else {
-		None
-	};
-
-	if loaded_config.is_none() {
-		let default_config = Config::default();
-		std::fs::write(&config_file, serde_json::to_string_pretty(&default_config).unwrap()).unwrap();
-	}
-
-	Config::from_partial(loaded_config.unwrap_or_default())
 }

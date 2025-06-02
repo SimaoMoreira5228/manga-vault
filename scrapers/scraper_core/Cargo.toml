@@ -1,17 +1,20 @@
 [package]
 name = "scraper_core"
 version = "0.2.0"
-edition = "2021"
+edition = "2024"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [dependencies]
-anyhow = "1.0"
+anyhow = "1"
 tokio = { version = "1", features = ["full"] }
 libloading = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 config = { path = "../../config" }
 scraper_types = { path = "../scraper_types" }
-notify = "7.0"
+notify = "8.0.0"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 tracing = "0.1"
 mlua = { version = "0.10", features = [
@@ -19,5 +22,10 @@ mlua = { version = "0.10", features = [
   "serialize",
   "anyhow",
   "vendored",
+  "async",
 ] }
-scraper = "0.21"
+scraper = "0.23"
+fantoccini = "0.21"
+
+[dev-dependencies]
+mockito = "1.7.0"

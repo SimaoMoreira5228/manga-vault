@@ -19,13 +19,13 @@ fn get_image_url(&element: &ElementRef) -> String {
 	}
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static PLUGIN_NAME: &str = env!("CARGO_PKG_NAME");
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub static PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 	let res = reqwest::blocking::get(url)
 		.map_err(|e| println!("Error while getting response on scrape_chapter: {}", e))
@@ -44,7 +44,7 @@ pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
 	imgs
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_latest(page: u32) -> Vec<MangaItem> {
 	let url = format!(
 		"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=latest&paged={}",
@@ -99,7 +99,7 @@ pub extern "Rust" fn scrape_latest(page: u32) -> Vec<MangaItem> {
 	manga_items
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
 	let url = format!(
 		"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=trending&paged={}",
@@ -153,7 +153,7 @@ pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
 	manga_items
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_search((query, page): (String, u32)) -> Vec<MangaItem> {
 	let url = format!(
 		"https://www.mangaread.org/?s={}&post_type=wp-manga&op=&author=&artist=&release=&adult=&paged={}",
@@ -208,7 +208,7 @@ pub extern "Rust" fn scrape_search((query, page): (String, u32)) -> Vec<MangaIte
 	manga_items
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 	let res = reqwest::blocking::get(url.clone())
 		.map_err(|e| println!("Error while getting response on scrape_manga: {}", e))
@@ -407,7 +407,7 @@ pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
 	}
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn scrape_genres_list() -> Vec<Genre> {
 	let url = "https://www.mangaread.org/";
 	let res = reqwest::blocking::get(url)
@@ -432,7 +432,7 @@ pub extern "Rust" fn scrape_genres_list() -> Vec<Genre> {
 	genres
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "Rust" fn get_info() -> ScraperInfo {
 	ScraperInfo {
 		id: "mangaread_org".to_string(),
