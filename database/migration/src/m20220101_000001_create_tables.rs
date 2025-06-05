@@ -28,47 +28,6 @@ impl MigrationTrait for Migration {
 		manager
 			.create_table(
 				Table::create()
-					.table(ReadChapters::Table)
-					.if_not_exists()
-					.col(
-						ColumnDef::new(ReadChapters::Id)
-							.integer()
-							.not_null()
-							.auto_increment()
-							.primary_key(),
-					)
-					.col(ColumnDef::new(ReadChapters::UserId).integer().not_null())
-					.col(ColumnDef::new(ReadChapters::ChapterId).integer().not_null())
-					.col(ColumnDef::new(ReadChapters::MangaId).integer().not_null())
-					.col(ColumnDef::new(ReadChapters::CreatedAt).date_time().not_null())
-					.foreign_key(
-						ForeignKey::create()
-							.name("fk_user_id")
-							.from(ReadChapters::Table, ReadChapters::UserId)
-							.to(Users::Table, Users::Id)
-							.on_delete(ForeignKeyAction::Cascade),
-					)
-					.foreign_key(
-						ForeignKey::create()
-							.name("fk_chapter_id")
-							.from(ReadChapters::Table, ReadChapters::ChapterId)
-							.to(Chapters::Table, Chapters::Id)
-							.on_delete(ForeignKeyAction::Cascade),
-					)
-					.foreign_key(
-						ForeignKey::create()
-							.name("fk_manga_id")
-							.from(ReadChapters::Table, ReadChapters::MangaId)
-							.to(Mangas::Table, Mangas::Id)
-							.on_delete(ForeignKeyAction::Cascade),
-					)
-					.to_owned(),
-			)
-			.await?;
-
-		manager
-			.create_table(
-				Table::create()
 					.table(Mangas::Table)
 					.if_not_exists()
 					.col(
@@ -84,6 +43,101 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Mangas::Scraper).string().not_null())
 					.col(ColumnDef::new(Mangas::CreatedAt).date_time().not_null())
 					.col(ColumnDef::new(Mangas::UpdatedAt).date_time().not_null())
+					.to_owned(),
+			)
+			.await?;
+
+		manager
+			.create_table(
+				Table::create()
+					.table(Chapters::Table)
+					.if_not_exists()
+					.col(
+						ColumnDef::new(Chapters::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key(),
+					)
+					.col(ColumnDef::new(Chapters::Title).string().not_null())
+					.col(ColumnDef::new(Chapters::Url).string().not_null())
+					.col(ColumnDef::new(Chapters::CreatedAt).date_time().not_null())
+					.col(ColumnDef::new(Chapters::UpdatedAt).date_time().not_null())
+					.col(ColumnDef::new(Chapters::MangaId).integer().not_null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fk_chapters_manga_id")
+							.from(Chapters::Table, Chapters::MangaId)
+							.to(Mangas::Table, Mangas::Id)
+							.on_delete(ForeignKeyAction::Cascade),
+					)
+					.to_owned(),
+			)
+			.await?;
+
+		manager
+			.create_table(
+				Table::create()
+					.table(Categories::Table)
+					.if_not_exists()
+					.col(
+						ColumnDef::new(Categories::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key(),
+					)
+					.col(ColumnDef::new(Categories::Name).string().not_null())
+					.col(ColumnDef::new(Categories::UserId).integer().not_null())
+					.col(ColumnDef::new(Categories::CreatedAt).date_time().not_null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fk_categories_user_id")
+							.from(Categories::Table, Categories::UserId)
+							.to(Users::Table, Users::Id)
+							.on_delete(ForeignKeyAction::Cascade),
+					)
+					.to_owned(),
+			)
+			.await?;
+
+		manager
+			.create_table(
+				Table::create()
+					.table(ReadChapters::Table)
+					.if_not_exists()
+					.col(
+						ColumnDef::new(ReadChapters::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key(),
+					)
+					.col(ColumnDef::new(ReadChapters::UserId).integer().not_null())
+					.col(ColumnDef::new(ReadChapters::ChapterId).integer().not_null())
+					.col(ColumnDef::new(ReadChapters::MangaId).integer().not_null())
+					.col(ColumnDef::new(ReadChapters::CreatedAt).date_time().not_null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fk_read_chapters_user_id")
+							.from(ReadChapters::Table, ReadChapters::UserId)
+							.to(Users::Table, Users::Id)
+							.on_delete(ForeignKeyAction::Cascade),
+					)
+					.foreign_key(
+						ForeignKey::create()
+							.name("fk_read_chapters_chapter_id")
+							.from(ReadChapters::Table, ReadChapters::ChapterId)
+							.to(Chapters::Table, Chapters::Id)
+							.on_delete(ForeignKeyAction::Cascade),
+					)
+					.foreign_key(
+						ForeignKey::create()
+							.name("fk_read_chapters_manga_id")
+							.from(ReadChapters::Table, ReadChapters::MangaId)
+							.to(Mangas::Table, Mangas::Id)
+							.on_delete(ForeignKeyAction::Cascade),
+					)
 					.to_owned(),
 			)
 			.await?;
@@ -124,77 +178,23 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(FavoriteMangas::CreatedAt).date_time().not_null())
 					.foreign_key(
 						ForeignKey::create()
-							.name("fk_user_id")
+							.name("fk_favmangas_user_id")
 							.from(FavoriteMangas::Table, FavoriteMangas::UserId)
 							.to(Users::Table, Users::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.foreign_key(
 						ForeignKey::create()
-							.name("fk_manga_id")
+							.name("fk_favmangas_manga_id")
 							.from(FavoriteMangas::Table, FavoriteMangas::MangaId)
 							.to(Mangas::Table, Mangas::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.foreign_key(
 						ForeignKey::create()
-							.name("fk_categorie_id")
+							.name("fk_favmangas_category_id")
 							.from(FavoriteMangas::Table, FavoriteMangas::CategoryId)
 							.to(Categories::Table, Categories::Id)
-							.on_delete(ForeignKeyAction::Cascade),
-					)
-					.to_owned(),
-			)
-			.await?;
-
-		manager
-			.create_table(
-				Table::create()
-					.table(Chapters::Table)
-					.if_not_exists()
-					.col(
-						ColumnDef::new(Chapters::Id)
-							.integer()
-							.not_null()
-							.auto_increment()
-							.primary_key(),
-					)
-					.col(ColumnDef::new(Chapters::Title).string().not_null())
-					.col(ColumnDef::new(Chapters::Url).string().not_null())
-					.col(ColumnDef::new(Chapters::CreatedAt).date_time().not_null())
-					.col(ColumnDef::new(Chapters::UpdatedAt).date_time().not_null())
-					.col(ColumnDef::new(Chapters::MangaId).integer().not_null())
-					.foreign_key(
-						ForeignKey::create()
-							.name("fk_manga_id")
-							.from(Chapters::Table, Chapters::MangaId)
-							.to(Mangas::Table, Mangas::Id)
-							.on_delete(ForeignKeyAction::Cascade),
-					)
-					.to_owned(),
-			)
-			.await?;
-
-		manager
-			.create_table(
-				Table::create()
-					.table(Categories::Table)
-					.if_not_exists()
-					.col(
-						ColumnDef::new(Categories::Id)
-							.integer()
-							.not_null()
-							.auto_increment()
-							.primary_key(),
-					)
-					.col(ColumnDef::new(Categories::Name).string().not_null())
-					.col(ColumnDef::new(Categories::UserId).integer().not_null())
-					.col(ColumnDef::new(Categories::CreatedAt).date_time().not_null())
-					.foreign_key(
-						ForeignKey::create()
-							.name("fk_user_id")
-							.from(Categories::Table, Categories::UserId)
-							.to(Users::Table, Users::Id)
 							.on_delete(ForeignKeyAction::Cascade),
 					)
 					.to_owned(),
@@ -206,27 +206,26 @@ impl MigrationTrait for Migration {
 
 	async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 		manager
-			.drop_table(Table::drop().table(Users::Table).if_exists().to_owned())
-			.await?;
-		manager
-			.drop_table(Table::drop().table(ReadChapters::Table).if_exists().to_owned())
-			.await?;
-		manager
-			.drop_table(Table::drop().table(Mangas::Table).if_exists().to_owned())
+			.drop_table(Table::drop().table(FavoriteMangas::Table).if_exists().to_owned())
 			.await?;
 		manager
 			.drop_table(Table::drop().table(Files::Table).if_exists().to_owned())
 			.await?;
 		manager
-			.drop_table(Table::drop().table(FavoriteMangas::Table).if_exists().to_owned())
+			.drop_table(Table::drop().table(ReadChapters::Table).if_exists().to_owned())
 			.await?;
 		manager
 			.drop_table(Table::drop().table(Chapters::Table).if_exists().to_owned())
 			.await?;
 		manager
+			.drop_table(Table::drop().table(Mangas::Table).if_exists().to_owned())
+			.await?;
+		manager
 			.drop_table(Table::drop().table(Categories::Table).if_exists().to_owned())
 			.await?;
-
+		manager
+			.drop_table(Table::drop().table(Users::Table).if_exists().to_owned())
+			.await?;
 		Ok(())
 	}
 }
@@ -241,16 +240,6 @@ enum Users {
 }
 
 #[derive(DeriveIden)]
-enum ReadChapters {
-	Table,
-	Id,
-	UserId,
-	ChapterId,
-	MangaId,
-	CreatedAt,
-}
-
-#[derive(DeriveIden)]
 enum Mangas {
 	Table,
 	Id,
@@ -260,24 +249,6 @@ enum Mangas {
 	Scraper,
 	CreatedAt,
 	UpdatedAt,
-}
-
-#[derive(DeriveIden)]
-enum Files {
-	Table,
-	Id,
-	Name,
-	CreatedAt,
-}
-
-#[derive(DeriveIden)]
-enum FavoriteMangas {
-	Table,
-	Id,
-	UserId,
-	MangaId,
-	CategoryId,
-	CreatedAt,
 }
 
 #[derive(DeriveIden)]
@@ -297,5 +268,33 @@ enum Categories {
 	Id,
 	Name,
 	UserId,
+	CreatedAt,
+}
+
+#[derive(DeriveIden)]
+enum ReadChapters {
+	Table,
+	Id,
+	UserId,
+	ChapterId,
+	MangaId,
+	CreatedAt,
+}
+
+#[derive(DeriveIden)]
+enum Files {
+	Table,
+	Id,
+	Name,
+	CreatedAt,
+}
+
+#[derive(DeriveIden)]
+enum FavoriteMangas {
+	Table,
+	Id,
+	UserId,
+	MangaId,
+	CategoryId,
 	CreatedAt,
 }

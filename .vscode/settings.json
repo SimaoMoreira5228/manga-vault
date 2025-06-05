@@ -3,10 +3,20 @@
   "sqltools.connections": [
     {
       "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "pg-test",
+      "password": "",
+      "database": "postgres",
+      "username": "postgres"
+    },
+    {
+      "previewLimit": 50,
       "driver": "SQLite",
       "name": "manga-vault-sqlite",
       "group": "manga-vault",
-      "database": "${workspaceFolder:manga-vault}/target/debug/db.sqlite"
+      "database": "${workspaceFolder:manga-vault}/target/debug/database.db"
     }
   ]
 }

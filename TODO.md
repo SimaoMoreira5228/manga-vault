@@ -1,8 +1,8 @@
 - [ ] database
 
-  - [ ] think how going away from sea-orm (maybe to something async disel/diesel-async)
-  - [ ] add a way to use different databases (sqlite, postgres, mysql)
-  - [ ] remove db backups older than 1 week (or some configurable time)
+  - [ ] ~~think how going away from sea-orm (maybe to something async disel/diesel-async)~~
+  - [x] add a way to use different databases (sqlite, postgres, mysql)
+  - [x] remove db backups older than 1 week (or some configurable time)
 
 - [ ] refactor api (gql then rest and think about grpc)
 
@@ -41,4 +41,5 @@
 
 - [x] refactor the scrapers build system
 
+- [ ] refactor the whole updating system (maybe just warn that its outdated and not update it automatically, but what about the scrapers? just stop updating them?)
 - [ ] update the readme

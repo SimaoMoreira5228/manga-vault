@@ -1,4 +1,4 @@
 #[tokio::main]
-async fn main() {
-	gql_api::run().await;
+async fn main() -> anyhow::Result<()> {
+	gql_api::run().await
 }

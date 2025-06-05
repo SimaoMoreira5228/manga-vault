@@ -6,11 +6,7 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
 	async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-		let res = manager.drop_table(Table::drop().table(Temp::Table).to_owned()).await;
-
-		if res.is_err() {
-			return Err(res.unwrap_err());
-		}
+		manager.drop_table(Table::drop().table(Temp::Table).to_owned()).await?;
 
 		manager
 			.create_table(
@@ -33,7 +29,26 @@ impl MigrationTrait for Migration {
 	}
 
 	async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-		manager.drop_table(Table::drop().table(Temp::Table).to_owned()).await
+		manager.drop_table(Table::drop().table(Temp::Table).to_owned()).await?;
+
+		manager
+			.create_table(
+				Table::create()
+					.table(Temp::Table)
+					.if_not_exists()
+					.col(
+						ColumnDef::new(Temp::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key(),
+					)
+					.col(ColumnDef::new(Temp::Key).text().not_null())
+					.col(ColumnDef::new(Temp::Value).text().not_null())
+					.col(ColumnDef::new(Temp::CreatedAt).text().not_null())
+					.to_owned(),
+			)
+			.await
 	}
 }
 
@@ -44,4 +59,5 @@ enum Temp {
 	Key,
 	Value,
 	ExpiresAt,
+	CreatedAt,
 }

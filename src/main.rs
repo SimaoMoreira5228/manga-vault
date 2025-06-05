@@ -7,7 +7,7 @@ use tracing_subscriber::FmtSubscriber;
 const MANGA_VAULT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let subscriber = FmtSubscriber::builder()
 		.with_max_level(TracingLevel::to_tracing_level(&CONFIG.tracing_level))
 		.finish();
@@ -22,24 +22,13 @@ async fn main() {
 			"There is a new version of manga_vault at: https://github.com/SimaoMoreira5228/manga-vault/releases/latest"
 		);
 
-		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new_no_update().await.unwrap()));
+		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new_no_update().await?));
 	} else {
 		tracing::info!("Application is up to date");
 		http_utils::downloader::update_website().await;
-		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new().await.unwrap()));
+		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new().await?));
 	}
 
-	tokio::spawn(async move {
-		loop {
-			tokio::time::sleep(tokio::time::Duration::from_secs(
-				CONFIG.database.backup_time as u64 * 3600,
-			))
-			.await;
-			let db = connection::Database::new().await.unwrap();
-			let _ = db.backup().await;
-			db.conn.close().await.unwrap();
-		}
-	});
-
-	gql_api::run().await;
+	gql_api::run().await?;
+	Ok(())
 }

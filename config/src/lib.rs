@@ -16,8 +16,8 @@ fn current_exe_parent_dir() -> PathBuf {
 }
 
 fn generate_secret() -> String {
-	rand::thread_rng()
-		.sample_iter(rand::distributions::Alphanumeric)
+	rand::rng()
+		.sample_iter(rand::distr::Alphanumeric)
 		.take(24)
 		.map(char::from)
 		.collect()
@@ -72,11 +72,13 @@ pub struct WebsocketConfig {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DatabaseConfig {
 	#[serde(default)]
-	pub backup_time: u16,
+	pub backup_interval: u16,
 	#[serde(default)]
-	pub database_path: String,
+	pub database_url: String,
 	#[serde(default)]
 	pub database_backup_folder: String,
+	#[serde(default)]
+	pub backup_retention_days: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -87,10 +89,26 @@ pub struct RepositoryConfig {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct PluginsConfig {
+	#[serde(default)]
+	pub plugins_folder: String,
+	#[serde(default)]
+	pub repositories: Vec<RepositoryConfig>,
+	#[serde(default)]
+	pub headless: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct WebsiteConfig {
+	#[serde(default)]
+	pub website_port: u16,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(default)]
 pub struct Config {
 	#[serde(default)]
-	pub website_port: u16,
+	pub website: WebsiteConfig,
 	#[serde(default)]
 	pub api: ApiConfig,
 	#[serde(default)]
@@ -98,15 +116,11 @@ pub struct Config {
 	#[serde(default)]
 	pub database: DatabaseConfig,
 	#[serde(default)]
-	pub plugins_folder: String,
-	#[serde(default)]
-	pub repositories: Vec<RepositoryConfig>,
+	pub plugins: PluginsConfig,
 	#[serde(default)]
 	pub directory: String,
 	#[serde(default)]
 	pub tracing_level: TracingLevel,
-	#[serde(default)]
-	pub headless: Option<String>,
 }
 
 impl Default for ApiConfig {
@@ -131,41 +145,68 @@ impl Default for WebsocketConfig {
 impl Default for DatabaseConfig {
 	fn default() -> Self {
 		Self {
-			backup_time: 2,
-			database_path: format!("{}/database.db", current_exe_parent_dir().display()),
+			backup_interval: 2,
+			database_url: format!("sqlite://{}/database.db", current_exe_parent_dir().display()).into(),
 			database_backup_folder: format!("{}/backups", current_exe_parent_dir().display()),
+			backup_retention_days: 7,
 		}
+	}
+}
+
+impl Default for PluginsConfig {
+	fn default() -> Self {
+		Self {
+			plugins_folder: format!("{}/plugins", current_exe_parent_dir().display()),
+			repositories: Vec::new(),
+			headless: None,
+		}
+	}
+}
+
+impl Default for WebsiteConfig {
+	fn default() -> Self {
+		Self { website_port: 5227 }
 	}
 }
 
 impl Default for Config {
 	fn default() -> Self {
 		Self {
-			website_port: 5227,
 			api: ApiConfig::default(),
 			websocket: WebsocketConfig::default(),
 			database: DatabaseConfig::default(),
-			plugins_folder: format!("{}/plugins", current_exe_parent_dir().display()),
-			repositories: Vec::new(),
+			plugins: PluginsConfig::default(),
+			website: WebsiteConfig::default(),
 			directory: current_exe_parent_dir().display().to_string(),
 			tracing_level: TracingLevel::default(),
-			headless: None,
 		}
 	}
 }
 
 impl Config {
 	pub fn load() -> Self {
-		let config_path = current_exe_parent_dir().join("config.json");
+		let dir = current_exe_parent_dir();
+		let json_path = dir.join("config.json");
+		let toml_path = dir.join("config.toml");
 
-		if !config_path.exists() {
-			let config = Config::default();
-			let json = serde_json::to_string_pretty(&config).expect("Failed to serialize default config");
-			std::fs::write(&config_path, json).expect("Failed to write default config");
-			return config;
+		let (path, format) = if toml_path.exists() {
+			(toml_path, "toml")
+		} else if json_path.exists() {
+			(json_path, "json")
+		} else {
+			let default_config = Config::default();
+			let json = serde_json::to_string_pretty(&default_config).expect("Failed to serialize default config");
+			std::fs::write(&json_path, json).expect("Failed to write default config");
+			return default_config;
+		};
+
+		let content =
+			std::fs::read_to_string(&path).unwrap_or_else(|_| panic!("Failed to read config file: {}", path.display()));
+
+		match format {
+			"toml" => toml::from_str(&content).expect("Invalid TOML config file format"),
+			"json" => serde_json::from_str(&content).expect("Invalid JSON config file format"),
+			_ => unreachable!(),
 		}
-
-		let json = std::fs::read_to_string(&config_path).expect("Failed to read config file");
-		serde_json::from_str(&json).expect("Invalid config file format")
 	}
 }
