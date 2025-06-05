@@ -16,7 +16,7 @@ impl UserData for HeadlessClient {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method("get", |_, this, url: String| async move {
 			#[cfg(not(test))]
-			if CONFIG.headless.is_none() {
+			if CONFIG.plugins.headless.is_none() {
 				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
 			}
 
@@ -37,7 +37,7 @@ impl UserData for HeadlessClient {
 
 		methods.add_async_method("find", |_, this, selector: String| async move {
 			#[cfg(not(test))]
-			if CONFIG.headless.is_none() {
+			if CONFIG.plugins.headless.is_none() {
 				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
 			}
 
@@ -52,7 +52,7 @@ impl UserData for HeadlessClient {
 
 		methods.add_async_method("find_all", |_, this, selector: String| async move {
 			#[cfg(not(test))]
-			if CONFIG.headless.is_none() {
+			if CONFIG.plugins.headless.is_none() {
 				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
 			}
 
@@ -69,7 +69,7 @@ impl UserData for HeadlessClient {
 
 		methods.add_async_method("close", |_, this, _: ()| async move {
 			#[cfg(not(test))]
-			if CONFIG.headless.is_none() {
+			if CONFIG.plugins.headless.is_none() {
 				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
 			}
 
@@ -85,7 +85,7 @@ impl UserData for Element {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method("click", |_, this, _: ()| async move {
 			#[cfg(not(test))]
-			if CONFIG.headless.is_none() {
+			if CONFIG.plugins.headless.is_none() {
 				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
 			}
 
@@ -97,7 +97,7 @@ impl UserData for Element {
 
 		methods.add_async_method("text", |_, this, _: ()| async move {
 			#[cfg(not(test))]
-			if CONFIG.headless.is_none() {
+			if CONFIG.plugins.headless.is_none() {
 				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
 			}
 
@@ -114,7 +114,7 @@ impl UserData for Element {
 
 #[cfg_attr(all(coverage_nightly, test), coverage(off))]
 pub(crate) async fn load(lua: &Lua) -> anyhow::Result<()> {
-	if CONFIG.headless.is_none() {
+	if CONFIG.plugins.headless.is_none() {
 		tracing::debug!("Headless mode is not enabled in the config");
 		return Ok(());
 	}
@@ -126,7 +126,7 @@ pub(crate) async fn load(lua: &Lua) -> anyhow::Result<()> {
 
 	let client = ClientBuilder::native()
 		.capabilities(cap)
-		.connect(CONFIG.headless.as_ref().unwrap())
+		.connect(CONFIG.plugins.headless.as_ref().unwrap())
 		.await
 		.context("Failed to connect to WebDriver")?;
 

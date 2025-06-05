@@ -12,8 +12,8 @@ tokio = { version = "1", features = ["full"] }
 libloading = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-config = { path = "../../config" }
-scraper_types = { path = "../scraper_types" }
+config = { workspace = true }
+scraper_types = { workspace = true }
 notify = "8.0.0"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 tracing = "0.1"

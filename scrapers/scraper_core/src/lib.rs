@@ -64,7 +64,7 @@ impl PluginManager {
 	}
 
 	fn setup_plugins_directory(&self) -> Result<()> {
-		let plugins_dir = PathBuf::from(&CONFIG.plugins_folder);
+		let plugins_dir = PathBuf::from(&CONFIG.plugins.plugins_folder);
 		if !plugins_dir.exists() {
 			tracing::debug!("Creating plugins folder: {}", plugins_dir.display());
 			std::fs::create_dir_all(&plugins_dir)
@@ -75,7 +75,7 @@ impl PluginManager {
 
 	async fn load_initial_plugins(&self) -> Result<()> {
 		let plugins = self.plugins.clone();
-		files::read_directory(&PathBuf::from(&CONFIG.plugins_folder), 1, move |path| {
+		files::read_directory(&PathBuf::from(&CONFIG.plugins.plugins_folder), 1, move |path| {
 			let plugins = plugins.clone();
 			async move {
 				let Some(ext) = path.extension().and_then(|e| e.to_str()) else {

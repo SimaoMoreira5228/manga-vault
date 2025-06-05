@@ -52,13 +52,13 @@ struct PluginNameInternal {
 }
 
 pub async fn load_repos() -> Result<()> {
-	for repo_config in &CONFIG.repositories {
+	for repo_config in &CONFIG.plugins.repositories {
 		tracing::debug!("Loading repository: {}", repo_config.url);
 
 		let repo = fetch_repository(&repo_config.url).await?;
 		let filtered_plugins = filter_plugins(&repo.plugins, repo_config)?;
 
-		let repo_dir = PathBuf::from(&CONFIG.plugins_folder).join(&repo.name);
+		let repo_dir = PathBuf::from(&CONFIG.plugins.plugins_folder).join(&repo.name);
 		ensure_directory_exists(&repo_dir)?;
 
 		let internal_plugins = load_internal_plugins(&repo_dir).await?;
@@ -168,7 +168,15 @@ async fn download_new_plugins(
 		let plugin_file = repo_dir.join(format!("{}.{}", plugin.name, extension));
 
 		tracing::info!("Downloading {} plugin: {}", repo_name, plugin.name);
-		let data = reqwest::get(url)
+
+		let client = reqwest::Client::builder()
+			.user_agent("reqwest/0.12 (Rust)")
+			.build()
+			.context("Failed to build HTTP client")?;
+
+		let data = client
+			.get(url)
+			.send()
 			.await
 			.context("Failed to download plugin")?
 			.bytes()

@@ -8,14 +8,41 @@ name = "manga-vault"
 path = "src/main.rs"
 
 [workspace]
-members = ["apps/http/*","config", "database/*", "scrapers/scraper_core", "scrapers/scraper_types"]
+members = [
+  "apps/http/*",
+  "config",
+  "database/*",
+  "scrapers/scraper_core",
+  "scrapers/scraper_types",
+]
+
+[workspace.dependencies]
+config = { path = "config" }
+database-connection = { path = "database/connection" }
+database-entities = { path = "database/entities" }
+database-migration = { path = "database/migration" }
+scraper_core = { path = "scrapers/scraper_core" }
+scraper_types = { path = "scrapers/scraper_types" }
+http-utils = { path = "apps/http/utils" }
+gql-api = { path = "apps/http/gql" }
+sea-orm = { version = "1.1.12", features = [
+  "sqlx-sqlite",
+  "sqlx-postgres",
+  "sqlx-mysql",
+  "runtime-tokio-native-tls",
+  "macros",
+  "with-chrono",
+  "with-json",
+  "with-uuid",
+] }
+
 
 [dependencies]
-config = { path = "config" }
-connection = { path = "database/connection" }
-scraper_core = { path = "scrapers/scraper_core" }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.3.0"
-http-utils = { path = "apps/http/utils" }
-gql-api = { path = "apps/http/gql" }
+http-utils = { workspace = true }
+scraper_core = { workspace = true }
+config = { workspace = true }
+database-connection = { workspace = true }
+gql-api = { workspace = true }

@@ -4,3 +4,4 @@ db.sqlite
 /uploads
 .idea
 /temp
+.vscode

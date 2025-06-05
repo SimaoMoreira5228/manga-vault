@@ -140,7 +140,10 @@ pub async fn handle_file_events(
 		RecommendedWatcher::new(event_sender, notify::Config::default()).context("Failed to create file watcher")?;
 
 	watcher
-		.watch(Path::new(&CONFIG.plugins_folder), notify::RecursiveMode::Recursive)
+		.watch(
+			Path::new(&CONFIG.plugins.plugins_folder),
+			notify::RecursiveMode::Recursive,
+		)
 		.context("Failed to watch plugins directory")?;
 
 	for event in event_receiver {
