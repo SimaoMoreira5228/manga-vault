@@ -51,11 +51,11 @@ pub fn derive_config(input: TokenStream) -> TokenStream {
 					.expect("Executable has no parent directory")
 					.to_path_buf();
 				let config_dir = base_path.join("config");
-				let file_name = format!("{}.toml", #base_str);
+				let file_name = format!("{}.json", #base_str);
 				let path = config_dir.join(file_name);
 
 				let default = Self::default();
-				let toml = toml::to_string_pretty(&default)
+				let toml = serde_json::to_string_pretty(&default)
 					.expect("Failed to serialize default config");
 				std::fs::create_dir_all(&config_dir).ok();
 				std::fs::write(&path, toml)

@@ -799,7 +799,6 @@ dependencies = [
  "rand 0.9.1",
  "serde",
  "serde_json",
- "toml",
  "tracing",
 ]
 
@@ -829,7 +828,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.101",
- "toml",
 ]
 
 [[package]]
@@ -1844,9 +1842,9 @@ dependencies = [
  "scraper_core",
  "sea-orm",
  "serde",
+ "serde_json",
  "thiserror 2.0.12",
  "tokio",
- "toml",
  "tower-http",
  "tracing",
 ]
