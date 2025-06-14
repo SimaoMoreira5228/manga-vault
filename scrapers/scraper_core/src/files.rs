@@ -48,21 +48,12 @@ where
 }
 
 async fn remove_existing_plugin(plugins: &PluginMap, file_path: &Path, plugin_type: &PluginType) {
-	for (name, plugin) in plugins.write().await.iter_mut() {
-		if plugin_type == &PluginType::Lua && matches!(plugin.as_ref(), Plugin::Lua(p) if p.file == *file_path) {
-			tracing::info!("Removing existing Lua plugin: {}", name);
-			plugins.write().await.remove(name);
-		} else if plugin_type == &PluginType::Wasm {
-			let Plugin::Wasm(p) = plugin.as_ref() else {
-				continue;
-			};
-			let plugin_guard = p.lock().await;
-			if plugin_guard.file == *file_path {
-				tracing::info!("Removing existing Wasm plugin: {}", name);
-				plugins.write().await.remove(name);
-			}
-		}
-	}
+	let mut plugins = plugins.write().await;
+	plugins.retain(|_, p| match (&**p, plugin_type) {
+		(Plugin::Lua(plugin), PluginType::Lua) => plugin.file != file_path,
+		(Plugin::Wasm(plugin), PluginType::Wasm) => plugin.file != file_path,
+		_ => true,
+	});
 }
 
 pub async fn load_plugin_file(
@@ -96,10 +87,10 @@ pub async fn load_plugin_file(
 			})
 			.await??;
 
-			plugins.write().await.insert(
-				plugin.name.clone(),
-				Arc::new(Plugin::Wasm(Arc::new(tokio::sync::Mutex::new(plugin)))),
-			);
+			plugins
+				.write()
+				.await
+				.insert(plugin.name.clone(), Arc::new(Plugin::Wasm(plugin)));
 		}
 	}
 
@@ -254,7 +245,7 @@ async fn handle_removal_event(event: Event, plugins: &PluginMap, modification_tr
 		if let Some(extension) = path.extension().and_then(|ext| ext.to_str()) {
 			if PLUGIN_FILE_EXTENSIONS.contains(&extension) {
 				plugins.write().await.retain(|_, p| match &**p {
-					Plugin::Wasm(p) => p.blocking_lock().file != path,
+					Plugin::Wasm(p) => p.file != path,
 					Plugin::Lua(p) => p.file != path,
 				});
 				tracing::info!("Unloaded plugin: {}", path.display());
