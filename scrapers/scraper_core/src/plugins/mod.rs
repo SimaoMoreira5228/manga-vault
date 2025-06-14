@@ -8,7 +8,7 @@ mod globals;
 pub mod lua;
 pub mod wasm;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PluginType {
 	Lua,
 	Wasm,

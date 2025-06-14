@@ -48,40 +48,61 @@ where
 }
 
 async fn remove_existing_plugin(plugins: &PluginMap, file_path: &Path, plugin_type: &PluginType) {
-	plugins.write().await.retain(|_, p_arc| match (&**p_arc, plugin_type) {
-		(Plugin::Lua(p), PluginType::Lua) => p.file != file_path,
-		(Plugin::Wasm(p), PluginType::Wasm) => p.blocking_lock().file != file_path,
-		_ => true,
-	});
+	for (name, plugin) in plugins.write().await.iter_mut() {
+		if plugin_type == &PluginType::Lua && matches!(plugin.as_ref(), Plugin::Lua(p) if p.file == *file_path) {
+			tracing::info!("Removing existing Lua plugin: {}", name);
+			plugins.write().await.remove(name);
+		} else if plugin_type == &PluginType::Wasm {
+			let Plugin::Wasm(p) = plugin.as_ref() else {
+				continue;
+			};
+			let plugin_guard = p.lock().await;
+			if plugin_guard.file == *file_path {
+				tracing::info!("Removing existing Wasm plugin: {}", name);
+				plugins.write().await.remove(name);
+			}
+		}
+	}
 }
 
-pub fn load_plugin_file(
+pub async fn load_plugin_file(
 	config: Arc<Config>,
 	plugins: PluginMap,
-	file_path: &PathBuf,
+	file_path: PathBuf,
 	plugin_type: PluginType,
 ) -> Result<()> {
 	tracing::info!("Processing plugin file: {}", file_path.display());
 
-	let rt = tokio::runtime::Handle::current();
-	rt.block_on(remove_existing_plugin(&plugins, file_path, &plugin_type));
+	remove_existing_plugin(&plugins, &file_path, &plugin_type).await;
 
 	match plugin_type {
 		PluginType::Lua => {
-			let plugin = LuaPlugin::new(config, file_path)?;
-			rt.block_on(plugins.write())
+			let plugin = tokio::task::spawn_blocking({
+				let config = config.clone();
+				let file_path = file_path.clone();
+				move || LuaPlugin::new(config, &file_path)
+			})
+			.await??;
+
+			plugins
+				.write()
+				.await
 				.insert(plugin.name.clone(), Arc::new(Plugin::Lua(plugin)));
 		}
 		PluginType::Wasm => {
-			let plugin = WasmPlugin::new(file_path)?;
-			rt.block_on(plugins.write()).insert(
+			let plugin = tokio::task::spawn_blocking({
+				let file_path = file_path.clone();
+				move || WasmPlugin::new(&file_path)
+			})
+			.await??;
+
+			plugins.write().await.insert(
 				plugin.name.clone(),
 				Arc::new(Plugin::Wasm(Arc::new(tokio::sync::Mutex::new(plugin)))),
 			);
 		}
 	}
 
-	tracing::info!("Successfully loaded plugin: {}", file_path.display());
 	Ok(())
 }
 
@@ -180,21 +201,20 @@ async fn handle_modification_event(
 				let mut success = false;
 
 				while retry_count < MAX_RETRIES && !success {
-					let result = tokio::task::spawn_blocking({
-						let path_clone = path_clone.clone();
-						let plugins_clone = plugins_clone.clone();
-						let plugin_type = plugin_type_clone.clone();
-						let config = config_clone.clone();
-						move || process_plugin_file(config, &path_clone, plugins_clone, plugin_type)
-					})
+					let result = process_plugin_file(
+						config_clone.clone(),
+						&path_clone,
+						plugins_clone.clone(),
+						plugin_type_clone.clone(),
+					)
 					.await;
 
 					match result {
-						Ok(Ok(_)) => {
+						Ok(_) => {
 							tracing::info!("Successfully reloaded plugin: {}", path_clone.display());
 							success = true;
 						}
-						Ok(Err(e)) => {
+						Err(e) => {
 							if retry_count < MAX_RETRIES - 1 {
 								tracing::warn!(
 									"Failed to process plugin {} (attempt {}): {:#}",
@@ -211,10 +231,6 @@ async fn handle_modification_event(
 									e
 								);
 							}
-						}
-						Err(join_err) => {
-							tracing::error!("Processing task panicked for {}: {:?}", path_clone.display(), join_err);
-							break;
 						}
 					}
 				}
@@ -249,9 +265,15 @@ async fn handle_removal_event(event: Event, plugins: &PluginMap, modification_tr
 	}
 }
 
-fn process_plugin_file(config: Arc<Config>, path: &PathBuf, plugins: PluginMap, plugin_type: PluginType) -> Result<()> {
+async fn process_plugin_file(
+	config: Arc<Config>,
+	path: &PathBuf,
+	plugins: PluginMap,
+	plugin_type: PluginType,
+) -> Result<()> {
 	std::thread::sleep(Duration::from_millis(100));
-	load_plugin_file(config, plugins, path, plugin_type)
+	load_plugin_file(config, plugins, path.clone(), plugin_type)
+		.await
 		.with_context(|| format!("Failed to load plugin: {}", path.display()))?;
 	tracing::info!("Successfully reloaded plugin: {}", path.display());
 	Ok(())

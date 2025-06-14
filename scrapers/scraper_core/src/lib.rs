@@ -122,6 +122,7 @@ impl ScraperManager {
 		let plugins = self.plugins.clone();
 		let config = self.config.clone();
 		let plugins_folder = self.config.plugins_folder.clone();
+
 		files::read_directory(&PathBuf::from(plugins_folder), 1, move |path| {
 			let plugins = plugins.clone();
 			let config = config.clone();
@@ -137,18 +138,9 @@ impl ScraperManager {
 						PluginType::Wasm
 					};
 
-					let path_clone = path.clone();
-					let config = config.clone();
-					let plugins = plugins.clone();
-					let path_for_blocking = path.clone();
-					match tokio::task::spawn_blocking(move || {
-						files::load_plugin_file(config, plugins, &path_for_blocking, plugin_type)
-					})
-					.await
-					{
-						Ok(Ok(_)) => tracing::info!("Successfully loaded plugin: {}", path_clone.display()),
-						Ok(Err(e)) => tracing::error!("Failed to load plugin {}: {:#}", path_clone.display(), e),
-						Err(_) => tracing::error!("Loading task failed for {}", path_clone.display()),
+					match files::load_plugin_file(config.clone(), plugins.clone(), path.clone(), plugin_type).await {
+						Ok(_) => tracing::info!("Successfully loaded plugin: {}", path.display()),
+						Err(e) => tracing::error!("Failed to load plugin {}: {:#}", path.display(), e),
 					}
 				}
 			}
