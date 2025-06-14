@@ -14,7 +14,11 @@ alias coverage := test
 test *args:
     #!/usr/bin/env bash
     set -euo pipefail
-
+    
+    ./temp/chromedriver --port=4444 &
+    chromedriver_pid=$!
+    trap "kill $chromedriver_pid" EXIT
+    
     INSTA_FORCE_PASS=1 cargo +{{RUST_TOOLCHAIN}} llvm-cov clean --workspace
     INSTA_FORCE_PASS=1 cargo +{{RUST_TOOLCHAIN}} llvm-cov nextest --workspace --include-build-script --no-report --all-features -- {{args}}
     # Coverage for doctests is currently broken in llvm-cov.
@@ -31,3 +35,6 @@ coverage-serve:
 
 update-scrapers:
     python3 ./scrapers/compile-scrapers.py
+
+update-wit-bindings:
+    wit-bindgen rust scraper.wit --format --ownership owning --out-dir scrapers/scraper_types/src/

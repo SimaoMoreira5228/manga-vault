@@ -1,8 +1,12 @@
-use std::fs;
 use std::io::Read;
+use std::sync::Arc;
+use std::{fs, path::Path};
 
+use anyhow::Context;
 use mlua::Lua;
 use scraper_types::{Genre, MangaItem, MangaPage, ScraperInfo};
+
+use crate::Config;
 
 use super::globals;
 
@@ -15,19 +19,28 @@ pub struct LuaPlugin {
 }
 
 impl LuaPlugin {
-	pub async fn new(name: String, version: String, file: String) -> anyhow::Result<Self> {
-		println!("Loading Lua plugin: {}", file);
+	pub fn new(config: Arc<Config>, file: &Path) -> anyhow::Result<Self> {
+		println!("Loading Lua plugin: {}", file.display());
 		let runtime = Lua::new();
-		globals::load(&runtime).await?;
+		globals::load(&config, &runtime)?;
 
 		let mut lua_file = fs::File::open(&file)?;
 		let mut script_content = String::new();
 		lua_file.read_to_string(&mut script_content)?;
 
 		runtime.load(&script_content).exec()?;
+
+		let globals = runtime.globals();
+		let name: mlua::String = globals
+			.get("PLUGIN_NAME")
+			.context("Missing PLUGIN_NAME in Lua plugin")?;
+		let version: mlua::String = globals
+			.get("PLUGIN_VERSION")
+			.context("Missing PLUGIN_VERSION in Lua plugin")?;
+
 		Ok(Self {
-			name,
-			version,
+			name: name.to_str()?.to_string(),
+			version: version.to_str()?.to_string(),
 			file: file.into(),
 			runtime,
 		})

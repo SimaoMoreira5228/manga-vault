@@ -11,6 +11,7 @@ use crate::objects::files::File;
 pub struct User {
 	pub id: i32,
 	pub username: String,
+	#[allow(dead_code)]
 	pub hashed_password: String,
 	pub created_at: NaiveDateTime,
 	pub image_id: Option<i32>,

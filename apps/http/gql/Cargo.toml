@@ -1,6 +1,6 @@
 [package]
 name = "gql-api"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 
 [lib]
@@ -23,8 +23,11 @@ chrono = "0.4.39"
 tower-http = { version = "0.6.2", features = ["cors"] }
 serde = { version = "1", features = ["derive"] }
 config = { workspace = true }
+config-derive = { workspace = true }
 database-connection = { workspace = true }
 database-entities = { workspace = true }
 anyhow = "1"
 sea-orm = { workspace = true }
 scraper_core = { workspace = true }
+rand = "0.9"
+toml = "0.8"

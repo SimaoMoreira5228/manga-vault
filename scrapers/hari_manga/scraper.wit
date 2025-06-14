@@ -1,0 +1,71 @@
+package scraper:types;
+
+interface scraper {
+    record manga-item {
+        title: string,
+        url: string,
+        img-url: string,
+    }
+    
+    record chapter {
+        title: string,
+        url: string,
+        date: string,
+    }
+    
+    record manga-page {
+        title: string,
+        url: string,
+        img-url: string,
+        alternative-names: list<string>,
+        authors: list<string>,
+        artists: option<list<string>>,
+        status: string,
+        manga-type: option<string>,
+        release-date: option<string>,
+        description: string,
+        genres: list<string>,
+        chapters: list<chapter>,
+    }
+    
+    record genre {
+        name: string,
+        url: string,
+    }
+    
+    record scraper-info {
+        id: string,
+        name: string,
+        version: string,
+        img-url: string,
+    }
+
+    scrape-chapter: func(url: string) -> list<string>;
+    scrape-latest: func(page: u32) -> list<manga-item>;
+    scrape-trending: func(page: u32) -> list<manga-item>;
+    scrape-search: func(query: string, page: u32) -> list<manga-item>;
+    scrape-manga: func(url: string) -> manga-page;
+    scrape-genres-list: func() -> list<genre>;
+    get-info: func() -> scraper-info;
+}
+
+interface http {
+    record header {
+        name: string,
+        value: string,
+    }
+
+    record response {
+        status: u32,
+        headers: list<header>,
+        body: string,
+    }
+
+    get: func(url: string, headers: option<list<header>>) -> option<response>;
+    post: func(url: string, body: string, headers: option<list<header>>) -> option<response>;
+}
+
+world root {
+    export scraper;
+    import http;
+}

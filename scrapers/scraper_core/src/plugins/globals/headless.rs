@@ -1,8 +1,9 @@
 use anyhow::Context;
-use config::CONFIG;
 use fantoccini::wd::Capabilities;
 use fantoccini::{ClientBuilder, Locator};
 use mlua::{Lua, UserData, UserDataMethods};
+
+use crate::Config;
 
 struct HeadlessClient {
 	client: fantoccini::client::Client,
@@ -15,11 +16,6 @@ struct Element {
 impl UserData for HeadlessClient {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method("get", |_, this, url: String| async move {
-			#[cfg(not(test))]
-			if CONFIG.plugins.headless.is_none() {
-				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
-			}
-
 			let client = this.client.clone();
 			client
 				.goto(&url)
@@ -36,11 +32,6 @@ impl UserData for HeadlessClient {
 		});
 
 		methods.add_async_method("find", |_, this, selector: String| async move {
-			#[cfg(not(test))]
-			if CONFIG.plugins.headless.is_none() {
-				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
-			}
-
 			let client = this.client.clone();
 			let element = client
 				.find(Locator::Css(&selector))
@@ -51,11 +42,6 @@ impl UserData for HeadlessClient {
 		});
 
 		methods.add_async_method("find_all", |_, this, selector: String| async move {
-			#[cfg(not(test))]
-			if CONFIG.plugins.headless.is_none() {
-				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
-			}
-
 			let client = this.client.clone();
 			let elements = client
 				.find_all(Locator::Css(&selector))
@@ -68,11 +54,6 @@ impl UserData for HeadlessClient {
 		});
 
 		methods.add_async_method("close", |_, this, _: ()| async move {
-			#[cfg(not(test))]
-			if CONFIG.plugins.headless.is_none() {
-				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
-			}
-
 			let client = this.client.clone();
 			client.close().await.with_context(|| "Failed to close the browser")?;
 
@@ -84,11 +65,6 @@ impl UserData for HeadlessClient {
 impl UserData for Element {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method("click", |_, this, _: ()| async move {
-			#[cfg(not(test))]
-			if CONFIG.plugins.headless.is_none() {
-				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
-			}
-
 			let element = this.element.clone();
 			element.click().await.with_context(|| "Failed to click the element")?;
 
@@ -96,11 +72,6 @@ impl UserData for Element {
 		});
 
 		methods.add_async_method("text", |_, this, _: ()| async move {
-			#[cfg(not(test))]
-			if CONFIG.plugins.headless.is_none() {
-				return Err(mlua::Error::external("Headless mode is not enabled in the config"));
-			}
-
 			let element = this.element.clone();
 			let text = element
 				.text()
@@ -113,8 +84,9 @@ impl UserData for Element {
 }
 
 #[cfg_attr(all(coverage_nightly, test), coverage(off))]
-pub(crate) async fn load(lua: &Lua) -> anyhow::Result<()> {
-	if CONFIG.plugins.headless.is_none() {
+#[allow(dead_code)]
+pub(crate) async fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
+	if config.headless.is_none() {
 		tracing::debug!("Headless mode is not enabled in the config");
 		return Ok(());
 	}
@@ -126,7 +98,7 @@ pub(crate) async fn load(lua: &Lua) -> anyhow::Result<()> {
 
 	let client = ClientBuilder::native()
 		.capabilities(cap)
-		.connect(CONFIG.plugins.headless.as_ref().unwrap())
+		.connect(config.headless.as_ref().unwrap())
 		.await
 		.context("Failed to connect to WebDriver")?;
 

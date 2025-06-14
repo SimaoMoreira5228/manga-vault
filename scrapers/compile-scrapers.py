@@ -10,7 +10,7 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 manga_vault_path = os.path.dirname(current_path)
 
 
-def build_rust(path, target):
+def build_rust(path):
     try:
         with open(os.path.join(path, "Cargo.toml"), "r") as file:
             for line in file:
@@ -20,22 +20,21 @@ def build_rust(path, target):
             else:
                 return None
 
-        print(f"Building {target} for {project_name}...")
+        print(f"Building {project_name}...")
 
-        if "windows" in target:
-            output_file = f"{project_name}.dll"
-        else:
-            output_file = f"lib{project_name}.so"
+        output_file = f"{project_name}.wasm"
 
         subprocess.run(
-            ["cargo", "build", "--release", "--target", target],
+            ["cargo", "component", "build", "--target", "wasm32-wasip1", "--release"],
             cwd=path,
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
 
-        built_path = os.path.join(path, "target", target, "release", output_file)
+        built_path = os.path.join(
+            path, "target", "wasm32-wasip1", "release", output_file
+        )
         return built_path if os.path.exists(built_path) else None
 
     except (FileNotFoundError, subprocess.CalledProcessError):
@@ -115,22 +114,14 @@ def process_scraper(scraper, is_lua=False):
             path = os.path.join(current_path, scraper)
             version, state = get_plugin_info(path)
 
-            targets = {
-                "windows": "x86_64-pc-windows-gnu",
-                "linux": "x86_64-unknown-linux-gnu",
-            }
-
-            urls = {}
-            for platform, target in targets.items():
-                if not (build_path := build_rust(path, target)):
-                    raise RuntimeError(f"{platform} build failed")
-                if not (url := upload_to_catbox_with_curl(build_path)):
-                    raise RuntimeError(f"{platform} upload failed")
-                urls[platform] = url
+            if not (build_path := build_rust(path)):
+                raise RuntimeError("build failed")
+            if not (url := upload_to_catbox_with_curl(build_path)):
+                raise RuntimeError("upload failed")
 
             return {
                 "name": scraper,
-                "urls": urls,
+                "urls": {"wasm": url},
                 "version": version,
                 "state": "updated",
                 "build_state": state,

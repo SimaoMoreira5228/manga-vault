@@ -4,8 +4,7 @@
     {
       "name": "mangaread_org",
       "urls": {
-        "windows": "https://files.catbox.moe/zrumxw.dll",
-        "linux": "https://files.catbox.moe/zxhlzh.so"
+        "wasm": "https://files.catbox.moe/5f769d.wasm"
       },
       "version": "0.2.1",
       "state": "updated",
@@ -14,8 +13,7 @@
     {
       "name": "manga_dex",
       "urls": {
-        "windows": "https://files.catbox.moe/jy6t6l.dll",
-        "linux": "https://files.catbox.moe/qxgcct.so"
+        "wasm": "https://files.catbox.moe/t0kfpj.wasm"
       },
       "version": "0.2.2",
       "state": "updated",
@@ -24,8 +22,7 @@
     {
       "name": "hari_manga",
       "urls": {
-        "windows": "https://files.catbox.moe/t00i09.dll",
-        "linux": "https://files.catbox.moe/coalev.so"
+        "wasm": "https://files.catbox.moe/bxe55o.wasm"
       },
       "version": "0.1.0",
       "state": "updated",

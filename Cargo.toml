@@ -9,8 +9,8 @@ path = "src/main.rs"
 
 [workspace]
 members = [
-  "apps/http/*",
-  "config",
+  "apps/http/*", "apps/scheduler","apps/scheduler/queue",
+  "config", "config/derive",
   "database/*",
   "scrapers/scraper_core",
   "scrapers/scraper_types",
@@ -18,6 +18,7 @@ members = [
 
 [workspace.dependencies]
 config = { path = "config" }
+config-derive = { path = "config/derive" }
 database-connection = { path = "database/connection" }
 database-entities = { path = "database/entities" }
 database-migration = { path = "database/migration" }
@@ -35,12 +36,14 @@ sea-orm = { version = "1.1.12", features = [
   "with-json",
   "with-uuid",
 ] }
+queue = { path = "apps/scheduler/queue" }
+scheduler = { path = "apps/scheduler" }
 
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
-tracing-subscriber = "0.3.0"
+tracing-subscriber = "0.3"
 http-utils = { workspace = true }
 scraper_core = { workspace = true }
 config = { workspace = true }

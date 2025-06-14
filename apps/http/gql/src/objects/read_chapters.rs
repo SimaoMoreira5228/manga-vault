@@ -2,7 +2,9 @@ use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
 use sea_orm::EntityTrait;
 
-use crate::objects::{chapters::Chapter, mangas::Manga, users::SanitizedUser};
+use crate::objects::chapters::Chapter;
+use crate::objects::mangas::Manga;
+use crate::objects::users::SanitizedUser;
 
 #[derive(SimpleObject, Clone)]
 #[graphql(complex)]

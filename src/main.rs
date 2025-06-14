@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
-use config::{CONFIG, TracingLevel};
-use scraper_core::{PLUGIN_MANAGER, PluginManager};
+use database_connection::Database;
+use scraper_core::ScraperManager;
 use tracing_subscriber::FmtSubscriber;
 
 const MANGA_VAULT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -9,11 +7,12 @@ const MANGA_VAULT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let subscriber = FmtSubscriber::builder()
-		.with_max_level(TracingLevel::to_tracing_level(&CONFIG.tracing_level))
+		// .with_max_level(TracingLevel::to_tracing_level(&CONFIG.tracing_level))
+		.with_max_level(tracing::Level::INFO)
 		.finish();
 	tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-	let latest_version = http_utils::downloader::get_version("SimaoMoreira5228", "manga-vault")
+	/* let latest_version = http_utils::downloader::get_version("SimaoMoreira5228", "manga-vault")
 		.await
 		.unwrap();
 
@@ -21,14 +20,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		tracing::warn!(
 			"There is a new version of manga_vault at: https://github.com/SimaoMoreira5228/manga-vault/releases/latest"
 		);
-
-		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new_no_update().await?));
 	} else {
 		tracing::info!("Application is up to date");
 		http_utils::downloader::update_website().await;
-		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new().await?));
-	}
+	} */
 
-	gql_api::run().await?;
+	let db = Database::new().await?;
+	let scraper_manager = ScraperManager::new().await?;
+
+	gql_api::run(db, scraper_manager).await?;
 	Ok(())
 }

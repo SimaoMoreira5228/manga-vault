@@ -1,10 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use config::CONFIG;
 use serde::{Deserialize, Serialize};
 
-use crate::PLUGIN_FILE_EXTENSIONS;
+use crate::{Config, RepositoryConfig, PLUGIN_FILE_EXTENSIONS};
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -24,9 +23,7 @@ enum PluginState {
 
 #[derive(Debug, Deserialize, Serialize)]
 struct DownloadOptions {
-	windows: Option<String>,
-	macos: Option<String>,
-	linux: Option<String>,
+	wasm: Option<String>,
 	lua: Option<String>,
 }
 
@@ -51,14 +48,14 @@ struct PluginNameInternal {
 	version: String,
 }
 
-pub async fn load_repos() -> Result<()> {
-	for repo_config in &CONFIG.plugins.repositories {
+pub async fn load_repos(config: &Config) -> Result<()> {
+	for repo_config in &config.repositories {
 		tracing::debug!("Loading repository: {}", repo_config.url);
 
 		let repo = fetch_repository(&repo_config.url).await?;
 		let filtered_plugins = filter_plugins(&repo.plugins, repo_config)?;
 
-		let repo_dir = PathBuf::from(&CONFIG.plugins.plugins_folder).join(&repo.name);
+		let repo_dir = PathBuf::from(&config.plugins_folder).join(&repo.name);
 		ensure_directory_exists(&repo_dir)?;
 
 		let internal_plugins = load_internal_plugins(&repo_dir).await?;
@@ -80,7 +77,7 @@ async fn fetch_repository(url: &str) -> Result<Repository> {
 
 fn filter_plugins<'a>(
 	plugins: &'a [RepositoryPlugin],
-	config: &config::RepositoryConfig,
+	config: &RepositoryConfig,
 ) -> Result<Vec<&'a RepositoryPlugin>> {
 	let filtered = plugins
 		.iter()
@@ -153,6 +150,11 @@ async fn download_new_plugins(
 	let internal_path = repo_dir.join("plugins.json");
 	let mut new_internal = Vec::with_capacity(plugins.len());
 
+	let client = reqwest::Client::builder()
+		.user_agent("reqwest/0.12 (Rust)")
+		.build()
+		.context("Failed to build HTTP client")?;
+
 	for plugin in plugins {
 		if let Some(existing) = internal_plugins.iter().find(|p| p.name == plugin.name) {
 			if existing.version == plugin.version {
@@ -168,11 +170,6 @@ async fn download_new_plugins(
 		let plugin_file = repo_dir.join(format!("{}.{}", plugin.name, extension));
 
 		tracing::info!("Downloading {} plugin: {}", repo_name, plugin.name);
-
-		let client = reqwest::Client::builder()
-			.user_agent("reqwest/0.12 (Rust)")
-			.build()
-			.context("Failed to build HTTP client")?;
 
 		let data = client
 			.get(url)
@@ -204,15 +201,12 @@ async fn download_new_plugins(
 fn get_download_info(plugin: &RepositoryPlugin) -> Result<(&str, &'static str)> {
 	if let Some(lua_url) = &plugin.urls.lua {
 		Ok((lua_url, "lua"))
+	} else if let Some(wasm_url) = &plugin.urls.wasm {
+		Ok((wasm_url, "wasm"))
 	} else {
-		#[cfg(target_os = "windows")]
-		let (url, ext) = (plugin.urls.windows.as_deref(), "dll");
-		#[cfg(target_os = "macos")]
-		let (url, ext) = (plugin.urls.macos.as_deref(), "dylib");
-		#[cfg(target_os = "linux")]
-		let (url, ext) = (plugin.urls.linux.as_deref(), "so");
-
-		url.map(|u| (u, ext))
-			.with_context(|| format!("No valid download URL for {}", plugin.name))
+		Err(anyhow::anyhow!(
+			"No valid download URL found for plugin: {}",
+			plugin.name
+		))
 	}
 }

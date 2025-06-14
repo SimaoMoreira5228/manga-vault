@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 sea-orm = { workspace = true }
 config = { workspace = true }
+config-derive = { workspace = true }
 scraper_core = { workspace = true }
 database-migration = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
@@ -15,3 +16,4 @@ tracing = "0.1"
 url = "2.5"
 tokio = { version = "1", features = ["full"] }
 thiserror = "2.0"
+toml = "0.8"

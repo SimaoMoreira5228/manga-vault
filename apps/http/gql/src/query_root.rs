@@ -2,14 +2,8 @@ use std::sync::Arc;
 
 use async_graphql::{Context, Object, Result};
 use database_connection::Database;
-use scraper_core::PLUGIN_MANAGER;
-use sea_orm::ActiveValue;
-use sea_orm::ColumnTrait;
-use sea_orm::EntityTrait;
-use sea_orm::IntoActiveModel;
-use sea_orm::QueryFilter;
-use sea_orm::QueryOrder;
-use sea_orm::QuerySelect;
+use scraper_core::ScraperManager;
+use sea_orm::{ActiveValue, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder, QuerySelect};
 
 use crate::objects::categories::Category;
 use crate::objects::chapters::Chapter;
@@ -50,12 +44,17 @@ impl QueryRoot {
 		Ok(chapters.into_iter().map(Chapter::from).collect())
 	}
 
-	async fn scrape_latest(&self, ctx: &Context<'_>, pages: u32) -> Result<Option<Vec<crate::objects::mangas::Manga>>> {
-		let scraper = PLUGIN_MANAGER
-			.get()
-			.ok_or_else(|| async_graphql::Error::new("Plugin manager not initialized"))?
-			.get_plugin("manhuafast")
-			.ok_or_else(|| async_graphql::Error::new("Manhuafast plugin not found"))?;
+	async fn scrape_latest(
+		&self,
+		ctx: &Context<'_>,
+		scraper_id: String,
+		pages: u32,
+	) -> Result<Option<Vec<crate::objects::mangas::Manga>>> {
+		let scraper = ctx
+			.data::<Arc<ScraperManager>>()?
+			.get_plugin(scraper_id.as_str())
+			.await
+			.ok_or_else(|| async_graphql::Error::new("MangaRead.Org plugin not found"))?;
 
 		let db = ctx.data::<Arc<Database>>()?;
 		let latest_mangas = scraper.scrape_latest(pages).await?;

@@ -5,7 +5,9 @@ use chrono::NaiveDateTime;
 use database_connection::Database;
 use sea_orm::EntityTrait;
 
-use crate::objects::{categories::Category, mangas::Manga, users::SanitizedUser};
+use crate::objects::categories::Category;
+use crate::objects::mangas::Manga;
+use crate::objects::users::SanitizedUser;
 
 #[derive(SimpleObject, Clone)]
 #[graphql(complex)]

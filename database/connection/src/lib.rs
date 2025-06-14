@@ -1,9 +1,10 @@
-use std::fs;
+use std::env;
 use std::path::Path;
 use std::sync::Arc;
+use std::{fs, path::PathBuf};
 
-use config::CONFIG;
 use database_migration::MigratorTrait;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 pub type Connection = sea_orm::DatabaseConnection;
@@ -29,16 +30,51 @@ pub enum Error {
 	IoError(#[from] std::io::Error),
 }
 
+fn current_exe_parent_dir() -> PathBuf {
+	env::current_exe()
+		.expect("Failed to get executable path")
+		.parent()
+		.expect("Executable has no parent directory")
+		.to_path_buf()
+}
+
+#[derive(Debug, Deserialize, Serialize, config_derive::Config)]
+#[config(name = "database")]
+pub struct Config {
+	#[serde(default)]
+	pub backup_interval: u16,
+	#[serde(default)]
+	pub database_url: String,
+	#[serde(default)]
+	pub database_backup_folder: String,
+	#[serde(default)]
+	pub backup_retention_days: u16,
+}
+
+impl Default for Config {
+	fn default() -> Self {
+		Self {
+			backup_interval: 2,
+			database_url: format!("sqlite://{}/database.db", current_exe_parent_dir().display()).into(),
+			database_backup_folder: format!("{}/backups", current_exe_parent_dir().display()),
+			backup_retention_days: 7,
+		}
+	}
+}
+
 #[derive(Debug)]
 pub struct Database {
 	pub conn: Connection,
 	pub db_type: String,
 	url: Url,
+	config: Arc<Config>,
 }
 
 impl Database {
 	pub async fn new() -> Result<Arc<Self>, Error> {
-		let mut parsed_url = Url::parse(&CONFIG.database.database_url)?;
+		let config = Arc::new(Config::load());
+
+		let mut parsed_url = Url::parse(&config.database_url)?;
 
 		let scheme = parsed_url.scheme().to_string();
 
@@ -94,10 +130,11 @@ impl Database {
 			conn,
 			db_type: scheme.clone(),
 			url: parsed_url.clone(),
+			config: config.clone(),
 		});
 
 		if scheme == "sqlite" {
-			let backup_interval = std::time::Duration::from_secs(CONFIG.database.backup_interval as u64 * 3600);
+			let backup_interval = std::time::Duration::from_secs(config.backup_interval as u64 * 3600);
 			let cleanup_interval = std::time::Duration::from_secs(4 * 3600);
 
 			let backup_db = db.clone();
@@ -137,7 +174,7 @@ impl Database {
 
 		let timestamp = chrono::Utc::now().format("%Y-%m-%d_%H-%M").to_string();
 		let backup_filename = format!("backup-{}.sqlite", timestamp);
-		let backup_folder = Path::new(&CONFIG.database.database_backup_folder);
+		let backup_folder = Path::new(&self.config.database_backup_folder);
 
 		if !backup_folder.exists() {
 			fs::create_dir_all(backup_folder)?;
@@ -153,13 +190,13 @@ impl Database {
 			return Err(Error::CleanupError("Cleanup is only supported for SQLite".to_string()));
 		}
 
-		let backup_folder = Path::new(&CONFIG.database.database_backup_folder);
+		let backup_folder = Path::new(&self.config.database_backup_folder);
 		if !backup_folder.exists() {
 			return Ok(());
 		}
 
 		let now = chrono::Utc::now();
-		let retention = chrono::Duration::days(CONFIG.database.backup_retention_days as i64);
+		let retention = chrono::Duration::days(self.config.backup_retention_days as i64);
 
 		for entry in fs::read_dir(backup_folder).map_err(Error::IoError)? {
 			let entry = entry.map_err(Error::IoError)?;

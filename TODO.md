@@ -1,4 +1,4 @@
-- [ ] database
+- [x] database
 
   - [ ] ~~think how going away from sea-orm (maybe to something async disel/diesel-async)~~
   - [x] add a way to use different databases (sqlite, postgres, mysql)
@@ -8,6 +8,7 @@
 
   - [ ] websocket for the rest api
   - [ ] rethink how the whole synchronization works
+  - [ ] be able to sync mangas, basicly the user syncs the same manga from different scrapers and then the server kinda merges them into one manga, only for favorite mangas, like add a row to favorite manga, maybe called sources, maybe a array of manga ids, the order of the array is by user choosen priority.
 
 - [ ] add tests for rust code and test in rust for lua code (still not sure how to test scrapers)
 
@@ -26,7 +27,7 @@
   - [x] make all http and headless methods async
   - [ ] add a flags (only boolean) system (for nsfw, etc) where you get te avaliable from the scraper by the Get_info() function then pass that to the client, then when scraping you pass the flags as a parameter of the scraping functions
   - [ ] maybe make the lua plugins a cargo feature
-  - [ ] maybe add support for a lua like static language
+  - [ ] wasm support
 
 - [ ] refactor website
 
@@ -43,3 +44,7 @@
 
 - [ ] refactor the whole updating system (maybe just warn that its outdated and not update it automatically, but what about the scrapers? just stop updating them?)
 - [ ] update the readme
+
+- [ ] releases
+  - [ ] check on every pr if one of the verisons (check every lib) is outdated (the cargo toml version be heigher than the current released version)
+  - [ ] if one of the components updated, automatically update the main binary version and release it too
