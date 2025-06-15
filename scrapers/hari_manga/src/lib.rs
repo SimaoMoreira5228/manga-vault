@@ -65,8 +65,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 
 	fn scrape_search(query: String, page: u32) -> Vec<MangaItem> {
-		let url =
-			format!("https://harimanga.me/page/{page}/?s={query}&post_type=wp-manga&op&author&artist&release&adult");
+		let url = format!("https://harimanga.me/page/{page}/?s={query}&post_type=wp-manga&op&author&artist&release&adult");
 		scrape_manga_list(&url)
 	}
 
@@ -138,8 +137,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			}
 
 			if let Ok(authors_sel) = ::scraper::Selector::parse("div.author-content a") {
-				let mut author_list: Vec<String> =
-					div.select(&authors_sel).map(|e| e.text().collect::<String>()).collect();
+				let mut author_list: Vec<String> = div.select(&authors_sel).map(|e| e.text().collect::<String>()).collect();
 				if !author_list.is_empty() {
 					authors.append(&mut author_list);
 				}

@@ -28,8 +28,7 @@ mlua = { version = "0.10", features = [
   "async",
 ] }
 scraper = "0.23"
-fantoccini = "0.21"
-toml = "0.8"
+fantoccini = "0.22"
 
 [dev-dependencies]
 mockito = "1.7.0"

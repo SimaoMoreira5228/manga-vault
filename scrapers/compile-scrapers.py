@@ -10,30 +10,31 @@ current_path = os.path.dirname(os.path.abspath(__file__))
 manga_vault_path = os.path.dirname(current_path)
 
 
-def build_rust(path):
+def build_rust(scraper_name):
     try:
-        with open(os.path.join(path, "Cargo.toml"), "r") as file:
-            for line in file:
-                if line.strip().startswith("name"):
-                    project_name = line.split("=")[1].strip().strip('"')
-                    break
-            else:
-                return None
+        print(f"Building {scraper_name}...")
 
-        print(f"Building {project_name}...")
-
-        output_file = f"{project_name}.wasm"
+        output_file = f"{scraper_name}.wasm"
 
         subprocess.run(
-            ["cargo", "component", "build", "--target", "wasm32-wasip1", "--release"],
-            cwd=path,
+            [
+                "cargo",
+                "component",
+                "build",
+                "--target",
+                "wasm32-wasip1",
+                "--release",
+                "--package",
+                scraper_name,
+            ],
+            cwd=manga_vault_path,
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
 
         built_path = os.path.join(
-            path, "target", "wasm32-wasip1", "release", output_file
+            manga_vault_path, "target", "wasm32-wasip1", "release", output_file
         )
         return built_path if os.path.exists(built_path) else None
 
@@ -111,10 +112,10 @@ def process_scraper(scraper, is_lua=False):
             }
 
         else:
-            path = os.path.join(current_path, scraper)
-            version, state = get_plugin_info(path)
+            scraper_path = os.path.join(current_path, scraper)
+            version, state = get_plugin_info(scraper_path)
 
-            if not (build_path := build_rust(path)):
+            if not (build_path := build_rust(scraper)):
                 raise RuntimeError("build failed")
             if not (url := upload_to_catbox_with_curl(build_path)):
                 raise RuntimeError("upload failed")

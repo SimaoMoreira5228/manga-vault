@@ -14,7 +14,7 @@ use crate::priority_queue_core::{InsertResult, PriorityQueueCore};
 use crate::queue_item::QueueItem;
 
 mod priority_queue_core;
-mod queue_item;
+pub mod queue_item;
 
 pub type ProcessResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
@@ -29,6 +29,7 @@ pub enum EnqueueStrategy {
 }
 
 /// A task queue that manages job items with priorities and retries.
+#[allow(dead_code)]
 pub struct TaskQueue<J> {
 	core: Arc<PriorityQueueCore<J>>,
 	process_fn: ProcessFn<J>,

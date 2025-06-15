@@ -8,7 +8,7 @@ fmt *args:
     cargo +{{RUST_TOOLCHAIN}} fmt --all {{args}}
 
 lint *args:
-    cargo +{{RUST_TOOLCHAIN}} clippy --fix --allow-dirty --allow-staged --all-features --all-targets {{args}}
+    cargo clippy --fix --allow-dirty --allow-staged --all-features --all-targets {{args}}
 
 alias coverage := test
 test *args:

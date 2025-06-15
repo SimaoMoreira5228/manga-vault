@@ -164,12 +164,7 @@ impl MigrationTrait for Migration {
 		// ─── Chapters Indexes
 		// ─────────────────────────────────────────────────────────
 		manager
-			.drop_index(
-				Index::drop()
-					.name("idx_chapters_manga_id")
-					.table(Chapters::Table)
-					.to_owned(),
-			)
+			.drop_index(Index::drop().name("idx_chapters_manga_id").table(Chapters::Table).to_owned())
 			.await?;
 
 		manager
@@ -177,12 +172,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.drop_index(
-				Index::drop()
-					.name("idx_chapters_title")
-					.table(Chapters::Table)
-					.to_owned(),
-			)
+			.drop_index(Index::drop().name("idx_chapters_title").table(Chapters::Table).to_owned())
 			.await?;
 
 		// ─── Mangas Indexes

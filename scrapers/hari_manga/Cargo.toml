@@ -6,8 +6,6 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib"]
 
-[workspace]
-
 [dependencies]
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 scraper = "0.23"

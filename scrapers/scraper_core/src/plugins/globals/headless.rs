@@ -73,10 +73,7 @@ impl UserData for Element {
 
 		methods.add_async_method("text", |_, this, _: ()| async move {
 			let element = this.element.clone();
-			let text = element
-				.text()
-				.await
-				.with_context(|| "Failed to get text from the element")?;
+			let text = element.text().await.with_context(|| "Failed to get text from the element")?;
 
 			Ok(text)
 		});

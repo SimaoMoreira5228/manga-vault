@@ -13,15 +13,10 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 		"trim_start",
 		lua.create_function(|_, s: String| Ok(s.trim_start().to_string()))?,
 	)?;
-	string_table.set(
-		"trim_end",
-		lua.create_function(|_, s: String| Ok(s.trim_end().to_string()))?,
-	)?;
+	string_table.set("trim_end", lua.create_function(|_, s: String| Ok(s.trim_end().to_string()))?)?;
 	string_table.set(
 		"replace",
-		lua.create_function(|_, (s, pattern, replacement): (String, String, String)| {
-			Ok(s.replace(&pattern, &replacement))
-		})?,
+		lua.create_function(|_, (s, pattern, replacement): (String, String, String)| Ok(s.replace(&pattern, &replacement)))?,
 	)?;
 
 	Ok(())

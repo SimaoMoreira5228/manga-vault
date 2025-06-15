@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::{Config, RepositoryConfig, PLUGIN_FILE_EXTENSIONS};
+use crate::{Config, PLUGIN_FILE_EXTENSIONS, RepositoryConfig};
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -75,20 +75,13 @@ async fn fetch_repository(url: &str) -> Result<Repository> {
 		.context("Failed to parse repository data")
 }
 
-fn filter_plugins<'a>(
-	plugins: &'a [RepositoryPlugin],
-	config: &RepositoryConfig,
-) -> Result<Vec<&'a RepositoryPlugin>> {
+fn filter_plugins<'a>(plugins: &'a [RepositoryPlugin], config: &RepositoryConfig) -> Result<Vec<&'a RepositoryPlugin>> {
 	let filtered = plugins
 		.iter()
 		.filter(|p| {
 			let in_whitelist = config.whitelist.as_ref().map(|wl| wl.contains(&p.name)).unwrap_or(true);
 
-			let in_blacklist = config
-				.blacklist
-				.as_ref()
-				.map(|bl| bl.contains(&p.name))
-				.unwrap_or(false);
+			let in_blacklist = config.blacklist.as_ref().map(|bl| bl.contains(&p.name)).unwrap_or(false);
 
 			in_whitelist && !in_blacklist
 		})
@@ -204,9 +197,6 @@ fn get_download_info(plugin: &RepositoryPlugin) -> Result<(&str, &'static str)> 
 	} else if let Some(wasm_url) = &plugin.urls.wasm {
 		Ok((wasm_url, "wasm"))
 	} else {
-		Err(anyhow::anyhow!(
-			"No valid download URL found for plugin: {}",
-			plugin.name
-		))
+		Err(anyhow::anyhow!("No valid download URL found for plugin: {}", plugin.name))
 	}
 }

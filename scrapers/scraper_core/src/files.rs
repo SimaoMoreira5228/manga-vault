@@ -3,12 +3,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use anyhow::{Context, Result};
+use notify::{Event, EventKind};
+
 use crate::plugins::lua::LuaPlugin;
 use crate::plugins::wasm::WasmPlugin;
 use crate::plugins::{Plugin, PluginType};
 use crate::{Config, FileModification, ModificationTracker, PLUGIN_FILE_EXTENSIONS, PluginMap};
-use anyhow::{Context, Result};
-use notify::{Event, EventKind, RecommendedWatcher, Watcher};
 
 pub fn read_directory<CB, Fut>(
 	path: &Path,
@@ -97,30 +98,7 @@ pub async fn load_plugin_file(
 	Ok(())
 }
 
-pub async fn handle_file_events(
-	config: Arc<Config>,
-	plugins: PluginMap,
-	modification_tracker: ModificationTracker,
-) -> Result<()> {
-	let (event_sender, event_receiver) = std::sync::mpsc::channel();
-	let mut watcher =
-		RecommendedWatcher::new(event_sender, notify::Config::default()).context("Failed to create file watcher")?;
-
-	watcher
-		.watch(Path::new(&config.plugins_folder), notify::RecursiveMode::Recursive)
-		.context("Failed to watch plugins directory")?;
-
-	for event in event_receiver {
-		match event {
-			Ok(event) => handle_single_event(config.clone(), event, &plugins, &modification_tracker).await,
-			Err(e) => tracing::error!("Watcher error: {:?}", e),
-		}
-	}
-
-	Ok(())
-}
-
-async fn handle_single_event(
+pub(crate) async fn handle_single_event(
 	config: Arc<Config>,
 	event: Event,
 	plugins: &PluginMap,
@@ -216,11 +194,7 @@ async fn handle_modification_event(
 								tokio::time::sleep(RETRY_DELAY).await;
 								retry_count += 1;
 							} else {
-								tracing::error!(
-									"Permanently failed to process plugin {}: {:#}",
-									path_clone.display(),
-									e
-								);
+								tracing::error!("Permanently failed to process plugin {}: {:#}", path_clone.display(), e);
 							}
 						}
 					}

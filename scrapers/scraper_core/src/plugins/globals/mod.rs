@@ -14,7 +14,13 @@ pub fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
 	scraping::load(lua)?;
 	#[cfg(not(test))]
 	if config.headless.is_some() {
-		let rt = tokio::runtime::Handle::current();
+		use anyhow::Context;
+
+		let rt = tokio::runtime::Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.context("Failed to create headless runtime")?;
+
 		rt.block_on(headless::load(config, lua))?;
 	}
 	string::load(lua)?;

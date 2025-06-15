@@ -50,9 +50,7 @@ impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::Chap
 	}
 }
 
-impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::ScraperInfo>
-	for scraper_types::ScraperInfo
-{
+impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::ScraperInfo> for scraper_types::ScraperInfo {
 	fn from(info: crate::plugins::wasm::bindings::exports::scraper::types::scraper::ScraperInfo) -> Self {
 		Self {
 			id: info.id,

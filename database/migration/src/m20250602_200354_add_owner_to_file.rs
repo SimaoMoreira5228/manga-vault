@@ -10,11 +10,7 @@ impl MigrationTrait for Migration {
 		match manager.get_database_backend() {
 			DbBackend::Sqlite => {
 				manager
-					.rename_table(
-						TableRenameStatement::new()
-							.table(Files::Table, FilesOld::Table)
-							.to_owned(),
-					)
+					.rename_table(TableRenameStatement::new().table(Files::Table, FilesOld::Table).to_owned())
 					.await?;
 
 				manager
@@ -22,13 +18,7 @@ impl MigrationTrait for Migration {
 						Table::create()
 							.table(Files::Table)
 							.if_not_exists()
-							.col(
-								ColumnDef::new(Files::Id)
-									.integer()
-									.not_null()
-									.auto_increment()
-									.primary_key(),
-							)
+							.col(ColumnDef::new(Files::Id).integer().not_null().auto_increment().primary_key())
 							.col(ColumnDef::new(Files::Name).string().not_null())
 							.col(ColumnDef::new(Files::OwnerId).integer().null())
 							.col(ColumnDef::new(Files::CreatedAt).date_time().not_null())
@@ -50,9 +40,7 @@ impl MigrationTrait for Migration {
                 "#;
 				manager.get_connection().execute_unprepared(copy_sql).await?;
 
-				manager
-					.drop_table(Table::drop().table(FilesOld::Table).to_owned())
-					.await?;
+				manager.drop_table(Table::drop().table(FilesOld::Table).to_owned()).await?;
 
 				Ok(())
 			}
@@ -92,11 +80,7 @@ impl MigrationTrait for Migration {
 		match manager.get_database_backend() {
 			DbBackend::Sqlite => {
 				manager
-					.rename_table(
-						TableRenameStatement::new()
-							.table(Files::Table, FilesNew::Table)
-							.to_owned(),
-					)
+					.rename_table(TableRenameStatement::new().table(Files::Table, FilesNew::Table).to_owned())
 					.await?;
 
 				manager
@@ -104,13 +88,7 @@ impl MigrationTrait for Migration {
 						Table::create()
 							.table(Files::Table)
 							.if_not_exists()
-							.col(
-								ColumnDef::new(Files::Id)
-									.integer()
-									.not_null()
-									.auto_increment()
-									.primary_key(),
-							)
+							.col(ColumnDef::new(Files::Id).integer().not_null().auto_increment().primary_key())
 							.col(ColumnDef::new(Files::Name).string().not_null())
 							.col(ColumnDef::new(Files::CreatedAt).date_time().not_null())
 							.to_owned(),
@@ -124,9 +102,7 @@ impl MigrationTrait for Migration {
                 "#;
 				manager.get_connection().execute_unprepared(copy_back_sql).await?;
 
-				manager
-					.drop_table(Table::drop().table(FilesNew::Table).to_owned())
-					.await?;
+				manager.drop_table(Table::drop().table(FilesNew::Table).to_owned()).await?;
 
 				Ok(())
 			}
@@ -142,12 +118,7 @@ impl MigrationTrait for Migration {
 					.await?;
 
 				manager
-					.alter_table(
-						Table::alter()
-							.table(Files::Table)
-							.drop_column(Files::OwnerId)
-							.to_owned(),
-					)
+					.alter_table(Table::alter().table(Files::Table).drop_column(Files::OwnerId).to_owned())
 					.await?;
 
 				Ok(())

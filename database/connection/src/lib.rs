@@ -1,7 +1,6 @@
-use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::{fs, path::PathBuf};
+use std::{env, fs};
 
 use database_migration::MigratorTrait;
 use serde::{Deserialize, Serialize};

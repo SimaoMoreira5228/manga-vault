@@ -14,3 +14,10 @@ path = "src/main.rs"
 queue = { workspace = true }
 anyhow = "1.0"
 tokio = { version = "1", features = ["full"] }
+database-connection = { workspace = true }
+tracing = "0.1.41"
+chrono = "0.4.39"
+rand = "0.9"
+sea-orm = { workspace = true }
+scraper_core = { workspace = true }
+database-entities = { workspace = true }

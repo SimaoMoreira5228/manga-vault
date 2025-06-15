@@ -52,7 +52,8 @@ impl<J> PriorityQueueCore<J> {
 	/// If the item already exists, it updates it if the new item's priority is
 	/// higher. If the queue is full and the new item has a lower priority than
 	/// the lowest item in the queue, it drops the new item. If the item is
-	/// inserted, it returns `InsertResult::Inserted`, otherwise it returns `InsertResult::Updated`.
+	/// inserted, it returns `InsertResult::Inserted`, otherwise it returns
+	/// `InsertResult::Updated`.
 	pub async fn insert(&self, item: Arc<QueueItem<J>>) -> InsertResult {
 		if let Some(mut existing) = self.items.get_mut(&item.key) {
 			if item.priority > existing.priority {

@@ -52,18 +52,15 @@ impl UserData for CustomScraper {
 			Ok(url.trim().to_string())
 		});
 
-		methods.add_async_method(
-			"select_elements",
-			|lua, _, (html, selector): (String, String)| async move {
-				let selector = Selector::parse(&selector)
-					.map_err(|e| mlua::Error::external(format!("Selector parsing error: {}", e)))?;
+		methods.add_async_method("select_elements", |lua, _, (html, selector): (String, String)| async move {
+			let selector =
+				Selector::parse(&selector).map_err(|e| mlua::Error::external(format!("Selector parsing error: {}", e)))?;
 
-				let html = Html::parse_fragment(&html);
-				let elements = html.select(&selector).collect::<Vec<_>>();
-				let elements_html: Vec<String> = elements.into_iter().map(|e| e.html()).collect();
-				Ok(elements_html.into_lua(&lua))
-			},
-		);
+			let html = Html::parse_fragment(&html);
+			let elements = html.select(&selector).collect::<Vec<_>>();
+			let elements_html: Vec<String> = elements.into_iter().map(|e| e.html()).collect();
+			Ok(elements_html.into_lua(&lua))
+		});
 	}
 }
 

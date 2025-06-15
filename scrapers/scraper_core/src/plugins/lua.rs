@@ -1,14 +1,14 @@
+use std::fs;
 use std::io::Read;
+use std::path::Path;
 use std::sync::Arc;
-use std::{fs, path::Path};
 
 use anyhow::Context;
 use mlua::Lua;
 use scraper_types::{Genre, MangaItem, MangaPage, ScraperInfo};
 
-use crate::Config;
-
 use super::globals;
+use crate::Config;
 
 #[derive(Debug, Clone)]
 pub struct LuaPlugin {
@@ -31,9 +31,7 @@ impl LuaPlugin {
 		runtime.load(&script_content).exec()?;
 
 		let globals = runtime.globals();
-		let name: mlua::String = globals
-			.get("PLUGIN_NAME")
-			.context("Missing PLUGIN_NAME in Lua plugin")?;
+		let name: mlua::String = globals.get("PLUGIN_NAME").context("Missing PLUGIN_NAME in Lua plugin")?;
 		let version: mlua::String = globals
 			.get("PLUGIN_VERSION")
 			.context("Missing PLUGIN_VERSION in Lua plugin")?;

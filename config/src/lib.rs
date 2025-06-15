@@ -1,6 +1,7 @@
+use std::path::Path;
+
 use config::{Config as InnerConfig, ConfigError, Environment, File};
 use serde::de::DeserializeOwned;
-use std::path::Path;
 
 pub fn load_config<T>(base: &str, env: &str) -> Result<T, ConfigError>
 where

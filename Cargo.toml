@@ -12,9 +12,9 @@ members = [
   "apps/http/*", "apps/scheduler","apps/scheduler/queue",
   "config", "config/derive",
   "database/*",
-  "scrapers/scraper_core",
-  "scrapers/scraper_types",
+  "scrapers/*",
 ]
+exclude = ["scrapers/manhuafast"]
 
 [workspace.dependencies]
 config = { path = "config" }
@@ -46,6 +46,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 http-utils = { workspace = true }
 scraper_core = { workspace = true }
+scheduler = { workspace = true }
 config = { workspace = true }
 database-connection = { workspace = true }
 gql-api = { workspace = true }

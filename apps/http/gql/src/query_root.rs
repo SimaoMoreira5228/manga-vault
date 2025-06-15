@@ -29,9 +29,7 @@ impl QueryRoot {
 
 	async fn chapter(&self, ctx: &Context<'_>, id: i32) -> Result<Option<Chapter>> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let chapter = database_entities::chapters::Entity::find_by_id(id)
-			.one(&db.conn)
-			.await?;
+		let chapter = database_entities::chapters::Entity::find_by_id(id).one(&db.conn).await?;
 		Ok(chapter.map(Chapter::from))
 	}
 
@@ -54,7 +52,7 @@ impl QueryRoot {
 			.data::<Arc<ScraperManager>>()?
 			.get_plugin(scraper_id.as_str())
 			.await
-			.ok_or_else(|| async_graphql::Error::new("MangaRead.Org plugin not found"))?;
+			.ok_or_else(|| async_graphql::Error::new("Scraper not found"))?;
 
 		let db = ctx.data::<Arc<Database>>()?;
 		let latest_mangas = scraper.scrape_latest(pages).await?;
@@ -76,9 +74,7 @@ impl QueryRoot {
 					updated_at: ActiveValue::Set(chrono::Local::now().naive_local()),
 					..Default::default()
 				};
-				database_entities::mangas::Entity::insert(new_manga)
-					.exec(&db.conn)
-					.await?;
+				database_entities::mangas::Entity::insert(new_manga).exec(&db.conn).await?;
 			} else {
 				let mut existing_manga = existing_manga.unwrap().into_active_model();
 				existing_manga.title = ActiveValue::Set(manga.title.clone());
@@ -131,9 +127,7 @@ impl QueryRoot {
 
 	async fn read_chapter(&self, ctx: &Context<'_>, id: i32) -> Result<Option<ReadChapter>> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let read_chapter = database_entities::read_chapters::Entity::find_by_id(id)
-			.one(&db.conn)
-			.await?;
+		let read_chapter = database_entities::read_chapters::Entity::find_by_id(id).one(&db.conn).await?;
 		Ok(read_chapter.map(ReadChapter::from))
 	}
 
@@ -148,9 +142,7 @@ impl QueryRoot {
 
 	async fn category(&self, ctx: &Context<'_>, id: i32) -> Result<Option<Category>> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let category = database_entities::categories::Entity::find_by_id(id)
-			.one(&db.conn)
-			.await?;
+		let category = database_entities::categories::Entity::find_by_id(id).one(&db.conn).await?;
 		Ok(category.map(Category::from))
 	}
 }

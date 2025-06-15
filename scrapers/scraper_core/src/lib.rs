@@ -1,13 +1,15 @@
 #![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::collections::HashMap;
+use std::env;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
-use std::{collections::HashMap, env};
-use tokio::sync::RwLock;
 
 use anyhow::{Context, Result};
+use notify::{RecommendedWatcher, Watcher};
 use plugins::{Plugin, PluginType};
+use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
 
 mod files;
 pub mod plugins;
@@ -132,11 +134,7 @@ impl ScraperManager {
 				};
 
 				if PLUGIN_FILE_EXTENSIONS.contains(&ext) {
-					let plugin_type = if ext == "lua" {
-						PluginType::Lua
-					} else {
-						PluginType::Wasm
-					};
+					let plugin_type = if ext == "lua" { PluginType::Lua } else { PluginType::Wasm };
 
 					match files::load_plugin_file(config.clone(), plugins.clone(), path.clone(), plugin_type).await {
 						Ok(_) => tracing::info!("Successfully loaded plugin: {}", path.display()),
@@ -156,17 +154,33 @@ impl ScraperManager {
 		let modification_tracker = self.modification_tracker.clone();
 		let config = self.config.clone();
 
+		let (tx, rx) = std::sync::mpsc::channel();
+
 		std::thread::Builder::new()
 			.name("plugin-file-watcher".into())
 			.spawn(move || {
-				let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
-				rt.block_on(async move {
-					if let Err(e) = files::handle_file_events(config, plugins, modification_tracker).await {
-						tracing::error!("File watcher error: {:#}", e);
-					}
-				});
-			})
-			.context("Failed to spawn file watcher thread")?;
+				let (event_sender, event_receiver) = std::sync::mpsc::channel();
+				let mut watcher =
+					RecommendedWatcher::new(event_sender, notify::Config::default()).expect("Failed to create watcher");
+
+				watcher
+					.watch(Path::new(&config.plugins_folder), notify::RecursiveMode::Recursive)
+					.expect("Failed to watch directory");
+
+				for event in event_receiver {
+					tx.send(event).expect("Failed to send event");
+				}
+			})?;
+
+		let config = self.config.clone();
+		tokio::spawn(async move {
+			while let Ok(event) = rx.recv() {
+				match event {
+					Ok(event) => files::handle_single_event(config.clone(), event, &plugins, &modification_tracker).await,
+					Err(e) => tracing::error!("Watcher error: {:?}", e),
+				}
+			}
+		});
 
 		Ok(())
 	}

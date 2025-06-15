@@ -283,8 +283,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		let img_selector = ::scraper::Selector::parse("div.summary_image img").unwrap();
 		let img_url = get_image_url(&html.select(&img_selector).next().unwrap());
 
-		let summary_content_selector =
-			::scraper::Selector::parse("div.summary_content_wrap div.summary_content").unwrap();
+		let summary_content_selector = ::scraper::Selector::parse("div.summary_content_wrap div.summary_content").unwrap();
 		let summary_content_div = html.select(&summary_content_selector).next().unwrap();
 		let post_content_item_selector = ::scraper::Selector::parse("div.post-content div.post-content_item").unwrap();
 		let post_content_item = summary_content_div.select(&post_content_item_selector);
@@ -420,10 +419,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		let chapters_selector = ::scraper::Selector::parse("li.wp-manga-chapter").unwrap();
 		let mut chapters: Vec<exports::scraper::types::scraper::Chapter> = Vec::new();
 		for chapter in html.select(&chapters_selector) {
-			let info_selector = chapter
-				.select(&::scraper::Selector::parse("a").unwrap())
-				.next()
-				.unwrap();
+			let info_selector = chapter.select(&::scraper::Selector::parse("a").unwrap()).next().unwrap();
 
 			let title = info_selector.inner_html().trim().to_string();
 

@@ -2,13 +2,14 @@ wit_bindgen::generate!({
 	path: "scraper.wit"
 });
 
-use serde_json::Value;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use crate::scraper::types::*;
 use exports::scraper::types::scraper::*;
+use serde_json::Value;
+
+use crate::scraper::types::*;
 
 struct RateLimiter {
 	timestamps: VecDeque<Instant>,
@@ -60,10 +61,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			return Vec::new();
 		}
 
-		let api_url = format!(
-			"https://api.mangadex.org/at-home/server/{}?forcePort443=false",
-			chapter_id
-		);
+		let api_url = format!("https://api.mangadex.org/at-home/server/{}?forcePort443=false", chapter_id);
 
 		let response = match http_get(&api_url) {
 			Some(res) => res,
