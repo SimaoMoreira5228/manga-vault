@@ -1,46 +1,239 @@
+#![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 wit_bindgen::generate!({
 	path: "scraper.wit"
 });
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use exports::scraper::types::scraper::*;
+use once_cell::sync::Lazy;
 use serde_json::Value;
 
 use crate::scraper::types::*;
 
 struct RateLimiter {
-	timestamps: VecDeque<Instant>,
+	global_timestamps: VecDeque<Instant>,
+	endpoint_limits: HashMap<String, EndpointLimit>,
+	retry_queue: VecDeque<(String, Instant)>,
+}
+
+#[allow(dead_code)]
+struct EndpointLimit {
+	limit: u32,
+	remaining: u32,
+	reset_time: u64,
+	last_updated: Instant,
 }
 
 impl RateLimiter {
 	fn new() -> Self {
 		RateLimiter {
-			timestamps: VecDeque::new(),
+			global_timestamps: VecDeque::new(),
+			endpoint_limits: HashMap::new(),
+			retry_queue: VecDeque::new(),
 		}
 	}
 
-	fn wait(&mut self) {
-		while self.timestamps.len() >= 5 {
-			if let Some(oldest) = self.timestamps.front() {
+	fn wait_for_request(&mut self, method: &str, path: &str) {
+		let endpoint_key = self.normalize_endpoint(method, path);
+		if let Some(cooldown) = self.check_retry_cooldown(&endpoint_key) {
+			std::thread::sleep(cooldown);
+		}
+
+		self.apply_endpoint_limits(&endpoint_key);
+
+		self.apply_global_limits();
+	}
+
+	fn update_from_headers(&mut self, method: &str, path: &str, headers: &[http::Header]) {
+		let endpoint_key = self.normalize_endpoint(method, path);
+
+		let mut limit = 0;
+		let mut remaining = 0;
+		let mut reset_time = 0;
+
+		for header in headers {
+			match header.name.as_str() {
+				"X-RateLimit-Limit" => limit = header.value.parse().unwrap_or(0),
+				"X-RateLimit-Remaining" => remaining = header.value.parse().unwrap_or(0),
+				"X-RateLimit-Retry-After" => reset_time = header.value.parse().unwrap_or(0),
+				_ => {}
+			}
+		}
+
+		if limit > 0 {
+			self.endpoint_limits.insert(
+				endpoint_key,
+				EndpointLimit {
+					limit,
+					remaining,
+					reset_time,
+					last_updated: Instant::now(),
+				},
+			);
+		}
+	}
+
+	fn handle_rate_limit_exceeded(&mut self, method: &str, path: &str, retry_after: u64) {
+		let endpoint_key = self.normalize_endpoint(method, path);
+		let cooldown = Duration::from_secs(retry_after);
+		let resume_time = Instant::now() + cooldown;
+
+		self.retry_queue.push_back((endpoint_key, resume_time));
+	}
+
+	fn normalize_endpoint(&self, method: &str, path: &str) -> String {
+		let parts: Vec<&str> = path.split('/').collect();
+		let normalized_path = if parts.len() > 3 {
+			format!("/{}/{}", parts[1], parts[3])
+		} else {
+			path.to_string()
+		};
+		format!("{} {}", method, normalized_path)
+	}
+
+	fn check_retry_cooldown(&self, endpoint_key: &str) -> Option<Duration> {
+		let now = Instant::now();
+		for (key, resume_time) in &self.retry_queue {
+			if key == endpoint_key && *resume_time > now {
+				return Some(*resume_time - now);
+			}
+		}
+		None
+	}
+
+	fn apply_endpoint_limits(&mut self, endpoint_key: &str) {
+		if let Some(limit) = self.endpoint_limits.get_mut(endpoint_key) {
+			if SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() > limit.reset_time {
+				limit.remaining = limit.limit;
+			}
+
+			if limit.remaining == 0 {
+				let reset_duration = Duration::from_secs(
+					limit.reset_time - SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
+				);
+				std::thread::sleep(reset_duration);
+				limit.remaining = limit.limit;
+			}
+
+			limit.remaining -= 1;
+		}
+	}
+
+	fn apply_global_limits(&mut self) {
+		let now = Instant::now();
+		while let Some(oldest) = self.global_timestamps.front() {
+			if now.duration_since(*oldest) > Duration::from_secs(1) {
+				self.global_timestamps.pop_front();
+			} else {
+				break;
+			}
+		}
+
+		if self.global_timestamps.len() >= 5 {
+			if let Some(oldest) = self.global_timestamps.front() {
 				let elapsed = oldest.elapsed();
 				if elapsed < Duration::from_secs(1) {
 					std::thread::sleep(Duration::from_secs(1) - elapsed);
 				}
-				self.timestamps.pop_front();
 			}
 		}
-		self.timestamps.push_back(Instant::now());
+
+		self.global_timestamps.push_back(Instant::now());
 	}
 }
 
-fn http_get(url: &str) -> Option<http::Response> {
-	let mut limiter = RATE_LIMITER.lock().unwrap();
-	limiter.wait();
+static RATE_LIMITER: Lazy<Arc<Mutex<RateLimiter>>> = Lazy::new(|| Arc::new(Mutex::new(RateLimiter::new())));
 
-	http::get(url, None)
+#[cfg(not(test))]
+fn http_get(url: &str) -> Option<http::Response> {
+	let method = "GET";
+	let path = url.split("api.mangadex.org").nth(1).unwrap_or("");
+
+	let mut limiter = RATE_LIMITER.lock().unwrap();
+	limiter.wait_for_request(method, path);
+
+	let header = http::Header {
+		name: "User-Agent".to_string(),
+		value: format!("Manga Vault MangaDex/{}", env!("CARGO_PKG_VERSION")),
+	};
+
+	let response = http::get(url, Some(&[header]));
+	if response.is_none() {
+		return None;
+	}
+	let response = response.unwrap();
+
+	match response.status {
+		200 => {
+			limiter.update_from_headers(method, path, &response.headers);
+			Some(response)
+		}
+		429 => {
+			let retry_after = response
+				.headers
+				.iter()
+				.find(|h| h.name == "Retry-After")
+				.and_then(|h| h.value.parse().ok())
+				.unwrap_or(5);
+
+			limiter.handle_rate_limit_exceeded(method, path, retry_after);
+			None
+		}
+		_ => None,
+	}
+}
+
+#[cfg(test)]
+fn http_get(url: &str) -> Option<http::Response> {
+	let method = "GET";
+	let path = url.split("api.mangadex.org").nth(1).unwrap_or("");
+
+	let mut limiter = RATE_LIMITER.lock().unwrap();
+	limiter.wait_for_request(method, path);
+
+	let client = reqwest::blocking::Client::new();
+	let request = client.get(url).header(
+		"User-Agent",
+		format!("Manga Vault Testing Suite for MangaDex/{}", env!("CARGO_PKG_VERSION")),
+	);
+	let response = request.send().ok()?;
+	let headers = response.headers().clone();
+	let status = response.status().as_u16();
+	let body = response.text().ok()?;
+
+	let response = http::Response {
+		status: status as u32,
+		body,
+		headers: headers
+			.iter()
+			.map(|(name, value)| http::Header {
+				name: name.to_string(),
+				value: value.to_str().unwrap_or("").to_string(),
+			})
+			.collect(),
+	};
+
+	match response.status {
+		200 => {
+			limiter.update_from_headers(method, path, &response.headers);
+			Some(response)
+		}
+		429 => {
+			let retry_after = response
+				.headers
+				.iter()
+				.find(|h| h.name == "Retry-After")
+				.and_then(|h| h.value.parse().ok())
+				.unwrap_or(5);
+
+			limiter.handle_rate_limit_exceeded(method, path, retry_after);
+			None
+		}
+		_ => None,
+	}
 }
 
 fn parse_json_response(response: &http::Response) -> Option<Value> {
@@ -356,6 +549,80 @@ fn default_manga_page() -> MangaPage {
 	}
 }
 
-use once_cell::sync::Lazy;
+#[cfg(test)]
+#[cfg_attr(all(coverage_nightly, test), coverage(off))]
+mod tests {
+	use super::*;
 
-static RATE_LIMITER: Lazy<Arc<Mutex<RateLimiter>>> = Lazy::new(|| Arc::new(Mutex::new(RateLimiter::new())));
+	#[test]
+	fn test_scrape_latest() {
+		let items = ScraperImpl::scrape_latest(1);
+		assert!(!items.is_empty());
+	}
+
+	#[test]
+	fn test_scrape_manga() {
+		let manga_page =
+			ScraperImpl::scrape_manga("https://mangadex.org/title/aa070232-a668-4c73-8305-a68825db32e4".to_string());
+		println!("{:?}", manga_page);
+		assert_eq!(manga_page.title, "Hatsukoi wa Marude Yaiba no You ni");
+		assert_eq!(
+			manga_page.url,
+			"https://mangadex.org/title/aa070232-a668-4c73-8305-a68825db32e4"
+		);
+		assert_eq!(
+			manga_page.img_url,
+			"https://mangadex.org/covers/aa070232-a668-4c73-8305-a68825db32e4/36ea629a-cc21-4751-8ccf-cc387b057b4f.png.512.jpg"
+		);
+	}
+
+	#[test]
+	fn test_scrape_chapter() {
+		let images =
+			ScraperImpl::scrape_chapter("https://mangadex.org/chapter/2b6a4f47-f7d7-4a3e-91a6-73d9bd21f8e9".to_string());
+		assert!(!images.is_empty());
+		assert!(images[0].starts_with("https://uploads.mangadex.org"));
+	}
+
+	#[test]
+	fn test_scrape_search() {
+		let items = ScraperImpl::scrape_search("Hatsukoi".to_string(), 1);
+		assert!(!items.is_empty());
+		assert!(items.iter().any(|item| item.title.contains("Hatsukoi")));
+	}
+
+	#[test]
+	fn test_scrape_trending() {
+		let items = ScraperImpl::scrape_trending(1);
+		assert!(!items.is_empty());
+	}
+
+	#[test]
+	fn test_rate_limiter() {
+		let mut limiter = RATE_LIMITER.lock().unwrap();
+		limiter.wait_for_request("GET", "/manga");
+		limiter.update_from_headers(
+			"GET",
+			"/manga",
+			&[
+				http::Header {
+					name: "X-RateLimit-Limit".to_string(),
+					value: "10".to_string(),
+				},
+				http::Header {
+					name: "X-RateLimit-Remaining".to_string(),
+					value: "9".to_string(),
+				},
+				http::Header {
+					name: "X-RateLimit-Retry-After".to_string(),
+					value: "5".to_string(),
+				},
+			],
+		);
+		assert!(limiter.endpoint_limits.contains_key("GET /manga"));
+		assert_eq!(limiter.endpoint_limits["GET /manga"].remaining, 9);
+		assert!(limiter.global_timestamps.len() <= 5);
+		limiter.handle_rate_limit_exceeded("GET", "/manga", 5);
+		assert!(limiter.retry_queue.iter().any(|(key, _)| key == "GET /manga"));
+	}
+}

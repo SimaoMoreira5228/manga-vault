@@ -144,11 +144,14 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://example.com")
+      headless_client:get("https://quotes.toscrape.com/")
     "#;
 
 		lua.load(script).exec_async().await.unwrap();
-		assert_eq!(client.current_url().await.unwrap().to_string(), "https://example.com/");
+		assert_eq!(
+			client.current_url().await.unwrap().to_string(),
+			"https://quotes.toscrape.com/"
+		);
 		client.close().await.unwrap();
 	}
 
@@ -157,8 +160,8 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://example.com")
-      local element = headless_client:find("h1")
+      headless_client:get("https://quotes.toscrape.com/")
+      local element = headless_client:find(".quote")
       assert(element ~= nil)
     "#;
 
@@ -171,8 +174,8 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://example.com")
-      local elements = headless_client:find_all("h1")
+      headless_client:get("https://quotes.toscrape.com/")
+      local elements = headless_client:find_all(".quote")
       assert(#elements > 0)
     "#;
 
@@ -197,12 +200,18 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://example.com")
-      local element = headless_client:find("h1")
-      element:click()
+      headless_client:get("https://quotes.toscrape.com/")
+      local next = headless_client:find(".next a")
+      next:click()
     "#;
 
 		lua.load(script).exec_async().await.unwrap();
+
+		assert_eq!(
+			client.current_url().await.unwrap().to_string(),
+			"https://quotes.toscrape.com/page/2/"
+		);
+
 		client.close().await.unwrap();
 	}
 
@@ -211,10 +220,10 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://example.com")
-      local element = headless_client:find("h1")
+      headless_client:get("https://quotes.toscrape.com/")
+      local element = headless_client:find(".quote .text")
       local text = element:text()
-      assert(text == "Example Domain")
+      assert(text ~= nil and text:find("The world as we have created it"))
     "#;
 
 		lua.load(script).exec_async().await.unwrap();

@@ -9,8 +9,11 @@ path = "src/main.rs"
 
 [workspace]
 members = [
-  "apps/http/*", "apps/scheduler","apps/scheduler/queue",
-  "config", "config/derive",
+  "apps/http/*",
+  "apps/scheduler",
+  "apps/scheduler/queue",
+  "config",
+  "config/derive",
   "database/*",
   "scrapers/*",
 ]

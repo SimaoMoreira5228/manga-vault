@@ -94,13 +94,49 @@ impl MangaUpdateScheduler {
 							.await
 							.ok_or_else(|| anyhow::anyhow!("Scraper plugin '{}' not found", item.payload.scraper_name))?;
 
-						let updated_manga = plugin.scrape_manga(manga.url.clone()).await?;
+						let scraped_manga = plugin.scrape_manga(manga.url.clone()).await?;
 
 						let mut manga: database_entities::mangas::ActiveModel = manga.into();
-						manga.title = Set(updated_manga.title);
-						manga.img_url = Set(updated_manga.img_url);
+						manga.title = Set(scraped_manga.title);
+						manga.img_url = Set(scraped_manga.img_url);
 						manga.updated_at = Set(Utc::now().naive_utc());
-						manga.update(&db).await.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
+						let manga = manga.update(&db).await.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
+
+						let mut active_models: Vec<database_entities::chapters::ActiveModel> = Vec::new();
+						let chapter_urls: Vec<String> = scraped_manga.chapters.iter().map(|c| c.url.clone()).collect();
+
+						let existing_chapters: Vec<database_entities::chapters::Model> =
+							database_entities::chapters::Entity::find()
+								.filter(database_entities::chapters::Column::MangaId.eq(manga.id.clone()))
+								.filter(database_entities::chapters::Column::Url.is_in(chapter_urls.clone()))
+								.all(&db)
+								.await
+								.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
+
+						let existing_urls: std::collections::HashSet<String> =
+							existing_chapters.into_iter().map(|c| c.url).collect();
+
+						for chapter in scraped_manga.chapters {
+							if !existing_urls.contains(&chapter.url) {
+								let new_chapter = database_entities::chapters::ActiveModel {
+									manga_id: Set(manga.id),
+									title: Set(chapter.title),
+									url: Set(chapter.url),
+									created_at: Set(Utc::now().naive_utc()),
+									updated_at: Set(Utc::now().naive_utc()),
+									..Default::default()
+								};
+
+								active_models.push(new_chapter);
+							}
+						}
+
+						if !active_models.is_empty() {
+							database_entities::chapters::Entity::insert_many(active_models)
+								.exec(&db)
+								.await
+								.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
+						}
 
 						Ok(())
 					})
@@ -135,11 +171,11 @@ impl MangaUpdateScheduler {
 
 	pub async fn start(self: Arc<Self>) {
 		loop {
-			tokio::time::sleep(self.interval).await;
-
 			if let Err(e) = self.schedule_updates().await {
 				tracing::error!("Failed to schedule manga updates: {:#}", e);
 			}
+
+			tokio::time::sleep(self.interval).await;
 		}
 	}
 

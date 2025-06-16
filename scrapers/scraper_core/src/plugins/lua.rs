@@ -20,7 +20,6 @@ pub struct LuaPlugin {
 
 impl LuaPlugin {
 	pub fn new(config: Arc<Config>, file: &Path) -> anyhow::Result<Self> {
-		println!("Loading Lua plugin: {}", file.display());
 		let runtime = Lua::new();
 		globals::load(&config, &runtime)?;
 

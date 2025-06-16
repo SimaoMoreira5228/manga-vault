@@ -51,9 +51,7 @@ impl WasmPlugin {
 			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
 		let name = self.name.clone();
 
-		let rt = tokio::runtime::Handle::current();
-
-		rt.spawn_blocking(move || {
+		tokio::task::spawn_blocking(move || {
 			instance
 				.scraper_types_scraper()
 				.call_scrape_chapter(&mut store, &url)
@@ -69,9 +67,7 @@ impl WasmPlugin {
 			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
 		let name = self.name.clone();
 
-		let rt = tokio::runtime::Handle::current();
-
-		rt.spawn_blocking(move || {
+		tokio::task::spawn_blocking(move || {
 			instance
 				.scraper_types_scraper()
 				.call_scrape_latest(&mut store, page)
@@ -87,9 +83,7 @@ impl WasmPlugin {
 			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
 		let name = self.name.clone();
 
-		let rt = tokio::runtime::Handle::current();
-
-		rt.spawn_blocking(move || {
+		tokio::task::spawn_blocking(move || {
 			instance
 				.scraper_types_scraper()
 				.call_scrape_trending(&mut store, page)
@@ -105,9 +99,7 @@ impl WasmPlugin {
 			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
 		let name = self.name.clone();
 
-		let rt = tokio::runtime::Handle::current();
-
-		rt.spawn_blocking(move || {
+		tokio::task::spawn_blocking(move || {
 			instance
 				.scraper_types_scraper()
 				.call_scrape_search(&mut store, &query, page)
@@ -123,9 +115,7 @@ impl WasmPlugin {
 			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
 		let name = self.name.clone();
 
-		let rt = tokio::runtime::Handle::current();
-
-		rt.spawn_blocking(move || {
+		tokio::task::spawn_blocking(move || {
 			instance
 				.scraper_types_scraper()
 				.call_scrape_manga(&mut store, &url)
@@ -141,9 +131,7 @@ impl WasmPlugin {
 			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
 		let name = self.name.clone();
 
-		let rt = tokio::runtime::Handle::current();
-
-		rt.spawn_blocking(move || {
+		tokio::task::spawn_blocking(move || {
 			instance
 				.scraper_types_scraper()
 				.call_scrape_genres_list(&mut store)
@@ -159,9 +147,7 @@ impl WasmPlugin {
 			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
 		let name = self.name.clone();
 
-		let rt = tokio::runtime::Handle::current();
-
-		rt.spawn_blocking(move || {
+		tokio::task::spawn_blocking(move || {
 			instance
 				.scraper_types_scraper()
 				.call_get_info(&mut store)

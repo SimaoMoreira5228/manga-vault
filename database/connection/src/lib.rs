@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::{env, fs};
 
 use database_migration::MigratorTrait;
+use sea_orm::ConnectOptions;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -90,7 +91,10 @@ impl Database {
 				}
 
 				let open_string = parsed_url.to_string();
-				let conn_result = sea_orm::Database::connect(open_string).await;
+				let mut opt = ConnectOptions::new(open_string.clone());
+				opt.sqlx_logging(false);
+
+				let conn_result = sea_orm::Database::connect(opt).await;
 
 				if let Err(e) = conn_result {
 					return Err(Error::MigrationError(e.into()));
@@ -111,9 +115,10 @@ impl Database {
 			}
 
 			"postgresql" | "mysql" => {
-				let conn = sea_orm::Database::connect(parsed_url.to_string())
-					.await
-					.map_err(Error::MigrationError)?;
+				let mut opt = ConnectOptions::new(parsed_url.to_string());
+				opt.sqlx_logging(true);
+
+				let conn = sea_orm::Database::connect(opt).await.map_err(Error::MigrationError)?;
 				database_migration::Migrator::up(&conn, None)
 					.await
 					.map_err(Error::MigrationError)?;
