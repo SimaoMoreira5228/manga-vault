@@ -4,6 +4,8 @@ pub use super::categories::Entity as Categories;
 pub use super::chapters::Entity as Chapters;
 pub use super::favorite_mangas::Entity as FavoriteMangas;
 pub use super::files::Entity as Files;
+pub use super::manga_pack_members::Entity as MangaPackMembers;
+pub use super::manga_packs::Entity as MangaPacks;
 pub use super::mangas::Entity as Mangas;
 pub use super::read_chapters::Entity as ReadChapters;
 pub use super::temp::Entity as Temp;

@@ -3,9 +3,10 @@ use std::sync::Arc;
 use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
 use database_connection::Database;
-use sea_orm::EntityTrait;
+use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, QuerySelect, RelationTrait};
 
 use crate::objects::categories::Category;
+use crate::objects::manga_packs::MangaPack;
 use crate::objects::mangas::Manga;
 use crate::objects::users::SanitizedUser;
 
@@ -58,5 +59,21 @@ impl FavoriteManga {
 			.await?
 			.ok_or_else(|| async_graphql::Error::new("Category not found"))?;
 		Ok(Category::from(category))
+	}
+
+	async fn pack(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<MangaPack>> {
+		let db = ctx.data::<Arc<Database>>()?;
+
+		let pack = database_entities::manga_packs::Entity::find()
+			.join(
+				JoinType::InnerJoin,
+				database_entities::manga_pack_members::Relation::MangaPacks.def(),
+			)
+			.filter(database_entities::manga_pack_members::Column::MangaId.eq(self.manga_id))
+			.filter(database_entities::manga_packs::Column::UserId.eq(self.user_id))
+			.one(&db.conn)
+			.await?;
+
+		Ok(pack.map(MangaPack::from))
 	}
 }

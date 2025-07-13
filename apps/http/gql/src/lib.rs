@@ -1,3 +1,5 @@
+use std::env;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_graphql::{EmptyMutation, EmptySubscription, Schema};
@@ -9,13 +11,16 @@ use rand::Rng;
 use scraper_core::ScraperManager;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
+use tower_http::services::ServeDir;
 
-use crate::query_root::QueryRoot;
+use crate::mutations::auth::AuthExtensionFactory;
+use crate::queries::QueryRoot;
 
+mod mutations;
 mod objects;
-mod query_root;
+mod queries;
 
-use axum::extract::State;
+use axum::extract::{DefaultBodyLimit, State};
 
 fn generate_secret() -> String {
 	rand::rng()
@@ -23,6 +28,14 @@ fn generate_secret() -> String {
 		.take(24)
 		.map(char::from)
 		.collect()
+}
+
+fn current_exe_parent_dir() -> PathBuf {
+	env::current_exe()
+		.expect("Failed to get executable path")
+		.parent()
+		.expect("Executable has no parent directory")
+		.to_path_buf()
 }
 
 #[derive(Debug, Deserialize, Serialize, config_derive::Config)]
@@ -34,6 +47,10 @@ pub struct Config {
 	pub secret_jwt: String,
 	#[serde(default)]
 	pub jwt_duration_days: u16,
+	#[serde(default)]
+	pub max_file_size: u64,
+	#[serde(default)]
+	pub uploads_folder: String,
 }
 
 impl Default for Config {
@@ -41,7 +58,9 @@ impl Default for Config {
 		Self {
 			api_port: 5228,
 			secret_jwt: generate_secret(),
-			jwt_duration_days: 7,
+			jwt_duration_days: 30,
+			max_file_size: 10 * 1024 * 1024, // 10 MB
+			uploads_folder: format!("{}/uploads", current_exe_parent_dir().display()),
 		}
 	}
 }
@@ -60,16 +79,20 @@ async fn graphql_playground() -> axum::response::Html<String> {
 }
 
 pub async fn run(db: Arc<Database>, scraper_manager: Arc<ScraperManager>) -> anyhow::Result<()> {
-	let config = Config::load();
+	let config = Arc::new(Config::load());
 
-	let schema = Schema::build(QueryRoot, EmptyMutation, EmptySubscription)
+	let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
 		.data(db)
 		.data(scraper_manager)
+		.data(config.clone())
+		.extension(AuthExtensionFactory)
 		.finish();
 
 	let app = Router::new()
 		.route("/playground", get(graphql_playground))
 		.route("/", post(graphql_handler))
+		.layer(DefaultBodyLimit::max(config.max_file_size as usize))
+		.nest_service("/files", ServeDir::new(config.uploads_folder.clone()))
 		.with_state(schema);
 
 	tracing::info!(

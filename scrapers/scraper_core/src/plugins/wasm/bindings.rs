@@ -46,6 +46,7 @@ impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::Chap
 			title: chapter.title,
 			url: chapter.url,
 			date: chapter.date,
+			scanlation_group: chapter.scanlation_group,
 		}
 	}
 }

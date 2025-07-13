@@ -4,7 +4,7 @@
     {
       "name": "mangaread_org",
       "urls": {
-        "wasm": "https://files.catbox.moe/9iqzd3.wasm"
+        "wasm": "https://files.catbox.moe/lpf1a9.wasm"
       },
       "version": "0.3.0",
       "state": "updated",
@@ -13,16 +13,16 @@
     {
       "name": "manga_dex",
       "urls": {
-        "wasm": "https://files.catbox.moe/yo6obb.wasm"
+        "wasm": "https://files.catbox.moe/k4rrnw.wasm"
       },
-      "version": "0.3.0",
+      "version": "0.3.1",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "hari_manga",
       "urls": {
-        "wasm": "https://files.catbox.moe/q1b8ej.wasm"
+        "wasm": "https://files.catbox.moe/tpvf2i.wasm"
       },
       "version": "0.2.0",
       "state": "updated",

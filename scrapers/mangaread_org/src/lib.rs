@@ -439,6 +439,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 				title,
 				url: info_selector.value().attr("href").unwrap().to_string(),
 				date,
+				scanlation_group: None,
 			});
 		}
 

@@ -1,5 +1,11 @@
+use std::sync::LazyLock;
+
 use mlua::{FromLua, IntoLua, Lua, Value};
+use regex::Regex;
 use serde::Serialize;
+
+const CHAP_NUMBER_REGEX: LazyLock<Regex> =
+	LazyLock::new(|| Regex::new(r"(?i)^(?:chapter\s*)?(\d+(?:\.\d+)?)").expect("Failed to compile chapter number regex"));
 
 #[derive(Debug, Serialize)]
 pub struct MangaItem {
@@ -43,6 +49,42 @@ pub struct MangaPage {
 	pub description: String,
 	pub genres: Vec<String>,
 	pub chapters: Vec<Chapter>,
+}
+
+impl MangaPage {
+	pub fn parse_release_date(&self) -> Option<chrono::NaiveDateTime> {
+		if self.release_date.is_none() {
+			return None;
+		}
+
+		let date = self.release_date.as_ref().unwrap();
+
+		let formats = [
+			"%Y-%m-%dT%H:%M:%S",
+			"%Y-%m-%d %H:%M:%S",
+			"%Y-%m-%d",
+			"%d/%m/%Y",
+			"%m/%d/%Y",
+			"%Y",
+		];
+
+		for fmt in formats {
+			if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(date, fmt) {
+				return Some(dt);
+			}
+			if let Ok(date) = chrono::NaiveDate::parse_from_str(date, fmt) {
+				return Some(date.and_hms_opt(0, 0, 0).unwrap());
+			}
+		}
+
+		if let Ok(year) = date.parse::<i32>() {
+			if let Some(date) = chrono::NaiveDate::from_ymd_opt(year, 1, 1) {
+				return Some(date.and_hms_opt(0, 0, 0).unwrap());
+			}
+		}
+
+		None
+	}
 }
 
 impl IntoLua for MangaPage {
@@ -89,6 +131,28 @@ pub struct Chapter {
 	pub title: String,
 	pub url: String,
 	pub date: String,
+	pub scanlation_group: Option<String>,
+}
+
+impl Chapter {
+	pub fn extract_chapter_number(&self) -> Option<String> {
+		CHAP_NUMBER_REGEX
+			.captures(&self.title.trim())
+			.and_then(|caps| caps.get(1))
+			.map(|m| m.as_str().to_string())
+	}
+
+	pub fn same_chapter(&self, other: &Chapter) -> bool {
+		self.extract_chapter_number() == other.extract_chapter_number()
+	}
+
+	pub fn all_same_chapter(items: &[&Chapter]) -> bool {
+		if items.is_empty() {
+			return false;
+		}
+		let base = items[0].extract_chapter_number();
+		items[1..].iter().all(|chap| chap.extract_chapter_number() == base)
+	}
 }
 
 impl IntoLua for Chapter {
@@ -108,6 +172,7 @@ impl FromLua for Chapter {
 			title: table.get("title")?,
 			url: table.get("url")?,
 			date: table.get("date")?,
+			scanlation_group: table.get("scanlation_group").ok(),
 		})
 	}
 }
@@ -162,5 +227,103 @@ impl FromLua for ScraperInfo {
 			name: table.get("name")?,
 			img_url: table.get("img_url")?,
 		})
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_extract() {
+		let chapter = Chapter {
+			title: "Chapter 123".to_string(),
+			url: "http://example.com/chapter123".to_string(),
+			date: "2023-01-01".to_string(),
+			scanlation_group: None,
+		};
+		assert_eq!(chapter.extract_chapter_number(), Some("123".to_string()));
+
+		let chapter = Chapter {
+			title: "Chapter 1.5".to_string(),
+			url: "http://example.com/chapter1.5".to_string(),
+			date: "2023-01-02".to_string(),
+			scanlation_group: None,
+		};
+		assert_eq!(chapter.extract_chapter_number(), Some("1.5".to_string()));
+
+		let chapter = Chapter {
+			title: "Chapter 1.5.6".to_string(),
+			url: "http://example.com/chapter1.5.6".to_string(),
+			date: "2023-01-02".to_string(),
+			scanlation_group: None,
+		};
+		assert_eq!(chapter.extract_chapter_number(), Some("1.5".to_string()));
+
+		let chapter = Chapter {
+			title: "Prologue".to_string(),
+			url: "http://example.com/prologue".to_string(),
+			date: "2023-01-03".to_string(),
+			scanlation_group: None,
+		};
+		assert_eq!(chapter.extract_chapter_number(), None);
+	}
+
+	#[test]
+	fn test_same_chapter() {
+		let chapter1 = Chapter {
+			title: "Chapter 123".to_string(),
+			url: "http://example.com/chapter123".to_string(),
+			date: "2023-01-01".to_string(),
+			scanlation_group: None,
+		};
+		let chapter2 = Chapter {
+			title: "Chapter 123".to_string(),
+			url: "http://example.com/chapter123".to_string(),
+			date: "2023-01-01".to_string(),
+			scanlation_group: None,
+		};
+		let chapter3 = Chapter {
+			title: "Chapter 124".to_string(),
+			url: "http://example.com/chapter124".to_string(),
+			date: "2023-01-02".to_string(),
+			scanlation_group: None,
+		};
+		assert!(chapter1.same_chapter(&chapter2));
+		assert!(!chapter1.same_chapter(&chapter3));
+		assert!(!chapter2.same_chapter(&chapter3));
+	}
+
+	#[test]
+	fn test_all_same_chapter() {
+		let chapter1 = Chapter {
+			title: "Chapter 123".to_string(),
+			url: "http://example.com/chapter123".to_string(),
+			date: "2023-01-01".to_string(),
+			scanlation_group: None,
+		};
+		let chapter2 = Chapter {
+			title: "Chapter 123".to_string(),
+			url: "http://example.com/chapter123".to_string(),
+			date: "2023-01-01".to_string(),
+			scanlation_group: None,
+		};
+		let chapter3 = Chapter {
+			title: "Chapter 123".to_string(),
+			url: "http://example.com/chapter123".to_string(),
+			date: "2023-01-01".to_string(),
+			scanlation_group: None,
+		};
+		let chapter4 = Chapter {
+			title: "Chapter 124".to_string(),
+			url: "http://example.com/chapter124".to_string(),
+			date: "2023-01-02".to_string(),
+			scanlation_group: None,
+		};
+		assert!(Chapter::all_same_chapter(&[&chapter1, &chapter2, &chapter3]));
+		assert!(!Chapter::all_same_chapter(&[&chapter1, &chapter2, &chapter4]));
+		assert!(!Chapter::all_same_chapter(&[&chapter1, &chapter4, &chapter3]));
+		assert!(!Chapter::all_same_chapter(&[&chapter2, &chapter4, &chapter3]));
+		assert!(!Chapter::all_same_chapter(&[&chapter1, &chapter2, &chapter3, &chapter4]));
 	}
 }

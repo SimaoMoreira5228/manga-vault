@@ -12,6 +12,7 @@ pub struct Model {
 	pub created_at: DateTime,
 	pub updated_at: DateTime,
 	pub manga_id: i32,
+	pub scanlation_group: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

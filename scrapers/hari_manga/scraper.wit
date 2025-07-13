@@ -11,6 +11,7 @@ interface scraper {
         title: string,
         url: string,
         date: string,
+        scanlation-group: option<string>,
     }
     
     record manga-page {

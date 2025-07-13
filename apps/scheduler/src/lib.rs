@@ -96,10 +96,26 @@ impl MangaUpdateScheduler {
 
 						let scraped_manga = plugin.scrape_manga(manga.url.clone()).await?;
 
+						let manga_created_at = manga.created_at.clone();
 						let mut manga: database_entities::mangas::ActiveModel = manga.into();
+						let parsed_date = scraped_manga.parse_release_date();
+
 						manga.title = Set(scraped_manga.title);
 						manga.img_url = Set(scraped_manga.img_url);
+						manga.description = Set(Some(scraped_manga.description));
+						manga.alternative_names = Set(Some(scraped_manga.alternative_names.join(", ")));
+						manga.authors = Set(Some(scraped_manga.authors.join(", ")));
+						manga.artists = Set(scraped_manga.artists.map(|artists| artists.join(", ")));
+						manga.status = Set(Some(scraped_manga.status));
+						manga.manga_type = Set(scraped_manga.manga_type);
+						manga.release_date = Set(parsed_date);
+						manga.genres = Set(Some(scraped_manga.genres.join(", ")));
 						manga.updated_at = Set(Utc::now().naive_utc());
+
+						if manga_created_at.is_none() {
+							manga.created_at = Set(Some(Utc::now().naive_utc()));
+						}
+
 						let manga = manga.update(&db).await.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
 
 						let mut active_models: Vec<database_entities::chapters::ActiveModel> = Vec::new();

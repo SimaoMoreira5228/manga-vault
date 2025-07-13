@@ -488,7 +488,7 @@ fn fetch_manga_items(url: &str) -> Vec<MangaItem> {
 
 fn fetch_chapters(manga_id: &str) -> Vec<Chapter> {
 	let url = format!(
-		"https://api.mangadex.org/manga/{}/feed?limit=500&translatedLanguage[]=en&order[chapter]=desc",
+		"https://api.mangadex.org/manga/{}/feed?limit=500&translatedLanguage[]=en&order[chapter]=desc&includes[]=scanlation_group",
 		manga_id
 	);
 
@@ -500,6 +500,23 @@ fn fetch_chapters(manga_id: &str) -> Vec<Chapter> {
 	let json = match parse_json_response(&response) {
 		Some(data) => data,
 		None => return Vec::new(),
+	};
+
+	// Create a mapping of group IDs to group names
+	let group_map: HashMap<String, String> = match json.get("included").and_then(|i| i.as_array()) {
+		Some(included) => included
+			.iter()
+			.filter_map(|item| {
+				if item["type"] == "scanlation_group" {
+					let id = item["id"].as_str()?.to_string();
+					let name = item["attributes"]["name"].as_str()?.to_string();
+					Some((id, name))
+				} else {
+					None
+				}
+			})
+			.collect(),
+		None => HashMap::new(),
 	};
 
 	let data = match json.get("data").and_then(|d| d.as_array()) {
@@ -520,13 +537,24 @@ fn fetch_chapters(manga_id: &str) -> Vec<Chapter> {
 			};
 
 			let date = attributes["publishAt"].as_str().unwrap_or("").to_string();
-
 			let chapter_id = chapter["id"].as_str()?;
+
+			let groups = chapter["relationships"]
+				.as_array()?
+				.iter()
+				.filter(|rel| rel["type"] == "scanlation_group")
+				.filter_map(|rel| rel["id"].as_str())
+				.filter_map(|group_id| group_map.get(group_id))
+				.map(|name| name.to_string())
+				.collect::<Vec<_>>();
+
+			let scanlation_group = if groups.is_empty() { None } else { Some(groups.join(", ")) };
 
 			Some(Chapter {
 				title: chapter_title,
 				url: format!("https://mangadex.org/chapter/{}", chapter_id),
 				date,
+				scanlation_group,
 			})
 		})
 		.collect()

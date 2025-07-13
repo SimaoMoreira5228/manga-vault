@@ -21,6 +21,8 @@ pub enum Relation {
 	FavoriteMangas,
 	#[sea_orm(has_many = "super::files::Entity")]
 	Files,
+	#[sea_orm(has_many = "super::manga_packs::Entity")]
+	MangaPacks,
 	#[sea_orm(has_many = "super::read_chapters::Entity")]
 	ReadChapters,
 }
@@ -40,6 +42,12 @@ impl Related<super::favorite_mangas::Entity> for Entity {
 impl Related<super::files::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Files.def()
+	}
+}
+
+impl Related<super::manga_packs::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::MangaPacks.def()
 	}
 }
 

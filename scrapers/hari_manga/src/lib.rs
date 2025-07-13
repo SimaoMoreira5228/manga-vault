@@ -250,6 +250,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 					title,
 					url: url.to_string(),
 					date,
+					scanlation_group: None,
 				});
 			}
 		}

@@ -36,5 +36,3 @@ coverage-serve:
 update-scrapers:
     python3 ./scrapers/compile-scrapers.py
 
-update-wit-bindings:
-    wit-bindgen rust scraper.wit --format --ownership owning --out-dir scrapers/scraper_types/src/

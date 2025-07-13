@@ -11,8 +11,17 @@ pub struct Model {
 	pub url: String,
 	pub img_url: String,
 	pub scraper: String,
-	pub created_at: DateTime,
 	pub updated_at: DateTime,
+	pub alternative_names: Option<String>,
+	pub authors: Option<String>,
+	pub artists: Option<String>,
+	pub status: Option<String>,
+	pub manga_type: Option<String>,
+	pub release_date: Option<DateTime>,
+	#[sea_orm(column_type = "Text", nullable)]
+	pub description: Option<String>,
+	pub genres: Option<String>,
+	pub created_at: Option<DateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -21,6 +30,8 @@ pub enum Relation {
 	Chapters,
 	#[sea_orm(has_many = "super::favorite_mangas::Entity")]
 	FavoriteMangas,
+	#[sea_orm(has_many = "super::manga_pack_members::Entity")]
+	MangaPackMembers,
 	#[sea_orm(has_many = "super::read_chapters::Entity")]
 	ReadChapters,
 }
@@ -34,6 +45,12 @@ impl Related<super::chapters::Entity> for Entity {
 impl Related<super::favorite_mangas::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::FavoriteMangas.def()
+	}
+}
+
+impl Related<super::manga_pack_members::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::MangaPackMembers.def()
 	}
 }
 

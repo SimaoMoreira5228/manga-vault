@@ -16,6 +16,7 @@ pub struct Chapter {
 	pub created_at: NaiveDateTime,
 	pub updated_at: NaiveDateTime,
 	pub manga_id: i32,
+	pub scanlation_group: Option<String>,
 }
 
 impl From<database_entities::chapters::Model> for Chapter {
@@ -27,6 +28,7 @@ impl From<database_entities::chapters::Model> for Chapter {
 			created_at: chapter.created_at,
 			updated_at: chapter.updated_at,
 			manga_id: chapter.manga_id,
+			scanlation_group: chapter.scanlation_group,
 		}
 	}
 }

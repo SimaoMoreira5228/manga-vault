@@ -11,3 +11,5 @@ mlua = { version = "0.10", features = [
   "send",
   "vendored",
 ] }
+regex = "1.11"
+chrono = "0.4"

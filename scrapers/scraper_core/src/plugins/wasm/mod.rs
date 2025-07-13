@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-use wasmtime::component::{Component, Linker};
+use wasmtime::component::{Component, HasSelf, Linker};
 use wasmtime::{Engine, Store};
 
 use crate::plugins::wasm::state::States;
@@ -29,7 +29,7 @@ impl WasmPlugin {
 
 		let mut linker = Linker::new(&engine);
 		wasmtime_wasi::p2::add_to_linker_sync(&mut linker).expect("Could not add wasi to linker");
-		bindings::scraper::types::http::add_to_linker(&mut linker, |state| state)?;
+		bindings::scraper::types::http::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)?;
 
 		let instance = bindings::Root::instantiate(&mut store, &component, &linker)?;
 		let scraper = instance.scraper_types_scraper();
