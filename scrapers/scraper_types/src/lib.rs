@@ -5,7 +5,7 @@ use regex::Regex;
 use serde::Serialize;
 
 const CHAP_NUMBER_REGEX: LazyLock<Regex> =
-	LazyLock::new(|| Regex::new(r"(?i)^(?:chapter\s*)?(\d+(?:\.\d+)?)").expect("Failed to compile chapter number regex"));
+	LazyLock::new(|| Regex::new(r"(\d+)").expect("Failed to compile chapter number regex"));
 
 #[derive(Debug, Serialize)]
 pub struct MangaItem {
@@ -53,36 +53,31 @@ pub struct MangaPage {
 
 impl MangaPage {
 	pub fn parse_release_date(&self) -> Option<chrono::NaiveDateTime> {
-		if self.release_date.is_none() {
-			return None;
-		}
+		if let Some(ref date) = self.release_date {
+			let formats = [
+				"%Y-%m-%dT%H:%M:%S",
+				"%Y-%m-%d %H:%M:%S",
+				"%Y-%m-%d",
+				"%d/%m/%Y",
+				"%m/%d/%Y",
+				"%Y",
+			];
 
-		let date = self.release_date.as_ref().unwrap();
-
-		let formats = [
-			"%Y-%m-%dT%H:%M:%S",
-			"%Y-%m-%d %H:%M:%S",
-			"%Y-%m-%d",
-			"%d/%m/%Y",
-			"%m/%d/%Y",
-			"%Y",
-		];
-
-		for fmt in formats {
-			if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(date, fmt) {
-				return Some(dt);
+			for fmt in &formats {
+				if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(date, fmt) {
+					return Some(dt);
+				}
+				if let Ok(d) = chrono::NaiveDate::parse_from_str(date, fmt) {
+					return Some(d.and_hms_opt(0, 0, 0).unwrap());
+				}
 			}
-			if let Ok(date) = chrono::NaiveDate::parse_from_str(date, fmt) {
-				return Some(date.and_hms_opt(0, 0, 0).unwrap());
-			}
-		}
 
-		if let Ok(year) = date.parse::<i32>() {
-			if let Some(date) = chrono::NaiveDate::from_ymd_opt(year, 1, 1) {
-				return Some(date.and_hms_opt(0, 0, 0).unwrap());
+			if let Ok(year) = date.parse::<i32>() {
+				if let Some(d) = chrono::NaiveDate::from_ymd_opt(year, 1, 1) {
+					return Some(d.and_hms_opt(0, 0, 0).unwrap());
+				}
 			}
 		}
-
 		None
 	}
 }
@@ -126,7 +121,7 @@ impl FromLua for MangaPage {
 	}
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Default)]
 pub struct Chapter {
 	pub title: String,
 	pub url: String,
@@ -137,7 +132,7 @@ pub struct Chapter {
 impl Chapter {
 	pub fn extract_chapter_number(&self) -> Option<String> {
 		CHAP_NUMBER_REGEX
-			.captures(&self.title.trim())
+			.captures(&self.title)
 			.and_then(|caps| caps.get(1))
 			.map(|m| m.as_str().to_string())
 	}
@@ -237,34 +232,26 @@ mod tests {
 	#[test]
 	fn test_extract() {
 		let chapter = Chapter {
-			title: "Chapter 123".to_string(),
-			url: "http://example.com/chapter123".to_string(),
-			date: "2023-01-01".to_string(),
-			scanlation_group: None,
+			title: "Chapter 123".into(),
+			..Default::default()
 		};
 		assert_eq!(chapter.extract_chapter_number(), Some("123".to_string()));
 
 		let chapter = Chapter {
-			title: "Chapter 1.5".to_string(),
-			url: "http://example.com/chapter1.5".to_string(),
-			date: "2023-01-02".to_string(),
-			scanlation_group: None,
+			title: "Chapter 1.5".into(),
+			..Default::default()
 		};
-		assert_eq!(chapter.extract_chapter_number(), Some("1.5".to_string()));
+		assert_eq!(chapter.extract_chapter_number(), Some("1".to_string()));
 
 		let chapter = Chapter {
-			title: "Chapter 1.5.6".to_string(),
-			url: "http://example.com/chapter1.5.6".to_string(),
-			date: "2023-01-02".to_string(),
-			scanlation_group: None,
+			title: "Chapter 1.5.6".into(),
+			..Default::default()
 		};
-		assert_eq!(chapter.extract_chapter_number(), Some("1.5".to_string()));
+		assert_eq!(chapter.extract_chapter_number(), Some("1".to_string()));
 
 		let chapter = Chapter {
-			title: "Prologue".to_string(),
-			url: "http://example.com/prologue".to_string(),
-			date: "2023-01-03".to_string(),
-			scanlation_group: None,
+			title: "Prologue".into(),
+			..Default::default()
 		};
 		assert_eq!(chapter.extract_chapter_number(), None);
 	}
@@ -272,58 +259,46 @@ mod tests {
 	#[test]
 	fn test_same_chapter() {
 		let chapter1 = Chapter {
-			title: "Chapter 123".to_string(),
-			url: "http://example.com/chapter123".to_string(),
-			date: "2023-01-01".to_string(),
-			scanlation_group: None,
+			title: "Chapter 123".into(),
+			..Default::default()
 		};
 		let chapter2 = Chapter {
-			title: "Chapter 123".to_string(),
-			url: "http://example.com/chapter123".to_string(),
-			date: "2023-01-01".to_string(),
-			scanlation_group: None,
+			title: "Chap 123 The night".into(),
+			..Default::default()
 		};
 		let chapter3 = Chapter {
-			title: "Chapter 124".to_string(),
-			url: "http://example.com/chapter124".to_string(),
-			date: "2023-01-02".to_string(),
-			scanlation_group: None,
+			title: "Chapter The 123 night - 123".into(),
+			..Default::default()
 		};
 		assert!(chapter1.same_chapter(&chapter2));
-		assert!(!chapter1.same_chapter(&chapter3));
-		assert!(!chapter2.same_chapter(&chapter3));
+		assert!(chapter2.same_chapter(&chapter3));
+		assert!(chapter1.same_chapter(&chapter3));
 	}
 
 	#[test]
 	fn test_all_same_chapter() {
-		let chapter1 = Chapter {
-			title: "Chapter 123".to_string(),
-			url: "http://example.com/chapter123".to_string(),
-			date: "2023-01-01".to_string(),
-			scanlation_group: None,
+		let c1 = Chapter {
+			title: "Chap 171".into(),
+			..Default::default()
 		};
-		let chapter2 = Chapter {
-			title: "Chapter 123".to_string(),
-			url: "http://example.com/chapter123".to_string(),
-			date: "2023-01-01".to_string(),
-			scanlation_group: None,
+		let c2 = Chapter {
+			title: "Chapter 171.1".into(),
+			..Default::default()
 		};
-		let chapter3 = Chapter {
-			title: "Chapter 123".to_string(),
-			url: "http://example.com/chapter123".to_string(),
-			date: "2023-01-01".to_string(),
-			scanlation_group: None,
+		let c3 = Chapter {
+			title: "171.2".into(),
+			..Default::default()
 		};
-		let chapter4 = Chapter {
-			title: "Chapter 124".to_string(),
-			url: "http://example.com/chapter124".to_string(),
-			date: "2023-01-02".to_string(),
-			scanlation_group: None,
+		let c4 = Chapter {
+			title: "Chapter The 171 night - 171".into(),
+			..Default::default()
 		};
-		assert!(Chapter::all_same_chapter(&[&chapter1, &chapter2, &chapter3]));
-		assert!(!Chapter::all_same_chapter(&[&chapter1, &chapter2, &chapter4]));
-		assert!(!Chapter::all_same_chapter(&[&chapter1, &chapter4, &chapter3]));
-		assert!(!Chapter::all_same_chapter(&[&chapter2, &chapter4, &chapter3]));
-		assert!(!Chapter::all_same_chapter(&[&chapter1, &chapter2, &chapter3, &chapter4]));
+		assert!(Chapter::all_same_chapter(&[&c1, &c2, &c3, &c4]));
+
+		let c5 = Chapter {
+			title: "Chapter 172".into(),
+			..Default::default()
+		};
+		assert!(!Chapter::all_same_chapter(&[&c1, &c2, &c5]));
 	}
 }
