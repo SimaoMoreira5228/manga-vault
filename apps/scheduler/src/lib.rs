@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -61,18 +61,29 @@ impl MangaUpdateScheduler {
 		cooldown_duration: Duration,
 	) -> Self {
 		let cooldown_tracker = Arc::new(Mutex::new(ScraperCooldownTracker::new(cooldown_duration)));
+		let ignored_scrapers = Arc::new(Mutex::new(HashSet::new()));
 
 		let process_fn = Arc::new({
 			let db = db.clone();
 			let scraper_manager = Arc::clone(&scraper_manager);
 			let cooldown_tracker = Arc::clone(&cooldown_tracker);
+			let ignored_scrapers = Arc::clone(&ignored_scrapers);
 
 			move |item: QueueItem<MangaUpdateJob>| {
 				let db = db.clone();
 				let scraper_manager = scraper_manager.clone();
 				let cooldown_tracker = cooldown_tracker.clone();
+				let ignored_scrapers = ignored_scrapers.clone();
 
 				Box::pin(async move {
+					{
+						let ignored = ignored_scrapers.lock().await;
+						if ignored.contains(&item.payload.scraper_name) {
+							tracing::debug!("Skipping ignored scraper: {}", item.payload.scraper_name);
+							return Ok(());
+						}
+					}
+
 					let mut tracker = cooldown_tracker.lock().await;
 					if tracker.needs_cooldown(&item.payload.scraper_name) {
 						let delay = tracker.cooldown - tracker.last_used[&item.payload.scraper_name].elapsed();
@@ -89,10 +100,15 @@ impl MangaUpdateScheduler {
 							.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?
 							.ok_or_else(|| anyhow::anyhow!("Manga {} not found", item.payload.manga_id))?;
 
-						let plugin = scraper_manager
-							.get_plugin(&item.payload.scraper_name)
-							.await
-							.ok_or_else(|| anyhow::anyhow!("Scraper plugin '{}' not found", item.payload.scraper_name))?;
+						let plugin = scraper_manager.get_plugin(&item.payload.scraper_name).await;
+
+						if plugin.is_none() {
+							tracing::warn!("Scraper plugin '{}' not found, skipping update", item.payload.scraper_name);
+							ignored_scrapers.lock().await.insert(item.payload.scraper_name.clone());
+							return Ok(());
+						}
+
+						let plugin = plugin.unwrap();
 
 						let scraped_manga = plugin.scrape_manga(manga.url.clone()).await?;
 

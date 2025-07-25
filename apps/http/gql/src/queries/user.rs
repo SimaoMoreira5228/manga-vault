@@ -29,4 +29,9 @@ impl UserQuery {
 		let user = database_entities::users::Entity::find_by_id(id).one(&db.conn).await?;
 		Ok(user.map(SanitizedUser::from))
 	}
+
+	async fn me(&self, ctx: &Context<'_>) -> Result<Option<SanitizedUser>> {
+		let current_user = ctx.data_opt::<SanitizedUser>().cloned();
+		Ok(current_user)
+	}
 }

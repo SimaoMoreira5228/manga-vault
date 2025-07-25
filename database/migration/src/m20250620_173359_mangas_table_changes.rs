@@ -74,12 +74,24 @@ impl MigrationTrait for Migration {
 		manager
 			.alter_table(Table::alter().table(Mangas::Table).drop_column(Mangas::CreatedAt).to_owned())
 			.await?;
+
 		manager
 			.alter_table(
 				Table::alter()
 					.table(Mangas::Table)
 					.add_column(ColumnDef::new(Mangas::CreatedAt).date_time().null())
 					.to_owned(),
+			)
+			.await?;
+
+		manager
+			.get_connection()
+			.execute_unprepared(
+				r#"
+                UPDATE mangas
+                   SET updated_at = substr(replace(updated_at, ' UTC', ''), 1, 26)
+                 WHERE updated_at LIKE '% UTC'
+                "#,
 			)
 			.await?;
 
