@@ -56,7 +56,7 @@ impl bindings::scraper::types::http::Host for States {
 				Some(bindings::scraper::types::http::Response { status, headers, body })
 			}
 			Err(e) => {
-				eprintln!("Error fetching URL {}: {}", url, e);
+				tracing::error!("Error fetching URL {}: {}", url, e);
 				None
 			}
 		}
@@ -90,7 +90,7 @@ impl bindings::scraper::types::http::Host for States {
 				Some(bindings::scraper::types::http::Response { status, headers, body })
 			}
 			Err(e) => {
-				eprintln!("Error posting to URL {}: {}", url, e);
+				tracing::error!("Error posting to URL {}: {}", url, e);
 				None
 			}
 		}

@@ -68,13 +68,17 @@ impl MangaPage {
 					return Some(dt);
 				}
 				if let Ok(d) = chrono::NaiveDate::parse_from_str(date, fmt) {
-					return Some(d.and_hms_opt(0, 0, 0).unwrap());
+					if let Some(dt) = d.and_hms_opt(0, 0, 0) {
+						return Some(dt);
+					}
 				}
 			}
 
 			if let Ok(year) = date.parse::<i32>() {
 				if let Some(d) = chrono::NaiveDate::from_ymd_opt(year, 1, 1) {
-					return Some(d.and_hms_opt(0, 0, 0).unwrap());
+					if let Some(dt) = d.and_hms_opt(0, 0, 0) {
+						return Some(dt);
+					}
 				}
 			}
 		}
