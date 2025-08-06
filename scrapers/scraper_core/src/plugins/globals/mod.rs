@@ -1,18 +1,30 @@
-use mlua::{Lua, Table};
+use mlua::Lua;
 
+use crate::Config;
+
+mod headless;
 mod http;
 mod scraping;
+mod string;
+mod table;
 
-pub fn load(lua: &Lua) -> anyhow::Result<()> {
-	let split_fn = lua.create_function(|_, (s, delimiter): (String, String)| {
-		Ok(s.split(&delimiter).map(|s| s.trim().to_string()).collect::<Vec<String>>())
-	})?;
-
-	let string_table: Table = lua.globals().get("string")?;
-	string_table.set("split", split_fn)?;
-
+#[allow(unused_variables)]
+pub fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
 	http::load(lua)?;
 	scraping::load(lua)?;
+	#[cfg(not(test))]
+	if config.headless.is_some() {
+		use anyhow::Context;
+
+		let rt = tokio::runtime::Builder::new_current_thread()
+			.enable_all()
+			.build()
+			.context("Failed to create headless runtime")?;
+
+		rt.block_on(headless::load(config, lua))?;
+	}
+	string::load(lua)?;
+	table::load(lua)?;
 
 	Ok(())
 }

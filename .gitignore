@@ -3,3 +3,6 @@ config.json
 db.sqlite
 /uploads
 .idea
+/temp
+.vscode
+TODO.md

@@ -1,153 +1,128 @@
+#![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
 use std::env;
+use std::fs::{self, File};
+use std::io::Read;
+use std::path::Path;
 
-use once_cell::sync::Lazy;
-use rand::Rng;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+use serde_json::{Map, Value};
 
-pub static CONFIG: Lazy<Config> = Lazy::new(load_config);
+pub fn load_config<T>(base: &str, env_name: &str) -> Result<T, Box<dyn std::error::Error>>
+where
+	T: DeserializeOwned + Default + Serialize,
+{
+	let main_file = format!("{base}.json");
+	let env_file = format!("{base}.{env_name}.json");
+	let config_dir = Path::new(base).parent().unwrap_or_else(|| Path::new("config"));
 
-fn current_dir() -> std::path::PathBuf {
-	env::current_exe()
-		.unwrap()
-		.parent()
-		.expect("Failed to get current directory")
-		.to_path_buf()
+	if !Path::new(&main_file).exists() {
+		fs::create_dir_all(config_dir)?;
+		let default = T::default();
+		let toml = serde_json::to_string_pretty(&default)?;
+		fs::write(&main_file, toml)?;
+		eprintln!("⚠️  Created default config: {}", main_file);
+	}
+
+	let mut config = read_json_file(&main_file).unwrap_or_else(|_| Value::Object(Map::new()));
+
+	if let Ok(env_config) = read_json_file(&env_file) {
+		merge_values(&mut config, env_config);
+	}
+
+	let env_vars = read_env_vars("MVAULT", "__");
+	merge_values(&mut config, env_vars);
+
+	let result: T = serde_json::from_value(config)?;
+	Ok(result)
 }
 
-pub fn generate_secret() -> String {
-	let mut rng = rand::thread_rng();
-	let secret: String = std::iter::repeat(())
-		.map(|()| rng.sample(rand::distributions::Alphanumeric))
-		.take(24)
-		.map(char::from)
-		.collect();
-	secret
+fn read_json_file(path: &str) -> Result<Value, Box<dyn std::error::Error>> {
+	let mut file = File::open(path)?;
+	let mut contents = String::new();
+	file.read_to_string(&mut contents)?;
+	Ok(serde_json::from_str(&contents)?)
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum TracingLevel {
-	Trace,
-	Debug,
-	Info,
-	Warn,
-	Error,
-}
+fn read_env_vars(prefix: &str, separator: &str) -> Value {
+	let mut root = Map::new();
+	let full_prefix = format!("{}{}", prefix, separator);
 
-impl TracingLevel {
-	pub fn to_tracing_level(&self) -> tracing::Level {
-		match self {
-			TracingLevel::Trace => tracing::Level::TRACE,
-			TracingLevel::Debug => tracing::Level::DEBUG,
-			TracingLevel::Info => tracing::Level::INFO,
-			TracingLevel::Warn => tracing::Level::WARN,
-			TracingLevel::Error => tracing::Level::ERROR,
+	for (key, value) in env::vars() {
+		if key.starts_with(&full_prefix) {
+			let path = key[full_prefix.len()..].split(separator).collect::<Vec<&str>>();
+
+			build_value_tree(&mut root, &path, Value::String(value));
 		}
 	}
+	Value::Object(root)
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ApiConfig {
-	pub api_port: u16,
-	pub secret_jwt: String,
-	pub jwt_duration_days: u16,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct WebsocketConfig {
-	pub websocket_port: u16,
-	pub websocket_ip_to_frontend: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct DatabaseConfig {
-	pub backup_time: u16,
-	pub database_path: String,
-	pub database_backup_folder: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Config {
-	pub website_port: u16,
-	pub api: ApiConfig,
-	pub websocket: WebsocketConfig,
-	pub database: DatabaseConfig,
-	pub plugins_folder: String,
-	pub repositories: Vec<String>,
-	pub directory: String,
-	pub tracing_level: TracingLevel,
-}
-
-#[derive(Debug, Deserialize, Serialize, Default)]
-pub struct PartialConfig {
-	pub website_port: Option<u16>,
-	pub api: Option<ApiConfig>,
-	pub websocket: Option<WebsocketConfig>,
-	pub database: Option<DatabaseConfig>,
-	pub plugins_folder: Option<String>,
-	pub repositories: Option<Vec<String>>,
-	pub directory: Option<String>,
-	pub tracing_level: Option<TracingLevel>,
-}
-
-impl Default for Config {
-	fn default() -> Self {
-		let current_dir = current_dir();
-		Config {
-			website_port: 5227,
-			api: ApiConfig {
-				api_port: 5228,
-				secret_jwt: generate_secret(),
-				jwt_duration_days: 7,
-			},
-			websocket: WebsocketConfig {
-				websocket_port: 5229,
-				websocket_ip_to_frontend: "localhost".to_string(),
-			},
-			database: DatabaseConfig {
-				backup_time: 2,
-				database_path: format!("{}/database.db", current_dir.display()),
-				database_backup_folder: format!("{}/backups", current_dir.display()),
-			},
-			plugins_folder: format!("{}/plugins", current_dir.display()),
-			repositories: vec![],
-			directory: current_dir.display().to_string(),
-			tracing_level: TracingLevel::Info,
-		}
+fn build_value_tree(map: &mut Map<String, Value>, path: &[&str], value: Value) {
+	if path.is_empty() {
+		return;
 	}
-}
 
-impl Config {
-	fn from_partial(partial: PartialConfig) -> Self {
-		let default = Config::default();
-		Config {
-			website_port: partial.website_port.unwrap_or(default.website_port),
-			api: partial.api.unwrap_or(default.api),
-			websocket: partial.websocket.unwrap_or(default.websocket),
-			database: partial.database.unwrap_or(default.database),
-			plugins_folder: partial.plugins_folder.unwrap_or(default.plugins_folder),
-			repositories: partial.repositories.unwrap_or(default.repositories),
-			directory: partial.directory.unwrap_or(default.directory),
-			tracing_level: partial.tracing_level.unwrap_or(default.tracing_level),
-		}
-	}
-}
-
-fn load_config() -> Config {
-	let current_dir = current_dir();
-	let config_file = format!("{}/config.json", current_dir.display());
-
-	let loaded_config: Option<PartialConfig> = if std::path::Path::new(&config_file).exists() {
-		let config_string = std::fs::read_to_string(&config_file).ok();
-		config_string.and_then(|contents| serde_json::from_str(&contents).ok())
+	let (current, rest) = path.split_first().unwrap();
+	if rest.is_empty() {
+		map.insert(current.to_string(), value);
 	} else {
-		None
-	};
+		let entry = map.entry(current.to_string()).or_insert_with(|| Value::Object(Map::new()));
+		if let Value::Object(nested) = entry {
+			build_value_tree(nested, rest, value);
+		}
+	}
+}
 
-	if loaded_config.is_none() {
-		let default_config = Config::default();
-		std::fs::write(&config_file, serde_json::to_string_pretty(&default_config).unwrap()).unwrap();
+fn merge_values(a: &mut Value, b: Value) {
+	if let (Value::Object(a), Value::Object(b)) = (a, b) {
+		for (key, value) in b {
+			if let Some(existing) = a.get_mut(&key) {
+				if existing.is_object() && value.is_object() {
+					merge_values(existing, value);
+					continue;
+				}
+			}
+			a.insert(key, value);
+		}
+	}
+}
+
+#[cfg(test)]
+#[cfg_attr(all(coverage_nightly, test), coverage(off))]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn test_build_value_tree() {
+		let mut map = Map::new();
+		let path = vec!["a", "b", "c"];
+		let value = Value::String("test".to_string());
+
+		build_value_tree(&mut map, &path, value.clone());
+		assert_eq!(map.get("a").unwrap().get("b").unwrap().get("c").unwrap(), &value);
 	}
 
-	Config::from_partial(loaded_config.unwrap_or_default())
+	#[test]
+	fn test_merge_values() {
+		let mut a = Value::Object(Map::new());
+		let b = Value::Object(Map::from_iter([
+			("x".to_string(), Value::String("1".to_string())),
+			(
+				"y".to_string(),
+				Value::Object(Map::from_iter([("z".to_string(), Value::String("2".to_string()))])),
+			),
+		]));
+		merge_values(&mut a, b);
+		assert_eq!(
+			a,
+			Value::Object(Map::from_iter([
+				("x".to_string(), Value::String("1".to_string())),
+				(
+					"y".to_string(),
+					Value::Object(Map::from_iter([("z".to_string(), Value::String("2".to_string()))]))
+				),
+			]))
+		);
+	}
 }

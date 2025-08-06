@@ -4,39 +4,36 @@
     {
       "name": "mangaread_org",
       "urls": {
-        "windows": "https://files.catbox.moe/0wo67j.dll",
-        "linux": "https://files.catbox.moe/sbsdrl.so"
+        "wasm": "https://files.catbox.moe/02i1yt.wasm"
       },
-      "version": "0.2.1",
+      "version": "0.4.0",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "manga_dex",
       "urls": {
-        "windows": "https://files.catbox.moe/n2yh65.dll",
-        "linux": "https://files.catbox.moe/dxzwuy.so"
+        "wasm": "https://files.catbox.moe/cf30hu.wasm"
       },
-      "version": "0.2.2",
+      "version": "0.4.0",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "hari_manga",
       "urls": {
-        "windows": "https://files.catbox.moe/xtrpov.dll",
-        "linux": "https://files.catbox.moe/5o64bn.so"
+        "wasm": "https://files.catbox.moe/l6quya.wasm"
       },
-      "version": "0.1.0",
+      "version": "0.3.0",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "manhuafast",
       "urls": {
-        "lua": "https://files.catbox.moe/urwzp6.lua"
+        "lua": "https://files.catbox.moe/7y54p4.lua"
       },
-      "version": "0.1.1",
+      "version": "0.1.2",
       "state": "updated",
       "build_state": "beta"
     }

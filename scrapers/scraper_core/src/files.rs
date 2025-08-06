@@ -1,239 +1,245 @@
-use std::collections::HashMap;
+use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::Context;
-use config::CONFIG;
-use notify::{RecommendedWatcher, Watcher};
+use anyhow::{Context, Result};
+use notify::{Event, EventKind};
 
-use crate::plugins::dynlib::DynamicLibPlugin;
 use crate::plugins::lua::LuaPlugin;
+use crate::plugins::wasm::WasmPlugin;
 use crate::plugins::{Plugin, PluginType};
-use crate::{FileModification, PLUGIN_FILE_EXTENSIONS};
+use crate::{Config, FileModification, ModificationTracker, PLUGIN_FILE_EXTENSIONS, PluginMap};
 
-pub fn read_dir(path: &PathBuf, level: i8, callback: impl FnOnce(PathBuf) + Send + Clone + 'static) {
-	tracing::debug!("Reading directory: {}", path.display());
+pub fn read_directory<CB, Fut>(
+	path: &Path,
+	depth: i8,
+	callback: CB,
+) -> std::pin::Pin<Box<dyn Future<Output = Result<()>> + Send>>
+where
+	CB: Fn(PathBuf) -> Fut + Send + Clone + 'static,
+	Fut: Future<Output = ()> + Send + 'static,
+{
+	let path = path.to_path_buf();
+	let callback = callback.clone();
 
-	for entry in std::fs::read_dir(path).unwrap() {
-		let entry = entry.unwrap();
-		let path = entry.path();
+	Box::pin(async move {
+		tracing::debug!("Reading directory: {}", path.display());
 
-		let call = callback.clone();
+		let mut entries = tokio::fs::read_dir(&path)
+			.await
+			.with_context(|| format!("Failed to read directory: {}", path.display()))?;
 
-		if path.is_dir() && level >= 0 {
-			read_dir(&path, level - 1, callback.clone());
-		} else if path.is_file() {
-			call(path);
+		while let Some(entry) = entries
+			.next_entry()
+			.await
+			.with_context(|| format!("Failed to read directory entry in {}", path.display()))?
+		{
+			let entry_path = entry.path();
+
+			if entry_path.is_dir() && depth > 0 {
+				read_directory(&entry_path, depth - 1, callback.clone()).await?;
+			} else if entry_path.is_file() {
+				callback(entry_path).await;
+			}
 		}
-	}
+
+		Ok(())
+	})
 }
 
-pub fn load_plugin_file(
-	plugins: Arc<RwLock<HashMap<String, Plugin>>>,
-	file: PathBuf,
+async fn remove_existing_plugin(plugins: &PluginMap, file_path: &Path, plugin_type: &PluginType) {
+	let mut plugins = plugins.write().await;
+	plugins.retain(|_, p| match (&**p, plugin_type) {
+		(Plugin::Lua(plugin), PluginType::Lua) => plugin.file != file_path,
+		(Plugin::Wasm(plugin), PluginType::Wasm) => plugin.file != file_path,
+		_ => true,
+	});
+}
+
+pub async fn load_plugin_file(
+	config: Arc<Config>,
+	plugins: PluginMap,
+	file_path: PathBuf,
 	plugin_type: PluginType,
-) -> anyhow::Result<()> {
-	tracing::info!("Processing plugin file: {}", file.display());
+) -> Result<()> {
+	tracing::info!("Processing plugin file: {}", file_path.display());
+
+	remove_existing_plugin(&plugins, &file_path, &plugin_type).await;
 
 	match plugin_type {
 		PluginType::Lua => {
-			if plugins.read().unwrap().values().any(|p| match p {
-				Plugin::Lua(p) => p.file == file,
-				_ => false,
-			}) {
-				plugins.write().unwrap().retain(|_, p| match p {
-					Plugin::Lua(p) => p.file != file,
-					_ => true,
-				});
-			}
+			let plugin = tokio::task::spawn_blocking({
+				let config = config.clone();
+				let file_path = file_path.clone();
+				move || LuaPlugin::new(config, &file_path)
+			})
+			.await??;
 
-			let runtime = mlua::Lua::new();
-
-			runtime.load(file.clone()).exec()?;
-
-			let name: mlua::String = runtime.globals().get("PLUGIN_NAME")?;
-			let version: mlua::String = runtime.globals().get("PLUGIN_VERSION")?;
-
-			let plugin_name = name.to_str().unwrap().to_string();
-			let plugin_version = version.to_str().unwrap().to_string();
-
-			let plugin = Plugin::Lua(
-				LuaPlugin::new(plugin_name.clone(), plugin_version, file.to_str().unwrap().to_string()).unwrap(),
-			);
-
-			plugins.write().unwrap().insert(plugin_name, plugin);
+			plugins
+				.write()
+				.await
+				.insert(plugin.name.clone(), Arc::new(Plugin::Lua(plugin)));
 		}
-		PluginType::Dynamic => {
-			if plugins.read().unwrap().values().any(|p| match p {
-				Plugin::Dynamic(p) => p.file == file,
-				_ => false,
-			}) {
-				plugins.write().unwrap().retain(|_, p| match p {
-					Plugin::Dynamic(p) => p.file != file,
-					_ => true,
-				});
-			}
+		PluginType::Wasm => {
+			let plugin = tokio::task::spawn_blocking({
+				let file_path = file_path.clone();
+				move || WasmPlugin::new(&file_path)
+			})
+			.await??;
 
-			let file_clone = file.clone();
-
-			let plugin_name: String;
-			let plugin_version: String;
-
-			unsafe {
-				let lib = libloading::Library::new(&file_clone)
-					.context(format!("Could not load library {}", file_clone.display()))?;
-
-				let name: libloading::Symbol<*const &'static str> = lib
-					.get(b"PLUGIN_NAME")
-					.context(format!("Could not get plugin name for {}", file_clone.display()))?;
-
-				let version: libloading::Symbol<*const &'static str> = lib
-					.get(b"PLUGIN_VERSION")
-					.context(format!("Could not get plugin version for {}", file_clone.display()))?;
-
-				plugin_name = (**name).to_string();
-				plugin_version = (**version).to_string();
-			}
-
-			let plugin = Plugin::Dynamic(DynamicLibPlugin::new(
-				plugin_name.clone(),
-				plugin_version,
-				file.to_str().unwrap().to_string(),
-			));
-
-			plugins.write().unwrap().insert(plugin_name, plugin);
+			plugins
+				.write()
+				.await
+				.insert(plugin.name.clone(), Arc::new(Plugin::Wasm(plugin)));
 		}
 	}
 
 	Ok(())
 }
 
-pub fn handle_files(
-	plugins: Arc<RwLock<HashMap<String, Plugin>>>,
-	modification_tracker: Arc<RwLock<HashMap<PathBuf, FileModification>>>,
+pub(crate) async fn handle_single_event(
+	config: Arc<Config>,
+	event: Event,
+	plugins: &PluginMap,
+	modification_tracker: &ModificationTracker,
 ) {
-	let (tx, rx) = std::sync::mpsc::channel();
-	let mut watcher = match RecommendedWatcher::new(tx, notify::Config::default()) {
-		std::result::Result::Ok(watcher) => watcher,
-		Err(e) => {
-			tracing::error!("Failed to create watcher: {:?}", e);
-			return;
-		}
-	};
-
-	if let Err(e) = watcher.watch(Path::new(&CONFIG.plugins_folder), notify::RecursiveMode::Recursive) {
-		tracing::error!("Failed to watch folder: {:?}", e);
-		return;
-	}
-
-	for res in rx {
-		let plugins = plugins.clone();
-		let modification_tracker = modification_tracker.clone();
-		match res {
-			Ok(res) => {
-				handle_file_event(res, plugins, modification_tracker);
-			}
-			Err(e) => tracing::error!("watcher error: {:?}", e),
-		}
-	}
-}
-
-fn handle_file_event(
-	event: notify::Event,
-	plugins: Arc<RwLock<HashMap<String, Plugin>>>,
-	modification_tracker: Arc<RwLock<HashMap<PathBuf, FileModification>>>,
-) {
-	const DEBOUNCE_DURATION: Duration = Duration::from_secs(1);
-
 	match event.kind {
-		notify::EventKind::Modify(_) | notify::EventKind::Create(_) => {
-			for path in event.clone().paths {
-				if let Some(ext) = path.extension() {
-					if !PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
-						continue;
-					}
-
-					let should_process = {
-						let mut tracker = modification_tracker.write().unwrap();
-						let entry = tracker.entry(path.clone());
-
-						match entry {
-							std::collections::hash_map::Entry::Occupied(mut entry) => {
-								let modification = entry.get_mut();
-								let now = Instant::now();
-
-								if now.duration_since(modification.last_modified) > DEBOUNCE_DURATION {
-									modification.last_modified = now;
-									true
-								} else {
-									tracing::debug!("File {:?} Event {:?} Skipped", path, event.kind);
-									false
-								}
-							}
-							std::collections::hash_map::Entry::Vacant(entry) => {
-								entry.insert(FileModification {
-									last_modified: Instant::now(),
-									is_processing: false,
-								});
-								true
-							}
-						}
-					};
-
-					tracing::debug!("File {:?} Event {:?} Started Processing", path, event.kind);
-
-					if should_process {
-						if path.extension().unwrap() == "lua" {
-							let _ = process_plugin_file(&path, plugins.clone(), PluginType::Lua);
-						} else {
-							let _ = process_plugin_file(&path, plugins.clone(), PluginType::Dynamic);
-						}
-
-						let mut tracker = modification_tracker.write().unwrap();
-						if let Some(entry) = tracker.get_mut(&path) {
-							entry.is_processing = false;
-						}
-					}
-				}
-			}
+		EventKind::Create(_) | EventKind::Modify(_) => {
+			handle_modification_event(config, event, plugins, modification_tracker).await
 		}
-		notify::EventKind::Remove(_) => {
-			for path in event.paths {
-				if let Some(ext) = path.extension() {
-					if PLUGIN_FILE_EXTENSIONS.contains(&ext.to_str().unwrap()) {
-						let mut plugins = plugins.write().unwrap();
-						plugins.retain(|_, p| match p {
-							Plugin::Dynamic(p) => p.file.to_str() != path.to_str(),
-							Plugin::Lua(p) => p.file.to_str() != path.to_str(),
-						});
-						tracing::info!("Unloaded plugin {}", path.display());
-
-						let mut tracker = modification_tracker.write().unwrap();
-						tracker.remove(&path);
-					}
-				}
-			}
-		}
-		_ => {}
+		EventKind::Remove(_) => handle_removal_event(event, plugins, modification_tracker).await,
+		_ => (),
 	}
 }
 
-fn process_plugin_file(
-	path: &Path,
-	plugins: Arc<RwLock<HashMap<String, Plugin>>>,
-	plugin_type: PluginType,
-) -> anyhow::Result<()> {
-	std::thread::sleep(Duration::from_millis(100));
+async fn handle_modification_event(
+	config: Arc<Config>,
+	event: Event,
+	plugins: &PluginMap,
+	modification_tracker: &ModificationTracker,
+) {
+	const DEBOUNCE_TIME: Duration = Duration::from_millis(500);
+	const MAX_RETRIES: u8 = 3;
+	const RETRY_DELAY: Duration = Duration::from_millis(300);
 
-	match load_plugin_file(plugins.clone(), path.to_path_buf(), plugin_type) {
-		Ok(_) => {
-			tracing::info!("Successfully reloaded plugin: {}", path.display());
-			Ok(())
+	for path in event.paths {
+		let Some(extension) = path.extension().and_then(|ext| ext.to_str()) else {
+			continue;
+		};
+		if !PLUGIN_FILE_EXTENSIONS.contains(&extension) {
+			continue;
 		}
-		Err(e) => {
-			tracing::error!("Failed to reload plugin {}: {:?}", path.display(), e);
-			Err(e)
+
+		let plugin_type = if extension == "lua" {
+			PluginType::Lua
+		} else {
+			PluginType::Wasm
+		};
+
+		let mut tracker = modification_tracker.write().await;
+		let should_process = {
+			let entry = tracker.entry(path.clone()).or_insert_with(|| FileModification {
+				last_modified: Instant::now(),
+				is_processing: false,
+				retry_count: 0,
+			});
+
+			if entry.is_processing {
+				tracing::debug!("Skipping event - already processing: {}", path.display());
+				false
+			} else if Instant::now().duration_since(entry.last_modified) < DEBOUNCE_TIME {
+				tracing::debug!("Skipping event - within debounce time: {}", path.display());
+				false
+			} else {
+				entry.last_modified = Instant::now();
+				entry.is_processing = true;
+				true
+			}
+		};
+
+		if should_process {
+			let plugins_clone = plugins.clone();
+			let path_clone = path.clone();
+			let tracker_clone = modification_tracker.clone();
+			let plugin_type_clone = plugin_type.clone();
+			let config_clone = config.clone();
+
+			tokio::spawn(async move {
+				let mut retry_count = 0;
+				let mut success = false;
+
+				while retry_count < MAX_RETRIES && !success {
+					let result = process_plugin_file(
+						config_clone.clone(),
+						&path_clone,
+						plugins_clone.clone(),
+						plugin_type_clone.clone(),
+					)
+					.await;
+
+					match result {
+						Ok(_) => {
+							tracing::info!("Successfully reloaded plugin: {}", path_clone.display());
+							success = true;
+						}
+						Err(e) => {
+							if retry_count < MAX_RETRIES - 1 {
+								tracing::warn!(
+									"Failed to process plugin {} (attempt {}): {:#}",
+									path_clone.display(),
+									retry_count + 1,
+									e
+								);
+								tokio::time::sleep(RETRY_DELAY).await;
+								retry_count += 1;
+							} else {
+								tracing::error!("Permanently failed to process plugin {}: {:#}", path_clone.display(), e);
+							}
+						}
+					}
+				}
+
+				let mut tracker = tracker_clone.write().await;
+				if let Some(entry) = tracker.get_mut(&path_clone) {
+					if success {
+						tracker.remove(&path_clone);
+					} else {
+						entry.is_processing = false;
+						entry.retry_count = retry_count;
+					}
+				}
+			});
 		}
 	}
+}
+
+async fn handle_removal_event(event: Event, plugins: &PluginMap, modification_tracker: &ModificationTracker) {
+	for path in event.paths {
+		if let Some(extension) = path.extension().and_then(|ext| ext.to_str()) {
+			if PLUGIN_FILE_EXTENSIONS.contains(&extension) {
+				plugins.write().await.retain(|_, p| match &**p {
+					Plugin::Wasm(p) => p.file != path,
+					Plugin::Lua(p) => p.file != path,
+				});
+				tracing::info!("Unloaded plugin: {}", path.display());
+
+				modification_tracker.write().await.remove(&path);
+			}
+		}
+	}
+}
+
+async fn process_plugin_file(
+	config: Arc<Config>,
+	path: &PathBuf,
+	plugins: PluginMap,
+	plugin_type: PluginType,
+) -> Result<()> {
+	std::thread::sleep(Duration::from_millis(100));
+	load_plugin_file(config, plugins, path.clone(), plugin_type)
+		.await
+		.with_context(|| format!("Failed to load plugin: {}", path.display()))?;
+	tracing::info!("Successfully reloaded plugin: {}", path.display());
+	Ok(())
 }

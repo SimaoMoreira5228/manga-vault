@@ -1,548 +1,656 @@
-use isahc::ReadResponseExt;
+#![cfg_attr(all(coverage_nightly, test), feature(coverage_attribute))]
+wit_bindgen::generate!({
+	path: "scraper.wit"
+});
+
+use std::collections::{HashMap, VecDeque};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant, SystemTime};
+
+use exports::scraper::types::scraper::*;
 use once_cell::sync::Lazy;
-use scraper_types::{Chapter, Genre, MangaItem, MangaPage, ScraperInfo};
 use serde_json::Value;
-use std::{
-	sync::Mutex,
-	time::{Duration, Instant},
-	vec,
-};
 
-static COOLDOWN: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
-static RATE_LIMIT_COUNTER: Lazy<Mutex<u8>> = Lazy::new(|| Mutex::new(0));
+use crate::scraper::types::*;
 
-#[no_mangle]
-pub static PLUGIN_NAME: &str = env!("CARGO_PKG_NAME");
-
-#[no_mangle]
-pub static PLUGIN_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-fn get(url: impl AsRef<str>) -> Result<Value, serde_json::Error> {
-	let mut cooldown = COOLDOWN.lock().unwrap();
-	let mut rate_limit_counter = RATE_LIMIT_COUNTER.lock().unwrap();
-
-	if *rate_limit_counter >= 4 && cooldown.elapsed() < Duration::from_secs(1) {
-		std::thread::sleep(std::time::Duration::from_secs(2));
-	}
-
-	*cooldown = Instant::now();
-	*rate_limit_counter += 1;
-
-	let mut resp = isahc::get(url.as_ref()).unwrap();
-
-	let text = resp.text().unwrap();
-
-	text.parse()
+struct RateLimiter {
+	global_timestamps: VecDeque<Instant>,
+	endpoint_limits: HashMap<String, EndpointLimit>,
+	retry_queue: VecDeque<(String, Instant)>,
 }
 
-#[no_mangle]
-pub extern "Rust" fn scrape_trending(page: u32) -> Vec<MangaItem> {
-	let mut manga_items: Vec<MangaItem> = Vec::new();
+#[allow(dead_code)]
+struct EndpointLimit {
+	limit: u32,
+	remaining: u32,
+	reset_time: u64,
+	last_updated: Instant,
+}
 
-	let resp: Result<Value, serde_json::Error> = if page == 1 {
-		get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art")
-	} else {
-		get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10))
-	};
-
-	if resp.is_err() {
-		return manga_items;
+impl RateLimiter {
+	fn new() -> Self {
+		RateLimiter {
+			global_timestamps: VecDeque::new(),
+			endpoint_limits: HashMap::new(),
+			retry_queue: VecDeque::new(),
+		}
 	}
 
-	let resp = resp.unwrap();
-
-	let data = resp["data"].as_array().map(|d| d.to_vec()).unwrap_or_default();
-
-	for item in data {
-		let manga_id = item["id"].as_str();
-
-		if manga_id.is_none() {
-			continue;
+	fn wait_for_request(&mut self, method: &str, path: &str) {
+		let endpoint_key = self.normalize_endpoint(method, path);
+		if let Some(cooldown) = self.check_retry_cooldown(&endpoint_key) {
+			std::thread::sleep(cooldown);
 		}
 
-		let manga_id = manga_id.unwrap();
+		self.apply_endpoint_limits(&endpoint_key);
 
-		let relationships = item["relationships"].as_array().map(|r| r.to_vec()).unwrap_or_default();
-		let mut cover_id: &str = "";
+		self.apply_global_limits();
+	}
 
-		relationships.iter().for_each(|relationship| {
-			let r#type = relationship["type"].as_str();
+	fn update_from_headers(&mut self, method: &str, path: &str, headers: &[http::Header]) {
+		let endpoint_key = self.normalize_endpoint(method, path);
 
-			if r#type.is_none() {
-				return;
+		let mut limit = 0;
+		let mut remaining = 0;
+		let mut reset_time = 0;
+
+		for header in headers {
+			match header.name.as_str() {
+				"X-RateLimit-Limit" => limit = header.value.parse().unwrap_or(0),
+				"X-RateLimit-Remaining" => remaining = header.value.parse().unwrap_or(0),
+				"X-RateLimit-Retry-After" => reset_time = header.value.parse().unwrap_or(0),
+				_ => {}
+			}
+		}
+
+		if limit > 0 {
+			self.endpoint_limits.insert(
+				endpoint_key,
+				EndpointLimit {
+					limit,
+					remaining,
+					reset_time,
+					last_updated: Instant::now(),
+				},
+			);
+		}
+	}
+
+	fn handle_rate_limit_exceeded(&mut self, method: &str, path: &str, retry_after: u64) {
+		let endpoint_key = self.normalize_endpoint(method, path);
+		let cooldown = Duration::from_secs(retry_after);
+		let resume_time = Instant::now() + cooldown;
+
+		self.retry_queue.push_back((endpoint_key, resume_time));
+	}
+
+	fn normalize_endpoint(&self, method: &str, path: &str) -> String {
+		let parts: Vec<&str> = path.split('/').collect();
+		let normalized_path = if parts.len() > 3 {
+			format!("/{}/{}", parts[1], parts[3])
+		} else {
+			path.to_string()
+		};
+		format!("{} {}", method, normalized_path)
+	}
+
+	fn check_retry_cooldown(&self, endpoint_key: &str) -> Option<Duration> {
+		let now = Instant::now();
+		for (key, resume_time) in &self.retry_queue {
+			if key == endpoint_key && *resume_time > now {
+				return Some(*resume_time - now);
+			}
+		}
+		None
+	}
+
+	fn apply_endpoint_limits(&mut self, endpoint_key: &str) {
+		if let Some(limit) = self.endpoint_limits.get_mut(endpoint_key) {
+			if SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() > limit.reset_time {
+				limit.remaining = limit.limit;
 			}
 
-			let r#type = r#type.unwrap();
-
-			if r#type == "cover_art" {
-				cover_id = relationship["attributes"]["fileName"].as_str().unwrap_or("");
+			if limit.remaining == 0 {
+				let reset_duration = Duration::from_secs(
+					limit.reset_time - SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs(),
+				);
+				std::thread::sleep(reset_duration);
+				limit.remaining = limit.limit;
 			}
-		});
 
-		let cover_file_name = format!("https://mangadex.org/covers/{}/{}.512.jpg", manga_id, cover_id);
+			limit.remaining -= 1;
+		}
+	}
 
-		let title = item["attributes"]["title"]
-			.as_object()
-			.unwrap()
+	fn apply_global_limits(&mut self) {
+		let now = Instant::now();
+		while let Some(oldest) = self.global_timestamps.front() {
+			if now.duration_since(*oldest) > Duration::from_secs(1) {
+				self.global_timestamps.pop_front();
+			} else {
+				break;
+			}
+		}
+
+		if self.global_timestamps.len() >= 5 {
+			if let Some(oldest) = self.global_timestamps.front() {
+				let elapsed = oldest.elapsed();
+				if elapsed < Duration::from_secs(1) {
+					std::thread::sleep(Duration::from_secs(1) - elapsed);
+				}
+			}
+		}
+
+		self.global_timestamps.push_back(Instant::now());
+	}
+}
+
+static RATE_LIMITER: Lazy<Arc<Mutex<RateLimiter>>> = Lazy::new(|| Arc::new(Mutex::new(RateLimiter::new())));
+
+#[cfg(not(test))]
+fn http_get(url: &str) -> Option<http::Response> {
+	let method = "GET";
+	let path = url.split("api.mangadex.org").nth(1).unwrap_or("");
+
+	let mut limiter = RATE_LIMITER.lock().unwrap();
+	limiter.wait_for_request(method, path);
+
+	let header = http::Header {
+		name: "User-Agent".to_string(),
+		value: format!("Manga Vault MangaDex/{}", env!("CARGO_PKG_VERSION")),
+	};
+
+	let response = http::get(url, Some(&[header]));
+	if response.is_none() {
+		return None;
+	}
+	let response = response.unwrap();
+
+	match response.status {
+		200 => {
+			limiter.update_from_headers(method, path, &response.headers);
+			Some(response)
+		}
+		429 => {
+			let retry_after = response
+				.headers
+				.iter()
+				.find(|h| h.name == "Retry-After")
+				.and_then(|h| h.value.parse().ok())
+				.unwrap_or(5);
+
+			limiter.handle_rate_limit_exceeded(method, path, retry_after);
+			None
+		}
+		_ => None,
+	}
+}
+
+#[cfg(test)]
+fn http_get(url: &str) -> Option<http::Response> {
+	let method = "GET";
+	let path = url.split("api.mangadex.org").nth(1).unwrap_or("");
+
+	let mut limiter = RATE_LIMITER.lock().unwrap();
+	limiter.wait_for_request(method, path);
+
+	let client = reqwest::blocking::Client::new();
+	let request = client.get(url).header(
+		"User-Agent",
+		format!("Manga Vault Testing Suite for MangaDex/{}", env!("CARGO_PKG_VERSION")),
+	);
+	let response = request.send().ok()?;
+	let headers = response.headers().clone();
+	let status = response.status().as_u16();
+	let body = response.text().ok()?;
+
+	let response = http::Response {
+		status: status as u32,
+		body,
+		headers: headers
 			.iter()
-			.next()
-			.unwrap()
-			.1
-			.as_str()
-			.unwrap();
-
-		let url = format!("https://mangadex.org/title/{}", manga_id);
-		manga_items.push(MangaItem {
-			title: title.to_string(),
-			url: url.to_string(),
-			img_url: cover_file_name.to_string(),
-		});
-	}
-
-	manga_items
-}
-
-#[no_mangle]
-pub extern "Rust" fn scrape_latest(page: u32) -> Vec<MangaItem> {
-	let mut manga_items: Vec<MangaItem> = Vec::new();
-
-	let resp: Result<Value, serde_json::Error> = if page == 1 {
-		get("https://api.mangadex.org/manga?limit=10&offset=0&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art")
-	} else {
-		get(format!("https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art", page * 10))
+			.map(|(name, value)| http::Header {
+				name: name.to_string(),
+				value: value.to_str().unwrap_or("").to_string(),
+			})
+			.collect(),
 	};
 
-	if resp.is_err() {
-		return manga_items;
+	match response.status {
+		200 => {
+			limiter.update_from_headers(method, path, &response.headers);
+			Some(response)
+		}
+		429 => {
+			let retry_after = response
+				.headers
+				.iter()
+				.find(|h| h.name == "Retry-After")
+				.and_then(|h| h.value.parse().ok())
+				.unwrap_or(5);
+
+			limiter.handle_rate_limit_exceeded(method, path, retry_after);
+			None
+		}
+		_ => None,
 	}
+}
 
-	let resp = resp.unwrap();
+fn parse_json_response(response: &http::Response) -> Option<Value> {
+	if response.status != 200 {
+		return None;
+	}
+	serde_json::from_str(&response.body).ok()
+}
 
-	let data = resp["data"].as_array().map(|d| d.to_vec()).unwrap_or_default();
+struct ScraperImpl;
 
-	for item in data {
-		let manga_id = item["id"].as_str();
+export!(ScraperImpl);
 
-		if manga_id.is_none() {
-			continue;
+impl exports::scraper::types::scraper::Guest for ScraperImpl {
+	fn scrape_chapter(url: String) -> Vec<String> {
+		let chapter_id = url.split('/').last().unwrap_or("");
+		if chapter_id.is_empty() {
+			return Vec::new();
 		}
 
-		let manga_id = manga_id.unwrap();
+		let api_url = format!("https://api.mangadex.org/at-home/server/{}?forcePort443=false", chapter_id);
 
-		let relationships = item["relationships"].as_array().map(|r| r.to_vec()).unwrap_or_default();
-		let mut cover_id: &str = "";
+		let response = match http_get(&api_url) {
+			Some(res) => res,
+			None => return Vec::new(),
+		};
 
-		relationships.iter().for_each(|relationship| {
-			let r#type = relationship["type"].as_str();
+		let json = match parse_json_response(&response) {
+			Some(data) => data,
+			None => return Vec::new(),
+		};
 
-			if r#type.is_none() {
-				return;
-			}
+		let chapter_data = match json.get("chapter") {
+			Some(cd) => cd,
+			None => return Vec::new(),
+		};
+		let hash = match chapter_data.get("hash").and_then(|h| h.as_str()) {
+			Some(h) => h,
+			None => return Vec::new(),
+		};
+		let data = match chapter_data.get("data").and_then(|d| d.as_array()) {
+			Some(d) => d,
+			None => return Vec::new(),
+		};
 
-			let r#type = r#type.unwrap();
+		data.iter()
+			.filter_map(|page| {
+				page.as_str()
+					.map(|p| format!("https://uploads.mangadex.org/data/{}/{}", hash, p))
+			})
+			.collect()
+	}
 
-			if r#type == "cover_art" {
-				cover_id = relationship["attributes"]["fileName"].as_str().unwrap_or("");
-			}
-		});
+	fn scrape_latest(page: u32) -> Vec<MangaItem> {
+		let offset = (page - 1) * 10;
+		let url = format!(
+			"https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art",
+			offset
+		);
+		fetch_manga_items(&url)
+	}
 
-		let cover_file_name = format!("https://mangadex.org/covers/{}/{}.512.jpg", manga_id, cover_id);
+	fn scrape_trending(page: u32) -> Vec<MangaItem> {
+		let offset = (page - 1) * 10;
+		let url = format!(
+			"https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&order%5BfollowedCount%5D=desc&includes%5B%5D=cover_art",
+			offset
+		);
+		fetch_manga_items(&url)
+	}
 
-		let title = item["attributes"]["title"]
+	fn scrape_search(query: String, page: u32) -> Vec<MangaItem> {
+		let offset = (page - 1) * 10;
+		let encoded_query = query.split_whitespace().collect::<Vec<_>>().join("%20");
+		let url = format!(
+			"https://api.mangadex.org/manga?limit=10&offset={}&title={}&includes%5B%5D=cover_art",
+			offset, encoded_query
+		);
+		fetch_manga_items(&url)
+	}
+
+	fn scrape_manga(url: String) -> MangaPage {
+		let manga_id = url.split('/').last().unwrap_or("");
+		if manga_id.is_empty() {
+			return default_manga_page();
+		}
+
+		// Fetch manga details
+		let manga_url = format!(
+			"https://api.mangadex.org/manga/{}?includes[]=cover_art&includes[]=author&includes[]=artist",
+			manga_id
+		);
+
+		let response = match http_get(&manga_url) {
+			Some(res) => res,
+			None => return default_manga_page(),
+		};
+
+		let json = match parse_json_response(&response) {
+			Some(data) => data,
+			None => return default_manga_page(),
+		};
+
+		let data = match json.get("data") {
+			Some(d) => d,
+			None => return default_manga_page(),
+		};
+
+		let attributes = data.get("attributes").unwrap();
+		let title = attributes["title"]
 			.as_object()
-			.unwrap()
-			.iter()
-			.next()
-			.unwrap()
-			.1
-			.as_str()
-			.unwrap();
+			.and_then(|titles| titles.values().next())
+			.and_then(|title| title.as_str())
+			.unwrap_or("")
+			.to_string();
 
-		let url = format!("https://mangadex.org/title/{}", manga_id);
-		manga_items.push(MangaItem {
-			title: title.to_string(),
-			url: url.to_string(),
-			img_url: cover_file_name.to_string(),
-		});
-	}
-
-	manga_items
-}
-
-#[no_mangle]
-pub extern "Rust" fn scrape_search((query, page): (String, u32)) -> Vec<MangaItem> {
-	let title = query.split(" ").collect::<Vec<&str>>().join("%20");
-
-	let mut manga_items: Vec<MangaItem> = Vec::new();
-
-	let resp: Result<Value, serde_json::Error> = if page == 1 {
-		get(format!("https://api.mangadex.org/manga?limit=10&offset=0&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", title))
-	} else {
-		get(format!("https://api.mangadex.org/manga?limit=10&offset={}&title={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&publicationDemographic%5B%5D=shounen&publicationDemographic%5B%5D=shoujo&publicationDemographic%5B%5D=josei&publicationDemographic%5B%5D=seinen&publicationDemographic%5B%5D=none&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&order%5Brelevance%5D=desc&includes%5B%5D=cover_art", page * 10, title))
-	};
-
-	if resp.is_err() {
-		return manga_items;
-	}
-
-	let resp = resp.unwrap();
-
-	let data = resp["data"].as_array().map(|d| d.to_vec()).unwrap_or_default();
-
-	for item in data {
-		let manga_id = item["id"].as_str();
-
-		if manga_id.is_none() {
-			continue;
+		let mut img_url = String::new();
+		if let Some(relationships) = data.get("relationships").and_then(|r| r.as_array()) {
+			for rel in relationships {
+				if rel["type"] == "cover_art" {
+					if let Some(file_name) = rel["attributes"]["fileName"].as_str() {
+						img_url = format!("https://mangadex.org/covers/{}/{}.512.jpg", manga_id, file_name);
+						break;
+					}
+				}
+			}
 		}
 
-		let manga_id = manga_id.unwrap();
-
-		let relationships = item["relationships"].as_array().map(|r| r.to_vec()).unwrap_or_default();
-
-		let mut cover_id: &str = "";
-
-		relationships.iter().for_each(|relationship| {
-			let r#type = relationship["type"].as_str();
-
-			if r#type.is_none() {
-				return;
+		let mut alternative_names = Vec::new();
+		if let Some(alt_titles) = attributes.get("altTitles").and_then(|a| a.as_array()) {
+			for title_obj in alt_titles {
+				if let Some(title) = title_obj.as_object().and_then(|t| t.values().next()) {
+					if let Some(title_str) = title.as_str() {
+						alternative_names.push(title_str.to_string());
+					}
+				}
 			}
+		}
 
-			let r#type = r#type.unwrap();
-
-			if r#type == "cover_art" {
-				cover_id = relationship["attributes"]["fileName"].as_str().unwrap_or("");
+		let mut authors = Vec::new();
+		let mut artists = Vec::new();
+		if let Some(relationships) = data.get("relationships").and_then(|r| r.as_array()) {
+			for rel in relationships {
+				if rel["type"] == "author" {
+					if let Some(name) = rel["attributes"]["name"].as_str() {
+						authors.push(name.to_string());
+					}
+				} else if rel["type"] == "artist" {
+					if let Some(name) = rel["attributes"]["name"].as_str() {
+						artists.push(name.to_string());
+					}
+				}
 			}
-		});
+		}
 
-		let cover_file_name = format!("https://mangadex.org/covers/{}/{}.512.jpg", manga_id, cover_id);
+		let status = attributes["status"].as_str().unwrap_or("").to_string();
 
-		let title = item["attributes"]["title"]
+		let release_date = attributes["year"].as_i64().map(|year| year.to_string());
+
+		let description = attributes["description"]
 			.as_object()
-			.unwrap()
-			.iter()
-			.next()
-			.unwrap()
-			.1
-			.as_str()
-			.unwrap();
+			.and_then(|desc| desc.values().next())
+			.and_then(|d| d.as_str())
+			.unwrap_or("")
+			.to_string();
 
-		let url = format!("https://mangadex.org/title/{}", manga_id);
-		manga_items.push(MangaItem {
-			title: title.to_string(),
-			url: url.to_string(),
-			img_url: cover_file_name.to_string(),
-		});
-	}
-
-	manga_items
-}
-
-#[no_mangle]
-pub extern "Rust" fn scrape_chapter(url: String) -> Vec<String> {
-	let chapter_id = url.split("/").last();
-
-	if chapter_id.is_none() {
-		return vec![];
-	}
-
-	let chapter_id = chapter_id.unwrap();
-
-	let resp = get(format!(
-		"https://api.mangadex.org/at-home/server/{}?forcePort443=false",
-		chapter_id
-	));
-
-	if resp.is_err() {
-		return vec![];
-	}
-
-	let resp = resp.unwrap();
-
-	let chapter_data = resp["chapter"].as_object();
-
-	if chapter_data.is_none() {
-		return vec![];
-	}
-
-	let chapter_data = chapter_data.unwrap();
-
-	let hash = chapter_data["hash"].as_str();
-
-	if hash.is_none() {
-		return vec![];
-	}
-
-	let hash = hash.unwrap();
-
-	let data = chapter_data["data"].as_array();
-
-	if data.is_none() {
-		return vec![];
-	}
-
-	let data = data.unwrap();
-
-	let mut pages: Vec<String> = vec![];
-
-	data.iter().for_each(|page| {
-		let page = page.as_str();
-
-		if page.is_none() {
-			return;
+		let mut genres = Vec::new();
+		if let Some(tags) = attributes.get("tags").and_then(|t| t.as_array()) {
+			for tag in tags {
+				if tag["attributes"]["group"].as_str() == Some("genre") {
+					if let Some(name) = tag["attributes"]["name"]["en"].as_str() {
+						genres.push(name.to_string());
+					}
+				}
+			}
 		}
 
-		let page = page.unwrap();
+		// Fetch chapters
+		let chapters = fetch_chapters(manga_id);
 
-		pages.push(format!("https://uploads.mangadex.org/data/{}/{}", hash, page));
-	});
+		MangaPage {
+			title,
+			url: url.clone(),
+			img_url,
+			alternative_names,
+			authors,
+			artists: if artists.is_empty() { None } else { Some(artists) },
+			status,
+			manga_type: None,
+			release_date,
+			description,
+			genres,
+			chapters,
+		}
+	}
 
-	pages
+	fn scrape_genres_list() -> Vec<Genre> {
+		// MangaDex doesn't have a direct genre list endpoint
+		// You'd need to implement this if required
+		Vec::new()
+	}
+
+	fn get_info() -> ScraperInfo {
+		ScraperInfo {
+			id: "manga_dex".to_string(),
+			name: "MangaDex".to_string(),
+			version: env!("CARGO_PKG_VERSION").to_string(),
+			img_url: "https://mangadex.org/pwa/icons/icon-180.png".to_string(),
+		}
+	}
 }
 
-#[no_mangle]
-pub extern "Rust" fn scrape_manga(url: String) -> MangaPage {
-	let manga_id = url.split("/").last();
-
-	let manga_page = MangaPage {
-		title: "".to_string(),
-		url: "".to_string(),
-		img_url: "".to_string(),
-		alternative_names: vec![],
-		authors: vec![],
-		artists: None,
-		status: "".to_string(),
-		manga_type: None,
-		release_date: None,
-		description: "".to_string(),
-		genres: vec![],
-		chapters: vec![],
+// Helper functions
+fn fetch_manga_items(url: &str) -> Vec<MangaItem> {
+	let response = match http_get(url) {
+		Some(res) => res,
+		None => return Vec::new(),
 	};
 
-	if manga_id.is_none() {
-		return manga_page;
-	}
+	let json = match parse_json_response(&response) {
+		Some(data) => data,
+		None => return Vec::new(),
+	};
 
-	let manga_id = manga_id.unwrap();
+	let data = match json.get("data").and_then(|d| d.as_array()) {
+		Some(d) => d,
+		None => return Vec::new(),
+	};
 
-	let resp = get(format!("https://api.mangadex.org/manga/{}?includes%5B%5D=manga&includes%5B%5D=cover_art&includes%5B%5D=author&includes%5B%5D=artist&includes%5B%5D=tag", manga_id));
+	data.iter()
+		.filter_map(|item| {
+			let manga_id = item["id"].as_str()?;
+			let title = item["attributes"]["title"].as_object()?.values().next()?.as_str()?;
 
-	if resp.is_err() {
-		return manga_page;
-	}
+			// Find cover art
+			let cover_file = item["relationships"]
+				.as_array()?
+				.iter()
+				.find(|rel| rel["type"] == "cover_art")
+				.and_then(|rel| rel["attributes"]["fileName"].as_str())?;
 
-	let resp = resp.unwrap();
+			let cover_url = format!("https://mangadex.org/covers/{}/{}.512.jpg", manga_id, cover_file);
 
-	let data = resp["data"].as_object();
-
-	if data.is_none() {
-		return manga_page;
-	}
-
-	let data = data.unwrap();
-
-	let title = data["attributes"]["title"]
-		.as_object()
-		.unwrap()
-		.iter()
-		.next()
-		.unwrap()
-		.1
-		.as_str()
-		.unwrap();
-
-	let relationships = data["relationships"].as_array().map(|r| r.to_vec()).unwrap_or_default();
-	let mut cover_id: &str = "";
-
-	relationships.iter().for_each(|relationship| {
-		let r#type = relationship["type"].as_str();
-
-		if r#type.is_none() {
-			return;
-		}
-
-		let r#type = r#type.unwrap();
-
-		if r#type == "cover_art" {
-			cover_id = relationship["attributes"]["fileName"].as_str().unwrap_or("");
-		}
-	});
-
-	let img_url = format!("https://mangadex.org/covers/{}/{}.512.jpg", manga_id, cover_id);
-
-	let alt_titles = data["attributes"]["altTitles"]
-		.as_array()
-		.map(|a| a.to_vec())
-		.unwrap_or_default();
-
-	let alternative_names: Vec<String> = alt_titles
-		.iter()
-		.filter_map(|alt_title| {
-			let alt_title_obj = alt_title.as_object()?;
-
-			alt_title_obj.iter().next().map(|(_, value)| {
-				let value = value.as_str().unwrap_or("");
-
-				value.to_string()
+			Some(MangaItem {
+				title: title.to_string(),
+				url: format!("https://mangadex.org/title/{}", manga_id),
+				img_url: cover_url,
 			})
 		})
-		.collect::<Vec<String>>();
+		.collect()
+}
 
-	let authors_object_vec = data["relationships"].as_array().map(|r| r.to_vec());
+fn fetch_chapters(manga_id: &str) -> Vec<Chapter> {
+	let url = format!(
+		"https://api.mangadex.org/manga/{}/feed?limit=500&translatedLanguage[]=en&order[chapter]=desc&includes[]=scanlation_group",
+		manga_id
+	);
 
-	if authors_object_vec.is_none() {
-		return manga_page;
-	}
+	let response = match http_get(&url) {
+		Some(res) => res,
+		None => return Vec::new(),
+	};
 
-	let authors_object_vec = authors_object_vec.unwrap();
+	let json = match parse_json_response(&response) {
+		Some(data) => data,
+		None => return Vec::new(),
+	};
 
-	let authors_vec: Vec<String> = authors_object_vec
-		.iter()
-		.filter(|relationship| relationship["type"].as_str().unwrap_or("") == "author")
-		.filter_map(|author| author["attributes"]["name"].as_str().map(|s| s.to_string()))
-		.collect();
+	// Create a mapping of group IDs to group names
+	let group_map: HashMap<String, String> = match json.get("included").and_then(|i| i.as_array()) {
+		Some(included) => included
+			.iter()
+			.filter_map(|item| {
+				if item["type"] == "scanlation_group" {
+					let id = item["id"].as_str()?.to_string();
+					let name = item["attributes"]["name"].as_str()?.to_string();
+					Some((id, name))
+				} else {
+					None
+				}
+			})
+			.collect(),
+		None => HashMap::new(),
+	};
 
-	let artists_object_vec = data["relationships"].as_array().map(|r| r.to_vec());
+	let data = match json.get("data").and_then(|d| d.as_array()) {
+		Some(d) => d,
+		None => return Vec::new(),
+	};
 
-	if artists_object_vec.is_none() {
-		return manga_page;
-	}
+	data.iter()
+		.filter_map(|chapter| {
+			let attributes = chapter["attributes"].as_object()?;
+			let chapter_num = attributes.get("chapter")?.as_str()?;
+			let title = attributes.get("title").and_then(|t| t.as_str()).unwrap_or("");
 
-	let artists_object_vec = artists_object_vec.unwrap();
-
-	let artists_vec: Vec<String> = artists_object_vec
-		.iter()
-		.filter(|relationship| relationship["type"].as_str().unwrap_or("") == "artist")
-		.filter_map(|artist| artist["attributes"]["name"].as_str().map(|s| s.to_string()))
-		.collect();
-
-	let status = data["attributes"]["status"].as_str().unwrap_or("").to_string();
-
-	let release_date = data["attributes"]["year"].as_i64().map(|i| i.to_string());
-
-	let description_object = data["attributes"]["description"].as_object();
-
-	if description_object.is_none() {
-		return manga_page;
-	}
-
-	let description_object = description_object.unwrap();
-
-	let description = description_object
-		.iter()
-		.next()
-		.map(|(_, value)| {
-			let value = value.as_str().unwrap_or("");
-
-			value
-		})
-		.unwrap_or("")
-		.to_string();
-
-	let tags_array = data["attributes"]["tags"].as_array().map(|t| t.to_vec());
-
-	if tags_array.is_none() {
-		return manga_page;
-	}
-
-	let tags_array = tags_array.unwrap();
-
-	let genres: Vec<String> = tags_array
-		.iter()
-		.filter_map(|tag| {
-			let tag = tag.as_object()?;
-
-			let group = tag.get("attributes")?.as_object()?.get("group")?.as_str()?;
-			if group == "genre" {
-				let name = tag
-					.get("attributes")?
-					.as_object()?
-					.get("name")?
-					.as_object()?
-					.get("en")?
-					.as_str()?;
-
-				Some(name.to_string())
+			let chapter_title = if title.is_empty() {
+				format!("Chapter {}", chapter_num)
 			} else {
-				None
-			}
+				format!("Chapter {} - {}", chapter_num, title)
+			};
+
+			let date = attributes["publishAt"].as_str().unwrap_or("").to_string();
+			let chapter_id = chapter["id"].as_str()?;
+
+			let groups = chapter["relationships"]
+				.as_array()?
+				.iter()
+				.filter(|rel| rel["type"] == "scanlation_group")
+				.filter_map(|rel| rel["id"].as_str())
+				.filter_map(|group_id| group_map.get(group_id))
+				.map(|name| name.to_string())
+				.collect::<Vec<_>>();
+
+			let scanlation_group = if groups.is_empty() { None } else { Some(groups.join(", ")) };
+
+			Some(Chapter {
+				title: chapter_title,
+				url: format!("https://mangadex.org/chapter/{}", chapter_id),
+				date,
+				scanlation_group,
+			})
 		})
-		.collect();
+		.collect()
+}
 
-	let resp = get(format!("https://api.mangadex.org/chapter?limit=1&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc", manga_id));
-
-	if resp.is_err() {
-		return manga_page;
-	}
-
-	let resp = resp.unwrap();
-
-	let total_chapters = resp["total"].as_i64().unwrap_or(0);
-	let chapter_limit = 100;
-	let call_times = (total_chapters as f64 / chapter_limit as f64).ceil() as i64;
-
-	let mut chapters: Vec<Chapter> = vec![];
-
-	let chapters_url = format!("https://api.mangadex.org/chapter?limit={}&manga={}&contentRating%5B%5D=safe&contentRating%5B%5D=suggestive&contentRating%5B%5D=erotica&contentRating%5B%5D=pornographic&includeFutureUpdates=1&order%5BcreatedAt%5D=asc&order%5BupdatedAt%5D=asc&order%5BpublishAt%5D=asc&order%5BreadableAt%5D=asc&order%5Bvolume%5D=asc&order%5Bchapter%5D=asc",chapter_limit, manga_id);
-
-	for i in 0..call_times {
-		let resp = get(format!("{}&offset={}", chapters_url, i * chapter_limit));
-
-		if resp.is_err() {
-			return manga_page;
-		}
-
-		let resp = resp.unwrap();
-
-		let data = resp["data"].as_array().map(|d| d.to_vec()).unwrap_or_default();
-
-		for chapter in data {
-			let title = chapter["attributes"]["chapter"].as_str().unwrap_or("").to_string();
-			let date = chapter["attributes"]["readableAt"].as_str().unwrap_or("").to_string();
-
-			let translated_language = chapter["attributes"]["translatedLanguage"].as_str().unwrap();
-
-			if translated_language != "en" {
-				continue;
-			}
-
-			if chapters.iter().any(|c| c.title == title) {
-				continue;
-			}
-
-			let url = format!("https://mangadex.org/chapter/{}", chapter["id"].as_str().unwrap_or(""));
-
-			chapters.push(Chapter { title, url, date });
-		}
-	}
-
+fn default_manga_page() -> MangaPage {
 	MangaPage {
-		title: title.to_string(),
-		url: url.to_string(),
-		img_url: img_url.to_string(),
-		alternative_names,
-		authors: authors_vec,
-		artists: Some(artists_vec),
-		status,
+		title: String::new(),
+		url: String::new(),
+		img_url: String::new(),
+		alternative_names: Vec::new(),
+		authors: Vec::new(),
+		artists: None,
+		status: String::new(),
 		manga_type: None,
-		release_date,
-		description,
-		genres,
-		chapters,
+		release_date: None,
+		description: String::new(),
+		genres: Vec::new(),
+		chapters: Vec::new(),
 	}
 }
 
-#[no_mangle]
-pub extern "Rust" fn scrape_genres_list() -> Vec<Genre> {
-	todo!();
-}
+#[cfg(test)]
+#[cfg_attr(all(coverage_nightly, test), coverage(off))]
+mod tests {
+	use super::*;
 
-#[no_mangle]
-pub extern "Rust" fn get_info() -> ScraperInfo {
-	ScraperInfo {
-		id: "manga_dex".to_string(),
-		name: "MangaDex".to_string(),
-		img_url: "https://mangadex.org/pwa/icons/icon-180.png".to_string(),
+	#[test]
+	fn test_scrape_latest() {
+		let items = ScraperImpl::scrape_latest(1);
+		assert!(!items.is_empty());
+	}
+
+	#[test]
+	fn test_scrape_manga() {
+		let manga_page =
+			ScraperImpl::scrape_manga("https://mangadex.org/title/aa070232-a668-4c73-8305-a68825db32e4".to_string());
+		println!("{:?}", manga_page);
+		assert_eq!(manga_page.title, "Hatsukoi wa Marude Yaiba no You ni");
+		assert_eq!(
+			manga_page.url,
+			"https://mangadex.org/title/aa070232-a668-4c73-8305-a68825db32e4"
+		);
+		assert_eq!(
+			manga_page.img_url,
+			"https://mangadex.org/covers/aa070232-a668-4c73-8305-a68825db32e4/36ea629a-cc21-4751-8ccf-cc387b057b4f.png.512.jpg"
+		);
+	}
+
+	#[test]
+	fn test_scrape_chapter() {
+		let images =
+			ScraperImpl::scrape_chapter("https://mangadex.org/chapter/2b6a4f47-f7d7-4a3e-91a6-73d9bd21f8e9".to_string());
+		assert!(!images.is_empty());
+		assert!(images[0].starts_with("https://uploads.mangadex.org"));
+	}
+
+	#[test]
+	fn test_scrape_search() {
+		let items = ScraperImpl::scrape_search("Hatsukoi".to_string(), 1);
+		assert!(!items.is_empty());
+		assert!(items.iter().any(|item| item.title.contains("Hatsukoi")));
+	}
+
+	#[test]
+	fn test_scrape_trending() {
+		let items = ScraperImpl::scrape_trending(1);
+		assert!(!items.is_empty());
+	}
+
+	#[test]
+	fn test_rate_limiter() {
+		let mut limiter = RATE_LIMITER.lock().unwrap();
+		limiter.wait_for_request("GET", "/manga");
+		limiter.update_from_headers(
+			"GET",
+			"/manga",
+			&[
+				http::Header {
+					name: "X-RateLimit-Limit".to_string(),
+					value: "10".to_string(),
+				},
+				http::Header {
+					name: "X-RateLimit-Remaining".to_string(),
+					value: "9".to_string(),
+				},
+				http::Header {
+					name: "X-RateLimit-Retry-After".to_string(),
+					value: "5".to_string(),
+				},
+			],
+		);
+		assert!(limiter.endpoint_limits.contains_key("GET /manga"));
+		assert_eq!(limiter.endpoint_limits["GET /manga"].remaining, 9);
+		assert!(limiter.global_timestamps.len() <= 5);
+		limiter.handle_rate_limit_exceeded("GET", "/manga", 5);
+		assert!(limiter.retry_queue.iter().any(|(key, _)| key == "GET /manga"));
 	}
 }

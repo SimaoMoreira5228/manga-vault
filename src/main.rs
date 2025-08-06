@@ -1,40 +1,49 @@
 use std::sync::Arc;
+use std::time::Duration;
 
-use config::{TracingLevel, CONFIG};
-use scraper_core::{PluginManager, PLUGIN_MANAGER};
+use database_connection::Database;
+use scheduler::MangaUpdateScheduler;
+use scraper_core::ScraperManager;
 use tracing_subscriber::FmtSubscriber;
 
 const MANGA_VAULT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let subscriber = FmtSubscriber::builder()
-		.with_max_level(TracingLevel::to_tracing_level(&CONFIG.tracing_level))
+		// .with_max_level(TracingLevel::to_tracing_level(&CONFIG.tracing_level))
+		.with_max_level(tracing::Level::INFO)
 		.finish();
 	tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-	let latest_version = api::downloader::get_version("SimaoMoreira5228", "manga-vault").await.unwrap();
+	// let latest_version = http_utils::downloader::get_version("SimaoMoreira5228",
+	// "manga-vault") .await
+	// .unwrap();
+	//
+	// if latest_version != MANGA_VAULT_VERSION {
+	// tracing::warn!(
+	// "There is a new version of manga_vault at: https://github.com/SimaoMoreira5228/manga-vault/releases/latest"
+	// );
+	// } else {
+	// tracing::info!("Application is up to date");
+	// http_utils::downloader::update_website().await;
+	// }
 
-	if latest_version != MANGA_VAULT_VERSION {
-		tracing::warn!(
-			"There is a new version of manga_vault at: https://github.com/SimaoMoreira5228/manga-vault/releases/latest"
-		);
+	let db = Database::new().await?;
+	let scraper_manager = ScraperManager::new().await?;
 
-		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new_no_update()));
-	} else {
-		tracing::info!("Application is up to date");
-		api::downloader::update_website().await;
-		let _ = PLUGIN_MANAGER.set(Arc::new(PluginManager::new().await));
-	}
+	let scheduler = Arc::new(MangaUpdateScheduler::new(
+		db.conn.clone(),
+		scraper_manager.clone(),
+		5,
+		Duration::from_secs(10),
+	));
 
+	let scheduler_clone = Arc::clone(&scheduler);
 	tokio::spawn(async move {
-		loop {
-			tokio::time::sleep(tokio::time::Duration::from_secs(CONFIG.database.backup_time as u64 * 3600)).await;
-			let db = connection::Database::new().await.unwrap();
-			let _ = db.backup().await;
-			db.conn.close().await.unwrap();
-		}
+		scheduler_clone.start().await;
 	});
 
-	api::run().await.unwrap();
+	gql_api::run(db, scraper_manager).await?;
+	Ok(())
 }
