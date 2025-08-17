@@ -5,7 +5,8 @@ use chrono::Utc;
 use database_connection::Database;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 
-use crate::objects::{manga_packs::MangaPack, users::SanitizedUser};
+use crate::objects::manga_packs::MangaPack;
+use crate::objects::users::SanitizedUser;
 
 #[derive(InputObject)]
 struct CreateMangaPackInput {

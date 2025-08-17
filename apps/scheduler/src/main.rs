@@ -12,6 +12,7 @@ async fn main() -> anyhow::Result<()> {
 		db.conn.clone(),
 		scraper_manager,
 		5,
+		Duration::from_secs(30 * 60),
 		Duration::from_secs(10),
 	));
 

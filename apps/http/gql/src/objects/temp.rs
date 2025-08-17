@@ -1,5 +1,6 @@
 use async_graphql::SimpleObject;
 
+#[allow(dead_code)]
 #[derive(SimpleObject, Clone)]
 pub struct Temp {
 	pub id: i32,

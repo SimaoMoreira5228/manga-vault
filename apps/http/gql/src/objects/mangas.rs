@@ -1,7 +1,16 @@
+use std::sync::Arc;
+
 use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
+use database_connection::Database;
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
+
+use crate::objects::chapters::Chapter;
+use crate::objects::read_chapters::ReadChapter;
+use crate::objects::users::SanitizedUser;
 
 #[derive(SimpleObject, Clone)]
+#[graphql(complex)]
 pub struct Manga {
 	pub id: i32,
 	pub title: String,
@@ -47,5 +56,59 @@ impl From<database_entities::mangas::Model> for Manga {
 			description: manga.description,
 			genres: manga.genres,
 		}
+	}
+}
+
+#[async_graphql::ComplexObject]
+impl Manga {
+	async fn chapters(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Vec<Chapter>> {
+		let db = ctx.data::<Arc<Database>>()?;
+		let chapters = database_entities::chapters::Entity::find()
+			.filter(database_entities::chapters::Column::MangaId.eq(self.id))
+			.order_by_desc(database_entities::chapters::Column::Id)
+			.all(&db.conn)
+			.await?;
+		Ok(chapters.into_iter().map(Chapter::from).collect())
+	}
+
+	async fn user_read_chapters(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Vec<ReadChapter>> {
+		let current_user = ctx
+			.data_opt::<SanitizedUser>()
+			.cloned()
+			.ok_or_else(|| async_graphql::Error::from("User not authenticated"))?;
+		let db = ctx.data::<Arc<Database>>()?;
+
+		let read_chapters = database_entities::read_chapters::Entity::find()
+			.filter(database_entities::read_chapters::Column::UserId.eq(current_user.id))
+			.filter(database_entities::read_chapters::Column::MangaId.eq(self.id))
+			.order_by_desc(database_entities::read_chapters::Column::CreatedAt)
+			.all(&db.conn)
+			.await?;
+
+		Ok(read_chapters.into_iter().map(ReadChapter::from).collect())
+	}
+
+	async fn user_read_chapters_amount(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<u64> {
+		let current_user = ctx
+			.data_opt::<SanitizedUser>()
+			.cloned()
+			.ok_or_else(|| async_graphql::Error::from("User not authenticated"))?;
+		let db = ctx.data::<Arc<Database>>()?;
+
+		let count = database_entities::read_chapters::Entity::find()
+			.filter(database_entities::read_chapters::Column::UserId.eq(current_user.id))
+			.filter(database_entities::read_chapters::Column::MangaId.eq(self.id))
+			.count(&db.conn)
+			.await?;
+		Ok(count)
+	}
+
+	async fn chapters_amount(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<u64> {
+		let db = ctx.data::<Arc<Database>>()?;
+		let count = database_entities::chapters::Entity::find()
+			.filter(database_entities::chapters::Column::MangaId.eq(self.id))
+			.count(&db.conn)
+			.await?;
+		Ok(count)
 	}
 }

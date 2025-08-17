@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use async_graphql::{Context, Object, Result};
 use database_connection::Database;
+use database_entities;
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
 
 use crate::objects::chapters::Chapter;

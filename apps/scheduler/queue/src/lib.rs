@@ -222,6 +222,11 @@ where
 		self.core.len()
 	}
 
+	/// Get the maximum size of the queue
+	pub fn max_size(&self) -> usize {
+		self.core.max_size
+	}
+
 	/// Check if the queue is empty
 	pub fn is_empty(&self) -> bool {
 		self.core.is_empty()

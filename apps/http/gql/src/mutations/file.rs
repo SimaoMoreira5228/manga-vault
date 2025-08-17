@@ -1,14 +1,14 @@
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use async_graphql::{Context, Object, Result};
 use chrono::Utc;
 use database_connection::Database;
 use sea_orm::{ActiveModelTrait, Set};
 
-use crate::{
-	Config,
-	objects::{files::File, users::SanitizedUser},
-};
+use crate::Config;
+use crate::objects::files::File;
+use crate::objects::users::SanitizedUser;
 
 #[derive(Default)]
 pub struct FileMutation;

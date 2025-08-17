@@ -6,3 +6,4 @@ db.sqlite
 /temp
 .vscode
 TODO.md
+node_modules

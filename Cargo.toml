@@ -17,7 +17,7 @@ members = [
   "database/*",
   "scrapers/*",
 ]
-exclude = ["scrapers/manhuafast"]
+exclude = ["scrapers/manhuafast", "scrapers/natomanga"]
 
 [workspace.dependencies]
 config = { path = "config" }

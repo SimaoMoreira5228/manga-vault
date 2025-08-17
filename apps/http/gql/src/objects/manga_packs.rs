@@ -16,6 +16,7 @@ pub struct MangaPack {
 	pub created_at: NaiveDateTime,
 }
 
+#[allow(dead_code)]
 #[derive(SimpleObject, Clone)]
 pub struct MangaPackMember {
 	pub id: i32,

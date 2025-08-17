@@ -32,16 +32,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let db = Database::new().await?;
 	let scraper_manager = ScraperManager::new().await?;
 
-	let scheduler = Arc::new(MangaUpdateScheduler::new(
-		db.conn.clone(),
-		scraper_manager.clone(),
-		5,
-		Duration::from_secs(10),
-	));
+	let scheduler_db = db.clone();
+	let scheduler_scraper_manager = scraper_manager.clone();
 
-	let scheduler_clone = Arc::clone(&scheduler);
 	tokio::spawn(async move {
-		scheduler_clone.start().await;
+		Arc::new(MangaUpdateScheduler::new(
+			scheduler_db.conn.clone(),
+			scheduler_scraper_manager,
+			5,
+			Duration::from_secs(30 * 60),
+			Duration::from_secs(10),
+		))
+		.start()
+		.await;
 	});
 
 	gql_api::run(db, scraper_manager).await?;

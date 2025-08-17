@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
 use database_connection::Database;
-use sea_orm::{ColumnTrait, EntityTrait, JoinType, QueryFilter, QuerySelect, RelationTrait};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::objects::categories::Category;
 use crate::objects::manga_packs::MangaPack;
@@ -64,13 +64,20 @@ impl FavoriteManga {
 	async fn pack(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<MangaPack>> {
 		let db = ctx.data::<Arc<Database>>()?;
 
-		let pack = database_entities::manga_packs::Entity::find()
-			.join(
-				JoinType::InnerJoin,
-				database_entities::manga_pack_members::Relation::MangaPacks.def(),
-			)
+		let pack_members = database_entities::manga_pack_members::Entity::find()
 			.filter(database_entities::manga_pack_members::Column::MangaId.eq(self.manga_id))
+			.all(&db.conn)
+			.await?;
+
+		if pack_members.is_empty() {
+			return Ok(None);
+		}
+
+		let pack_ids: Vec<i32> = pack_members.iter().map(|m| m.pack_id).collect();
+
+		let pack = database_entities::manga_packs::Entity::find()
 			.filter(database_entities::manga_packs::Column::UserId.eq(self.user_id))
+			.filter(database_entities::manga_packs::Column::Id.is_in(pack_ids))
 			.one(&db.conn)
 			.await?;
 

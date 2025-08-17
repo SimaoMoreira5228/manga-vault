@@ -29,7 +29,7 @@ impl From<database_entities::users::Model> for User {
 	}
 }
 
-#[derive(SimpleObject, Clone)]
+#[derive(SimpleObject, Clone, Debug)]
 #[graphql(complex)]
 pub struct SanitizedUser {
 	pub id: i32,

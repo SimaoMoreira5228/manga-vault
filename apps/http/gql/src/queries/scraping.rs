@@ -15,18 +15,80 @@ pub struct ScrapingQuery;
 impl ScrapingQuery {
 	async fn search(&self, ctx: &Context<'_>, scraper_id: String, query: String, pages: u32) -> Result<Vec<Manga>> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let scraper = self.get_scraper(ctx, &scraper_id).await?;
-		let searched_mangas = scraper.scrape_search(query, pages).await?;
 
-		self.process_mangas(db.clone(), scraper_id, searched_mangas).await
+		let fetched_result = database_entities::temp::Entity::find()
+			.filter(database_entities::temp::Column::Key.eq(format!(
+				"search:{}:{}",
+				scraper_id.clone(),
+				query.clone().replace(" ", "_")
+			)))
+			.one(&db.conn)
+			.await?;
+
+		if fetched_result.is_none() {
+			let scraper = self.get_scraper(ctx, &scraper_id).await?;
+			let searched_mangas = scraper.scrape_search(query.clone(), pages).await?;
+			let mangas = self.process_mangas(db.clone(), &scraper_id, searched_mangas).await?;
+
+			let active_model = database_entities::temp::ActiveModel {
+				key: Set(format!("search:{}:{}", scraper_id, query.replace(" ", "_"))),
+				value: Set(serde_json::to_string(&mangas.iter().map(|m| m.id).collect::<Vec<_>>())
+					.map_err(|_| async_graphql::Error::new("Failed to serialize manga"))?),
+				expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(10)).naive_utc().to_string()),
+				..Default::default()
+			};
+
+			database_entities::temp::Entity::insert(active_model).exec(&db.conn).await?;
+
+			return Ok(mangas);
+		}
+
+		let ids = serde_json::from_str::<Vec<u64>>(&fetched_result.unwrap().value)
+			.map_err(|_| async_graphql::Error::new("Failed to parse search result"))?;
+
+		let mangas = database_entities::mangas::Entity::find()
+			.filter(database_entities::mangas::Column::Id.is_in(ids))
+			.all(&db.conn)
+			.await?;
+
+		Ok(mangas.into_iter().map(Manga::from).collect())
 	}
 
-	async fn scrape_latest(&self, ctx: &Context<'_>, scraper_id: String, pages: u32) -> Result<Vec<Manga>> {
+	async fn scrape_latest(&self, ctx: &Context<'_>, scraper_id: String, page: u32) -> Result<Vec<Manga>> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let scraper = self.get_scraper(ctx, &scraper_id).await?;
-		let latest_mangas = scraper.scrape_latest(pages).await?;
 
-		self.process_mangas(db.clone(), scraper_id, latest_mangas).await
+		let fetched_result = database_entities::temp::Entity::find()
+			.filter(database_entities::temp::Column::Key.eq(format!("latest:{}:{}", scraper_id.clone(), page)))
+			.one(&db.conn)
+			.await?;
+
+		if fetched_result.is_none() {
+			let scraper = self.get_scraper(ctx, &scraper_id).await?;
+			let latest_mangas = scraper.scrape_latest(page).await?;
+			let mangas = self.process_mangas(db.clone(), &scraper_id, latest_mangas).await?;
+
+			let active_model = database_entities::temp::ActiveModel {
+				key: Set(format!("latest:{}:{}", scraper_id, page)),
+				value: Set(serde_json::to_string(&mangas.iter().map(|m| m.id).collect::<Vec<_>>())
+					.map_err(|_| async_graphql::Error::new("Failed to serialize manga"))?),
+				expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(2)).naive_utc().to_string()),
+				..Default::default()
+			};
+
+			database_entities::temp::Entity::insert(active_model).exec(&db.conn).await?;
+
+			return Ok(mangas);
+		}
+
+		let ids = serde_json::from_str::<Vec<u64>>(&fetched_result.unwrap().value)
+			.map_err(|_| async_graphql::Error::new("Failed to parse latest result"))?;
+
+		let mangas = database_entities::mangas::Entity::find()
+			.filter(database_entities::mangas::Column::Id.is_in(ids))
+			.all(&db.conn)
+			.await?;
+
+		Ok(mangas.into_iter().map(Manga::from).collect())
 	}
 }
 
@@ -41,13 +103,13 @@ impl ScrapingQuery {
 	async fn process_mangas(
 		&self,
 		db: Arc<Database>,
-		scraper_id: String,
+		scraper_id: &str,
 		mangas: Vec<scraper_types::MangaItem>,
 	) -> Result<Vec<Manga>> {
 		let urls: Vec<String> = mangas.iter().map(|m| m.url.clone()).collect();
 
 		let existing_mangas = database_entities::mangas::Entity::find()
-			.filter(database_entities::mangas::Column::Scraper.eq(&scraper_id))
+			.filter(database_entities::mangas::Column::Scraper.eq(scraper_id))
 			.filter(database_entities::mangas::Column::Url.is_in(urls.clone()))
 			.all(&db.conn)
 			.await?;
@@ -71,7 +133,7 @@ impl ScrapingQuery {
 					title: Set(manga.title),
 					url: Set(manga.url),
 					img_url: Set(manga.img_url),
-					scraper: Set(scraper_id.clone()),
+					scraper: Set(scraper_id.into()),
 					updated_at: Set(now),
 					..Default::default()
 				});

@@ -18,11 +18,14 @@ impl MangaQuery {
 		let manga = database_entities::mangas::Entity::find_by_id(id).one(&db.conn).await?;
 
 		match manga {
-			Some(mut manga) => {
-				if manga.created_at.is_none() {
-					manga = self.scrape_and_update_manga(ctx, manga).await?;
+			Some(mut manga_model) => {
+				if manga_model.created_at.is_none() {
+					tracing::debug!("Manga with ID {} has no created_at date, scraping for details", id);
+					if let Ok(updated_manga) = self.scrape_and_update_manga(ctx, manga_model.clone()).await {
+						manga_model = updated_manga;
+					}
 				}
-				Ok(Some(Manga::from(manga)))
+				Ok(Some(Manga::from(manga_model)))
 			}
 			None => Ok(None),
 		}

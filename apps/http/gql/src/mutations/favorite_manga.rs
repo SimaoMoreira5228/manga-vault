@@ -5,11 +5,11 @@ use chrono::Utc;
 use database_connection::Database;
 use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 
-use crate::objects::{favorite_mangas::FavoriteManga, users::SanitizedUser};
+use crate::objects::favorite_mangas::FavoriteManga;
+use crate::objects::users::SanitizedUser;
 
 #[derive(InputObject)]
 struct CreateFavoriteMangaInput {
-	user_id: i32,
 	manga_id: i32,
 	category_id: i32,
 }
@@ -28,10 +28,6 @@ impl FavoriteMangaMutation {
 		let db = ctx.data::<Arc<Database>>()?;
 		let current_user = ctx.data::<SanitizedUser>().cloned()?;
 
-		if current_user.id != input.user_id {
-			return Err(async_graphql::Error::new("Unauthorized"));
-		}
-
 		let manga_exists = database_entities::mangas::Entity::find_by_id(input.manga_id)
 			.one(&db.conn)
 			.await?;
@@ -47,7 +43,7 @@ impl FavoriteMangaMutation {
 		}
 
 		let favorite = database_entities::favorite_mangas::ActiveModel {
-			user_id: Set(input.user_id),
+			user_id: Set(current_user.id),
 			manga_id: Set(input.manga_id),
 			category_id: Set(input.category_id),
 			created_at: Set(Utc::now().naive_utc()),
