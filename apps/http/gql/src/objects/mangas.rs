@@ -3,6 +3,7 @@ use std::sync::Arc;
 use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
 use database_connection::Database;
+use scraper_core::ScraperManager;
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
 
 use crate::objects::chapters::Chapter;
@@ -59,6 +60,13 @@ impl From<database_entities::mangas::Model> for Manga {
 	}
 }
 
+#[derive(SimpleObject, Clone)]
+pub struct ScraperInfo {
+	pub id: String,
+	pub name: String,
+	pub image_url: String,
+}
+
 #[async_graphql::ComplexObject]
 impl Manga {
 	async fn chapters(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Vec<Chapter>> {
@@ -110,5 +118,21 @@ impl Manga {
 			.count(&db.conn)
 			.await?;
 		Ok(count)
+	}
+
+	async fn scraper_info(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<ScraperInfo>> {
+		let scraper = ctx
+			.data::<Arc<ScraperManager>>()?
+			.get_plugin(self.scraper.as_str())
+			.await
+			.ok_or_else(|| async_graphql::Error::new("Scraper not found"))?;
+
+		let info = scraper.get_info().await?;
+
+		Ok(Some(ScraperInfo {
+			id: info.id,
+			name: info.name,
+			image_url: info.img_url,
+		}))
 	}
 }

@@ -7,6 +7,7 @@
 	import { gql } from '@urql/svelte';
 	import { onMount } from 'svelte';
 	import { image } from '$lib/utils/image';
+	import { toaster } from '$lib/utils/toaster-svelte';
 	let favoriteMangas: any[] = $state([]);
 	let isLoading = $state(false);
 	let areMangasLoading = $state(false);
@@ -22,24 +23,32 @@
 	async function getCategories() {
 		if (authState.status !== 'authenticated') return;
 
-		const { data } = await client
-			.query(
-				gql`
-					query categories {
-						categories {
-							userCategories {
-								id
-								name
+		try {
+			const { data } = await client
+				.query(
+					gql`
+						query categories {
+							categories {
+								userCategories {
+									id
+									name
+								}
 							}
 						}
-					}
-				`,
-				{}
-			)
-			.toPromise();
+					`,
+					{}
+				)
+				.toPromise();
 
-		currentCategory = data?.categories.userCategories[0]?.id.toString() || '';
-		categories = data?.categories.userCategories || [];
+			currentCategory = data?.categories.userCategories[0]?.id.toString() || '';
+			categories = data?.categories.userCategories || [];
+		} catch (error) {
+			console.error('Failed to load categories', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to load categories'
+			});
+		}
 	}
 
 	$effect(() => {
@@ -109,6 +118,10 @@
 			favoriteMangas = fetchedfavoriteMangas;
 		} catch (error) {
 			console.error('Failed to fetch mangas', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to fetch favorite mangas'
+			});
 		} finally {
 			areMangasLoading = false;
 		}
@@ -131,33 +144,41 @@
 	async function updateCategory() {
 		if (!isEditingCategory.open) return;
 
-		const { data } = await client
-			.mutation(
-				gql`
-					mutation updateCategory($categoryId: Int!, $input: UpdateCategoryInput!) {
-						category {
-							updateCategory(id: $categoryId, input: $input) {
-								id
-								name
+		try {
+			const { data } = await client
+				.mutation(
+					gql`
+						mutation updateCategory($categoryId: Int!, $input: UpdateCategoryInput!) {
+							category {
+								updateCategory(id: $categoryId, input: $input) {
+									id
+									name
+								}
 							}
 						}
+					`,
+					{
+						categoryId: isEditingCategory.id,
+						input: {
+							name: isEditingCategory.name
+						}
 					}
-				`,
-				{
-					categoryId: isEditingCategory.id,
-					input: {
-						name: isEditingCategory.name
-					}
-				}
-			)
-			.toPromise();
+				)
+				.toPromise();
 
-		if (data?.category.updateCategory) {
-			categories = categories.map((category) =>
-				category.id === data.category.updateCategory.id
-					? { ...category, name: data.category.updateCategory.name }
-					: category
-			);
+			if (data?.category.updateCategory) {
+				categories = categories.map((category) =>
+					category.id === data.category.updateCategory.id
+						? { ...category, name: data.category.updateCategory.name }
+						: category
+				);
+			}
+		} catch (error) {
+			console.error('Failed to update category', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to update category'
+			});
 		}
 
 		isEditingCategory.open = false;
@@ -166,23 +187,33 @@
 	async function deleteCategory() {
 		if (!isEditingCategory.open) return;
 
-		const { data } = await client
-			.mutation(
-				gql`
-					mutation deleteCategory($categoryId: Int!) {
-						category {
-							deleteCategory(id: $categoryId)
+		try {
+			const { data } = await client
+				.mutation(
+					gql`
+						mutation deleteCategory($categoryId: Int!) {
+							category {
+								deleteCategory(id: $categoryId)
+							}
 						}
+					`,
+					{
+						categoryId: isEditingCategory.id
 					}
-				`,
-				{
-					categoryId: isEditingCategory.id
-				}
-			)
-			.toPromise();
+				)
+				.toPromise();
 
-		if (data?.category.deleteCategory) {
-			categories = categories.filter((category) => category.id.toString() !== isEditingCategory.id);
+			if (data?.category.deleteCategory) {
+				categories = categories.filter(
+					(category) => category.id.toString() !== isEditingCategory.id
+				);
+			}
+		} catch (error) {
+			console.error('Failed to delete category', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to delete category'
+			});
 		}
 
 		isEditingCategory.open = false;
@@ -197,28 +228,36 @@
 	async function createCategory() {
 		if (!isCreatingCategory.open) return;
 
-		const { data } = await client
-			.mutation(
-				gql`
-					mutation createCategory($input: CreateCategoryInput!) {
-						category {
-							createCategory(input: $input) {
-								id
-								name
+		try {
+			const { data } = await client
+				.mutation(
+					gql`
+						mutation createCategory($input: CreateCategoryInput!) {
+							category {
+								createCategory(input: $input) {
+									id
+									name
+								}
 							}
 						}
+					`,
+					{
+						input: {
+							name: isCreatingCategory.name
+						}
 					}
-				`,
-				{
-					input: {
-						name: isCreatingCategory.name
-					}
-				}
-			)
-			.toPromise();
+				)
+				.toPromise();
 
-		if (data?.category.createCategory) {
-			categories = [...categories, data.category.createCategory];
+			if (data?.category.createCategory) {
+				categories = [...categories, data.category.createCategory];
+			}
+		} catch (error) {
+			console.error('Failed to create category', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to create category'
+			});
 		}
 
 		isCreatingCategory.open = false;

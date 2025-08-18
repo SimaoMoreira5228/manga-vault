@@ -38,6 +38,11 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 				updatedAt
 				url
 			}
+			scraperInfo {
+				id
+				name
+				imageUrl
+			}
 		}
 
 		query getMangaWithFavorite($id: Int!) {

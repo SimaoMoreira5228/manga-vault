@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BookmarkMinus, BookmarkPlus, Eye, EyeOff, Globe } from '@lucide/svelte';
+	import { BookmarkMinus, BookmarkPlus, Eye, EyeOff, SquareArrowOutUpRight } from '@lucide/svelte';
 	import { client } from '$lib/graphql/client';
 	import { gql } from '@urql/svelte';
 	import { getAuthState } from '$lib/auth.svelte';
@@ -7,6 +7,7 @@
 	import { getManga, type MangaWithFavorite } from '$lib/utils/getManga';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { Modal } from '@skeletonlabs/skeleton-svelte';
+	import { toaster } from '$lib/utils/toaster-svelte';
 
 	const mangaIdStr = page.params.manga_id;
 	if (!mangaIdStr) throw new Error('Invalid manga id');
@@ -29,6 +30,10 @@
 			manga = await getManga(mangaId);
 		} catch (error) {
 			console.error('Failed to load manga', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to load manga'
+			});
 		} finally {
 			isLoading = false;
 		}
@@ -55,6 +60,10 @@
 
 		if (error) {
 			console.error('categories error', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to load categories'
+			});
 			return [];
 		}
 
@@ -92,7 +101,12 @@
 					)
 					.toPromise();
 
-				if (error) throw error;
+				if (error) {
+					toaster.error({
+						title: 'Error',
+						description: 'Failed to unfavorite manga'
+					});
+				}
 			} else {
 				if (!isFavoriting.categoryId) {
 					return;
@@ -115,7 +129,10 @@
 					.toPromise();
 
 				if (error || !data?.favoriteManga?.createFavoriteManga?.id) {
-					throw error ?? new Error('createFavoriteManga failed');
+					toaster.error({
+						title: 'Error',
+						description: 'Failed to favorite manga'
+					});
 				}
 
 				isFavoriting.open = false;
@@ -123,6 +140,10 @@
 		} catch (err) {
 			console.error('toggleFavorite failed', err);
 			manga = prev;
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to favorite manga'
+			});
 		}
 	}
 
@@ -151,6 +172,10 @@
 
 		if (error) {
 			console.error('readChapter failed', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to read chapter'
+			});
 			return;
 		}
 
@@ -177,7 +202,11 @@
 			.toPromise();
 
 		if (error) {
-			console.error('readChapter failed', error);
+			console.error('unreadChapter failed', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to mark chapter as unread'
+			});
 			return;
 		}
 
@@ -194,50 +223,74 @@
 	</div>
 {:else}
 	<div class="flex h-full w-full flex-row items-stretch justify-between gap-x-4 p-4">
-		<div class="flex w-1/2 flex-col items-start justify-start">
-			<img src={manga?.imgUrl} alt="Manga Cover" class="h-1/2 rounded-lg object-cover shadow-md" />
+		<div class="flex w-1/2 flex-col items-start justify-start gap-2">
+			<div class="flex h-1/2 flex-row items-start justify-start gap-2">
+				<img
+					src={manga?.imgUrl}
+					alt="Manga Cover"
+					class="h-full rounded-lg object-cover shadow-md"
+				/>
+				<div class="flex w-full flex-col items-center justify-between gap-2">
+					<h5 class="h5">
+						{manga?.title}
+					</h5>
+					<div class="mt-4 flex w-full flex-col">
+						<div>
+							<p class="opacity-60">Author(s): {manga?.authors.join(', ')}</p>
+							{#if manga?.artists}
+								<p class="opacity-60">Artist(s): {manga?.artists?.join(', ')}</p>
+							{/if}
+							<p class="opacity-60">Status: {manga?.status}</p>
+							<p class="opacity-60">
+								Genres: {Array.isArray(manga?.genres)
+									? manga.genres.join(', ')
+									: (manga?.genres ?? '')}
+							</p>
+							{#if manga?.mangaType}
+								<p class="opacity-60">Type: {manga?.mangaType}</p>
+							{/if}
+							{#if manga?.releaseDate}
+								<p class="opacity-60">
+									Released: {new Date(manga.releaseDate).toLocaleDateString()}
+								</p>
+							{/if}
+							<p class="opacity-60">
+								Source: {manga?.scraperInfo.name}
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
 			<div class="flex w-full flex-col items-start justify-start overflow-auto pr-2">
 				<div class="flex w-full flex-row items-center justify-between gap-2">
-					<h3 class="h3">
-						{manga?.title}
-					</h3>
-					<div class="flex flex-row items-center justify-center gap-2">
-						<a href={manga?.url} class="anchor"><Globe /></a>
+					<div class="flex w-full flex-row items-center justify-start gap-2">
 						{#if authState.status === 'authenticated'}
 							{#if manga?.isFavorite}
-								<button class="btn-icon preset-tonal-primary" onclick={toggleFavorite}>
+								<button class="btn preset-tonal" onclick={toggleFavorite}>
 									<BookmarkMinus />
+									<span>Remove from Favorites</span>
 								</button>
 							{:else}
-								<button class="btn-icon preset-tonal-primary" onclick={openFavoriteModal}>
+								<button class="btn preset-tonal" onclick={openFavoriteModal}>
 									<BookmarkPlus />
+									<span>Add to Favorites</span>
 								</button>
 							{/if}
 						{/if}
+						<a href={manga?.url} class="btn-icon preset-tonal" target="_blank">
+							<SquareArrowOutUpRight />
+						</a>
 					</div>
 				</div>
-				<div class="flex w-full flex-col">
-					<div class="flex flex-row gap-2">
-						{#each manga?.alternativeNames ?? [] as name}
-							<span class="opacity-60">{name}</span>
+				<div class="mt-2 flex flex-row gap-2">
+					<span>
+						Alt name(s):
+						{#each manga?.alternativeNames ?? [] as name, i}
+							<span class="opacity-60">
+								{name}{i < (manga?.alternativeNames?.length ?? 0) - 1 ? ', ' : ''}
+							</span>
 						{/each}
-					</div>
-				</div>
-				<div>
-					<p class="opacity-60">Author(s): {manga?.authors.join(', ')}</p>
-					{#if manga?.artists}
-						<p class="opacity-60">Artist(s): {manga?.artists?.join(', ')}</p>
-					{/if}
-					<p class="opacity-60">Status: {manga?.status}</p>
-					<p class="opacity-60">
-						Genres: {Array.isArray(manga?.genres) ? manga.genres.join(', ') : (manga?.genres ?? '')}
-					</p>
-					{#if manga?.mangaType}
-						<p class="opacity-60">Type: {manga?.mangaType}</p>
-					{/if}
-					{#if manga?.releaseDate}
-						<p class="opacity-60">Released: {new Date(manga.releaseDate).toLocaleDateString()}</p>
-					{/if}
+					</span>
 				</div>
 				<p class="pt-2">{manga?.description}</p>
 			</div>
@@ -285,7 +338,7 @@
 									window.open(chapter.url, '_blank');
 								}}
 							>
-								<Globe />
+								<SquareArrowOutUpRight />
 							</button>
 						</div>
 					</a>
