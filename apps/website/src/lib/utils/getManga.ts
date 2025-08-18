@@ -10,6 +10,7 @@ export type MangaWithFavorite = Manga & {
 	categoryId?: number | null;
 	pack?: { id: number | null; mangas: number[] } | null;
 	userReadChapters?: number[] | null;
+	genres?: string[] | undefined;
 };
 
 export async function getManga(id: number): Promise<MangaWithFavorite | null> {
@@ -102,8 +103,20 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 						}
 					: null;
 
+			let normalizedGenres: string[] | undefined;
+			if (base?.genres && typeof base.genres === 'string') {
+				normalizedGenres = base.genres
+					.split(',')
+					.map((s) => s.trim())
+					.filter(Boolean);
+			} else if (Array.isArray(base?.genres)) {
+				normalizedGenres = base.genres as unknown as string[];
+			}
+
+			const basePartial = base as unknown as Partial<MangaWithFavorite>;
+
 			return {
-				...base,
+				...basePartial,
 				isFavorite: true,
 				favoriteId: fav.id != null ? Number(fav.id) : null,
 				userReadChaptersAmount:
@@ -111,15 +124,24 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 				chaptersAmount: fav.manga.chaptersAmount != null ? Number(fav.manga.chaptersAmount) : 0,
 				categoryId: fav.categoryId != null ? Number(fav.categoryId) : null,
 				pack: normalizedPack,
-				userReadChapters: fav.manga.userReadChapters
-			};
+				userReadChapters: fav.manga.userReadChapters,
+				genres: normalizedGenres
+			} as MangaWithFavorite;
 		}
 
 		if (plain) {
+			if (plain?.genres && typeof plain.genres === 'string') {
+				plain.genres = plain.genres
+					.split(',')
+					.map((s: string) => s.trim())
+					.filter(Boolean);
+			}
+
 			return {
 				...(plain as Manga),
 				isFavorite: false,
-				userReadChapters: plain.userReadChapters
+				userReadChapters: plain.userReadChapters,
+				genres: plain.genres
 			};
 		}
 

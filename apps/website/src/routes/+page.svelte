@@ -284,7 +284,7 @@
 					onValueChange={(e) => (currentCategory = e.value)}
 					fluid
 					classes="flex flex-col h-full"
-					listClasses="overflow-x-auto p-2"
+					listClasses="overflow-x-auto p-2 overflow-auto"
 					contentClasses="flex flex-col w-full h-full overflow-auto"
 				>
 					{#snippet list()}

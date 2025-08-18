@@ -222,9 +222,9 @@
 		<DotsSpinner class="text-primary-500 h-18 w-18" />
 	</div>
 {:else}
-	<div class="flex h-full w-full flex-row items-stretch justify-between gap-x-4 p-4">
-		<div class="flex w-1/2 flex-col items-start justify-start gap-2">
-			<div class="flex h-1/2 flex-row items-start justify-start gap-2">
+	<div class="flex h-full w-full flex-col items-stretch justify-between gap-x-4 p-4 md:flex-row">
+		<div class="flex w-full flex-col items-start justify-start gap-2 md:w-1/2">
+			<div class="flex flex-col items-start justify-start gap-2 xl:h-1/2 xl:flex-row">
 				<img
 					src={manga?.imgUrl}
 					alt="Manga Cover"
@@ -241,11 +241,6 @@
 								<p class="opacity-60">Artist(s): {manga?.artists?.join(', ')}</p>
 							{/if}
 							<p class="opacity-60">Status: {manga?.status}</p>
-							<p class="opacity-60">
-								Genres: {Array.isArray(manga?.genres)
-									? manga.genres.join(', ')
-									: (manga?.genres ?? '')}
-							</p>
 							{#if manga?.mangaType}
 								<p class="opacity-60">Type: {manga?.mangaType}</p>
 							{/if}
@@ -255,8 +250,15 @@
 								</p>
 							{/if}
 							<p class="opacity-60">
-								Source: {manga?.scraperInfo.name}
+								Source: {manga?.scraperInfo?.name}
 							</p>
+							{#if manga?.genres}
+								<div class="mt-2 flex flex-wrap gap-2">
+									{#each manga?.genres as genre}
+										<button type="button" class="chip preset-filled">{genre}</button>
+									{/each}
+								</div>
+							{/if}
 						</div>
 					</div>
 				</div>
@@ -268,12 +270,12 @@
 							{#if manga?.isFavorite}
 								<button class="btn preset-tonal" onclick={toggleFavorite}>
 									<BookmarkMinus />
-									<span>Remove from Favorites</span>
+									<span class="hidden md:block">Remove from Favorites</span>
 								</button>
 							{:else}
 								<button class="btn preset-tonal" onclick={openFavoriteModal}>
 									<BookmarkPlus />
-									<span>Add to Favorites</span>
+									<span class="hidden md:block">Add to Favorites</span>
 								</button>
 							{/if}
 						{/if}
@@ -292,11 +294,13 @@
 						{/each}
 					</span>
 				</div>
-				<p class="pt-2">{manga?.description}</p>
+				<div class="overflow-auto">
+					<p class="pt-2">{manga?.description}</p>
+				</div>
 			</div>
 		</div>
-		<span class="vr min-w-2"></span>
-		<div class="flex w-1/2 flex-col items-start justify-center">
+		<span class="vr hidden min-w-2 md:block"></span>
+		<div class="flex w-full flex-col items-start justify-center md:w-1/2">
 			<h3 class="h3">Chapters:</h3>
 			<div class="flex w-full flex-col gap-2 overflow-auto pr-2">
 				{#each manga?.chapters ?? [] as chapter}
