@@ -36,6 +36,10 @@ impl UserData for CustomScraper {
 				.filter_map(|n| n.first_child().and_then(|c| c.value().as_text().map(|t| t.to_string())))
 				.collect();
 
+			if texts.is_empty() {
+				return Ok("".to_string());
+			}
+
 			Ok(texts[0].clone().trim().to_string())
 		});
 

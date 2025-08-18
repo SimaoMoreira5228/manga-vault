@@ -206,6 +206,7 @@ pub struct ScraperInfo {
 	pub id: String,
 	pub name: String,
 	pub img_url: String,
+	pub referer_url: Option<String>,
 }
 
 impl IntoLua for ScraperInfo {
@@ -214,6 +215,7 @@ impl IntoLua for ScraperInfo {
 		table.set("id", self.id)?;
 		table.set("name", self.name)?;
 		table.set("img_url", self.img_url)?;
+		table.set("referer_url", self.referer_url)?;
 		Ok(Value::Table(table))
 	}
 }
@@ -225,6 +227,7 @@ impl FromLua for ScraperInfo {
 			id: table.get("id")?,
 			name: table.get("name")?,
 			img_url: table.get("img_url")?,
+			referer_url: table.get("referer_url").ok(),
 		})
 	}
 }

@@ -1,61 +1,93 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { client } from '$lib/graphql/client';
-	import { ArrowBigDown, ArrowBigUp, ArrowLeft } from '@lucide/svelte';
+	import { ArrowBigDown, ArrowBigLeft, ArrowBigRight, ArrowBigUp, ArrowLeft } from '@lucide/svelte';
 	import { gql } from '@urql/svelte';
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { toaster } from '$lib/utils/toaster-svelte';
+	import { browser } from '$app/environment';
+	import { afterNavigate, goto } from '$app/navigation';
+	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 
-	const chapterIdStr = page.params.chapter_id;
-	if (!chapterIdStr) throw new Error('Invalid manga id');
-	const chapterId = parseInt(chapterIdStr);
-	if (Number.isNaN(chapterId)) throw new Error('Invalid manga id');
+	const chapterIdStr = $derived(page.params.chapter_id);
+	const chapterId = $derived(parseInt(chapterIdStr || ''));
 
+	let isLoading = $state(false);
 	let imageMargin = $state(0);
 	let areControlsOpen = $state(false);
 	let markedRead = false;
 	let ticking = false;
 	let imageContainer: HTMLElement | null = $state(null);
+	let imageUrls = $state<string[]>([]);
+	let nextChapter: number | null = $state(null);
+	let previousChapter: number | null = $state(null);
 
-	onMount(() => {
-		const savedMargin = localStorage.getItem('imageMargin');
-		if (savedMargin) {
-			imageMargin = parseInt(savedMargin, 10) || 0;
+	onMount(async () => {
+		if (!browser) return;
+
+		await load();
+
+		window.addEventListener('keydown', handleKeyPress);
+	});
+
+	onDestroy(async () => {
+		if (!browser) return;
+
+		window.removeEventListener('keydown', handleKeyPress);
+	});
+
+	afterNavigate(async () => {
+		if (imageContainer) {
+			imageContainer.scrollTop = 0;
 		}
+		markedRead = false;
+		await load();
 	});
 
 	$effect(() => {
 		localStorage.setItem('imageMargin', imageMargin.toString());
 	});
 
-	async function getImageUrls(): Promise<string[]> {
-		try {
-			const response = await client.query(
+	async function load() {
+		isLoading = true;
+
+		const savedMargin = localStorage.getItem('imageMargin');
+		if (savedMargin) {
+			imageMargin = parseInt(savedMargin, 10) || 0;
+		}
+
+		const response = await client
+			.query(
 				gql`
-					query chapterImages($chapterId: Int!) {
+					query getChapterInfo($chapterId: Int!) {
 						chapters {
 							chapter(id: $chapterId) {
 								images
+								nextChapter {
+									id
+								}
+								previousChapter {
+									id
+								}
 							}
 						}
 					}
 				`,
 				{ chapterId }
-			);
+			)
+			.toPromise();
 
-			return response.data.chapters.chapter.images;
-		} catch (error) {
-			console.error('Error fetching chapter images:', error);
-			toaster.error({
-				title: 'Error',
-				description: 'Failed to load chapter images'
-			});
-			return [];
+		if (response.data) {
+			nextChapter = response.data.chapters.chapter.nextChapter?.id || null;
+			previousChapter = response.data.chapters.chapter.previousChapter?.id || null;
+			imageUrls = response.data.chapters.chapter.images;
 		}
+
+		isLoading = false;
 	}
 
 	function handleScroll() {
-		if (ticking) return;
+		if (ticking || !chapterId) return;
 		ticking = true;
 		requestAnimationFrame(async () => {
 			if (!imageContainer || markedRead) {
@@ -91,10 +123,39 @@
 			ticking = false;
 		});
 	}
+
+	function handleKeyPress(event: KeyboardEvent) {
+		const active = document.activeElement;
+		if (
+			active &&
+			(active.tagName === 'INPUT' ||
+				active.tagName === 'TEXTAREA' ||
+				(active as HTMLElement).isContentEditable)
+		) {
+			return;
+		}
+
+		if (event.key === 'ArrowUp') {
+			imageMargin = Math.min(imageMargin + 5, 45);
+		} else if (event.key === 'ArrowDown') {
+			imageMargin = Math.max(imageMargin - 5, 0);
+		} else if (event.key === 'ArrowLeft') {
+			if (!previousChapter) return;
+			goto(`/manga/${page.params.manga_id}/chapter/${previousChapter}`);
+		} else if (event.key === 'ArrowRight') {
+			if (!nextChapter) return;
+			goto(`/manga/${page.params.manga_id}/chapter/${nextChapter}`);
+		} else if (event.key === 'Escape') {
+			if (areControlsOpen) areControlsOpen = false;
+			if (!areControlsOpen) goto(`/manga/${page.params.manga_id}`);
+		}
+	}
 </script>
 
 <div class="flex h-full w-full flex-col items-center justify-center">
-	{#await getImageUrls() then imageUrls}
+	{#if isLoading}
+		<DotsSpinner class="text-primary-500 h-18 w-18" />
+	{:else}
 		<div class="flex w-full flex-col items-center overflow-auto p-4">
 			<div class="w-full overflow-auto" bind:this={imageContainer} onscroll={handleScroll}>
 				{#if imageUrls.length > 0}
@@ -116,7 +177,11 @@
 					class="card preset-filled-surface-100-900 flex h-auto w-full flex-row items-center justify-between gap-4 p-4"
 				>
 					<div class="flex w-full items-center justify-between gap-4">
-						<a class="btn-icon preset-filled" href="/manga/{page.params.manga_id}">
+						<a
+							class="btn-icon preset-filled"
+							href="/manga/{page.params.manga_id}"
+							aria-label="Back to Manga"
+						>
 							<ArrowLeft />
 						</a>
 						<label class="label">
@@ -124,9 +189,33 @@
 							<input class="input" type="range" min="0" max="45" bind:value={imageMargin} />
 						</label>
 					</div>
-					<button class="btn-icon preset-filled" onclick={() => (areControlsOpen = false)}>
-						<ArrowBigDown />
-					</button>
+					<div class="flex gap-2">
+						{#if previousChapter}
+							<button
+								class="btn-icon preset-filled"
+								onclick={() => goto(`/manga/${page.params.manga_id}/chapter/${previousChapter}`)}
+								aria-label="Previous Chapter"
+							>
+								<ArrowBigLeft />
+							</button>
+						{/if}
+						{#if nextChapter}
+							<button
+								class="btn-icon preset-filled"
+								onclick={() => goto(`/manga/${page.params.manga_id}/chapter/${nextChapter}`)}
+								aria-label="Next Chapter"
+							>
+								<ArrowBigRight />
+							</button>
+						{/if}
+						<button
+							class="btn-icon preset-filled"
+							onclick={() => (areControlsOpen = false)}
+							aria-label="Hide Controls"
+						>
+							<ArrowBigDown />
+						</button>
+					</div>
 				</div>
 			{/if}
 
@@ -139,5 +228,5 @@
 				</button>
 			{/if}
 		</div>
-	{/await}
+	{/if}
 </div>

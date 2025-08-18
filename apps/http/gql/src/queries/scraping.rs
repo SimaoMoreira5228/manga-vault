@@ -14,7 +14,7 @@ pub struct ScrapingQuery;
 
 #[Object]
 impl ScrapingQuery {
-	async fn search(&self, ctx: &Context<'_>, scraper_id: String, query: String, pages: u32) -> Result<Vec<Manga>> {
+	async fn search(&self, ctx: &Context<'_>, scraper_id: String, query: String, page: u32) -> Result<Vec<Manga>> {
 		let db = ctx.data::<Arc<Database>>()?;
 
 		let fetched_result = database_entities::temp::Entity::find()
@@ -28,7 +28,7 @@ impl ScrapingQuery {
 
 		if fetched_result.is_none() {
 			let scraper = self.get_scraper(ctx, &scraper_id).await?;
-			let searched_mangas = scraper.scrape_search(query.clone(), pages).await?;
+			let searched_mangas = scraper.scrape_search(query.clone(), page).await?;
 			let mangas = self.process_mangas(db.clone(), &scraper_id, searched_mangas).await?;
 
 			let active_model = database_entities::temp::ActiveModel {
@@ -92,6 +92,43 @@ impl ScrapingQuery {
 		Ok(mangas.into_iter().map(Manga::from).collect())
 	}
 
+	async fn scrape_trending(&self, ctx: &Context<'_>, scraper_id: String, page: u32) -> Result<Vec<Manga>> {
+		let db = ctx.data::<Arc<Database>>()?;
+
+		let fetched_result = database_entities::temp::Entity::find()
+			.filter(database_entities::temp::Column::Key.eq(format!("trending:{}:{}", scraper_id.clone(), page)))
+			.one(&db.conn)
+			.await?;
+
+		if fetched_result.is_none() {
+			let scraper = self.get_scraper(ctx, &scraper_id).await?;
+			let trending_mangas = scraper.scrape_trending(page).await?;
+			let mangas = self.process_mangas(db.clone(), &scraper_id, trending_mangas).await?;
+
+			let active_model = database_entities::temp::ActiveModel {
+				key: Set(format!("trending:{}:{}", scraper_id, page)),
+				value: Set(serde_json::to_string(&mangas.iter().map(|m| m.id).collect::<Vec<_>>())
+					.map_err(|_| async_graphql::Error::new("Failed to serialize manga"))?),
+				expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(20)).naive_utc().to_string()),
+				..Default::default()
+			};
+
+			database_entities::temp::Entity::insert(active_model).exec(&db.conn).await?;
+
+			return Ok(mangas);
+		}
+
+		let ids = serde_json::from_str::<Vec<u64>>(&fetched_result.unwrap().value)
+			.map_err(|_| async_graphql::Error::new("Failed to parse latest result"))?;
+
+		let mangas = database_entities::mangas::Entity::find()
+			.filter(database_entities::mangas::Column::Id.is_in(ids))
+			.all(&db.conn)
+			.await?;
+
+		Ok(mangas.into_iter().map(Manga::from).collect())
+	}
+
 	async fn scrapers(&self, ctx: &Context<'_>) -> Result<Vec<Scraper>> {
 		let scraper_manager = ctx.data::<Arc<ScraperManager>>()?;
 
@@ -100,6 +137,12 @@ impl ScrapingQuery {
 		let scraper_futures = plugins.into_iter().map(Scraper::from_plugin);
 		let scraper_vec: Vec<Scraper> = futures_util::future::try_join_all(scraper_futures).await?;
 		Ok(scraper_vec)
+	}
+
+	async fn scraper(&self, ctx: &Context<'_>, scraper_id: String) -> Result<Scraper> {
+		let scraper = self.get_scraper(ctx, &scraper_id).await?;
+
+		Ok(Scraper::from_plugin(scraper).await?)
 	}
 }
 

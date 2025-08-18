@@ -4,45 +4,45 @@
     {
       "name": "mangaread_org",
       "urls": {
-        "wasm": "https://files.catbox.moe/mu9jwj.wasm"
+        "wasm": "https://files.catbox.moe/ltqrf9.wasm"
       },
-      "version": "0.4.0",
+      "version": "0.4.1",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "manga_dex",
       "urls": {
-        "wasm": "https://files.catbox.moe/s3e3f6.wasm"
+        "wasm": "https://files.catbox.moe/p26d3c.wasm"
       },
-      "version": "0.4.0",
+      "version": "0.4.1",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "hari_manga",
       "urls": {
-        "wasm": "https://files.catbox.moe/eiv5ly.wasm"
+        "wasm": "https://files.catbox.moe/72wdpx.wasm"
       },
-      "version": "0.3.0",
+      "version": "0.3.1",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "manhuafast",
       "urls": {
-        "lua": "https://files.catbox.moe/fo96o2.lua"
+        "lua": "https://files.catbox.moe/ojm868.lua"
       },
-      "version": "0.1.2",
+      "version": "0.1.3",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "natomanga",
       "urls": {
-        "lua": "https://files.catbox.moe/6n78mf.lua"
+        "lua": "https://files.catbox.moe/8a9wvh.lua"
       },
-      "version": "0.1.0",
+      "version": "0.1.2",
       "state": "updated",
       "build_state": "beta"
     }

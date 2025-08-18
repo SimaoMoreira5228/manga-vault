@@ -439,6 +439,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			name: "MangaDex".to_string(),
 			version: env!("CARGO_PKG_VERSION").to_string(),
 			img_url: "https://mangadex.org/pwa/icons/icon-180.png".to_string(),
+			referer_url: None,
 		}
 	}
 }

@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use database_connection::Database;
 use scraper_core::ScraperManager;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 
 use crate::objects::mangas::Manga;
 
@@ -96,5 +96,39 @@ impl Chapter {
 		}
 
 		Ok(urls)
+	}
+
+	async fn next_chapter(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<Chapter>> {
+		let db = ctx.data::<Arc<Database>>()?;
+		let chapter = database_entities::chapters::Entity::find_by_id(self.id)
+			.one(&db.conn)
+			.await?
+			.ok_or_else(|| async_graphql::Error::new("Chapter not found"))?;
+
+		let next_chapter = database_entities::chapters::Entity::find()
+			.filter(database_entities::chapters::Column::MangaId.eq(chapter.manga_id))
+			.filter(database_entities::chapters::Column::CreatedAt.gt(chapter.created_at))
+			.order_by_asc(database_entities::chapters::Column::CreatedAt)
+			.one(&db.conn)
+			.await?;
+
+		Ok(next_chapter.map(Chapter::from))
+	}
+
+	async fn previous_chapter(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<Chapter>> {
+		let db = ctx.data::<Arc<Database>>()?;
+		let chapter = database_entities::chapters::Entity::find_by_id(self.id)
+			.one(&db.conn)
+			.await?
+			.ok_or_else(|| async_graphql::Error::new("Chapter not found"))?;
+
+		let previous_chapter = database_entities::chapters::Entity::find()
+			.filter(database_entities::chapters::Column::MangaId.eq(chapter.manga_id))
+			.filter(database_entities::chapters::Column::CreatedAt.lt(chapter.created_at))
+			.order_by_desc(database_entities::chapters::Column::CreatedAt)
+			.one(&db.conn)
+			.await?;
+
+		Ok(previous_chapter.map(Chapter::from))
 	}
 }

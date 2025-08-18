@@ -43,6 +43,7 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 				id
 				name
 				imageUrl
+				refererUrl
 			}
 		}
 
@@ -113,6 +114,13 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 				normalizedGenres = base.genres as unknown as string[];
 			}
 
+			const normalizedAlternativeNames: string[] = [];
+			for (const name of base?.alternativeNames ?? []) {
+				if (name != '') {
+					normalizedAlternativeNames.push(name);
+				}
+			}
+
 			const basePartial = base as unknown as Partial<MangaWithFavorite>;
 
 			return {
@@ -125,7 +133,8 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 				categoryId: fav.categoryId != null ? Number(fav.categoryId) : null,
 				pack: normalizedPack,
 				userReadChapters: fav.manga.userReadChapters,
-				genres: normalizedGenres
+				genres: normalizedGenres,
+				alternativeNames: normalizedAlternativeNames
 			} as MangaWithFavorite;
 		}
 
@@ -137,11 +146,19 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 					.filter(Boolean);
 			}
 
+			const normalizedAlternativeNames: string[] = [];
+			for (const name of plain?.alternativeNames ?? []) {
+				if (name != '') {
+					normalizedAlternativeNames.push(name);
+				}
+			}
+
 			return {
 				...(plain as Manga),
 				isFavorite: false,
 				userReadChapters: plain.userReadChapters,
-				genres: plain.genres
+				genres: plain.genres,
+				alternativeNames: normalizedAlternativeNames
 			};
 		}
 

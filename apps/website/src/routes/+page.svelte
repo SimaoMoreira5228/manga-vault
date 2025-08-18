@@ -338,12 +338,16 @@
 										</div>
 									{:else}
 										<div
-											class="grid grid-cols-1 justify-items-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8"
+											class="grid h-full w-full justify-items-center gap-4"
+											style="grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));"
 										>
 											{#each favoriteMangas as favoriteManga}
 												<a
 													class="card relative flex h-80 w-full max-w-[12rem] flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat shadow-lg"
-													style="background-image: url({favoriteManga.manga.imgUrl});"
+													style="background-image: url({image(
+														favoriteManga.manga.imgUrl,
+														favoriteManga.manga.url.split('/').slice(0, 3).join('/') + '/'
+													)});"
 													href={`/manga/${favoriteManga.manga.id}`}
 												>
 													<div
@@ -357,12 +361,12 @@
 													</div>
 
 													{#if favoriteManga.manga.chaptersAmount - favoriteManga.manga.userReadChaptersAmount > 0}
-														<div
-															class="preset-filled-primary-500 absolute right-1 top-1 h-6 w-fit min-w-6 rounded-sm text-center text-base"
+														<span
+															class="badge-icon preset-filled-primary-500 absolute -right-0 -top-0 z-10"
 														>
 															{favoriteManga.manga.chaptersAmount -
 																favoriteManga.manga.userReadChaptersAmount}
-														</div>
+														</span>
 													{/if}
 												</a>
 											{/each}

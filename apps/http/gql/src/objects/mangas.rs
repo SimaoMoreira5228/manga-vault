@@ -5,13 +5,14 @@ use chrono::NaiveDateTime;
 use database_connection::Database;
 use scraper_core::ScraperManager;
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
+use serde::Serialize;
 
 use crate::objects::chapters::Chapter;
 use crate::objects::read_chapters::ReadChapter;
 use crate::objects::scraper::Scraper;
 use crate::objects::users::SanitizedUser;
 
-#[derive(SimpleObject, Clone)]
+#[derive(SimpleObject, Clone, Serialize)]
 #[graphql(complex)]
 pub struct Manga {
 	pub id: i32,

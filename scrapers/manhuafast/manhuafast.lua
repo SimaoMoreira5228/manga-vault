@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global, undefined-field
 
 PLUGIN_NAME = "manhuafast"
-PLUGIN_VERSION = "0.1.2"
+PLUGIN_VERSION = "0.1.3"
 
 
 function Scrape_chapter(url)
@@ -210,6 +210,7 @@ function Get_info()
     return {
         id = "manhuafast",
         name = "Manhuafast",
-        img_url = "https://manhuafast.com/wp-content/uploads/2021/01/cropped-Dark-Star-Emperor-Manga-193x278-1-32x32.jpg"
+        img_url = "https://manhuafast.com/wp-content/uploads/2021/01/cropped-Dark-Star-Emperor-Manga-193x278-1-32x32.jpg",
+        referer_url = "https://manhuafast.com/"
     }
 end

@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global, undefined-field
 
 PLUGIN_NAME = "natomanga"
-PLUGIN_VERSION = "0.1.0"
+PLUGIN_VERSION = "0.1.2"
 
 function Scrape_chapter(url)
     local html = http:get(url).text
@@ -135,7 +135,10 @@ function Scrape_manga(url)
         if string.find(item_text, "Author(s)") then
             local author_elements = scraping:select_elements(item, "a")
             for _, author_element in ipairs(author_elements) do
-                table.insert(authors, scraping:get_text(author_element) or "")
+                local author_text = scraping:get_text(author_element)
+                if author_text ~= "" then
+                    table.insert(authors, author_text)
+                end
             end
         elseif string.find(item_text, "Status") then
             status = string.trim(string.gsub(item_text, "Status :", ""))
@@ -195,6 +198,7 @@ function Get_info()
     return {
         id = "natomanga",
         name = "NatoManga",
-        img_url = "https://www.natomanga.com/images/favicon-manganato.webp"
+        img_url = "https://www.natomanga.com/images/favicon-manganato.webp",
+        referer_url = "https://www.natomanga.com/"
     }
 end

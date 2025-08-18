@@ -8,6 +8,7 @@
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { Modal } from '@skeletonlabs/skeleton-svelte';
 	import { toaster } from '$lib/utils/toaster-svelte';
+	import { image } from '$lib/utils/image';
 
 	const mangaIdStr = page.params.manga_id;
 	if (!mangaIdStr) throw new Error('Invalid manga id');
@@ -226,18 +227,20 @@
 		<div class="flex w-full flex-col items-start justify-start gap-2 md:w-1/2">
 			<div class="flex flex-col items-start justify-start gap-2 xl:h-1/2 xl:flex-row">
 				<img
-					src={manga?.imgUrl}
+					src={image(manga?.imgUrl || '', manga?.scraperInfo?.refererUrl as string | undefined)}
 					alt="Manga Cover"
-					class="h-full rounded-lg object-cover shadow-md"
+					class="h-80 w-auto rounded-lg object-cover shadow-md"
 				/>
-				<div class="flex w-full flex-col items-center justify-between gap-2">
+				<div class="flex w-full flex-col items-start justify-between gap-2">
 					<h5 class="h5">
-						{manga?.title}
+						{manga?.title.trim()}
 					</h5>
-					<div class="mt-4 flex w-full flex-col">
+					<div class="flex w-full flex-col">
 						<div>
-							<p class="opacity-60">Author(s): {manga?.authors.join(', ')}</p>
-							{#if manga?.artists}
+							{#if manga?.authors && manga?.authors[0] !== ''}
+								<p class="opacity-60">Author(s): {manga?.authors.join(', ')}</p>
+							{/if}
+							{#if manga?.artists && manga?.artists[0] !== ''}
 								<p class="opacity-60">Artist(s): {manga?.artists?.join(', ')}</p>
 							{/if}
 							<p class="opacity-60">Status: {manga?.status}</p>
@@ -268,32 +271,32 @@
 					<div class="flex w-full flex-row items-center justify-start gap-2">
 						{#if authState.status === 'authenticated'}
 							{#if manga?.isFavorite}
-								<button class="btn preset-tonal" onclick={toggleFavorite}>
+								<button class="btn preset-tonal-primary" onclick={toggleFavorite}>
 									<BookmarkMinus />
 									<span class="hidden md:block">Remove from Favorites</span>
 								</button>
 							{:else}
-								<button class="btn preset-tonal" onclick={openFavoriteModal}>
+								<button class="btn preset-tonal-primary" onclick={openFavoriteModal}>
 									<BookmarkPlus />
 									<span class="hidden md:block">Add to Favorites</span>
 								</button>
 							{/if}
 						{/if}
-						<a href={manga?.url} class="btn-icon preset-tonal" target="_blank">
+						<a href={manga?.url} class="btn-icon preset-tonal-primary" target="_blank">
 							<SquareArrowOutUpRight />
 						</a>
 					</div>
 				</div>
-				<div class="mt-2 flex flex-row gap-2">
-					<span>
+				{#if (manga?.alternativeNames ?? []).length > 0}
+					<div class="mt-2 flex flex-row gap-2">
 						Alt name(s):
 						{#each manga?.alternativeNames ?? [] as name, i}
 							<span class="opacity-60">
 								{name}{i < (manga?.alternativeNames?.length ?? 0) - 1 ? ', ' : ''}
 							</span>
 						{/each}
-					</span>
-				</div>
+					</div>
+				{/if}
 				<div class="overflow-auto">
 					<p class="pt-2">{manga?.description}</p>
 				</div>
