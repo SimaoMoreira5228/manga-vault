@@ -2,9 +2,9 @@
 	import { getAuthState } from '$lib/auth.svelte';
 	import { Modal, Tabs } from '@skeletonlabs/skeleton-svelte';
 	import { client } from '$lib/graphql/client';
+	import { gql } from '@urql/svelte';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { ArrowDown10, ArrowDownAZ, PenLine, Plus } from '@lucide/svelte';
-	import { gql } from '@urql/svelte';
 	import { onMount } from 'svelte';
 	import { image } from '$lib/utils/image';
 	import { toaster } from '$lib/utils/toaster-svelte';
@@ -350,13 +350,15 @@
 														class="absolute inset-0 bg-gradient-to-b from-transparent to-black/75"
 													></div>
 
-													<div class="relative z-10 w-full truncate p-4 text-center text-white">
+													<div
+														class="relative z-10 w-full truncate p-4 text-center text-base text-white"
+													>
 														{favoriteManga.manga.title}
 													</div>
 
 													{#if favoriteManga.manga.chaptersAmount - favoriteManga.manga.userReadChaptersAmount > 0}
 														<div
-															class="absolute right-1 top-1 h-6 w-fit min-w-6 rounded-sm bg-red-500 text-center"
+															class="preset-filled-primary-500 absolute right-1 top-1 h-6 w-fit min-w-6 rounded-sm text-center text-base"
 														>
 															{favoriteManga.manga.chaptersAmount -
 																favoriteManga.manga.userReadChaptersAmount}

@@ -494,7 +494,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			id: env!("CARGO_PKG_NAME").to_string(),
 			name: "Mangaread.org".to_string(),
 			version: env!("CARGO_PKG_VERSION").to_string(),
-			img_url: "https://www.mangaread.org/wp-content/uploads/2017/10/log1.png".to_string(),
+			img_url: "https://www.mangaread.org/wp-content/uploads/2017/10/cropped-unnamed-32x32.png".to_string(),
 		}
 	}
 }

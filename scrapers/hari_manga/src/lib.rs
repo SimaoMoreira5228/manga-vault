@@ -307,7 +307,8 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			id: "hari_manga".to_string(),
 			name: "Hari Manga".to_string(),
 			version: env!("CARGO_PKG_VERSION").to_string(),
-			img_url: "https://harimanga.me/wp-content/uploads/2021/08/logo_web_hari.png".to_string(),
+			img_url: "https://harimanga.me/wp-content/uploads/2021/08/cropped-android-chrome-512x512-1-32x32.png"
+				.to_string(),
 		}
 	}
 }

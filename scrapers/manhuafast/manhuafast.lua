@@ -210,6 +210,6 @@ function Get_info()
     return {
         id = "manhuafast",
         name = "Manhuafast",
-        img_url = "https://manhuafast.com/wp-content/uploads/2017/10/Untitled-1-e1703870904418.png"
+        img_url = "https://manhuafast.com/wp-content/uploads/2021/01/cropped-Dark-Star-Emperor-Manga-193x278-1-32x32.jpg"
     }
 end

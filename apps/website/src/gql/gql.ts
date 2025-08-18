@@ -31,6 +31,7 @@ type Documents = {
     "\n\t\t\t\t\tmutation unreadChapter($chapterId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\tunreadChapter(chapterId: $chapterId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": typeof types.UnreadChapterDocument,
     "\n\t\t\t\t\tquery chapterImages($chapterId: Int!) {\n\t\t\t\t\t\tchapters {\n\t\t\t\t\t\t\tchapter(id: $chapterId) {\n\t\t\t\t\t\t\t\timages\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": typeof types.ChapterImagesDocument,
     "\n\t\t\t\t\t\t\t\tmutation readChapter($chapterId: Int!) {\n\t\t\t\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\t\t\t\treadChapter(chapterId: $chapterId) {\n\t\t\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\t\t\tchapterId\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t": typeof types.ReadChapterDocument,
+    "\n\t\t\tquery GetScrapers {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapers {\n\t\t\t\t\t\tid\n\t\t\t\t\t\tname\n\t\t\t\t\t\timageUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": typeof types.GetScrapersDocument,
 };
 const documents: Documents = {
     "\n\t\t\t\tquery Me {\n\t\t\t\t\tusers {\n\t\t\t\t\t\tme {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tusername\n\t\t\t\t\t\t\timageId\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t": types.MeDocument,
@@ -50,6 +51,7 @@ const documents: Documents = {
     "\n\t\t\t\t\tmutation unreadChapter($chapterId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\tunreadChapter(chapterId: $chapterId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": types.UnreadChapterDocument,
     "\n\t\t\t\t\tquery chapterImages($chapterId: Int!) {\n\t\t\t\t\t\tchapters {\n\t\t\t\t\t\t\tchapter(id: $chapterId) {\n\t\t\t\t\t\t\t\timages\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": types.ChapterImagesDocument,
     "\n\t\t\t\t\t\t\t\tmutation readChapter($chapterId: Int!) {\n\t\t\t\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\t\t\t\treadChapter(chapterId: $chapterId) {\n\t\t\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\t\t\tchapterId\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t": types.ReadChapterDocument,
+    "\n\t\t\tquery GetScrapers {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapers {\n\t\t\t\t\t\tid\n\t\t\t\t\t\tname\n\t\t\t\t\t\timageUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": types.GetScrapersDocument,
 };
 
 /**
@@ -134,6 +136,10 @@ export function graphql(source: "\n\t\t\t\t\tquery chapterImages($chapterId: Int
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n\t\t\t\t\t\t\t\tmutation readChapter($chapterId: Int!) {\n\t\t\t\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\t\t\t\treadChapter(chapterId: $chapterId) {\n\t\t\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\t\t\tchapterId\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t"): (typeof documents)["\n\t\t\t\t\t\t\t\tmutation readChapter($chapterId: Int!) {\n\t\t\t\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\t\t\t\treadChapter(chapterId: $chapterId) {\n\t\t\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\t\t\tchapterId\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n\t\t\tquery GetScrapers {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapers {\n\t\t\t\t\t\tid\n\t\t\t\t\t\tname\n\t\t\t\t\t\timageUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t"): (typeof documents)["\n\t\t\tquery GetScrapers {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapers {\n\t\t\t\t\t\tid\n\t\t\t\t\t\tname\n\t\t\t\t\t\timageUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

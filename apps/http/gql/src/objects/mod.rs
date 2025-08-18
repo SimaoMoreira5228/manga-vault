@@ -5,5 +5,6 @@ pub mod files;
 pub mod manga_packs;
 pub mod mangas;
 pub mod read_chapters;
+pub mod scraper;
 pub mod temp;
 pub mod users;

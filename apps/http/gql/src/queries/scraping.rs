@@ -7,6 +7,7 @@ use sea_orm::ActiveValue::Set;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::objects::mangas::Manga;
+use crate::objects::scraper::Scraper;
 
 #[derive(Default)]
 pub struct ScrapingQuery;
@@ -89,6 +90,16 @@ impl ScrapingQuery {
 			.await?;
 
 		Ok(mangas.into_iter().map(Manga::from).collect())
+	}
+
+	async fn scrapers(&self, ctx: &Context<'_>) -> Result<Vec<Scraper>> {
+		let scraper_manager = ctx.data::<Arc<ScraperManager>>()?;
+
+		let scrapers = scraper_manager.get_plugins().await;
+		let plugins = scrapers.read().await.values().cloned().collect::<Vec<_>>();
+		let scraper_futures = plugins.into_iter().map(Scraper::from_plugin);
+		let scraper_vec: Vec<Scraper> = futures_util::future::try_join_all(scraper_futures).await?;
+		Ok(scraper_vec)
 	}
 }
 

@@ -8,6 +8,7 @@ use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder}
 
 use crate::objects::chapters::Chapter;
 use crate::objects::read_chapters::ReadChapter;
+use crate::objects::scraper::Scraper;
 use crate::objects::users::SanitizedUser;
 
 #[derive(SimpleObject, Clone)]
@@ -58,13 +59,6 @@ impl From<database_entities::mangas::Model> for Manga {
 			genres: manga.genres,
 		}
 	}
-}
-
-#[derive(SimpleObject, Clone)]
-pub struct ScraperInfo {
-	pub id: String,
-	pub name: String,
-	pub image_url: String,
 }
 
 #[async_graphql::ComplexObject]
@@ -120,19 +114,13 @@ impl Manga {
 		Ok(count)
 	}
 
-	async fn scraper_info(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<ScraperInfo>> {
+	async fn scraper_info(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<Scraper>> {
 		let scraper = ctx
 			.data::<Arc<ScraperManager>>()?
 			.get_plugin(self.scraper.as_str())
 			.await
 			.ok_or_else(|| async_graphql::Error::new("Scraper not found"))?;
 
-		let info = scraper.get_info().await?;
-
-		Ok(Some(ScraperInfo {
-			id: info.id,
-			name: info.name,
-			image_url: info.img_url,
-		}))
+		Ok(Some(Scraper::from_plugin(scraper).await?))
 	}
 }

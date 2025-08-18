@@ -4,7 +4,7 @@
     {
       "name": "mangaread_org",
       "urls": {
-        "wasm": "https://files.catbox.moe/4dkrji.wasm"
+        "wasm": "https://files.catbox.moe/mu9jwj.wasm"
       },
       "version": "0.4.0",
       "state": "updated",
@@ -13,7 +13,7 @@
     {
       "name": "manga_dex",
       "urls": {
-        "wasm": "https://files.catbox.moe/dzh4f7.wasm"
+        "wasm": "https://files.catbox.moe/s3e3f6.wasm"
       },
       "version": "0.4.0",
       "state": "updated",
@@ -22,7 +22,7 @@
     {
       "name": "hari_manga",
       "urls": {
-        "wasm": "https://files.catbox.moe/iprc7t.wasm"
+        "wasm": "https://files.catbox.moe/eiv5ly.wasm"
       },
       "version": "0.3.0",
       "state": "updated",
@@ -31,7 +31,7 @@
     {
       "name": "manhuafast",
       "urls": {
-        "lua": "https://files.catbox.moe/7y54p4.lua"
+        "lua": "https://files.catbox.moe/fo96o2.lua"
       },
       "version": "0.1.2",
       "state": "updated",
@@ -40,7 +40,7 @@
     {
       "name": "natomanga",
       "urls": {
-        "lua": "https://files.catbox.moe/bt04ty.lua"
+        "lua": "https://files.catbox.moe/6n78mf.lua"
       },
       "version": "0.1.0",
       "state": "updated",

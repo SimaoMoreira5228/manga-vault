@@ -195,6 +195,6 @@ function Get_info()
     return {
         id = "natomanga",
         name = "NatoManga",
-        img_url = "https://www.natomanga.com/images/logo-manganato.webp"
+        img_url = "https://www.natomanga.com/images/favicon-manganato.webp"
     }
 end

@@ -6,7 +6,7 @@ const config = {
 	preprocess: vitePreprocess(),
 	kit: {
 		alias: {
-			"$gql": "src/gql",
+			$gql: 'src/gql'
 		},
 		adapter: adapter({
 			pages: 'build',
