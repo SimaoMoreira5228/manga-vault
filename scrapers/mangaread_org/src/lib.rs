@@ -496,6 +496,8 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			version: env!("CARGO_PKG_VERSION").to_string(),
 			img_url: "https://www.mangaread.org/wp-content/uploads/2017/10/cropped-unnamed-32x32.png".to_string(),
 			referer_url: Some("https://www.mangaread.org/".to_string()),
+			base_url: Some("https://www.mangaread.org/".to_string()),
+			legacy_urls: None,
 		}
 	}
 }

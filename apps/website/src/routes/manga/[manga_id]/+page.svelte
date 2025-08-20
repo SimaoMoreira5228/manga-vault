@@ -216,6 +216,17 @@
 			userReadChapters: manga?.userReadChapters.filter((c) => c.chapterId !== chapterId)
 		};
 	}
+
+	function getResumeChapter(): number | null {
+		const chapters = [...(manga?.chapters ?? [])];
+		for (const chapter of chapters.reverse() ?? []) {
+			if (!wasChapterRead(chapter.id)) {
+				return chapter.id;
+			}
+		}
+
+		return null;
+	}
 </script>
 
 {#if isLoading}
@@ -351,6 +362,16 @@
 					</a>
 				{/each}
 			</div>
+			{#if manga?.chapters && manga?.chapters?.length > 0 && getResumeChapter() !== null}
+				<div class="mt-4 w-full">
+					<a
+						href="/manga/{manga?.id}/chapter/{getResumeChapter()}"
+						class="btn preset-filled w-full"
+					>
+						Resume Reading
+					</a>
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}

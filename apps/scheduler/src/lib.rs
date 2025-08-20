@@ -3,13 +3,18 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use anyhow::Context;
 use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
 use database_entities::{favorite_mangas, mangas};
 use queue::queue_item::QueueItem;
 use queue::{EnqueueStrategy, TaskQueue};
 use scraper_core::ScraperManager;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set};
+use sea_orm::{
+	ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set,
+	TransactionTrait,
+};
 use tokio::sync::Mutex;
+use url::Url;
 
 #[allow(dead_code)]
 pub struct MangaUpdateScheduler {
@@ -102,7 +107,7 @@ impl MangaUpdateScheduler {
 					drop(tracker);
 
 					let result = (async {
-						let manga = database_entities::mangas::Entity::find_by_id(item.payload.manga_id)
+						let mut manga = database_entities::mangas::Entity::find_by_id(item.payload.manga_id)
 							.one(&db)
 							.await
 							.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?
@@ -117,6 +122,83 @@ impl MangaUpdateScheduler {
 						}
 
 						let plugin = plugin.unwrap();
+
+						let plugin_info = plugin.get_info().await?;
+						if let Some(legacy_urls) = plugin_info.legacy_urls {
+							if let Some(base_url) = plugin_info.base_url {
+								let canonical_host = host_from_base(&base_url)
+									.ok_or_else(|| anyhow::anyhow!("Invalid base URL: {}", base_url))?
+									.to_lowercase()
+									.to_string();
+
+								let legacy_hosts: Vec<String> = legacy_urls
+									.iter()
+									.filter_map(|d| {
+										Url::parse(d)
+											.ok()
+											.and_then(|u| u.host_str().map(|s| s.to_lowercase().to_string()))
+									})
+									.collect();
+
+								let parsed_manga_url = Url::parse(&manga.url)?;
+								let manga_host = parsed_manga_url
+									.host_str()
+									.ok_or_else(|| anyhow::anyhow!("Invalid manga URL: {}", manga.url))?
+									.to_lowercase()
+									.to_string();
+
+								if legacy_hosts.iter().any(|h| h == &manga_host) {
+									tracing::info!(
+										"Rewriting manga {} url host {} -> {}",
+										manga.id,
+										manga_host,
+										canonical_host
+									);
+									let txn = db.begin().await?;
+									{
+										use database_entities::mangas;
+										let mut am: mangas::ActiveModel = manga.clone().into();
+										let new_url = replace_host_preserve_path(&manga.url, &canonical_host)?;
+										am.url = Set(new_url.clone());
+										am.updated_at = Set(Utc::now().naive_utc());
+										am.update(&txn).await?;
+										manga.url = new_url;
+									}
+
+									{
+										use database_entities::chapters;
+										let chapter_models = chapters::Entity::find()
+											.filter(chapters::Column::MangaId.eq(manga.id))
+											.all(&txn)
+											.await?;
+										for ch in chapter_models {
+											if let Ok(cu) = Url::parse(&ch.url) {
+												if let Some(ch_host) = cu.host_str() {
+													let ch_host_norm = ch_host.to_lowercase().to_string();
+													if legacy_hosts.iter().any(|h| h == &ch_host_norm) {
+														let new_ch_url =
+															replace_host_preserve_path(&ch.url, &canonical_host)?;
+														let mut cham: chapters::ActiveModel = ch.into();
+														cham.url = Set(new_ch_url);
+														cham.updated_at = Set(Utc::now().naive_utc());
+														cham.update(&txn).await?;
+													}
+												}
+											}
+										}
+									}
+
+									txn.commit().await?;
+								}
+							} else {
+								tracing::warn!(
+									"Scraper plugin '{}' has legacy URLs but no base URL, skipping update",
+									item.payload.scraper_name
+								);
+								ignored_scrapers.lock().await.insert(item.payload.scraper_name.clone());
+								return Ok(());
+							}
+						}
 
 						let scraped_manga = plugin.scrape_manga(manga.url.clone()).await?;
 
@@ -315,4 +397,26 @@ impl MangaUpdateScheduler {
 
 		base.saturating_add(hours_stale.min(10))
 	}
+}
+
+fn host_from_base(base_url: &str) -> Option<String> {
+	Url::parse(base_url).ok().and_then(|u| u.host_str().map(|s| s.to_string()))
+}
+
+fn replace_host_preserve_path(old_url: &str, new_host: &str) -> anyhow::Result<String> {
+	let mut u = Url::parse(old_url).with_context(|| format!("parse failed for {}", old_url))?;
+
+	if let Some(idx) = new_host.find(':') {
+		let host = &new_host[..idx];
+		let port = &new_host[idx + 1..];
+		u.set_host(Some(host)).with_context(|| format!("set_host failed {}", host))?;
+		let port_num: u16 = port.parse().with_context(|| format!("invalid port {}", port))?;
+		u.set_port(Some(port_num)).ok();
+	} else {
+		u.set_host(Some(new_host))
+			.with_context(|| format!("set_host failed {}", new_host))?;
+		u.set_port(None).ok();
+	}
+
+	Ok(u.into())
 }

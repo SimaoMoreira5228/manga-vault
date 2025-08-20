@@ -8,6 +8,7 @@
 	import { browser } from '$app/environment';
 	import { afterNavigate, goto } from '$app/navigation';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
+	import { image } from '$lib/utils/image';
 
 	const chapterIdStr = $derived(page.params.chapter_id);
 	const chapterId = $derived(parseInt(chapterIdStr || ''));
@@ -21,6 +22,7 @@
 	let imageUrls = $state<string[]>([]);
 	let nextChapter: number | null = $state(null);
 	let previousChapter: number | null = $state(null);
+	let refererUrl: string | null = $state(null);
 
 	onMount(async () => {
 		if (!browser) return;
@@ -69,6 +71,9 @@
 								previousChapter {
 									id
 								}
+								scraper {
+									refererUrl
+								}
 							}
 						}
 					}
@@ -78,9 +83,10 @@
 			.toPromise();
 
 		if (response.data) {
-			nextChapter = response.data.chapters.chapter.nextChapter?.id || null;
-			previousChapter = response.data.chapters.chapter.previousChapter?.id || null;
-			imageUrls = response.data.chapters.chapter.images;
+			nextChapter = response.data.chapters.chapter?.nextChapter?.id || null;
+			previousChapter = response.data.chapters.chapter?.previousChapter?.id || null;
+			imageUrls = response.data.chapters.chapter?.images || [];
+			refererUrl = response.data.chapters.chapter?.scraper?.refererUrl || null;
 		}
 
 		isLoading = false;
@@ -164,11 +170,17 @@
 							class="mb-4 flex justify-center transition-all duration-300"
 							style={`margin: 0 ${imageMargin}%`}
 						>
-							<img src={imageUrl} alt="Chapter page" class="w-full object-contain" />
+							<img
+								src={image(imageUrl, refererUrl ?? undefined)}
+								alt="Chapter page"
+								class="w-full object-contain"
+							/>
 						</div>
 					{/each}
 				{:else}
-					<p>No images found.</p>
+					<div class="flex h-full w-full items-center justify-center">
+						<p>No images found.</p>
+					</div>
 				{/if}
 			</div>
 

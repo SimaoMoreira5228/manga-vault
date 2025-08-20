@@ -8,7 +8,6 @@
 	import { Search } from '@lucide/svelte';
 	import { gql } from '@urql/svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
-	import { is } from 'zod/v4/locales';
 
 	let isLoading = $state(false);
 	let scraper = $state<{ refererUrl: string } | null>(null);
@@ -20,7 +19,8 @@
 	let searchQuery = $derived(page.url.searchParams.get('query') || '');
 	let Sentinel: HTMLElement | null = $state(null);
 	let ListContainer: HTMLElement | null = $state(null);
-	let Observer: IntersectionObserver | null = $state(null);
+	let intersectionObserver: IntersectionObserver | null = $state(null);
+	let resizeObserver: ResizeObserver | null = $state(null);
 	let currentPage = $state(1);
 
 	onMount(async () => {
@@ -54,35 +54,58 @@
 	}
 
 	onDestroy(() => {
-		Observer?.disconnect();
+		intersectionObserver?.disconnect();
 	});
 
 	async function setupObservers() {
-		Observer?.disconnect();
+		intersectionObserver?.disconnect();
+		resizeObserver?.disconnect();
 
 		await tick();
 
-		const root = ListContainer ?? null;
+		if (!Sentinel || !ListContainer) {
+			console.warn('No sentinel or list container yet to observe');
+			return;
+		}
 
-		Observer = new IntersectionObserver(
+		const rootElement: Element | null = ListContainer;
+
+		intersectionObserver = new IntersectionObserver(
 			(entries) => {
 				for (const entry of entries) {
 					if (entry.isIntersecting && !ticking) {
 						ticking = true;
-						if (Sentinel && isTrending) {
-							loadTrending().then(() => (ticking = false));
-						} else if (Sentinel && isLatest) {
-							loadLatest().then(() => (ticking = false));
-						} else if (Sentinel && isSearchActive) {
-							loadSearch().then(() => (ticking = false));
+
+						let loaderPromise: Promise<number>;
+						if (isTrending) loaderPromise = loadTrending();
+						else if (isLatest) loaderPromise = loadLatest();
+						else if (isSearchActive && searchQuery) loaderPromise = loadSearch();
+						else {
+							ticking = false;
+							return;
 						}
+
+						loaderPromise
+							.catch((err) => {
+								console.error('load failed', err);
+							})
+							.finally(() => {
+								ticking = false;
+							});
 					}
 				}
 			},
-			{ root, rootMargin: '400px', threshold: 0.1 }
+			{ root: rootElement, rootMargin: '200px 0px', threshold: 0.1 }
 		);
 
-		if (Sentinel) Observer.observe(Sentinel);
+		intersectionObserver.observe(Sentinel);
+
+		resizeObserver = new ResizeObserver(() => {
+			fillIfNeeded().catch((e) => console.error('fillIfNeeded failed', e));
+		});
+		resizeObserver.observe(ListContainer);
+
+		await fillIfNeeded();
 	}
 
 	async function loadScraper() {
@@ -134,8 +157,12 @@
 			return;
 		}
 
+		const loadedItems = result.data.scraping.scrapeTrending ?? [];
+		if (loadedItems.length === 0) return 0;
+
 		currentPage += 1;
-		items = [...items, ...result.data.scraping.scrapeTrending];
+		items = [...items, ...loadedItems];
+		return loadedItems.length;
 	}
 
 	async function loadLatest() {
@@ -164,13 +191,17 @@
 			return;
 		}
 
+		const loadedItems = result.data.scraping.scrapeLatest ?? [];
+		if (loadedItems.length === 0) return 0;
+
 		currentPage += 1;
-		items = [...items, ...result.data.scraping.scrapeLatest];
+		items = [...items, ...loadedItems];
+		return loadedItems.length;
 	}
 
 	async function loadSearch() {
 		const query = gql`
-			query GetSearch($scraperId: String!, $query: String, $page: Int!) {
+			query GetSearchScraper($scraperId: String!, $query: String!, $page: Int!) {
 				scraping {
 					search(scraperId: $scraperId, query: $query, page: $page) {
 						id
@@ -194,8 +225,36 @@
 			return;
 		}
 
+		const loadedItems = result.data.scraping.search ?? [];
+		if (loadedItems.length === 0) return 0;
+
 		currentPage += 1;
-		items = [...items, ...result.data.scraping.search];
+		items = [...items, ...loadedItems];
+		return loadedItems.length;
+	}
+
+	async function fillIfNeeded() {
+		if (ticking) return;
+
+		let loaded = 0;
+		let attempts = 0;
+		const maxAttempts = 10;
+
+		do {
+			if (attempts++ >= maxAttempts) break;
+			if (isTrending) loaded = await loadTrending();
+			else if (isLatest) loaded = await loadLatest();
+			else if (isSearchActive && searchQuery) loaded = await loadSearch();
+			else loaded = 0;
+
+			if (loaded > 0) {
+				await tick();
+			}
+		} while (
+			loaded > 0 &&
+			ListContainer &&
+			ListContainer.scrollHeight <= ListContainer.clientHeight
+		);
 	}
 </script>
 
@@ -236,9 +295,9 @@
 			</form>
 		</div>
 		<div
-			class="mt-2 grid h-full w-full justify-items-center gap-4 overflow-auto"
+			class="mt-2 grid h-full w-full justify-items-center gap-4 overflow-y-scroll"
 			bind:this={ListContainer}
-			style="grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));"
+			style="grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); height: calc(100vh - 8rem);"
 		>
 			{#each items as item}
 				<a

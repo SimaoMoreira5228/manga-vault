@@ -58,6 +58,8 @@ impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::Scra
 			name: info.name,
 			img_url: info.img_url,
 			referer_url: info.referer_url,
+			base_url: info.base_url,
+			legacy_urls: info.legacy_urls,
 		}
 	}
 }

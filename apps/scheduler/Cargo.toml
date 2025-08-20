@@ -21,3 +21,4 @@ rand = "0.9"
 sea-orm = { workspace = true }
 scraper_core = { workspace = true }
 database-entities = { workspace = true }
+url = "2"

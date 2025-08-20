@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global, undefined-field
 
 PLUGIN_NAME = "manhuafast"
-PLUGIN_VERSION = "0.1.3"
+PLUGIN_VERSION = "0.1.6"
 
 
 function Scrape_chapter(url)
@@ -97,7 +97,11 @@ function Scrape_search(query, page)
 
         for _, content_html in ipairs(content_divs) do
             local img_elements = scraping:select_elements(content_html, "img.img-responsive")
-            local img_url = scraping:get_image_url(img_elements[1]) or ""
+
+            local img_url = ""
+            if #img_elements > 0 then
+                img_url = scraping:get_image_url(img_elements[1]) or ""
+            end
 
             local title_elements = scraping:select_elements(content_html, "div.post-title h3.h4")
             local title = scraping:get_text(title_elements[1]) or ""
@@ -130,12 +134,13 @@ function Scrape_manga(url)
     local alternative_names = {}
 
     for _, item in ipairs(post_content_item) do
-        if string.find(scraping:get_text(scraping:select_elements(item, "div.summary-heading h5")[1]), "Gen") then
+        local heading = scraping:get_text(scraping:select_elements(item, "div.summary-heading h5")[1]) or ""
+        if string.find(heading, "Gen") then
             local genres_div = scraping:select_elements(item, "div.summary-content div.genres-content a")
             for _, genre in ipairs(genres_div) do
                 table.insert(genres, scraping:get_text(genre) or "")
             end
-        elseif string.find(scraping:get_text(scraping:select_elements(item, "div.summary-heading h5")[1]), "Alternative") then
+        elseif string.find(heading, "Alternative") then
             local alternative_names_string = scraping:get_text(scraping:select_elements(item, "div.summary-content")[1])
             ---@diagnostic disable-next-line: undefined-field
             alternative_names = string.split(alternative_names_string, ",")
@@ -145,8 +150,13 @@ function Scrape_manga(url)
         end
     end
 
-    local description = scraping:get_text(scraping:select_elements(html, "div.description-summary div.summary__content p")
-        [1]) or ""
+    local description = ""
+    local description_elements = scraping:select_elements(html, "div.description-summary div.summary__content p")
+    if #description_elements > 0 then
+        for _, element in ipairs(description_elements) do
+            description = description .. scraping:get_text(element) .. "\n"
+        end
+    end
 
     local chapters = {}
     local chapters_url = ""

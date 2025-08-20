@@ -1,17 +1,15 @@
-use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
 
 use axum::extract::Query;
 use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use futures_util::StreamExt;
-use image::ImageFormat;
 use reqwest::Client;
 
 const MAX_IMAGE_SIZE: usize = 10 * 1024 * 1024; // 10MB
 const CACHE_DURATION: u64 = 3600; // 1 hour
 
-pub async fn proxy_image(Query(params): Query<HashMap<String, String>>, headers: HeaderMap) -> Response {
+pub async fn proxy_image(Query(params): Query<std::collections::HashMap<String, String>>, headers: HeaderMap) -> Response {
 	let url = match params.get("url") {
 		Some(url) => url,
 		None => return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response(),
@@ -82,12 +80,12 @@ pub async fn proxy_image(Query(params): Query<HashMap<String, String>>, headers:
 		match image::guess_format(&bytes) {
 			Ok(fmt) => {
 				final_mime = match fmt {
-					ImageFormat::Png => "image/png",
-					ImageFormat::Jpeg => "image/jpeg",
-					ImageFormat::Gif => "image/gif",
-					ImageFormat::Bmp => "image/bmp",
-					ImageFormat::Tiff => "image/tiff",
-					ImageFormat::WebP => "image/webp",
+					image::ImageFormat::Png => "image/png",
+					image::ImageFormat::Jpeg => "image/jpeg",
+					image::ImageFormat::Gif => "image/gif",
+					image::ImageFormat::Bmp => "image/bmp",
+					image::ImageFormat::Tiff => "image/tiff",
+					image::ImageFormat::WebP => "image/webp",
 					_ => "",
 				}
 				.to_string();
@@ -103,29 +101,17 @@ pub async fn proxy_image(Query(params): Query<HashMap<String, String>>, headers:
 		return (StatusCode::UNSUPPORTED_MEDIA_TYPE, "Unsupported image format").into_response();
 	}
 
-	let (output, is_webp) = if final_mime.contains("image/webp") {
-		(bytes, true)
-	} else {
-		match convert_to_webp(&bytes) {
-			Ok(webp) => (webp, true),
-			Err(e) => {
-				tracing::error!("conversion to webp failed: {:?}", e);
-				return (StatusCode::INTERNAL_SERVER_ERROR, "Image conversion failed").into_response();
-			}
-		}
-	};
-
 	let mut response_builder = Response::builder()
 		.status(StatusCode::OK)
 		.header(header::CACHE_CONTROL, format!("public, max-age={}", CACHE_DURATION))
-		.header(header::CONTENT_TYPE, if is_webp { "image/webp" } else { &final_mime });
+		.header(header::CONTENT_TYPE, &final_mime);
 
 	if let Some(expires) = SystemTime::now().checked_add(Duration::from_secs(CACHE_DURATION)) {
 		let formatted = httpdate::fmt_http_date(expires);
 		response_builder = response_builder.header(header::EXPIRES, formatted);
 	}
 
-	match response_builder.body(axum::body::Body::from(output)) {
+	match response_builder.body(axum::body::Body::from(bytes)) {
 		Ok(res) => res,
 		Err(e) => {
 			tracing::error!("error building response: {:?}", e);
@@ -143,12 +129,4 @@ fn is_valid_image_type(content_type: &str) -> bool {
 		mime,
 		"image/jpeg" | "image/jpg" | "image/png" | "image/gif" | "image/bmp" | "image/tiff" | "image/webp"
 	)
-}
-
-fn convert_to_webp(data: &[u8]) -> Result<Vec<u8>, image::ImageError> {
-	use std::io::Cursor;
-	let img = image::load_from_memory(data)?;
-	let mut output = Cursor::new(Vec::new());
-	img.write_to(&mut output, image::ImageFormat::WebP)?;
-	Ok(output.into_inner())
 }

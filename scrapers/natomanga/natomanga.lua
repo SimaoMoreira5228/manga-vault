@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global, undefined-field
 
 PLUGIN_NAME = "natomanga"
-PLUGIN_VERSION = "0.1.2"
+PLUGIN_VERSION = "0.1.3"
 
 function Scrape_chapter(url)
     local html = http:get(url).text
@@ -27,7 +27,6 @@ function Scrape_chapter(url)
 
     return imgs
 end
-
 
 function Scrape_latest(page)
     local url = "https://www.natomanga.com/manga-list/latest-manga?page=" .. tostring(page)
@@ -86,13 +85,12 @@ function Scrape_trending(page)
 end
 
 function Scrape_search(query, page)
-    local url = "https://www.natomanga.com/search/story/" ..
-        http:url_encode(query) .. "?page=" .. tostring(page)
-    local html = http:get(url).text
+    local url = "https://www.natomanga.com/search/story/" .. query .. "?page=" .. tostring(page)
+    local html = http:get(url, { referer = "https://www.natomanga.com/" }).text
 
     local manga_divs = scraping:select_elements(html, "div.story_item")
-    local manga_items = {}
 
+    local manga_items = {}
     for _, manga_div_html in ipairs(manga_divs) do
         local img_elements = scraping:select_elements(manga_div_html, "a img")
         local img_url = scraping:get_image_url(img_elements[1]) or ""
@@ -172,7 +170,6 @@ function Scrape_manga(url)
 
     return page
 end
-
 
 function Scrape_genres_list()
     local url = "https://www.natomanga.com/"

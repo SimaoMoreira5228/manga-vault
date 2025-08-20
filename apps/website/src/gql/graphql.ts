@@ -98,6 +98,7 @@ export type Chapter = {
   nextChapter?: Maybe<Chapter>;
   previousChapter?: Maybe<Chapter>;
   scanlationGroup?: Maybe<Scalars['String']['output']>;
+  scraper: Scraper;
   title: Scalars['String']['output'];
   updatedAt: Scalars['NaiveDateTime']['output'];
   url: Scalars['String']['output'];
@@ -441,7 +442,7 @@ export type ScrapingQueryScraperArgs = {
 
 
 export type ScrapingQuerySearchArgs = {
-  pages: Scalars['Int']['input'];
+  page: Scalars['Int']['input'];
   query: Scalars['String']['input'];
   scraperId: Scalars['String']['input'];
 };
@@ -587,7 +588,21 @@ export type GetChapterInfoQueryVariables = Exact<{
 }>;
 
 
-export type GetChapterInfoQuery = { __typename?: 'QueryRoot', chapters: { __typename?: 'ChapterQuery', chapter?: { __typename?: 'Chapter', images: Array<string>, nextChapter?: { __typename?: 'Chapter', id: number } | null, previousChapter?: { __typename?: 'Chapter', id: number } | null } | null } };
+export type GetChapterInfoQuery = { __typename?: 'QueryRoot', chapters: { __typename?: 'ChapterQuery', chapter?: { __typename?: 'Chapter', images: Array<string>, nextChapter?: { __typename?: 'Chapter', id: number } | null, previousChapter?: { __typename?: 'Chapter', id: number } | null, scraper: { __typename?: 'Scraper', refererUrl?: string | null } } | null } };
+
+export type GetScrapersSearchQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetScrapersSearchQuery = { __typename?: 'QueryRoot', scraping: { __typename?: 'ScrapingQuery', scrapers: Array<{ __typename?: 'Scraper', id: string, name: string, refererUrl?: string | null }> } };
+
+export type GetSearchQueryVariables = Exact<{
+  scraperId: Scalars['String']['input'];
+  query: Scalars['String']['input'];
+  page: Scalars['Int']['input'];
+}>;
+
+
+export type GetSearchQuery = { __typename?: 'QueryRoot', scraping: { __typename?: 'ScrapingQuery', search: Array<{ __typename?: 'Manga', id: number, title: string, imgUrl: string }> } };
 
 export type GetScrapersQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -632,7 +647,9 @@ export const UnfavoriteMangaDocument = {"kind":"Document","definitions":[{"kind"
 export const FavoriteMangaDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"favoriteManga"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateFavoriteMangaInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"favoriteManga"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createFavoriteManga"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<FavoriteMangaMutation, FavoriteMangaMutationVariables>;
 export const ReadChapterDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"readChapter"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"readChapter"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"chapterId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"chapterId"}}]}}]}}]}}]} as unknown as DocumentNode<ReadChapterMutation, ReadChapterMutationVariables>;
 export const UnreadChapterDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"unreadChapter"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unreadChapter"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"chapterId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}}}]}]}}]}}]} as unknown as DocumentNode<UnreadChapterMutation, UnreadChapterMutationVariables>;
-export const GetChapterInfoDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getChapterInfo"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapters"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapter"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"images"}},{"kind":"Field","name":{"kind":"Name","value":"nextChapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"previousChapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetChapterInfoQuery, GetChapterInfoQueryVariables>;
+export const GetChapterInfoDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getChapterInfo"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapters"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapter"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"images"}},{"kind":"Field","name":{"kind":"Name","value":"nextChapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"previousChapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"scraper"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"refererUrl"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetChapterInfoQuery, GetChapterInfoQueryVariables>;
+export const GetScrapersSearchDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetScrapersSearch"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scraping"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scrapers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"refererUrl"}}]}}]}}]}}]} as unknown as DocumentNode<GetScrapersSearchQuery, GetScrapersSearchQueryVariables>;
+export const GetSearchDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSearch"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"scraperId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"query"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scraping"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"search"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"scraperId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"scraperId"}}},{"kind":"Argument","name":{"kind":"Name","value":"query"},"value":{"kind":"Variable","name":{"kind":"Name","value":"query"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"imgUrl"}}]}}]}}]}}]} as unknown as DocumentNode<GetSearchQuery, GetSearchQueryVariables>;
 export const GetScrapersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetScrapers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scraping"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scrapers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"imageUrl"}}]}}]}}]}}]} as unknown as DocumentNode<GetScrapersQuery, GetScrapersQueryVariables>;
 export const GetScraperDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetScraper"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"scraperId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scraping"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scraper"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"scraperId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"scraperId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"refererUrl"}}]}}]}}]}}]} as unknown as DocumentNode<GetScraperQuery, GetScraperQueryVariables>;
 export const GetTrendingDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetTrending"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"scraperId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scraping"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scrapeTrending"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"scraperId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"scraperId"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"imgUrl"}}]}}]}}]}}]} as unknown as DocumentNode<GetTrendingQuery, GetTrendingQueryVariables>;
@@ -725,6 +742,7 @@ export type Chapter = {
   nextChapter?: Maybe<Chapter>;
   previousChapter?: Maybe<Chapter>;
   scanlationGroup?: Maybe<Scalars['String']['output']>;
+  scraper: Scraper;
   title: Scalars['String']['output'];
   updatedAt: Scalars['NaiveDateTime']['output'];
   url: Scalars['String']['output'];
@@ -1068,7 +1086,7 @@ export type ScrapingQueryScraperArgs = {
 
 
 export type ScrapingQuerySearchArgs = {
-  pages: Scalars['Int']['input'];
+  page: Scalars['Int']['input'];
   query: Scalars['String']['input'];
   scraperId: Scalars['String']['input'];
 };
@@ -1214,7 +1232,21 @@ export type GetChapterInfoQueryVariables = Exact<{
 }>;
 
 
-export type GetChapterInfoQuery = { __typename?: 'QueryRoot', chapters: { __typename?: 'ChapterQuery', chapter?: { __typename?: 'Chapter', images: Array<string>, nextChapter?: { __typename?: 'Chapter', id: number } | null, previousChapter?: { __typename?: 'Chapter', id: number } | null } | null } };
+export type GetChapterInfoQuery = { __typename?: 'QueryRoot', chapters: { __typename?: 'ChapterQuery', chapter?: { __typename?: 'Chapter', images: Array<string>, nextChapter?: { __typename?: 'Chapter', id: number } | null, previousChapter?: { __typename?: 'Chapter', id: number } | null, scraper: { __typename?: 'Scraper', refererUrl?: string | null } } | null } };
+
+export type GetScrapersSearchQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetScrapersSearchQuery = { __typename?: 'QueryRoot', scraping: { __typename?: 'ScrapingQuery', scrapers: Array<{ __typename?: 'Scraper', id: string, name: string, refererUrl?: string | null }> } };
+
+export type GetSearchQueryVariables = Exact<{
+  scraperId: Scalars['String']['input'];
+  query: Scalars['String']['input'];
+  page: Scalars['Int']['input'];
+}>;
+
+
+export type GetSearchQuery = { __typename?: 'QueryRoot', scraping: { __typename?: 'ScrapingQuery', search: Array<{ __typename?: 'Manga', id: number, title: string, imgUrl: string }> } };
 
 export type GetScrapersQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1503,6 +1535,9 @@ export const GetChapterInfoDocument = gql`
       previousChapter {
         id
       }
+      scraper {
+        refererUrl
+      }
     }
   }
 }
@@ -1510,6 +1545,36 @@ export const GetChapterInfoDocument = gql`
 
 export function useGetChapterInfoQuery(options: Omit<Urql.UseQueryArgs<GetChapterInfoQueryVariables>, 'query'>) {
   return Urql.useQuery<GetChapterInfoQuery, GetChapterInfoQueryVariables>({ query: GetChapterInfoDocument, ...options });
+};
+export const GetScrapersSearchDocument = gql`
+    query GetScrapersSearch {
+  scraping {
+    scrapers {
+      id
+      name
+      refererUrl
+    }
+  }
+}
+    `;
+
+export function useGetScrapersSearchQuery(options?: Omit<Urql.UseQueryArgs<GetScrapersSearchQueryVariables>, 'query'>) {
+  return Urql.useQuery<GetScrapersSearchQuery, GetScrapersSearchQueryVariables>({ query: GetScrapersSearchDocument, ...options });
+};
+export const GetSearchDocument = gql`
+    query GetSearch($scraperId: String!, $query: String!, $page: Int!) {
+  scraping {
+    search(scraperId: $scraperId, query: $query, page: $page) {
+      id
+      title
+      imgUrl
+    }
+  }
+}
+    `;
+
+export function useGetSearchQuery(options: Omit<Urql.UseQueryArgs<GetSearchQueryVariables>, 'query'>) {
+  return Urql.useQuery<GetSearchQuery, GetSearchQueryVariables>({ query: GetSearchDocument, ...options });
 };
 export const GetScrapersDocument = gql`
     query GetScrapers {

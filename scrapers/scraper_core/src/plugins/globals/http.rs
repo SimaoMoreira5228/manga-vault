@@ -88,6 +88,11 @@ impl UserData for Http {
 				)
 			},
 		);
+
+		methods.add_async_method("url_encode", |lua, _, string: String| async move {
+			let encoded = urlencoding::encode(&string);
+			lua.to_value(&encoded)
+		});
 	}
 }
 
@@ -186,5 +191,18 @@ mod tests {
 		assert_eq!(json["body"], "bar");
 		assert_eq!(json["userId"], 1);
 		assert_eq!(json["id"], 101);
+	}
+
+	#[tokio::test]
+	async fn test_url_encode() {
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+
+		let script = r#"
+            return http:url_encode("https://example.com/?query=rust&lang=en")
+        "#;
+
+		let result: String = lua.load(script).eval_async().await.unwrap();
+		assert_eq!(result, "https%3A%2F%2Fexample.com%2F%3Fquery%3Drust%26lang%3Den");
 	}
 }

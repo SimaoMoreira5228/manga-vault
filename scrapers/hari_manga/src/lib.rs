@@ -310,6 +310,8 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			img_url: "https://harimanga.me/wp-content/uploads/2021/08/cropped-android-chrome-512x512-1-32x32.png"
 				.to_string(),
 			referer_url: Some("https://harimanga.me/".to_string()),
+			base_url: Some("https://harimanga.me/".to_string()),
+			legacy_urls: Some(vec!["https://harimanga.com/".to_string()]),
 		}
 	}
 }

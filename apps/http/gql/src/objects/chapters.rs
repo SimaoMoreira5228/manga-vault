@@ -5,9 +5,10 @@ use chrono::NaiveDateTime;
 use database_connection::Database;
 use scraper_core::ScraperManager;
 use sea_orm::ActiveValue::Set;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 
 use crate::objects::mangas::Manga;
+use crate::objects::scraper::Scraper;
 
 #[derive(SimpleObject, Clone)]
 #[graphql(complex)]
@@ -130,5 +131,25 @@ impl Chapter {
 			.await?;
 
 		Ok(previous_chapter.map(Chapter::from))
+	}
+
+	async fn scraper(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Scraper> {
+		let db = ctx.data::<Arc<Database>>()?;
+
+		let scraper: String = database_entities::mangas::Entity::find_by_id(self.manga_id)
+			.select_only()
+			.column(database_entities::mangas::Column::Scraper)
+			.into_tuple()
+			.one(&db.conn)
+			.await?
+			.ok_or_else(|| async_graphql::Error::new("Manga not found"))?;
+
+		let scraper_manager = ctx.data::<Arc<ScraperManager>>()?;
+		let plugin = scraper_manager
+			.get_plugin(&scraper)
+			.await
+			.ok_or_else(|| async_graphql::Error::new("Scraper plugin not found"))?;
+
+		Scraper::from_plugin(plugin).await.map_err(|e| e.into())
 	}
 }

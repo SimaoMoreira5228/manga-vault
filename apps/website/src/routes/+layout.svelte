@@ -4,7 +4,7 @@
 	import { Toaster } from '@skeletonlabs/skeleton-svelte';
 	import { toaster } from '$lib/utils/toaster-svelte';
 	import { Navigation } from '@skeletonlabs/skeleton-svelte';
-	import { BookOpenText, Folder, Menu, Moon, Sun } from '@lucide/svelte';
+	import { BookOpenText, Folder, Menu, Moon, Search, Sun } from '@lucide/svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 
@@ -26,6 +26,13 @@
 			icon: Folder,
 			labelExpanded: 'Browse Sources',
 			location: '/sources'
+		},
+		{
+			id: 'search',
+			label: 'Search',
+			icon: Search,
+			labelExpanded: 'Browse Search',
+			location: '/search'
 		}
 	];
 
