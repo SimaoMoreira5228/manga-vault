@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { client } from '$lib/graphql/client';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
-	import { image } from '$lib/utils/image';
+	import { proxyImage } from '$lib/utils/image';
 	import { toaster } from '$lib/utils/toaster-svelte';
 	import { Search } from '@lucide/svelte';
 	import { Accordion } from '@skeletonlabs/skeleton-svelte';
@@ -158,7 +158,10 @@
 											{#each items[scraper.id] as item}
 												<a
 													class="card relative flex h-80 w-full max-w-[12rem] flex-none flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat py-2 shadow-lg"
-													style="background-image: url({image(item.imgUrl, scraper?.refererUrl)});"
+													style="background-image: url({proxyImage(
+														item.imgUrl,
+														scraper?.refererUrl
+													)});"
 													href={`/manga/${item.id}`}
 												>
 													<div

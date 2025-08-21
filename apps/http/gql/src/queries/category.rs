@@ -5,7 +5,7 @@ use database_connection::Database;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::objects::categories::Category;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(Default)]
 pub struct CategoryQuery;
@@ -20,7 +20,7 @@ impl CategoryQuery {
 
 	async fn user_categories(&self, ctx: &Context<'_>) -> Result<Vec<Category>> {
 		let current_user = ctx
-			.data_opt::<SanitizedUser>()
+			.data_opt::<User>()
 			.cloned()
 			.ok_or_else(|| async_graphql::Error::from("User not authenticated"))?;
 		let db = ctx.data::<Arc<Database>>()?;

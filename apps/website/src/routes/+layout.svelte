@@ -2,13 +2,26 @@
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.png';
 	import { Toaster } from '@skeletonlabs/skeleton-svelte';
+	import { Avatar, DropdownMenu } from 'bits-ui';
 	import { toaster } from '$lib/utils/toaster-svelte';
 	import { Navigation } from '@skeletonlabs/skeleton-svelte';
-	import { BookOpenText, Folder, Menu, Moon, Search, Sun } from '@lucide/svelte';
+	import {
+		BookOpenText,
+		CircleUserRound,
+		Folder,
+		Menu,
+		Moon,
+		Search,
+		Sun,
+		UserRound
+	} from '@lucide/svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import { getAuthState, logout } from '$lib/auth.svelte';
+	import { getImage } from '$lib/utils/image';
 
 	let { children } = $props();
+	let authState = $derived(getAuthState());
 	let currentPage = $state('library');
 	let isExpansed = $state(false);
 	let theme = $state({ theme: 'cerberus', dark: true });
@@ -102,6 +115,64 @@
 				{/each}
 			{/snippet}
 			{#snippet footer()}
+				{#if authState.status === 'authenticated'}
+					<DropdownMenu.Root>
+						<DropdownMenu.Trigger>
+							{#if authState.user.imageId}
+								<Avatar.Root delayMs={200} class="h-20 w-20 rounded-full">
+									<div
+										class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-transparent"
+									>
+										<Avatar.Image
+											src={getImage(authState.user.imageId)}
+											alt=""
+											class="h-20 w-20 rounded-full object-cover"
+										/>
+										<Avatar.Fallback
+											class="flex h-20 w-20 items-center justify-center rounded-full"
+										>
+											<UserRound size={96} />
+										</Avatar.Fallback>
+									</div>
+								</Avatar.Root>
+							{:else}
+								<Avatar.Root delayMs={200} class="h-20 w-20 rounded-full border">
+									<div
+										class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent"
+									>
+										<Avatar.Fallback
+											class="flex h-48 w-48 items-center justify-center rounded-full"
+										>
+											<UserRound size={96} />
+										</Avatar.Fallback>
+									</div>
+								</Avatar.Root>
+							{/if}
+						</DropdownMenu.Trigger>
+						<DropdownMenu.Portal>
+							<DropdownMenu.Content
+								class="bg-surface-50-950 border-surface-200-800 z-50 w-56 border p-1 shadow-lg "
+								sideOffset={5}
+								side="left"
+							>
+								<DropdownMenu.Item
+									class="hover:bg-surface-300-700 focus:bg-surface-200-800 outline-hidden flex cursor-pointer items-center rounded-md px-2 py-2 text-sm transition-colors"
+								>
+									<a href="/profile" class="flex w-full flex-row items-center justify-start">
+										<CircleUserRound class="mr-2 h-4 w-4" />
+										<span>Profile</span>
+									</a>
+								</DropdownMenu.Item>
+								<DropdownMenu.Separator class="bg-surface-200-800 my-1 h-px" />
+								<DropdownMenu.Item
+									class="hover:bg-surface-300-700 focus:bg-surface-200-800 outline-hidden flex cursor-pointer items-center rounded-md px-2 py-2 text-sm transition-colors"
+								>
+									<button onclick={logout}>Log Out</button>
+								</DropdownMenu.Item>
+							</DropdownMenu.Content>
+						</DropdownMenu.Portal>
+					</DropdownMenu.Root>
+				{/if}
 				{#if isExpansed}
 					<div class="flex w-full flex-row items-end justify-center gap-2">
 						<label class="label">

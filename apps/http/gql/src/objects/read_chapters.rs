@@ -4,7 +4,7 @@ use sea_orm::EntityTrait;
 
 use crate::objects::chapters::Chapter;
 use crate::objects::mangas::Manga;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(SimpleObject, Clone)]
 #[graphql(complex)]
@@ -30,14 +30,14 @@ impl From<database_entities::read_chapters::Model> for ReadChapter {
 
 #[async_graphql::ComplexObject]
 impl ReadChapter {
-	async fn user(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<SanitizedUser> {
+	async fn user(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<User> {
 		let db = ctx.data::<std::sync::Arc<database_connection::Database>>()?;
 		let user = database_entities::users::Entity::find_by_id(self.user_id)
 			.one(&db.conn)
 			.await?
 			.ok_or_else(|| async_graphql::Error::new("User not found"))?;
 
-		Ok(SanitizedUser::from(user))
+		Ok(User::from(user))
 	}
 
 	async fn chapter(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Chapter> {

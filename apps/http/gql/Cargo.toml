@@ -42,4 +42,7 @@ argon2 = "0.5.3"
 reqwest = { version = "0.12", features = ["stream"] }
 futures-util = "0.3.31"
 image = "0.25"
+webp = "0.3"
 httpdate = "1.0.3"
+uuid = { version = "1.18", features = ["v4"] }
+tokio-util = "0.7"

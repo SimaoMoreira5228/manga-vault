@@ -16,5 +16,5 @@ pub struct MutationRoot {
 	category: category::CategoryMutation,
 	manga_pack: manga_pack::MangaPackMutation,
 	chapter: chapter::ChapterMutation,
-	file: file::FileMutation,
+	files: file::FileMutation,
 }

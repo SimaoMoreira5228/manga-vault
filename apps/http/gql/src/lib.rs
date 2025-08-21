@@ -15,17 +15,17 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use tower_http::cors::{AllowOrigin, CorsLayer};
-use tower_http::services::ServeDir;
 
 use crate::mutations::MutationRoot;
 use crate::mutations::auth::Claims;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 use crate::queries::QueryRoot;
 
 mod image_proxy;
 mod mutations;
 mod objects;
 mod queries;
+mod serve_file;
 
 use axum::extract::{DefaultBodyLimit, State};
 
@@ -99,7 +99,7 @@ async fn graphql_handler(
 				.await
 			{
 				Ok(Some(user_model)) => {
-					let sanitized = SanitizedUser::from(user_model);
+					let sanitized = User::from(user_model);
 					request = request.data(sanitized);
 				}
 				Ok(None) => {
@@ -165,7 +165,7 @@ pub async fn run(db: Arc<Database>, scraper_manager: Arc<ScraperManager>) -> any
 		.route("/playground", get(graphql_playground))
 		.route("/", post(graphql_handler))
 		.layer(DefaultBodyLimit::max(config.max_file_size as usize))
-		.nest_service("/files", ServeDir::new(config.uploads_folder.clone()))
+		.route("/files/{file_id}", get(serve_file::serve_file))
 		.route("/proxy", get(image_proxy::proxy_image))
 		.layer(cors)
 		.layer(Extension(config.clone()))

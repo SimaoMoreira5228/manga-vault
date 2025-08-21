@@ -16,13 +16,15 @@
 	let formError: string | null = $state(null);
 	let usernameError: string | null = $state(null);
 	let passwordError: string | null = $state(null);
+	let confirmPasswordError: string | null = $state(null);
 
 	const input = z.object({
 		username: z
 			.string()
 			.min(3, 'Username must be at least 3 characters long')
 			.max(30, 'Username must be at most 30 characters'),
-		password: z.string().min(8, 'Password must be at least 8 characters long')
+		password: z.string().min(8, 'Password must be at least 8 characters long'),
+		confirmPassword: z.string().min(8, 'Confirm Password must be at least 8 characters long')
 	});
 
 	async function handleSubmit(event: Event) {
@@ -30,20 +32,32 @@
 
 		usernameError = null;
 		passwordError = null;
+		confirmPasswordError = null;
 		formError = null;
 
 		const form = event.target as HTMLFormElement;
 		const fd = new FormData(form);
 		const rawUsername = String(fd.get('username') ?? '');
 		const rawPassword = String(fd.get('password') ?? '');
+		const rawConfirmPassword = String(fd.get('confirm_password') ?? '');
+
+		if (rawPassword !== rawConfirmPassword) {
+			confirmPasswordError = 'Passwords do not match';
+			return;
+		}
 
 		const result = input.safeParse({
 			username: rawUsername,
-			password: rawPassword
+			password: rawPassword,
+			confirmPassword: rawConfirmPassword
 		});
 
 		if (!result.success) {
-			const fieldMessages: Record<string, string[]> = { username: [], password: [] };
+			const fieldMessages: Record<string, string[]> = {
+				username: [],
+				password: [],
+				confirmPassword: []
+			};
 			for (const issue of result.error.issues) {
 				const key = String(issue.path[0] ?? 'form');
 				if (!fieldMessages[key]) fieldMessages[key] = [];
@@ -52,9 +66,10 @@
 
 			usernameError = fieldMessages.username?.join(' — ') || null;
 			passwordError = fieldMessages.password?.join(' — ') || null;
+			confirmPasswordError = fieldMessages.confirmPassword?.join(' — ') || null;
 
 			const otherIssues = result.error.issues.filter(
-				(i) => !['username', 'password'].includes(String(i.path[0]))
+				(i) => !['username', 'password', 'confirmPassword'].includes(String(i.path[0]))
 			);
 			if (otherIssues.length) {
 				formError = otherIssues.map((i) => i.message).join(' — ');
@@ -127,6 +142,22 @@
 					{#if passwordError}
 						<span id="password-error" role="alert" aria-live="polite" class="text-red-500">
 							{passwordError}
+						</span>
+					{/if}
+				</label>
+				<label class="label">
+					<span class="label-text">Confirm Password</span>
+					<input
+						type="password"
+						name="confirm_password"
+						class="input"
+						aria-invalid={confirmPasswordError ? 'true' : 'false'}
+						aria-describedby={confirmPasswordError ? 'confirm-password-error' : undefined}
+						autocomplete="current-password"
+					/>
+					{#if confirmPasswordError}
+						<span id="confirm-password-error" role="alert" aria-live="polite" class="text-red-500">
+							{confirmPasswordError}
 						</span>
 					{/if}
 				</label>

@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { client } from '$lib/graphql/client';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
-	import { image } from '$lib/utils/image';
+	import { proxyImage } from '$lib/utils/image';
 	import { toaster } from '$lib/utils/toaster-svelte';
 	import { Search } from '@lucide/svelte';
 	import { gql } from '@urql/svelte';
@@ -95,7 +95,7 @@
 					}
 				}
 			},
-			{ root: rootElement, rootMargin: '200px 0px', threshold: 0.1 }
+			{ root: rootElement, rootMargin: '400px 0px', threshold: 0.1 }
 		);
 
 		intersectionObserver.observe(Sentinel);
@@ -302,7 +302,7 @@
 			{#each items as item}
 				<a
 					class="card relative flex h-80 w-full max-w-[12rem] flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat shadow-lg"
-					style="background-image: url({image(item.imgUrl, scraper?.refererUrl)});"
+					style="background-image: url({proxyImage(item.imgUrl, scraper?.refererUrl)});"
 					href={`/manga/${item.id}`}
 				>
 					<div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/75"></div>

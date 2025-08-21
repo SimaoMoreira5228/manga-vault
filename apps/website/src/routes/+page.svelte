@@ -6,7 +6,7 @@
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { ArrowDown10, ArrowDownAZ, PenLine, Plus } from '@lucide/svelte';
 	import { onMount } from 'svelte';
-	import { image } from '$lib/utils/image';
+	import { proxyImage } from '$lib/utils/image';
 	import { toaster } from '$lib/utils/toaster-svelte';
 	let favoriteMangas: any[] = $state([]);
 	let isLoading = $state(false);
@@ -344,7 +344,7 @@
 											{#each favoriteMangas as favoriteManga}
 												<a
 													class="card relative flex h-80 w-full max-w-[12rem] flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat shadow-lg"
-													style="background-image: url({image(
+													style="background-image: url({proxyImage(
 														favoriteManga.manga.imgUrl,
 														favoriteManga.manga.url.split('/').slice(0, 3).join('/') + '/'
 													)});"

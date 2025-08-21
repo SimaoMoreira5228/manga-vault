@@ -8,13 +8,16 @@
 	import { browser } from '$app/environment';
 	import { afterNavigate, goto } from '$app/navigation';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
-	import { image } from '$lib/utils/image';
+	import { proxyImage } from '$lib/utils/image';
+	import { Slider } from '@skeletonlabs/skeleton-svelte';
+	import { getAuthState } from '$lib/auth.svelte';
 
 	const chapterIdStr = $derived(page.params.chapter_id);
 	const chapterId = $derived(parseInt(chapterIdStr || ''));
 
+	let authState = $derived(getAuthState());
 	let isLoading = $state(false);
-	let imageMargin = $state(0);
+	let imageMargin = $state<number>(0);
 	let areControlsOpen = $state(false);
 	let markedRead = false;
 	let ticking = false;
@@ -93,7 +96,7 @@
 	}
 
 	function handleScroll() {
-		if (ticking || !chapterId) return;
+		if (ticking || !chapterId || authState.status !== 'authenticated') return;
 		ticking = true;
 		requestAnimationFrame(async () => {
 			if (!imageContainer || markedRead) {
@@ -152,7 +155,7 @@
 			if (!nextChapter) return;
 			goto(`/manga/${page.params.manga_id}/chapter/${nextChapter}`);
 		} else if (event.key === 'Escape') {
-			if (areControlsOpen) areControlsOpen = false;
+			if (areControlsOpen) return (areControlsOpen = false);
 			if (!areControlsOpen) goto(`/manga/${page.params.manga_id}`);
 		}
 	}
@@ -171,7 +174,7 @@
 							style={`margin: 0 ${imageMargin}%`}
 						>
 							<img
-								src={image(imageUrl, refererUrl ?? undefined)}
+								src={proxyImage(imageUrl, refererUrl ?? undefined)}
 								alt="Chapter page"
 								class="w-full object-contain"
 							/>
@@ -198,7 +201,13 @@
 						</a>
 						<label class="label">
 							<span class="label-text">Image Margin: {imageMargin}%</span>
-							<input class="input" type="range" min="0" max="45" bind:value={imageMargin} />
+							<Slider
+								name="image-margin"
+								value={[imageMargin]}
+								onValueChange={(e) => (imageMargin = e.value[0])}
+								min={0}
+								max={45}
+							/>
 						</label>
 					</div>
 					<div class="flex gap-2">

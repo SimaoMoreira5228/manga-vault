@@ -5,7 +5,7 @@ use database_connection::Database;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 
 use crate::objects::read_chapters::ReadChapter;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(Default)]
 pub struct ReadChapterQuery;
@@ -20,7 +20,7 @@ impl ReadChapterQuery {
 
 	async fn user_read_chapters_by_manga(&self, ctx: &Context<'_>, manga_id: Option<i32>) -> Result<Vec<ReadChapter>> {
 		let current_user = ctx
-			.data_opt::<SanitizedUser>()
+			.data_opt::<User>()
 			.cloned()
 			.ok_or_else(|| async_graphql::Error::from("User not authenticated"))?;
 		let db = ctx.data::<Arc<Database>>()?;

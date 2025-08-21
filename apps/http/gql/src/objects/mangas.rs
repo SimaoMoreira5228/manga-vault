@@ -10,7 +10,7 @@ use serde::Serialize;
 use crate::objects::chapters::Chapter;
 use crate::objects::read_chapters::ReadChapter;
 use crate::objects::scraper::Scraper;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(SimpleObject, Clone, Serialize)]
 #[graphql(complex)]
@@ -76,7 +76,7 @@ impl Manga {
 
 	async fn user_read_chapters(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Vec<ReadChapter>> {
 		let current_user = ctx
-			.data_opt::<SanitizedUser>()
+			.data_opt::<User>()
 			.cloned()
 			.ok_or_else(|| async_graphql::Error::from("User not authenticated"))?;
 		let db = ctx.data::<Arc<Database>>()?;
@@ -93,7 +93,7 @@ impl Manga {
 
 	async fn user_read_chapters_amount(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<u64> {
 		let current_user = ctx
-			.data_opt::<SanitizedUser>()
+			.data_opt::<User>()
 			.cloned()
 			.ok_or_else(|| async_graphql::Error::from("User not authenticated"))?;
 		let db = ctx.data::<Arc<Database>>()?;

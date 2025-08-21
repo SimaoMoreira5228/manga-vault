@@ -108,8 +108,9 @@ impl Chapter {
 
 		let next_chapter = database_entities::chapters::Entity::find()
 			.filter(database_entities::chapters::Column::MangaId.eq(chapter.manga_id))
-			.filter(database_entities::chapters::Column::CreatedAt.gt(chapter.created_at))
+			.filter(database_entities::chapters::Column::Id.gt(chapter.id))
 			.order_by_asc(database_entities::chapters::Column::CreatedAt)
+			.order_by_asc(database_entities::chapters::Column::Id)
 			.one(&db.conn)
 			.await?;
 
@@ -125,8 +126,9 @@ impl Chapter {
 
 		let previous_chapter = database_entities::chapters::Entity::find()
 			.filter(database_entities::chapters::Column::MangaId.eq(chapter.manga_id))
-			.filter(database_entities::chapters::Column::CreatedAt.lt(chapter.created_at))
+			.filter(database_entities::chapters::Column::Id.lt(chapter.id))
 			.order_by_desc(database_entities::chapters::Column::CreatedAt)
+			.order_by_desc(database_entities::chapters::Column::Id)
 			.one(&db.conn)
 			.await?;
 

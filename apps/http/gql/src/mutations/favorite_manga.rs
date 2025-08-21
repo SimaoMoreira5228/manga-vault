@@ -6,7 +6,7 @@ use database_connection::Database;
 use sea_orm::{ActiveModelTrait, EntityTrait, IntoActiveModel, Set};
 
 use crate::objects::favorite_mangas::FavoriteManga;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(InputObject)]
 struct CreateFavoriteMangaInput {
@@ -26,7 +26,7 @@ pub struct FavoriteMangaMutation;
 impl FavoriteMangaMutation {
 	async fn create_favorite_manga(&self, ctx: &Context<'_>, input: CreateFavoriteMangaInput) -> Result<FavoriteManga> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let manga_exists = database_entities::mangas::Entity::find_by_id(input.manga_id)
 			.one(&db.conn)
@@ -61,7 +61,7 @@ impl FavoriteMangaMutation {
 		input: UpdateFavoriteMangaInput,
 	) -> Result<FavoriteManga> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let mut favorite = database_entities::favorite_mangas::Entity::find_by_id(id)
 			.one(&db.conn)
@@ -88,7 +88,7 @@ impl FavoriteMangaMutation {
 
 	async fn delete_favorite_manga(&self, ctx: &Context<'_>, id: i32) -> Result<bool> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let favorite = database_entities::favorite_mangas::Entity::find_by_id(id)
 			.one(&db.conn)

@@ -12,7 +12,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
 use crate::Config;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -37,7 +37,7 @@ pub struct AuthMutation;
 
 #[Object]
 impl AuthMutation {
-	async fn register(&self, ctx: &Context<'_>, input: RegisterInput) -> Result<SanitizedUser> {
+	async fn register(&self, ctx: &Context<'_>, input: RegisterInput) -> Result<User> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let config = ctx.data::<Arc<Config>>()?;
 
@@ -70,14 +70,14 @@ impl AuthMutation {
 			format!(
 				"token={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
 				token,
-				config.jwt_duration_days * 24 * 60 * 60
+				(config.jwt_duration_days as u64) * 24 * 60 * 60
 			),
 		);
 
-		Ok(SanitizedUser::from(user))
+		Ok(User::from(user))
 	}
 
-	async fn login(&self, ctx: &Context<'_>, input: LoginInput) -> Result<SanitizedUser> {
+	async fn login(&self, ctx: &Context<'_>, input: LoginInput) -> Result<User> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let config = ctx.data::<Arc<Config>>()?;
 
@@ -97,11 +97,11 @@ impl AuthMutation {
 			format!(
 				"token={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
 				token,
-				config.jwt_duration_days as u64 * 24 * 60 * 60
+				(config.jwt_duration_days as u64) * 24 * 60 * 60
 			),
 		);
 
-		Ok(SanitizedUser::from(user))
+		Ok(User::from(user))
 	}
 
 	async fn logout(&self, ctx: &Context<'_>) -> Result<bool> {

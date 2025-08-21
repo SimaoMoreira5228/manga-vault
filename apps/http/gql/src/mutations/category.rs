@@ -6,7 +6,7 @@ use database_connection::Database;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 
 use crate::objects::categories::Category;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(InputObject)]
 struct CreateCategoryInput {
@@ -25,7 +25,7 @@ pub struct CategoryMutation;
 impl CategoryMutation {
 	async fn create_category(&self, ctx: &Context<'_>, input: CreateCategoryInput) -> Result<Category> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let category = database_entities::categories::ActiveModel {
 			user_id: Set(current_user.id),
@@ -40,7 +40,7 @@ impl CategoryMutation {
 
 	async fn update_category(&self, ctx: &Context<'_>, id: i32, input: UpdateCategoryInput) -> Result<Category> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let category = database_entities::categories::Entity::find_by_id(id)
 			.one(&db.conn)
@@ -63,7 +63,7 @@ impl CategoryMutation {
 
 	async fn delete_category(&self, ctx: &Context<'_>, id: i32) -> Result<bool> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let category = database_entities::categories::Entity::find_by_id(id)
 			.one(&db.conn)

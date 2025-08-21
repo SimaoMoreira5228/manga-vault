@@ -6,7 +6,7 @@ use database_connection::Database;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 
 use crate::objects::read_chapters::ReadChapter;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(Default)]
 pub struct ChapterMutation;
@@ -15,7 +15,7 @@ pub struct ChapterMutation;
 impl ChapterMutation {
 	async fn read_chapter(&self, ctx: &Context<'_>, chapter_id: i32) -> Result<ReadChapter> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let chapter_query = database_entities::chapters::Entity::find_by_id(chapter_id);
 
@@ -39,7 +39,7 @@ impl ChapterMutation {
 
 	async fn unread_chapter(&self, ctx: &Context<'_>, chapter_id: i32) -> Result<bool> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let read_chapter = database_entities::read_chapters::Entity::find()
 			.filter(database_entities::read_chapters::Column::UserId.eq(current_user.id))

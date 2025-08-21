@@ -8,7 +8,7 @@
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { Modal } from '@skeletonlabs/skeleton-svelte';
 	import { toaster } from '$lib/utils/toaster-svelte';
-	import { image } from '$lib/utils/image';
+	import { proxyImage } from '$lib/utils/image';
 
 	const mangaIdStr = page.params.manga_id;
 	if (!mangaIdStr) throw new Error('Invalid manga id');
@@ -238,9 +238,12 @@
 		<div
 			class={`flex w-full flex-col items-start justify-start gap-2 ${manga?.chapters?.length === 0 ? ' w-full' : 'md:w-1/2'}`}
 		>
-			<div class="flex flex-col items-start justify-start gap-2 xl:h-1/2 xl:flex-row">
+			<div class="flex flex-col items-start justify-start gap-2 xl:flex-row">
 				<img
-					src={image(manga?.imgUrl || '', manga?.scraperInfo?.refererUrl as string | undefined)}
+					src={proxyImage(
+						manga?.imgUrl || '',
+						manga?.scraperInfo?.refererUrl as string | undefined
+					)}
 					alt="Manga Cover"
 					class="h-80 w-auto rounded-lg object-cover shadow-md"
 				/>
@@ -250,10 +253,10 @@
 					</h5>
 					<div class="flex w-full flex-col">
 						<div>
-							{#if manga?.authors && manga?.authors[0] !== ''}
+							{#if manga?.authors && manga?.authors.length > 0 && manga?.authors[0] !== ''}
 								<p class="opacity-60">Author(s): {manga?.authors.join(', ')}</p>
 							{/if}
-							{#if manga?.artists && manga?.artists[0] !== ''}
+							{#if manga?.artists && manga?.artists.length > 0 && manga?.artists[0] !== ''}
 								<p class="opacity-60">Artist(s): {manga?.artists?.join(', ')}</p>
 							{/if}
 							<p class="opacity-60">Status: {manga?.status}</p>
@@ -317,7 +320,7 @@
 		</div>
 		{#if manga?.chapters && manga?.chapters?.length > 0}
 			<span class="vr hidden min-w-2 md:block"></span>
-			<div class="flex w-full flex-col items-start justify-center md:w-1/2">
+			<div class="flex w-full flex-col items-start justify-start md:w-1/2">
 				<h3 class="h3">Chapters:</h3>
 				<div class="flex w-full flex-col gap-2 overflow-auto pr-2">
 					{#each manga?.chapters ?? [] as chapter}
@@ -332,25 +335,27 @@
 								<p class="opacity-60">{chapter.scanlationGroup}</p>
 							</div>
 							<div class="flex flex-row items-center justify-center gap-2">
-								{#if wasChapterRead(chapter.id)}
-									<button
-										class="opacity-60"
-										onclick={(e) => {
-											e.preventDefault();
-											unreadChapter(chapter.id);
-										}}
-									>
-										<EyeOff />
-									</button>
-								{:else}
-									<button
-										onclick={(e) => {
-											e.preventDefault();
-											readChapter(chapter.id);
-										}}
-									>
-										<Eye />
-									</button>
+								{#if authState.status === 'authenticated'}
+									{#if wasChapterRead(chapter.id)}
+										<button
+											class="opacity-60"
+											onclick={(e) => {
+												e.preventDefault();
+												unreadChapter(chapter.id);
+											}}
+										>
+											<EyeOff />
+										</button>
+									{:else}
+										<button
+											onclick={(e) => {
+												e.preventDefault();
+												readChapter(chapter.id);
+											}}
+										>
+											<Eye />
+										</button>
+									{/if}
 								{/if}
 								<button
 									class="anchor"
@@ -365,7 +370,7 @@
 						</a>
 					{/each}
 				</div>
-				{#if manga?.chapters && manga?.chapters?.length > 0 && getResumeChapter() !== null}
+				{#if manga?.chapters && manga?.chapters?.length > 0 && getResumeChapter() !== null && authState.status === 'authenticated'}
 					<div class="mt-4 w-full">
 						<a
 							href="/manga/{manga?.id}/chapter/{getResumeChapter()}"

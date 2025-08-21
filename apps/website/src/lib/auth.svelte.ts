@@ -1,10 +1,11 @@
 import { gql } from '@urql/svelte';
 import { client } from './graphql/client';
+import type { User } from '$gql/graphql';
 
 type AuthState =
 	| { status: 'loading' }
 	| { status: 'unauthorized' }
-	| { status: 'authenticated'; user: { id: number; username: string; imageId: number } };
+	| { status: 'authenticated'; user: User };
 
 let authState = $state<AuthState>({ status: 'loading' });
 
@@ -75,7 +76,6 @@ export async function login(input: { username: string; password: string }) {
 	}
 }
 
-// TODO: check if this works
 export async function register(input: { username: string; password: string }) {
 	const result = await client
 		.mutation(
@@ -96,6 +96,34 @@ export async function register(input: { username: string; password: string }) {
 
 	if (result.data?.auth.register) {
 		authState = { status: 'authenticated', user: result.data.auth.register };
+	}
+}
+
+export async function updateAuth() {
+	try {
+		const { data } = await client.query(
+			gql`
+				query Me {
+					users {
+						me {
+							id
+							username
+							imageId
+						}
+					}
+				}
+			`,
+			{}
+		);
+
+		if (!data.users.me) {
+			authState = { status: 'unauthorized' };
+			return;
+		}
+
+		authState = { status: 'authenticated', user: data.users.me };
+	} catch {
+		clearAuth();
 	}
 }
 

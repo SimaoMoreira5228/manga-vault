@@ -5,7 +5,7 @@ use database_connection::Database;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::objects::manga_packs::MangaPack;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(Default)]
 pub struct MangaPackQuery;
@@ -20,7 +20,7 @@ impl MangaPackQuery {
 
 	async fn user_manga_packs(&self, ctx: &Context<'_>) -> Result<Vec<MangaPack>> {
 		let current_user = ctx
-			.data_opt::<SanitizedUser>()
+			.data_opt::<User>()
 			.cloned()
 			.ok_or_else(|| async_graphql::Error::from("User not authenticated"))?;
 		let db = ctx.data::<Arc<Database>>()?;

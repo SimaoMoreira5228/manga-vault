@@ -5,7 +5,7 @@ use database_connection::Database;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::objects::files::File;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(Default)]
 pub struct FileQuery;
@@ -15,7 +15,7 @@ impl FileQuery {
 	async fn files(&self, ctx: &Context<'_>) -> Result<Vec<File>> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let current_user = ctx
-			.data_opt::<SanitizedUser>()
+			.data_opt::<User>()
 			.cloned()
 			.ok_or_else(|| async_graphql::Error::from("User not authenticated"))?;
 
