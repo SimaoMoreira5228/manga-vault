@@ -65,6 +65,7 @@
 		submitting = true;
 		try {
 			await login({ username: result.data.username.trim(), password: result.data.password });
+			goto('/');
 		} catch (err: any) {
 			if (err?.message) {
 				formError = err.message;
@@ -79,7 +80,7 @@
 
 <div class="flex h-full w-full flex-col items-center justify-center p-4">
 	<div
-		class="card preset-filled-surface-100-900 border-surface-200-800 card-hover divide-surface-200-800 w-3/10 h-4/10 flex flex-col items-center justify-center gap-8 overflow-hidden border-[1px]"
+		class="card preset-filled-surface-100-900 border-surface-200-800 card-hover divide-surface-200-800 w-4/10 h-5/10 flex flex-col items-center justify-center gap-8 overflow-hidden border-[1px]"
 	>
 		<header class="text-center">
 			<h3 class="h3">Login</h3>

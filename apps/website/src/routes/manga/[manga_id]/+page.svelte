@@ -235,7 +235,9 @@
 	</div>
 {:else}
 	<div class="flex h-full w-full flex-col items-stretch justify-between gap-x-4 p-4 md:flex-row">
-		<div class="flex w-full flex-col items-start justify-start gap-2 md:w-1/2">
+		<div
+			class={`flex w-full flex-col items-start justify-start gap-2 ${manga?.chapters?.length === 0 ? ' w-full' : 'md:w-1/2'}`}
+		>
 			<div class="flex flex-col items-start justify-start gap-2 xl:h-1/2 xl:flex-row">
 				<img
 					src={image(manga?.imgUrl || '', manga?.scraperInfo?.refererUrl as string | undefined)}
@@ -313,66 +315,68 @@
 				</div>
 			</div>
 		</div>
-		<span class="vr hidden min-w-2 md:block"></span>
-		<div class="flex w-full flex-col items-start justify-center md:w-1/2">
-			<h3 class="h3">Chapters:</h3>
-			<div class="flex w-full flex-col gap-2 overflow-auto pr-2">
-				{#each manga?.chapters ?? [] as chapter}
-					<a
-						class="card preset-filled-surface-100-900 flex w-full flex-row items-center justify-between p-2"
-						href="/manga/{manga?.id}/chapter/{chapter.id}"
-					>
-						<div>
-							<p class={wasChapterRead(chapter.id) ? 'opacity-60' : ''}>
-								{chapter.title}
-							</p>
-							<p class="opacity-60">{chapter.scanlationGroup}</p>
-						</div>
-						<div class="flex flex-row items-center justify-center gap-2">
-							{#if wasChapterRead(chapter.id)}
+		{#if manga?.chapters && manga?.chapters?.length > 0}
+			<span class="vr hidden min-w-2 md:block"></span>
+			<div class="flex w-full flex-col items-start justify-center md:w-1/2">
+				<h3 class="h3">Chapters:</h3>
+				<div class="flex w-full flex-col gap-2 overflow-auto pr-2">
+					{#each manga?.chapters ?? [] as chapter}
+						<a
+							class="card preset-filled-surface-100-900 flex w-full flex-row items-center justify-between p-2"
+							href="/manga/{manga?.id}/chapter/{chapter.id}"
+						>
+							<div>
+								<p class={wasChapterRead(chapter.id) ? 'opacity-60' : ''}>
+									{chapter.title}
+								</p>
+								<p class="opacity-60">{chapter.scanlationGroup}</p>
+							</div>
+							<div class="flex flex-row items-center justify-center gap-2">
+								{#if wasChapterRead(chapter.id)}
+									<button
+										class="opacity-60"
+										onclick={(e) => {
+											e.preventDefault();
+											unreadChapter(chapter.id);
+										}}
+									>
+										<EyeOff />
+									</button>
+								{:else}
+									<button
+										onclick={(e) => {
+											e.preventDefault();
+											readChapter(chapter.id);
+										}}
+									>
+										<Eye />
+									</button>
+								{/if}
 								<button
-									class="opacity-60"
+									class="anchor"
 									onclick={(e) => {
 										e.preventDefault();
-										unreadChapter(chapter.id);
+										window.open(chapter.url, '_blank');
 									}}
 								>
-									<EyeOff />
+									<SquareArrowOutUpRight />
 								</button>
-							{:else}
-								<button
-									onclick={(e) => {
-										e.preventDefault();
-										readChapter(chapter.id);
-									}}
-								>
-									<Eye />
-								</button>
-							{/if}
-							<button
-								class="anchor"
-								onclick={(e) => {
-									e.preventDefault();
-									window.open(chapter.url, '_blank');
-								}}
-							>
-								<SquareArrowOutUpRight />
-							</button>
-						</div>
-					</a>
-				{/each}
-			</div>
-			{#if manga?.chapters && manga?.chapters?.length > 0 && getResumeChapter() !== null}
-				<div class="mt-4 w-full">
-					<a
-						href="/manga/{manga?.id}/chapter/{getResumeChapter()}"
-						class="btn preset-filled w-full"
-					>
-						Resume Reading
-					</a>
+							</div>
+						</a>
+					{/each}
 				</div>
-			{/if}
-		</div>
+				{#if manga?.chapters && manga?.chapters?.length > 0 && getResumeChapter() !== null}
+					<div class="mt-4 w-full">
+						<a
+							href="/manga/{manga?.id}/chapter/{getResumeChapter()}"
+							class="btn preset-filled w-full"
+						>
+							Resume Reading
+						</a>
+					</div>
+				{/if}
+			</div>
+		{/if}
 	</div>
 {/if}
 

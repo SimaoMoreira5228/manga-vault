@@ -37,6 +37,7 @@ type Documents = {
     "\n\t\t\tquery GetScraper($scraperId: String!) {\n\t\t\t\tscraping {\n\t\t\t\t\tscraper(scraperId: $scraperId) {\n\t\t\t\t\t\trefererUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": typeof types.GetScraperDocument,
     "\n\t\t\tquery GetTrending($scraperId: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapeTrending(scraperId: $scraperId, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": typeof types.GetTrendingDocument,
     "\n\t\t\tquery GetLatest($scraperId: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapeLatest(scraperId: $scraperId, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": typeof types.GetLatestDocument,
+    "\n\t\t\tquery GetSearchScraper($scraperId: String!, $query: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tsearch(scraperId: $scraperId, query: $query, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": typeof types.GetSearchScraperDocument,
 };
 const documents: Documents = {
     "\n\t\t\t\tquery Me {\n\t\t\t\t\tusers {\n\t\t\t\t\t\tme {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tusername\n\t\t\t\t\t\t\timageId\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t": types.MeDocument,
@@ -62,6 +63,7 @@ const documents: Documents = {
     "\n\t\t\tquery GetScraper($scraperId: String!) {\n\t\t\t\tscraping {\n\t\t\t\t\tscraper(scraperId: $scraperId) {\n\t\t\t\t\t\trefererUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": types.GetScraperDocument,
     "\n\t\t\tquery GetTrending($scraperId: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapeTrending(scraperId: $scraperId, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": types.GetTrendingDocument,
     "\n\t\t\tquery GetLatest($scraperId: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapeLatest(scraperId: $scraperId, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": types.GetLatestDocument,
+    "\n\t\t\tquery GetSearchScraper($scraperId: String!, $query: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tsearch(scraperId: $scraperId, query: $query, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": types.GetSearchScraperDocument,
 };
 
 /**
@@ -170,6 +172,10 @@ export function graphql(source: "\n\t\t\tquery GetTrending($scraperId: String!, 
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n\t\t\tquery GetLatest($scraperId: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapeLatest(scraperId: $scraperId, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t"): (typeof documents)["\n\t\t\tquery GetLatest($scraperId: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tscrapeLatest(scraperId: $scraperId, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n\t\t\tquery GetSearchScraper($scraperId: String!, $query: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tsearch(scraperId: $scraperId, query: $query, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t"): (typeof documents)["\n\t\t\tquery GetSearchScraper($scraperId: String!, $query: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tsearch(scraperId: $scraperId, query: $query, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};
