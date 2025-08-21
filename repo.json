@@ -31,9 +31,9 @@
     {
       "name": "manhuafast",
       "urls": {
-        "lua": "https://files.catbox.moe/dckorj.lua"
+        "lua": "https://files.catbox.moe/7m1eo6.lua"
       },
-      "version": "0.1.6",
+      "version": "0.2.0",
       "state": "updated",
       "build_state": "beta"
     },
