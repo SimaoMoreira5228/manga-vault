@@ -65,6 +65,17 @@ function normalizeFavoriteData(fav: any, manga: Manga): MangaWithFavorite | null
 
 export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 	const authState = getAuthState();
+	if (authState.status === 'loading') {
+		await new Promise<void>((resolve) => {
+			const interval = setInterval(() => {
+				if (authState.status !== 'loading') {
+					clearInterval(interval);
+					resolve();
+				}
+			}, 100);
+		});
+	}
+
 	const isAuthenticated = authState.status === 'authenticated';
 
 	const mangaQuery = gql`

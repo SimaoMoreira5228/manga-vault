@@ -10,7 +10,6 @@
 	import type { PageData } from './$types';
 
 	let authState = $derived(getAuthState());
-	let isLoading = $state(true);
 
 	let { data }: { data: PageData } = $props();
 	let manga = $state(data.manga);
@@ -174,161 +173,152 @@
 	}
 </script>
 
-{#if isLoading}
-	<div class="flex h-full w-full flex-col items-center justify-center gap-8">
-		<DotsSpinner class="text-primary-500 h-18 w-18" />
-	</div>
-{:else}
-	<div class="flex h-full w-full flex-col items-stretch justify-between gap-x-4 p-4 md:flex-row">
-		<div
-			class={`flex w-full flex-col items-start justify-start gap-2 ${manga?.chapters?.length === 0 ? ' w-full' : 'md:w-1/2'}`}
-		>
-			<div class="flex flex-col items-start justify-start gap-2 xl:flex-row">
-				<img
-					src={proxyImage(
-						manga?.imgUrl || '',
-						manga?.scraperInfo?.refererUrl as string | undefined
-					)}
-					alt="Manga Cover"
-					class="h-80 w-auto rounded-lg object-cover shadow-md"
-				/>
-				<div class="flex w-full flex-col items-start justify-between gap-2">
-					<h5 class="h5">
-						{manga?.title.trim()}
-					</h5>
-					<div class="flex w-full flex-col">
-						<div>
-							{#if manga?.authors && manga?.authors.length > 0 && manga?.authors[0] !== ''}
-								<p class="opacity-60">Author(s): {manga?.authors.join(', ')}</p>
-							{/if}
-							{#if manga?.artists && manga?.artists.length > 0 && manga?.artists[0] !== ''}
-								<p class="opacity-60">Artist(s): {manga?.artists?.join(', ')}</p>
-							{/if}
-							<p class="opacity-60">Status: {manga?.status}</p>
-							{#if manga?.mangaType}
-								<p class="opacity-60">Type: {manga?.mangaType}</p>
-							{/if}
-							{#if manga?.releaseDate}
-								<p class="opacity-60">
-									Released: {new Date(manga.releaseDate).toLocaleDateString()}
-								</p>
-							{/if}
-							<p class="opacity-60">
-								Source: {manga?.scraperInfo?.name}
-							</p>
-							{#if manga?.genres}
-								<div class="mt-2 flex flex-wrap gap-2">
-									{#each manga?.genres as genre}
-										<button type="button" class="chip preset-filled">{genre}</button>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="flex w-full flex-col items-start justify-start overflow-auto pr-2">
-				<div class="flex w-full flex-row items-center justify-between gap-2">
-					<div class="flex w-full flex-row items-center justify-start gap-2">
-						{#if authState.status === 'authenticated'}
-							{#if manga?.isFavorite}
-								<button class="btn preset-tonal-primary" onclick={toggleFavorite}>
-									<BookmarkMinus />
-									<span class="hidden md:block">Remove from Favorites</span>
-								</button>
-							{:else}
-								<button class="btn preset-tonal-primary" onclick={openFavoriteModal}>
-									<BookmarkPlus />
-									<span class="hidden md:block">Add to Favorites</span>
-								</button>
-							{/if}
+<div class="flex h-full w-full flex-col items-stretch justify-between gap-x-4 p-4 md:flex-row">
+	<div
+		class={`flex w-full flex-col items-start justify-start gap-2 ${manga?.chapters?.length === 0 ? ' w-full' : 'md:w-1/2'}`}
+	>
+		<div class="flex flex-col items-start justify-start gap-2 xl:flex-row">
+			<img
+				src={proxyImage(manga?.imgUrl || '', manga?.scraperInfo?.refererUrl as string | undefined)}
+				alt="Manga Cover"
+				class="h-80 w-auto rounded-lg object-cover shadow-md"
+			/>
+			<div class="flex w-full flex-col items-start justify-between gap-2">
+				<h5 class="h5">
+					{manga?.title.trim()}
+				</h5>
+				<div class="flex w-full flex-col">
+					<div>
+						{#if manga?.authors && manga?.authors.length > 0 && manga?.authors[0] !== ''}
+							<p class="opacity-60">Author(s): {manga?.authors.join(', ')}</p>
 						{/if}
-						<a href={manga?.url} class="btn-icon preset-tonal-primary" target="_blank">
-							<SquareArrowOutUpRight />
-						</a>
+						{#if manga?.artists && manga?.artists.length > 0 && manga?.artists[0] !== ''}
+							<p class="opacity-60">Artist(s): {manga?.artists?.join(', ')}</p>
+						{/if}
+						<p class="opacity-60">Status: {manga?.status}</p>
+						{#if manga?.mangaType}
+							<p class="opacity-60">Type: {manga?.mangaType}</p>
+						{/if}
+						{#if manga?.releaseDate}
+							<p class="opacity-60">
+								Released: {new Date(manga.releaseDate).toLocaleDateString()}
+							</p>
+						{/if}
+						<p class="opacity-60">
+							Source: {manga?.scraperInfo?.name}
+						</p>
+						{#if manga?.genres}
+							<div class="mt-2 flex flex-wrap gap-2">
+								{#each manga?.genres as genre}
+									<button type="button" class="chip preset-filled">{genre}</button>
+								{/each}
+							</div>
+						{/if}
 					</div>
-				</div>
-				{#if (manga?.alternativeNames ?? []).length > 0}
-					<div class="mt-2 flex flex-row gap-2">
-						Alt name(s):
-						{#each manga?.alternativeNames ?? [] as name, i}
-							<span class="opacity-60">
-								{name}{i < (manga?.alternativeNames?.length ?? 0) - 1 ? ', ' : ''}
-							</span>
-						{/each}
-					</div>
-				{/if}
-				<div class="overflow-auto">
-					<p class="pt-2">{manga?.description}</p>
 				</div>
 			</div>
 		</div>
-		{#if manga?.chapters && manga?.chapters?.length > 0}
-			<span class="vr hidden min-w-2 md:block"></span>
-			<div class="flex w-full flex-col items-start justify-start md:w-1/2">
-				<h3 class="h3">Chapters:</h3>
-				<div class="flex w-full flex-col gap-2 overflow-auto pr-2">
-					{#each manga?.chapters ?? [] as chapter}
-						<a
-							class="card preset-filled-surface-100-900 flex w-full flex-row items-center justify-between p-2"
-							href="/manga/{manga?.id}/chapter/{chapter.id}"
-						>
-							<div>
-								<p class={wasChapterRead(chapter.id) ? 'opacity-60' : ''}>
-									{chapter.title}
-								</p>
-								<p class="opacity-60">{chapter.scanlationGroup}</p>
-							</div>
-							<div class="flex flex-row items-center justify-center gap-2">
-								{#if authState.status === 'authenticated'}
-									{#if wasChapterRead(chapter.id)}
-										<button
-											class="opacity-60"
-											onclick={(e) => {
-												e.preventDefault();
-												unreadChapter(chapter.id);
-											}}
-										>
-											<EyeOff />
-										</button>
-									{:else}
-										<button
-											onclick={(e) => {
-												e.preventDefault();
-												readChapter(chapter.id);
-											}}
-										>
-											<Eye />
-										</button>
-									{/if}
-								{/if}
-								<button
-									class="anchor"
-									onclick={(e) => {
-										e.preventDefault();
-										window.open(chapter.url, '_blank');
-									}}
-								>
-									<SquareArrowOutUpRight />
-								</button>
-							</div>
-						</a>
+		<div class="flex w-full flex-col items-start justify-start overflow-auto pr-2">
+			<div class="flex w-full flex-row items-center justify-between gap-2">
+				<div class="flex w-full flex-row items-center justify-start gap-2">
+					{#if authState.status === 'authenticated'}
+						{#if manga?.isFavorite}
+							<button class="btn preset-tonal-primary" onclick={toggleFavorite}>
+								<BookmarkMinus />
+								<span class="hidden md:block">Remove from Favorites</span>
+							</button>
+						{:else}
+							<button class="btn preset-tonal-primary" onclick={openFavoriteModal}>
+								<BookmarkPlus />
+								<span class="hidden md:block">Add to Favorites</span>
+							</button>
+						{/if}
+					{/if}
+					<a href={manga?.url} class="btn-icon preset-tonal-primary" target="_blank">
+						<SquareArrowOutUpRight />
+					</a>
+				</div>
+			</div>
+			{#if (manga?.alternativeNames ?? []).length > 0}
+				<div class="mt-2 flex flex-row gap-2">
+					Alt name(s):
+					{#each manga?.alternativeNames ?? [] as name, i}
+						<span class="opacity-60">
+							{name}{i < (manga?.alternativeNames?.length ?? 0) - 1 ? ', ' : ''}
+						</span>
 					{/each}
 				</div>
-				{#if manga?.chapters && manga?.chapters?.length > 0 && getResumeChapter() !== null && authState.status === 'authenticated'}
-					<div class="mt-4 w-full">
-						<a
-							href="/manga/{manga?.id}/chapter/{getResumeChapter()}"
-							class="btn preset-filled w-full"
-						>
-							Resume Reading
-						</a>
-					</div>
-				{/if}
+			{/if}
+			<div class="overflow-auto">
+				<p class="pt-2">{manga?.description}</p>
 			</div>
-		{/if}
+		</div>
 	</div>
-{/if}
+	{#if manga?.chapters && manga?.chapters?.length > 0}
+		<span class="vr hidden min-w-2 md:block"></span>
+		<div class="flex w-full flex-col items-start justify-start md:w-1/2">
+			<h3 class="h3">Chapters:</h3>
+			<div class="flex w-full flex-col gap-2 overflow-auto pr-2">
+				{#each manga?.chapters ?? [] as chapter}
+					<a
+						class="card preset-filled-surface-100-900 flex w-full flex-row items-center justify-between p-2"
+						href="/manga/{manga?.id}/chapter/{chapter.id}"
+					>
+						<div>
+							<p class={wasChapterRead(chapter.id) ? 'opacity-60' : ''}>
+								{chapter.title}
+							</p>
+							<p class="opacity-60">{chapter.scanlationGroup}</p>
+						</div>
+						<div class="flex flex-row items-center justify-center gap-2">
+							{#if authState.status === 'authenticated'}
+								{#if wasChapterRead(chapter.id)}
+									<button
+										class="opacity-60"
+										onclick={(e) => {
+											e.preventDefault();
+											unreadChapter(chapter.id);
+										}}
+									>
+										<EyeOff />
+									</button>
+								{:else}
+									<button
+										onclick={(e) => {
+											e.preventDefault();
+											readChapter(chapter.id);
+										}}
+									>
+										<Eye />
+									</button>
+								{/if}
+							{/if}
+							<button
+								class="anchor"
+								onclick={(e) => {
+									e.preventDefault();
+									window.open(chapter.url, '_blank');
+								}}
+							>
+								<SquareArrowOutUpRight />
+							</button>
+						</div>
+					</a>
+				{/each}
+			</div>
+			{#if manga?.chapters && manga?.chapters?.length > 0 && getResumeChapter() !== null && authState.status === 'authenticated'}
+				<div class="mt-4 w-full">
+					<a
+						href="/manga/{manga?.id}/chapter/{getResumeChapter()}"
+						class="btn preset-filled w-full"
+					>
+						Resume Reading
+					</a>
+				</div>
+			{/if}
+		</div>
+	{/if}
+</div>
 
 <Modal
 	open={isFavoriting.open}
@@ -352,9 +342,11 @@
 				<label class="label">
 					<span class="label-text">Category</span>
 					<select class="select" bind:value={isFavoriting.categoryId}>
-						{#each categories as category}
-							<option value={category.id}>{category.name}</option>
-						{/each}
+						{#if categories.length > 0}
+							{#each categories as category}
+								<option value={category.id}>{category.name}</option>
+							{/each}
+						{/if}
 					</select>
 				</label>
 				<div class="flex w-full flex-row items-center justify-between">

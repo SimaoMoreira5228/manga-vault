@@ -5,6 +5,7 @@ import { gql } from '@urql/svelte';
 export async function load({ params: { manga_id } }) {
 	const manga = await getManga(parseInt(manga_id));
 
+	let categories: { id: number; name: string }[] = [];
 	const { data, error } = await client
 		.query(
 			gql`
@@ -23,11 +24,13 @@ export async function load({ params: { manga_id } }) {
 
 	if (error) {
 		console.error('categories error', error);
-		return { manga, categories: [] };
+		categories = [];
 	}
+
+	categories = data?.categories?.userCategories || [];
 
 	return {
 		manga,
-		categories: (data?.categories?.userCategories as Array<{ id: number; name: string }>) ?? []
+		categories
 	};
 }

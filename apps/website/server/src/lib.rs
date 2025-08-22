@@ -3,7 +3,7 @@ use std::{env, path::PathBuf};
 use axum::Router;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
-use tower_http::services::ServeDir;
+use tower_http::{compression::CompressionLayer, services::ServeDir};
 
 fn current_exe_parent_dir() -> PathBuf {
 	env::current_exe()
@@ -34,11 +34,36 @@ impl Default for Config {
 pub async fn run() {
 	let config = Config::load();
 
-	let static_service = ServeDir::new(&config.folder)
-		.append_index_html_on_directories(true)
-		.not_found_service(ServeDir::new(format!("{}/index.html", config.folder)));
+	let assets_service = ServeDir::new(PathBuf::from(&config.folder).join("assets"))
+		.precompressed_gzip()
+		.precompressed_br();
 
-	let app = Router::new().fallback_service(static_service);
+	let assets_app_service = ServeDir::new(PathBuf::from(&config.folder).join("assets/_app"))
+		.precompressed_gzip()
+		.precompressed_br();
+
+	let pages_service = ServeDir::new(PathBuf::from(&config.folder).join("pages"))
+		.append_index_html_on_directories(true)
+		.precompressed_gzip()
+		.precompressed_br();
+
+	let spa_service = axum::routing::get({
+		let spa_path = PathBuf::from(&config.folder).join("pages/spa.html");
+		move || async move {
+			axum::response::Html(
+				tokio::fs::read_to_string(&spa_path)
+					.await
+					.unwrap_or_else(|_| "SPA fallback not found".to_string()),
+			)
+		}
+	});
+
+	let app = Router::new()
+		.nest_service("/assets", assets_service)
+		.nest_service("/_app", assets_app_service)
+		.fallback_service(pages_service)
+		.fallback(spa_service)
+		.layer(CompressionLayer::new());
 
 	tracing::info!("Starting website on http://localhost:{}", config.port);
 	axum::serve(

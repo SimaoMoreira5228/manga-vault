@@ -9,11 +9,11 @@ const config = {
 			$gql: 'src/gql'
 		},
 		adapter: adapter({
-			pages: 'build',
-			assets: 'build',
+			pages: 'build/pages',
+			assets: 'build/assets',
 			fallback: 'spa.html',
 			precompress: true,
-			strict: true
+			strict: true,
 		})
 	},
 	compilerOptions: {
