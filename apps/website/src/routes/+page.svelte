@@ -8,48 +8,22 @@
 	import { onMount } from 'svelte';
 	import { proxyImage } from '$lib/utils/image';
 	import { toaster } from '$lib/utils/toaster-svelte';
-	let favoriteMangas: any[] = $state([]);
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
+
+	let favoriteMangas = $state(data.favoriteMangas);
+	let categories = $state(data.categories);
 	let isLoading = $state(false);
 	let areMangasLoading = $state(false);
 	let orderType: 'unread' | 'alphabetical' = $state('unread');
+	
+	let authState = $derived(getAuthState());
+	let currentCategory = $state(data.currentCategory);
+
 	onMount(() => {
 		orderType = (localStorage.getItem('orderType') as 'unread' | 'alphabetical') || 'unread';
 	});
-
-	let authState = $derived(getAuthState());
-
-	let currentCategory = $state('');
-	let categories: any[] = $state([]);
-	async function getCategories() {
-		if (authState.status !== 'authenticated') return;
-
-		try {
-			const { data } = await client
-				.query(
-					gql`
-						query categories {
-							categories {
-								userCategories {
-									id
-									name
-								}
-							}
-						}
-					`,
-					{}
-				)
-				.toPromise();
-
-			currentCategory = data?.categories.userCategories[0]?.id.toString() || '';
-			categories = data?.categories.userCategories || [];
-		} catch (error) {
-			console.error('Failed to load categories', error);
-			toaster.error({
-				title: 'Error',
-				description: 'Failed to load categories'
-			});
-		}
-	}
 
 	$effect(() => {
 		if (currentCategory === '') return;
@@ -96,9 +70,7 @@
 							}
 						}
 					`,
-					{
-						categoryId
-					}
+					{ categoryId }
 				)
 				.toPromise();
 
@@ -158,10 +130,8 @@
 						}
 					`,
 					{
-						categoryId: isEditingCategory.id,
-						input: {
-							name: isEditingCategory.name
-						}
+						categoryId: parseInt(isEditingCategory.id),
+						input: { name: isEditingCategory.name }
 					}
 				)
 				.toPromise();
@@ -197,9 +167,7 @@
 							}
 						}
 					`,
-					{
-						categoryId: isEditingCategory.id
-					}
+					{ categoryId: parseInt(isEditingCategory.id) }
 				)
 				.toPromise();
 
@@ -241,11 +209,7 @@
 							}
 						}
 					`,
-					{
-						input: {
-							name: isCreatingCategory.name
-						}
-					}
+					{ input: { name: isCreatingCategory.name } }
 				)
 				.toPromise();
 
@@ -275,110 +239,106 @@
 			<a href="/login" class="btn preset-filled w-2/12">Login</a>
 		</div>
 	{:else if authState.status === 'authenticated'}
-		{#await getCategories()}
-			<DotsSpinner class="text-primary-500 h-24 w-24" />
-		{:then _}
-			<div class="flex h-full w-full flex-col overflow-auto">
-				<Tabs
-					value={currentCategory}
-					onValueChange={(e) => (currentCategory = e.value)}
-					fluid
-					classes="flex flex-col h-full"
-					listClasses={`overflow-x-auto p-4 overflow-auto ${categories.length === 0 ? 'overflow-hidden !justify-end' : ''}`}
-					contentClasses="flex flex-col w-full h-full overflow-auto"
-				>
-					{#snippet list()}
-						{#each categories as category}
-							<Tabs.Control value={category.id.toString()}>
-								<div class="flex w-full flex-row items-center justify-between gap-2">
-									{category.name}
-									<button
-										onclick={(e) => {
-											e.preventDefault();
-											openUpdateCategory(category.id.toString());
-										}}
-									>
-										<PenLine size={16} />
-									</button>
-								</div>
-							</Tabs.Control>
-						{/each}
-						<button type="button" class="btn-icon preset-filled" onclick={openCreateCategory}>
-							<Plus />
+		<div class="flex h-full w-full flex-col overflow-auto">
+			<Tabs
+				value={currentCategory}
+				onValueChange={(e) => (currentCategory = e.value)}
+				fluid
+				classes="flex flex-col h-full"
+				listClasses={`overflow-x-auto p-4 overflow-auto ${categories.length === 0 ? 'overflow-hidden !justify-end' : ''}`}
+				contentClasses="flex flex-col w-full h-full overflow-auto"
+			>
+				{#snippet list()}
+					{#each categories as category}
+						<Tabs.Control value={category.id.toString()}>
+							<div class="flex w-full flex-row items-center justify-between gap-2">
+								{category.name}
+								<button
+									onclick={(e) => {
+										e.preventDefault();
+										openUpdateCategory(category.id.toString());
+									}}
+								>
+									<PenLine size={16} />
+								</button>
+							</div>
+						</Tabs.Control>
+					{/each}
+					<button type="button" class="btn-icon preset-filled" onclick={openCreateCategory}>
+						<Plus />
+					</button>
+					{#if orderType === 'unread'}
+						<button
+							type="button"
+							class="btn-icon preset-filled"
+							onclick={() => changeOrderType('alphabetical')}
+						>
+							<ArrowDown10 />
 						</button>
-						{#if orderType === 'unread'}
-							<button
-								type="button"
-								class="btn-icon preset-filled"
-								onclick={() => changeOrderType('alphabetical')}
-							>
-								<ArrowDown10 />
-							</button>
-						{:else}
-							<button
-								type="button"
-								class="btn-icon preset-filled"
-								onclick={() => changeOrderType('unread')}
-							>
-								<ArrowDownAZ />
-							</button>
-						{/if}
-					{/snippet}
-					{#snippet content()}
-						{#if categories.length !== 0}
-							{#each categories as category}
-								<Tabs.Panel value={category.id.toString()} base="h-full w-full">
-									{#if areMangasLoading}
-										<div class="flex h-full w-full items-center justify-center">
-											<DotsSpinner class="text-primary-500 h-18 w-18" />
-										</div>
-									{:else if favoriteMangas.length === 0}
-										<div class="flex w-full justify-center">
-											<h4 class="h4">No favorite mangas found.</h4>
-										</div>
-									{:else}
-										<div
-											class="grid h-full w-full justify-items-center gap-4"
-											style="grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));"
-										>
-											{#each favoriteMangas as favoriteManga}
-												<a
-													class="card relative flex h-80 w-full max-w-[12rem] flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat shadow-lg"
-													style="background-image: url({proxyImage(
-														favoriteManga.manga.imgUrl,
-														favoriteManga.manga.url.split('/').slice(0, 3).join('/') + '/'
-													)});"
-													href={`/manga/${favoriteManga.manga.id}`}
+					{:else}
+						<button
+							type="button"
+							class="btn-icon preset-filled"
+							onclick={() => changeOrderType('unread')}
+						>
+							<ArrowDownAZ />
+						</button>
+					{/if}
+				{/snippet}
+				{#snippet content()}
+					{#if categories.length !== 0}
+						{#each categories as category}
+							<Tabs.Panel value={category.id.toString()} base="h-full w-full">
+								{#if areMangasLoading}
+									<div class="flex h-full w-full items-center justify-center">
+										<DotsSpinner class="text-primary-500 h-18 w-18" />
+									</div>
+								{:else if favoriteMangas.length === 0}
+									<div class="flex w-full justify-center">
+										<h4 class="h4">No favorite mangas found.</h4>
+									</div>
+								{:else}
+									<div
+										class="grid h-full w-full justify-items-center gap-4"
+										style="grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));"
+									>
+										{#each favoriteMangas as favoriteManga}
+											<a
+												class="card relative flex h-80 w-full max-w-[12rem] flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat shadow-lg"
+												style="background-image: url({proxyImage(
+													favoriteManga.manga.imgUrl,
+													favoriteManga.manga.url.split('/').slice(0, 3).join('/') + '/'
+												)});"
+												href={`/manga/${favoriteManga.manga.id}`}
+											>
+												<div
+													class="absolute inset-0 bg-gradient-to-b from-transparent to-black/75"
+												></div>
+
+												<div
+													class="relative z-10 w-full truncate p-4 text-center text-base text-white"
 												>
-													<div
-														class="absolute inset-0 bg-gradient-to-b from-transparent to-black/75"
-													></div>
+													{favoriteManga.manga.title}
+												</div>
 
-													<div
-														class="relative z-10 w-full truncate p-4 text-center text-base text-white"
+												{#if favoriteManga.manga.chaptersAmount - favoriteManga.manga.userReadChaptersAmount > 0}
+													<span
+														class="badge-icon preset-filled-primary-500 absolute -right-0 -top-0 z-10"
 													>
-														{favoriteManga.manga.title}
-													</div>
-
-													{#if favoriteManga.manga.chaptersAmount - favoriteManga.manga.userReadChaptersAmount > 0}
-														<span
-															class="badge-icon preset-filled-primary-500 absolute -right-0 -top-0 z-10"
-														>
-															{favoriteManga.manga.chaptersAmount -
-																favoriteManga.manga.userReadChaptersAmount}
-														</span>
-													{/if}
-												</a>
-											{/each}
-										</div>
-									{/if}
-								</Tabs.Panel>
-							{/each}
-						{/if}
-					{/snippet}
-				</Tabs>
-			</div>
-		{/await}
+														{favoriteManga.manga.chaptersAmount -
+															favoriteManga.manga.userReadChaptersAmount}
+													</span>
+												{/if}
+											</a>
+										{/each}
+									</div>
+								{/if}
+							</Tabs.Panel>
+						{/each}
+					{/if}
+				{/snippet}
+			</Tabs>
+		</div>
 	{/if}
 </div>
 

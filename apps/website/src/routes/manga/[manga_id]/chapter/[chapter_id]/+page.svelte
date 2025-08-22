@@ -11,6 +11,7 @@
 	import { proxyImage } from '$lib/utils/image';
 	import { Slider } from '@skeletonlabs/skeleton-svelte';
 	import { getAuthState } from '$lib/auth.svelte';
+	import type { PageData } from './$types';
 
 	const chapterIdStr = $derived(page.params.chapter_id);
 	const chapterId = $derived(parseInt(chapterIdStr || ''));
@@ -22,15 +23,20 @@
 	let markedRead = false;
 	let ticking = false;
 	let imageContainer: HTMLElement | null = $state(null);
-	let imageUrls = $state<string[]>([]);
-	let nextChapter: number | null = $state(null);
-	let previousChapter: number | null = $state(null);
-	let refererUrl: string | null = $state(null);
+
+	let { data }: { data: PageData } = $props();
+	let imageUrls: string[] = data.imageUrls;
+	let nextChapter: number | null = data.nextChapter;
+	let previousChapter: number | null = data.previousChapter;
+	let refererUrl: string | null = data.refererUrl;
 
 	onMount(async () => {
 		if (!browser) return;
 
-		await load();
+		const savedMargin = localStorage.getItem('imageMargin');
+		if (savedMargin) {
+			imageMargin = parseInt(savedMargin, 10) || 0;
+		}
 
 		window.addEventListener('keydown', handleKeyPress);
 	});
@@ -46,54 +52,15 @@
 			imageContainer.scrollTop = 0;
 		}
 		markedRead = false;
-		await load();
+		const savedMargin = localStorage.getItem('imageMargin');
+		if (savedMargin) {
+			imageMargin = parseInt(savedMargin, 10) || 0;
+		}
 	});
 
 	$effect(() => {
 		localStorage.setItem('imageMargin', imageMargin.toString());
 	});
-
-	async function load() {
-		isLoading = true;
-
-		const savedMargin = localStorage.getItem('imageMargin');
-		if (savedMargin) {
-			imageMargin = parseInt(savedMargin, 10) || 0;
-		}
-
-		const response = await client
-			.query(
-				gql`
-					query getChapterInfo($chapterId: Int!) {
-						chapters {
-							chapter(id: $chapterId) {
-								images
-								nextChapter {
-									id
-								}
-								previousChapter {
-									id
-								}
-								scraper {
-									refererUrl
-								}
-							}
-						}
-					}
-				`,
-				{ chapterId }
-			)
-			.toPromise();
-
-		if (response.data) {
-			nextChapter = response.data.chapters.chapter?.nextChapter?.id || null;
-			previousChapter = response.data.chapters.chapter?.previousChapter?.id || null;
-			imageUrls = response.data.chapters.chapter?.images || [];
-			refererUrl = response.data.chapters.chapter?.scraper?.refererUrl || null;
-		}
-
-		isLoading = false;
-	}
 
 	function handleScroll() {
 		if (ticking || !chapterId || authState.status !== 'authenticated') return;

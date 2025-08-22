@@ -8,50 +8,18 @@
 	import { Search } from '@lucide/svelte';
 	import { Accordion } from '@skeletonlabs/skeleton-svelte';
 	import { gql } from '@urql/svelte';
-	import { onMount } from 'svelte';
+	import type { PageData } from './$types';
 
 	type MangaShell = { id: string; title: string; imgUrl: string };
 
 	let isLoading = $state(false);
 	let isLoadingScraper = $state<string>('');
-	let searchQuery = $derived(page.url.searchParams.get('query') || '');
+	let searchQuery = $derived('');
 	let openScrapers = $state<string[]>([]);
 	let prevOpenScrapers = $state<string[]>([]);
-	let scrapers = $state<{ id: string; name: string; refererUrl: string }[]>([]);
 	let items = $state<Record<string, MangaShell[]>>({});
-
-	async function getScrapers() {
-		isLoading = true;
-
-		const query = gql`
-			query GetScrapersSearch {
-				scraping {
-					scrapers {
-						id
-						name
-						refererUrl
-					}
-				}
-			}
-		`;
-
-		const result = await client.query(query, {}).toPromise();
-		if (result.error) {
-			console.error(`Failed to load scrapers: ${result.error.message}`);
-			toaster.error({
-				title: 'Error',
-				description: 'Failed to load scrapers'
-			});
-			return;
-		}
-
-		scrapers = result.data.scraping.scrapers;
-		isLoading = false;
-	}
-
-	onMount(async () => {
-		await getScrapers();
-	});
+	let props: { data: PageData } = $props();
+	let { scrapers } = props.data;
 
 	afterNavigate(async () => {
 		items = {};
@@ -112,9 +80,7 @@
 				class="flex w-full flex-row items-center justify-start gap-2"
 				onsubmit={(e) => {
 					e.preventDefault();
-					goto(
-						`/search?query=${(e.target as HTMLFormElement).querySelector('input')?.value || ''}`
-					);
+					searchQuery = (e.target as HTMLFormElement).querySelector('input')?.value || '';
 				}}
 			>
 				<input class="input min-w-8/10" type="text" placeholder="Search" value={searchQuery} />

@@ -37,31 +37,27 @@
 	async function getUserFiles() {
 		if (authState.status !== 'authenticated') return;
 
-		try {
-			const { data } = await client
-				.query(
-					gql`
-						query getUserFiles {
+		const result = await client
+			.query(
+				gql`
+					query getUserFiles {
+						files {
 							files {
-								files {
-									id
-								}
+								id
 							}
 						}
-					`,
-					{}
-				)
-				.toPromise();
+					}
+				`,
+				{}
+			)
+			.toPromise();
 
-			const filesArray = data?.files.files as { id: number }[];
-			fileIds = filesArray.map((file) => file.id) || [];
-		} catch (error) {
-			console.error('Failed to get user files', error);
-			toaster.error({
-				title: 'Error',
-				description: 'Failed to get user files'
-			});
+		if (result.error) {
+			console.error('Failed to fetch user files', result.error);
 		}
+
+		const filesArray = result.data?.files.files as { id: number }[];
+		fileIds = filesArray.map((file) => file.id) || [];
 	}
 
 	async function uploadFile(file: File) {

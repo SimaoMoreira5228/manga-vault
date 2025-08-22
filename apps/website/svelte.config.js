@@ -11,10 +11,9 @@ const config = {
 		adapter: adapter({
 			pages: 'build',
 			assets: 'build',
-			// SPA index file
 			fallback: 'spa.html',
-			strict: true,
-			precompress: true
+			precompress: true,
+			strict: true
 		})
 	},
 	compilerOptions: {

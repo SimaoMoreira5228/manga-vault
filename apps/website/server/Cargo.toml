@@ -1,0 +1,21 @@
+[package]
+name = "website-server"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "manga-vault-website-server"
+path = "src/main.rs"
+
+[dependencies]
+axum = { workspace = true }
+tokio = { workspace = true }
+tower-http = { version = "0.6", features = ["full"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+config = { workspace = true }
+config-derive = { workspace = true }
+tracing = { workspace = true }

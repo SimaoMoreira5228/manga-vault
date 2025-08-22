@@ -1,7 +1,7 @@
 import type { CodegenConfig } from '@graphql-codegen/cli';
 
 const config: CodegenConfig = {
-	schema: 'http://localhost:4228',
+	schema: './schema.graphql',
 	overwrite: true,
 	documents: ['./src/**/*.svelte', './src/**/*.graphql', './src/**/*.ts'],
 	generates: {

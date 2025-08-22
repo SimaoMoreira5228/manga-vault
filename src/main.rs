@@ -47,6 +47,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.await;
 	});
 
-	gql_api::run(db, scraper_manager).await?;
+	tokio::spawn(async move {
+		let res = gql_api::run(db, scraper_manager).await;
+		tracing::error!("GraphQL API encountered an error: {:?}", res);
+	});
+
+	website_server::run().await;
 	Ok(())
 }

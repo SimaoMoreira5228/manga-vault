@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { afterNavigate, goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import { client } from '$lib/graphql/client';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { proxyImage } from '$lib/utils/image';
@@ -8,53 +7,42 @@
 	import { Search } from '@lucide/svelte';
 	import { gql } from '@urql/svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
+	import type { PageData } from './$types';
 
 	let isLoading = $state(false);
-	let scraper = $state<{ refererUrl: string } | null>(null);
+	let isLoadingMore = $state(false);
+	let searchQuery = $state('');
 	let items = $state<{ id: string; title: string; imgUrl: string }[]>([]);
-	let ticking = $state(false);
-	let isTrending = $derived(page.url.searchParams.has('trending'));
-	let isLatest = $derived(page.url.searchParams.has('latest'));
-	let isSearchActive = $derived(page.url.searchParams.has('query'));
-	let searchQuery = $derived(page.url.searchParams.get('query') || '');
 	let Sentinel: HTMLElement | null = $state(null);
 	let ListContainer: HTMLElement | null = $state(null);
 	let intersectionObserver: IntersectionObserver | null = $state(null);
 	let resizeObserver: ResizeObserver | null = $state(null);
 	let currentPage = $state(1);
+	let { data }: { data: PageData } = $props();
+	const scraper = data.scraper;
 
 	onMount(async () => {
-		await init();
-	});
-
-	afterNavigate(async () => {
-		await init();
-	});
-
-	async function init() {
 		items = [];
 		currentPage = 1;
 
-		if (!isTrending && !isLatest && !isSearchActive) {
-			goto(`/sources/${page.params.scraper_id}?trending`);
-			return;
-		}
-
-		await loadScraper();
 		isLoading = true;
-		if (isLatest) {
-			await loadLatest();
-		} else if (isTrending) {
-			await loadTrending();
-		} else if (isSearchActive && searchQuery) {
-			await loadSearch();
-		}
+		await loadSearch();
 		isLoading = false;
 		await setupObservers();
-	}
+	});
 
 	onDestroy(() => {
 		intersectionObserver?.disconnect();
+	});
+
+	afterNavigate(() => {
+		items = [];
+		currentPage = 1;
+
+		isLoading = true;
+		loadSearch().finally(() => {
+			isLoading = false;
+		});
 	});
 
 	async function setupObservers() {
@@ -73,24 +61,15 @@
 		intersectionObserver = new IntersectionObserver(
 			(entries) => {
 				for (const entry of entries) {
-					if (entry.isIntersecting && !ticking) {
-						ticking = true;
+					if (entry.isIntersecting && !isLoadingMore) {
+						isLoadingMore = true;
 
-						let loaderPromise: Promise<number>;
-						if (isTrending) loaderPromise = loadTrending();
-						else if (isLatest) loaderPromise = loadLatest();
-						else if (isSearchActive && searchQuery) loaderPromise = loadSearch();
-						else {
-							ticking = false;
-							return;
-						}
-
-						loaderPromise
+						loadSearch()
 							.catch((err) => {
 								console.error('load failed', err);
 							})
 							.finally(() => {
-								ticking = false;
+								isLoadingMore = false;
 							});
 					}
 				}
@@ -108,97 +87,6 @@
 		await fillIfNeeded();
 	}
 
-	async function loadScraper() {
-		const query = gql`
-			query GetScraper($scraperId: String!) {
-				scraping {
-					scraper(scraperId: $scraperId) {
-						refererUrl
-					}
-				}
-			}
-		`;
-
-		const result = await client.query(query, { scraperId: page.params.scraper_id }).toPromise();
-		if (!result.data.scraping.scraper) {
-			toaster.error({
-				title: 'Error',
-				description: 'Scraper not found'
-			});
-			return;
-		}
-
-		scraper = result.data.scraping.scraper;
-	}
-
-	async function loadTrending() {
-		const query = gql`
-			query GetTrending($scraperId: String!, $page: Int!) {
-				scraping {
-					scrapeTrending(scraperId: $scraperId, page: $page) {
-						id
-						title
-						imgUrl
-					}
-				}
-			}
-		`;
-
-		const result = await client
-			.query(query, { scraperId: page.params.scraper_id, page: currentPage })
-			.toPromise();
-
-		if (result.error) {
-			console.error(`Failed to load trending: ${result.error.message}`);
-			toaster.error({
-				title: 'Error',
-				description: 'Failed to load trending'
-			});
-			return;
-		}
-
-		const loadedItems = result.data.scraping.scrapeTrending ?? [];
-		if (loadedItems.length === 0) return 0;
-
-		currentPage += 1;
-		items = [...items, ...loadedItems];
-		return loadedItems.length;
-	}
-
-	async function loadLatest() {
-		const query = gql`
-			query GetLatest($scraperId: String!, $page: Int!) {
-				scraping {
-					scrapeLatest(scraperId: $scraperId, page: $page) {
-						id
-						title
-						imgUrl
-					}
-				}
-			}
-		`;
-
-		const result = await client
-			.query(query, { scraperId: page.params.scraper_id, page: currentPage })
-			.toPromise();
-
-		if (result.error) {
-			console.error(`Failed to load latest: ${result.error.message}`);
-			toaster.error({
-				title: 'Error',
-				description: 'Failed to load latest'
-			});
-			return;
-		}
-
-		const loadedItems = result.data.scraping.scrapeLatest ?? [];
-		if (loadedItems.length === 0) return 0;
-
-		currentPage += 1;
-		items = [...items, ...loadedItems];
-		return loadedItems.length;
-	}
-
 	async function loadSearch() {
 		const query = gql`
 			query GetSearchScraper($scraperId: String!, $query: String!, $page: Int!) {
@@ -213,7 +101,7 @@
 		`;
 
 		const result = await client
-			.query(query, { scraperId: page.params.scraper_id, query: searchQuery, page: currentPage })
+			.query(query, { scraperId: scraper?.id, query: searchQuery, page: currentPage })
 			.toPromise();
 
 		if (result.error) {
@@ -234,7 +122,7 @@
 	}
 
 	async function fillIfNeeded() {
-		if (ticking) return;
+		if (isLoadingMore) return;
 
 		let loaded = 0;
 		let attempts = 0;
@@ -242,10 +130,7 @@
 
 		do {
 			if (attempts++ >= maxAttempts) break;
-			if (isTrending) loaded = await loadTrending();
-			else if (isLatest) loaded = await loadLatest();
-			else if (isSearchActive && searchQuery) loaded = await loadSearch();
-			else loaded = 0;
+			loaded = await loadSearch();
 
 			if (loaded > 0) {
 				await tick();
@@ -269,14 +154,14 @@
 		>
 			<div class="flex flex-row items-center justify-start gap-2">
 				<button
-					class={`chip capitalize ${isTrending ? 'preset-filled' : 'preset-tonal'}`}
-					onclick={() => goto(`/sources/${page.params.scraper_id}?trending`)}
+					class="chip preset-tonal capitalize"
+					onclick={() => goto(`/sources/${scraper?.id}/trending`)}
 				>
 					<span>Trending</span>
 				</button>
 				<button
-					class={`chip capitalize ${isLatest ? 'preset-filled' : 'preset-tonal'}`}
-					onclick={() => goto(`/sources/${page.params.scraper_id}?latest`)}
+					class="chip preset-filled capitalize"
+					onclick={() => goto(`/sources/${scraper?.id}/latest`)}
 				>
 					<span>Latest</span>
 				</button>
@@ -285,7 +170,7 @@
 				class="flex flex-row items-center justify-start gap-2"
 				onsubmit={(e) => {
 					e.preventDefault();
-					goto(`/sources/${page.params.scraper_id}?query=${searchQuery}`);
+					goto(`/sources/${scraper?.id}/search/${searchQuery}`);
 				}}
 			>
 				<input class="input" type="text" placeholder="Search" bind:value={searchQuery} />
@@ -312,7 +197,7 @@
 					</div>
 				</a>
 			{/each}
-			{#if ticking}
+			{#if isLoadingMore}
 				<div class="flex h-full w-full items-center justify-center">
 					<DotsSpinner class="text-primary-500 h-18 w-18" />
 				</div>

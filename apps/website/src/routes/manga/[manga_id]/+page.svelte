@@ -3,73 +3,18 @@
 	import { client } from '$lib/graphql/client';
 	import { gql } from '@urql/svelte';
 	import { getAuthState } from '$lib/auth.svelte';
-	import { page } from '$app/state';
-	import { getManga, type MangaWithFavorite } from '$lib/utils/getManga';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { Modal } from '@skeletonlabs/skeleton-svelte';
 	import { toaster } from '$lib/utils/toaster-svelte';
 	import { proxyImage } from '$lib/utils/image';
+	import type { PageData } from './$types';
 
-	const mangaIdStr = page.params.manga_id;
-	if (!mangaIdStr) throw new Error('Invalid manga id');
-	const mangaId = parseInt(mangaIdStr);
-	if (Number.isNaN(mangaId)) throw new Error('Invalid manga id');
-
-	let manga: MangaWithFavorite | null = $state(null);
 	let authState = $derived(getAuthState());
-	let categories: Array<{ id: number; name: string }> = $state([]);
 	let isLoading = $state(true);
 
-	$effect(() => {
-		if (authState.status === 'loading') return;
-		Promise.all([loadManga(), getCategories()]);
-	});
-
-	async function loadManga() {
-		isLoading = true;
-		try {
-			manga = await getManga(mangaId);
-		} catch (error) {
-			console.error('Failed to load manga', error);
-			toaster.error({
-				title: 'Error',
-				description: 'Failed to load manga'
-			});
-		} finally {
-			isLoading = false;
-		}
-	}
-
-	async function getCategories() {
-		if (authState.status !== 'authenticated') return [];
-
-		const { data, error } = await client
-			.query(
-				gql`
-					query categories {
-						categories {
-							userCategories {
-								id
-								name
-							}
-						}
-					}
-				`,
-				{}
-			)
-			.toPromise();
-
-		if (error) {
-			console.error('categories error', error);
-			toaster.error({
-				title: 'Error',
-				description: 'Failed to load categories'
-			});
-			return [];
-		}
-
-		categories = data?.categories?.userCategories ?? [];
-	}
+	let { data }: { data: PageData } = $props();
+	let manga = $state(data.manga);
+	const categories = data.categories;
 
 	let isFavoriting = $state<{ open: boolean; categoryId: number | null }>({
 		open: false,
