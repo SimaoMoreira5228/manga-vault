@@ -2634,7 +2634,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gql-api"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "argon2",
@@ -2664,6 +2664,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "uuid",
+ "version-check",
  "webp",
 ]
 
@@ -3793,7 +3794,7 @@ dependencies = [
 
 [[package]]
 name = "manga-vault"
-version = "0.18.6"
+version = "1.0.0"
 dependencies = [
  "config 0.1.0",
  "database-connection",
@@ -3803,6 +3804,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "version-check",
  "website-server",
 ]
 
@@ -5775,7 +5777,7 @@ dependencies = [
 
 [[package]]
 name = "scheduler"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -5788,6 +5790,7 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
+ "version-check",
 ]
 
 [[package]]
@@ -5837,7 +5840,7 @@ dependencies = [
 
 [[package]]
 name = "scraper_core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "config 0.1.0",
@@ -7570,6 +7573,17 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "version-check"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "reqwest",
+ "semver",
+ "serde",
+ "thiserror 2.0.16",
+]
 
 [[package]]
 name = "version-compare"

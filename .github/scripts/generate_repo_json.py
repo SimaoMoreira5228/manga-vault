@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+import os
+import sys
+import re
+import json
+import subprocess
+from pathlib import Path
+from typing import Optional, Tuple
+
+try:
+    import requests
+except Exception:
+    print("Install requests (pip).")
+    sys.exit(1)
+
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+if not GITHUB_TOKEN:
+    print("GITHUB_TOKEN missing. Exiting.")
+    sys.exit(1)
+
+REPO = os.getenv("GITHUB_REPOSITORY")
+if not REPO:
+    print("GITHUB_REPOSITORY missing. Exiting.")
+    sys.exit(1)
+OWNER, REPO_NAME = REPO.split("/")
+
+API_BASE = "https://api.github.com"
+HEADERS = {
+    "Authorization": f"token {GITHUB_TOKEN}",
+    "Accept": "application/vnd.github+json",
+}
+
+ROOT = Path(os.getenv("GITHUB_WORKSPACE", os.getcwd()))
+
+RUST_SCRAPERS = ["mangaread_org", "manga_dex", "hari_manga"]
+LUA_SCRAPERS = ["manhuafast", "natomanga"]
+
+ALL = [{"id": s, "type": "scraper-rust-wasm"} for s in RUST_SCRAPERS] + [
+    {"id": s, "type": "lua-plugin"} for s in LUA_SCRAPERS
+]
+
+
+def semver_tuple(v: str) -> Tuple[int, int, int]:
+    m = re.match(r"^(\d+)(?:\.(\d+))?(?:\.(\d+))?", v)
+    if not m:
+        return (0, 0, 0)
+    return (int(m.group(1) or 0), int(m.group(2) or 0), int(m.group(3) or 0))
+
+
+def classify_state(version: str) -> str:
+    try:
+        major, minor, patch = semver_tuple(version)
+        if major > 0:
+            return "stable"
+        if minor > 0:
+            return "beta"
+        return "alpha"
+    except Exception:
+        return "alpha"
+
+
+def list_releases():
+    url = f"{API_BASE}/repos/{OWNER}/{REPO_NAME}/releases?per_page=200"
+    r = requests.get(url, headers=HEADERS)
+    r.raise_for_status()
+    return r.json()
+
+
+def find_best_release_for_prefix(releases_json, prefix: str) -> Optional[dict]:
+    best = None
+    best_ver = None
+    for r in releases_json:
+        tag = r.get("tag_name", "")
+        m = re.search(rf"{re.escape(prefix)}@v?([\d]+\.[\d]+\.[\d]+)", tag)
+        if not m:
+            m = re.search(r"v?([\d]+\.[\d]+\.[\d]+)", tag)
+        if m:
+            ver = m.group(1)
+            if best is None or semver_tuple(ver) > semver_tuple(best_ver):
+                best = r
+                best_ver = ver
+    return best
+
+
+def pick_asset_url(release_json: dict, wanted_ext: str) -> Optional[Tuple[str, str]]:
+    assets = release_json.get("assets", [])
+
+    for a in assets:
+        name = a.get("name", "")
+        if name.lower().endswith(wanted_ext):
+            return name, a.get("browser_download_url")
+
+    for a in assets:
+        name = a.get("name", "")
+        if wanted_ext in name.lower():
+            return name, a.get("browser_download_url")
+    return None
+
+
+def run(cmd, cwd=None):
+    subprocess.run(cmd, cwd=cwd, check=True)
+
+
+def write_and_commit_repo_json(content: dict):
+    out_path = ROOT / "repo.json"
+    tmp = json.dumps(content, indent=2, ensure_ascii=False) + "\n"
+    if out_path.exists():
+        old = out_path.read_text(encoding="utf-8")
+        if old == tmp:
+            print("repo.json unchanged — nothing to commit.")
+            return False
+    out_path.write_text(tmp, encoding="utf-8")
+
+    run(["git", "add", str(out_path)])
+
+    try:
+        run(
+            [
+                "git",
+                "commit",
+                "-m",
+                "ci: update repo.json with latest scraper release URLs",
+            ]
+        )
+    except subprocess.CalledProcessError:
+        print("No changes to commit (git commit returned non-zero).")
+        return False
+    run(["git", "push", "origin", "HEAD"])
+    return True
+
+
+releases = list_releases()
+repo_content = {"name": "dewn_plugins", "plugins": []}
+
+for item in ALL:
+    pid = item["id"]
+    ptype = item["type"]
+    prefix = pid
+    rel = find_best_release_for_prefix(releases, prefix)
+    if not rel:
+        print(f"Warning: no release found for {pid}; skipping")
+        continue
+
+    tag = rel.get("tag_name", "")
+    m = re.search(r"v?([\d]+\.[\d]+\.[\d]+)", tag)
+    version = m.group(1) if m else rel.get("name", "unknown")
+
+    if ptype == "scraper-rust-wasm":
+        picked = pick_asset_url(rel, ".wasm")
+        if not picked:
+            print(f"Warning: no .wasm asset found for release {tag} ({pid}); skipping")
+            continue
+        asset_name, url = picked
+        repo_content["plugins"].append(
+            {
+                "name": pid,
+                "urls": {"wasm": url},
+                "version": version,
+                "state": "updated",
+                "build_state": classify_state(version),
+            }
+        )
+        print(f"Added {pid} -> {asset_name}")
+    elif ptype == "lua-plugin":
+        picked = pick_asset_url(rel, ".lua")
+        if not picked:
+            print(f"Warning: no .lua asset found for release {tag} ({pid}); skipping")
+            continue
+        asset_name, url = picked
+        repo_content["plugins"].append(
+            {
+                "name": pid,
+                "urls": {"lua": url},
+                "version": version,
+                "state": "updated",
+                "build_state": classify_state(version),
+            }
+        )
+        print(f"Added {pid} -> {asset_name}")
+    else:
+        print("Unknown type", ptype)
+
+write_and_commit_repo_json(repo_content)
+print("Done.")

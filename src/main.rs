@@ -6,31 +6,49 @@ use scheduler::MangaUpdateScheduler;
 use scraper_core::ScraperManager;
 use tracing_subscriber::FmtSubscriber;
 
+const PACKAGE_NAME: &str = env!("CARGO_PKG_NAME");
 const MANGA_VAULT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-	let subscriber = FmtSubscriber::builder()
-		// .with_max_level(TracingLevel::to_tracing_level(&CONFIG.tracing_level))
-		.with_max_level(tracing::Level::INFO)
-		.finish();
+	let subscriber = FmtSubscriber::builder().with_max_level(tracing::Level::INFO).finish();
 	tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-	// let latest_version = http_utils::downloader::get_version("SimaoMoreira5228",
-	// "manga-vault") .await
-	// .unwrap();
-	//
-	// if latest_version != MANGA_VAULT_VERSION {
-	// tracing::warn!(
-	// "There is a new version of manga_vault at: https://github.com/SimaoMoreira5228/manga-vault/releases/latest"
-	// );
-	// } else {
-	// tracing::info!("Application is up to date");
-	// http_utils::downloader::update_website().await;
-	// }
+	let latest_release = version_check::get_latest_release(PACKAGE_NAME).await?;
+
+	let update = match latest_release {
+		Some(release) => match version_check::is_update_available(MANGA_VAULT_VERSION, &release.version) {
+			Ok(needs_update) => {
+				if needs_update {
+					tracing::warn!(
+						"There is a new version of {} available: {} (current: {})",
+						PACKAGE_NAME,
+						release.version,
+						MANGA_VAULT_VERSION
+					);
+					tracing::warn!(
+						"Download at: https://github.com/SimaoMoreira5228/manga-vault/releases/tag/{}",
+						release.tag_name
+					);
+					true
+				} else {
+					tracing::info!("Application is up to date");
+					false
+				}
+			}
+			Err(e) => {
+				tracing::warn!("Failed to compare versions: {}", e);
+				false
+			}
+		},
+		None => {
+			tracing::warn!("Failed to check for updates");
+			false
+		}
+	};
 
 	let db = Database::new().await?;
-	let scraper_manager = ScraperManager::new().await?;
+	let scraper_manager = ScraperManager::new(update).await?;
 
 	let scheduler_db = db.clone();
 	let scheduler_scraper_manager = scraper_manager.clone();
