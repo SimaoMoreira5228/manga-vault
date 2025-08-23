@@ -9,6 +9,7 @@
 	import { Modal } from '@skeletonlabs/skeleton-svelte';
 	import { gql } from '@urql/svelte';
 	import { Avatar } from 'bits-ui';
+	import type { PageData } from './$types';
 
 	type isUpdatingCategoryType = {
 		open: boolean;
@@ -18,10 +19,12 @@
 		};
 	};
 
+	let { data }: { data: PageData } = $props();
+
 	let authState = $derived(getAuthState());
-	let fileIds = $state<number[]>([]);
+	let fileIds = $state<number[]>(data.fileIds || []);
 	let fileInput: HTMLInputElement;
-	let uploadingFile = $state(false);
+	let isUploadingFile = $state(false);
 	let isUpdatingCategory = $state<isUpdatingCategoryType>({
 		open: false,
 		input: { username: null, imageId: null }
@@ -62,7 +65,7 @@
 
 	async function uploadFile(file: File) {
 		if (authState.status !== 'authenticated') return;
-		uploadingFile = true;
+		isUploadingFile = true;
 
 		try {
 			await client
@@ -90,7 +93,7 @@
 				description: 'Failed to upload file'
 			});
 		} finally {
-			uploadingFile = false;
+			isUploadingFile = false;
 		}
 	}
 
@@ -176,40 +179,38 @@
 				<PenLine size={16} />
 			</button>
 		</h5>
-		{#if uploadingFile}
-			<DotsSpinner class="text-primary-500 h-18 w-18" />
-		{:else}
-			<div class="h-6/10 flex flex-col items-center justify-center overflow-auto">
-				<div
-					class="mt-4 grid grid-cols-1 justify-items-center gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+		<div class="h-6/10 flex flex-col items-center justify-center overflow-auto">
+			<div
+				class="mt-4 grid grid-cols-1 justify-items-center gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+			>
+				<button
+					class="border-primary-100-900 flex h-72 w-72 flex-col items-center justify-center rounded-lg border border-dashed"
+					onclick={() => (isUploadingFile ? null : fileInput.click())}
 				>
-					<button
-						class="border-primary-100-900 flex h-72 w-72 flex-col items-center justify-center rounded-lg border border-dashed"
-						onclick={() => fileInput.click()}
-					>
+					{#if isUploadingFile}
+						<DotsSpinner class="h-8 w-8" />
+					{:else}
 						<Plus />
+					{/if}
+				</button>
+				{#each fileIds as fileId}
+					<button
+						onclick={async () => {
+							isUpdatingCategory.input.imageId = fileId;
+							await updateProfile();
+						}}
+					>
+						<img
+							src={getImage(fileId)}
+							alt=""
+							class="h-72 w-72 rounded-lg object-cover {fileId === authState.user.imageId
+								? 'ring-primary-500 ring-2'
+								: ''}"
+						/>
 					</button>
-					{#await getUserFiles() then _}
-						{#each fileIds as fileId}
-							<button
-								onclick={async () => {
-									isUpdatingCategory.input.imageId = fileId;
-									await updateProfile();
-								}}
-							>
-								<img
-									src={getImage(fileId)}
-									alt=""
-									class="h-72 w-72 rounded-lg object-cover {fileId === authState.user.imageId
-										? 'ring-primary-500 ring-2'
-										: ''}"
-								/>
-							</button>
-						{/each}
-					{/await}
-				</div>
+				{/each}
 			</div>
-		{/if}
+		</div>
 	</div>
 {/if}
 

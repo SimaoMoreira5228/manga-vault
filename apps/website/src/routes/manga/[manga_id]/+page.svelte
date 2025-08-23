@@ -3,7 +3,6 @@
 	import { client } from '$lib/graphql/client';
 	import { gql } from '@urql/svelte';
 	import { getAuthState } from '$lib/auth.svelte';
-	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { Modal } from '@skeletonlabs/skeleton-svelte';
 	import { toaster } from '$lib/utils/toaster-svelte';
 	import { proxyImage } from '$lib/utils/image';

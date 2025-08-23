@@ -9,6 +9,21 @@ type AuthState =
 
 let authState = $state<AuthState>({ status: 'loading' });
 
+export async function waitForAuthState() {
+	if (authState.status === 'loading') {
+		await new Promise<void>((resolve) => {
+			const interval = setInterval(() => {
+				if (authState.status !== 'loading') {
+					clearInterval(interval);
+					resolve();
+				}
+			}, 100);
+		});
+	}
+
+	return authState;
+}
+
 export function getAuthState() {
 	return authState;
 }

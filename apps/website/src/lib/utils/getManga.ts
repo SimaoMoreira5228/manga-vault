@@ -1,7 +1,7 @@
 import type { Manga } from '$gql/graphql';
 import { client } from '$lib/graphql/client';
 import { gql } from '@urql/svelte';
-import { getAuthState } from '$lib/auth.svelte';
+import { waitForAuthState } from '$lib/auth.svelte';
 
 export type MangaWithFavorite = Manga & {
 	isFavorite: boolean;
@@ -64,18 +64,7 @@ function normalizeFavoriteData(fav: any, manga: Manga): MangaWithFavorite | null
 }
 
 export async function getManga(id: number): Promise<MangaWithFavorite | null> {
-	const authState = getAuthState();
-	if (authState.status === 'loading') {
-		await new Promise<void>((resolve) => {
-			const interval = setInterval(() => {
-				if (authState.status !== 'loading') {
-					clearInterval(interval);
-					resolve();
-				}
-			}, 100);
-		});
-	}
-
+	const authState = await waitForAuthState();
 	const isAuthenticated = authState.status === 'authenticated';
 
 	const mangaQuery = gql`
