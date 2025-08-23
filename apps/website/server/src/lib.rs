@@ -77,7 +77,7 @@ pub async fn run() -> anyhow::Result<()> {
 					);
 					true
 				} else {
-					tracing::info!("Application is up to date");
+					tracing::info!("Website is up to date");
 					false
 				}
 			}
