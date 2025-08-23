@@ -20,9 +20,6 @@ if not REPO:
 OWNER, REPO_NAME = REPO.split("/")
 
 MANIFEST_FILE = Path("release_manifest.json")
-WEBSITE_DIR = Path("apps/website")
-WEBSITE_BUILD_DIR = WEBSITE_DIR / "build"
-WEBSITE_ZIP = Path("website.zip")
 
 
 def run(cmd, cwd=None):
@@ -117,44 +114,34 @@ if not created:
     sys.exit(0)
 
 for entry in created:
-    if entry.get("type") != "cargo-bin":
-        continue
-    crate = entry.get("crate")
-    bin_name = entry.get("bin_name") or crate
-    pkg_path = entry.get("path") or "."
-    try:
-        artifact = build_binary(crate, bin_name, pkg_path, platform)
-        suffix = platform_suffix(platform)
-        out_name = f"{bin_name}-{suffix}{'.exe' if artifact.suffix=='.exe' else ''}"
-        out_path = Path(out_name)
-        shutil.copy2(artifact, out_path)
-        print("Uploading", out_path)
-        upload_asset(entry["upload_url"], out_path)
-        out_path.unlink(missing_ok=True)
-        print("Uploaded", out_name)
-    except Exception as e:
-        print("Failed to build/upload", crate, ":", e)
-
-if platform == "linux":
-    main_entries = [
-        e
-        for e in created
-        if e.get("id") == "manga-vault" or e.get("id") == "manga-vault"
-    ]
-    if main_entries:
-        main_entry = main_entries[-1]
-        print("Detected main release; attempting website build (bun run build)")
+    if entry.get("type") == "cargo-bin":
+        crate = entry.get("crate")
+        bin_name = entry.get("bin_name") or crate
+        pkg_path = entry.get("path") or "."
         try:
-            if WEBSITE_DIR.exists():
-                run(["bun", "run", "build"], cwd=WEBSITE_DIR)
-                if WEBSITE_BUILD_DIR.exists():
-                    zip_website(WEBSITE_BUILD_DIR, WEBSITE_ZIP)
-                    upload_asset(main_entry["upload_url"], WEBSITE_ZIP)
-                    WEBSITE_ZIP.unlink(missing_ok=True)
-                    print("Website zip uploaded.")
-                else:
-                    print("Website build output not found after bun build.")
-            else:
-                print("apps/website directory not found; skipping website.")
+            artifact = build_binary(crate, bin_name, pkg_path, platform)
+            suffix = platform_suffix(platform)
+            out_name = f"{bin_name}-{suffix}{'.exe' if artifact.suffix=='.exe' else ''}"
+            out_path = Path(out_name)
+            shutil.copy2(artifact, out_path)
+            print("Uploading", out_path)
+            upload_asset(entry["upload_url"], out_path)
+            out_path.unlink(missing_ok=True)
+            print("Uploaded", out_name)
         except Exception as e:
-            print("Website build/upload failed:", e)
+            print("Failed to build/upload", crate, ":", e)
+    elif entry.get("type") == "bun-app" and platform == "linux":
+        website_dir = Path(entry.get("path"))
+        run(["bun", "install"], cwd=website_dir)
+
+        website_build_dir = website_dir / "build"
+        print("Building bun app in", website_dir)
+        run(["bun", "run", "build"], cwd=website_dir)
+        if website_build_dir.exists():
+            try:
+                zip_website(website_build_dir, entry.get("zip_name"))
+                upload_asset(entry["upload_url"], Path(entry.get("zip_name")))
+                Path(entry.get("zip_name")).unlink(missing_ok=True)
+                print("Uploaded", entry.get("zip_name"))
+            except Exception as e:
+                print("Failed to zip/upload bun app:", e)
