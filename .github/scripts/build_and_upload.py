@@ -134,6 +134,8 @@ for entry in created:
         website_dir = Path(entry.get("path"))
         run(["bun", "install"], cwd=website_dir)
 
+        os.rename(website_dir / ".env.example", website_dir / ".env")
+
         website_build_dir = website_dir / "build"
         print("Building bun app in", website_dir)
         run(["bun", "run", "build"], cwd=website_dir)

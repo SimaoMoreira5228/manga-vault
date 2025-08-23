@@ -22,6 +22,8 @@ pub struct Config {
 	pub port: u16,
 	#[serde(default)]
 	pub folder: String,
+	#[serde(default)]
+	pub api_endpoint: String,
 }
 
 impl Default for Config {
@@ -29,6 +31,7 @@ impl Default for Config {
 		Self {
 			port: 5227,
 			folder: format!("{}/website", current_exe_parent_dir().display()),
+			api_endpoint: format!("http://localhost:{}", 5228),
 		}
 	}
 }
@@ -60,7 +63,25 @@ pub async fn run() {
 		}
 	});
 
+	let env_service = axum::routing::get({
+		let env_response = format!(
+			"export const env={{\"PUBLIC_API_URL\":\"{}\",\"PUBLIC_IMAGE_PROXY_URL\":\"{}/proxy\"}};",
+			config.api_endpoint, config.api_endpoint
+		);
+
+		move |_: axum::extract::Request| {
+			let body = env_response.clone();
+			async move {
+				axum::response::Response::builder()
+					.header("Content-Type", "application/javascript")
+					.body(body)
+					.unwrap()
+			}
+		}
+	});
+
 	let app = Router::new()
+		.route("/_app/env.js", env_service)
 		.nest_service("/assets", assets_service)
 		.nest_service("/_app", assets_app_service)
 		.fallback_service(pages_service)
