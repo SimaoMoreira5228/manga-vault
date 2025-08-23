@@ -74,34 +74,32 @@ impl Database {
 	pub async fn new() -> Result<Arc<Self>, Error> {
 		let config = Arc::new(Config::load());
 
-		let mut parsed_url = Url::parse(&config.database_url)?;
+		let parsed_url = Url::parse(&config.database_url)?;
 
 		let scheme = parsed_url.scheme().to_string();
 
 		let conn: Connection = match scheme.as_str() {
 			"sqlite" => {
-				let db_path = parsed_url
-					.to_file_path()
-					.map_err(|_| Error::UnsupportedDatabaseScheme(scheme.clone()))?;
+				let db_path = parse_sqlite_url(&config, &parsed_url)?;
 
-				let exists = Path::new(&db_path).exists();
+				let path_str = db_path.to_string_lossy().to_string();
 
-				{
-					parsed_url.set_query(Some("mode=rwc"));
-				}
+				let conn_str = if path_str.starts_with('/') {
+					format!("sqlite://{}?mode=rwc", path_str)
+				} else {
+					format!("sqlite:///{}?mode=rwc", path_str)
+				};
 
-				let open_string = parsed_url.to_string();
-				let mut opt = ConnectOptions::new(open_string.clone());
+				let mut opt = ConnectOptions::new(conn_str.clone());
 				opt.sqlx_logging(false);
 
 				let conn_result = sea_orm::Database::connect(opt).await;
-
 				if let Err(e) = conn_result {
 					return Err(Error::MigrationError(e.into()));
 				}
 				let conn = conn_result.unwrap();
 
-				if !exists {
+				if !db_path.exists() {
 					database_migration::Migrator::fresh(&conn)
 						.await
 						.map_err(Error::MigrationError)?;
@@ -171,10 +169,7 @@ impl Database {
 			return Err(Error::BackupError("Backup is only supported for SQLite".to_string()));
 		}
 
-		let path = self
-			.url
-			.to_file_path()
-			.map_err(|_| Error::BackupError("Invalid SQLite path".into()))?;
+		let path = parse_sqlite_url(&self.config, &self.url)?;
 
 		let timestamp = chrono::Utc::now().format("%Y-%m-%d_%H-%M").to_string();
 		let backup_filename = format!("backup-{}.sqlite", timestamp);
@@ -227,4 +222,26 @@ impl Database {
 
 		Ok(())
 	}
+}
+
+fn parse_sqlite_url(config: &Config, url: &Url) -> Result<PathBuf, Error> {
+	let db_path: PathBuf = match url.to_file_path() {
+		Ok(p) => p,
+		Err(_) => {
+			let raw = config
+				.database_url
+				.trim_start_matches("sqlite://")
+				.trim_start_matches("sqlite:");
+
+			let raw = raw.trim_start_matches('/');
+
+			let normalized = raw.replace('\\', "/");
+
+			PathBuf::from(normalized)
+		}
+	};
+
+	let mut path_str = db_path.to_string_lossy().to_string();
+	path_str = path_str.replace('\\', "/");
+	Ok(path_str.into())
 }
