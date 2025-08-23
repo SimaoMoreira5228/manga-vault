@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global, undefined-field
 
 PLUGIN_NAME = "natomanga"
-PLUGIN_VERSION = "0.1.3"
+PLUGIN_VERSION = "0.1.4"
 
 function Scrape_chapter(url)
     local html = http:get(url).text
@@ -22,6 +22,12 @@ function Scrape_chapter(url)
 
     local imgs = {}
     for img_path in string.gmatch(chapter_images_json, '"(.-)"') do
+        img_path = string.gsub(img_path, "\\/", "/")
+
+        if not string.match(cdn, "/$") then
+            cdn = cdn .. "/"
+        end
+
         table.insert(imgs, cdn .. img_path)
     end
 
