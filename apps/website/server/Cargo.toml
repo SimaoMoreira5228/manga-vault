@@ -1,6 +1,6 @@
 [package]
 name = "website-server"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 
 [lib]
@@ -21,3 +21,4 @@ config-derive = { workspace = true }
 tracing = { workspace = true }
 version-check = { workspace = true }
 anyhow = { workspace = true }
+axum-server = { workspace = true }

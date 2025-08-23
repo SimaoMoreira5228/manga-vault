@@ -1,6 +1,6 @@
 [package]
 name = "manga-vault"
-version = "1.0.1"
+version = "1.2.0"
 edition = "2024"
 
 [[bin]]
@@ -43,7 +43,7 @@ queue = { path = "apps/scheduler/queue" }
 scheduler = { path = "apps/scheduler" }
 website-server = { path = "apps/website/server" }
 tokio = { version = "1", features = ["full"] }
-axum = "0.8"
+axum = { version = "0.8", features = ["http2"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 chrono = "0.4"
@@ -53,6 +53,7 @@ anyhow = "1"
 rand = "0.9"
 reqwest = { version = "0.12", features = ["stream", "blocking", "json"] }
 version-check = { path = "apps/http/version_check" }
+axum-server = { version = "0.7.2", features = ["tls-rustls"] }
 
 [dependencies]
 tracing = { workspace = true }

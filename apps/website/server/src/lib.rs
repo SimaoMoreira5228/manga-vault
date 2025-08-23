@@ -1,10 +1,10 @@
 use std::env;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 use anyhow::Context;
 use axum::Router;
 use serde::{Deserialize, Serialize};
-use tokio::net::TcpListener;
 use tower_http::compression::CompressionLayer;
 use tower_http::services::ServeDir;
 
@@ -25,6 +25,10 @@ pub struct Config {
 	pub folder: String,
 	#[serde(default)]
 	pub api_endpoint: String,
+	#[serde(default)]
+	pub cert_path: Option<String>,
+	#[serde(default)]
+	pub key_path: Option<String>,
 }
 
 impl Default for Config {
@@ -32,7 +36,9 @@ impl Default for Config {
 		Self {
 			port: 5227,
 			folder: format!("{}/website", current_exe_parent_dir().display()),
-			api_endpoint: format!("http://localhost:{}", 5228),
+			api_endpoint: format!("https://localhost:{}", 5228),
+			cert_path: None,
+			key_path: None,
 		}
 	}
 }
@@ -141,15 +147,20 @@ pub async fn run() -> anyhow::Result<()> {
 		.fallback(spa_service)
 		.layer(CompressionLayer::new());
 
-	tracing::info!("Starting website on http://localhost:{}", config.port);
-	axum::serve(
-		TcpListener::bind(format!("0.0.0.0:{}", config.port))
+	if let (Some(cert), Some(key)) = (config.cert_path.clone(), config.key_path.clone()) {
+		let rustls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(cert, key)
 			.await
-			.expect("Failed to bind to port"),
-		app,
-	)
-	.await
-	.expect("Failed to start website");
+			.context("Failed to load TLS certs")?;
+
+		tracing::info!("Starting website on https://localhost:{}", config.port);
+		axum_server::bind_rustls(SocketAddr::from(([0, 0, 0, 0], config.port)), rustls_config)
+			.serve(app.into_make_service())
+			.await?;
+	} else {
+		tracing::info!("Starting website on http://localhost:{}", config.port);
+		let listener = tokio::net::TcpListener::bind(SocketAddr::from(([0, 0, 0, 0], config.port))).await?;
+		axum::serve(listener, app).await?;
+	}
 
 	Ok(())
 }
