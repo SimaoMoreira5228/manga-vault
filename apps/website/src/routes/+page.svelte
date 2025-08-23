@@ -17,7 +17,7 @@
 	let isLoading = $state(false);
 	let areMangasLoading = $state(false);
 	let orderType: 'unread' | 'alphabetical' = $state('unread');
-	
+
 	let authState = $derived(getAuthState());
 	let currentCategory = $state(data.currentCategory);
 
