@@ -3,7 +3,6 @@ import os
 import sys
 import re
 import json
-import subprocess
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -69,16 +68,49 @@ def list_releases():
 def find_best_release_for_prefix(releases_json, prefix: str) -> Optional[dict]:
     best = None
     best_ver = None
+    pref_low = prefix.lower()
+
     for r in releases_json:
-        tag = r.get("tag_name", "")
-        m = re.search(rf"{re.escape(prefix)}@v?([\d]+\.[\d]+\.[\d]+)", tag)
+        tag = (r.get("tag_name") or "").strip()
+        name = (r.get("name") or "").strip()
+        assets = r.get("assets", [])
+
+        ver = None
+
+        m = re.search(
+            rf"{re.escape(prefix)}@v?([\d]+\.[\d]+\.[\d]+)", tag, re.IGNORECASE
+        )
         if not m:
-            m = re.search(r"v?([\d]+\.[\d]+\.[\d]+)", tag)
+            m = re.search(
+                rf"{re.escape(prefix)}@v?([\d]+\.[\d]+\.[\d]+)", name, re.IGNORECASE
+            )
         if m:
             ver = m.group(1)
+        else:
+            found_prefix = (pref_low in tag.lower()) or (pref_low in name.lower())
+            if not found_prefix:
+                for a in assets:
+                    if pref_low in (a.get("name", "").lower()):
+                        found_prefix = True
+                        break
+
+            if found_prefix:
+                m2 = re.search(r"v?([\d]+\.[\d]+\.[\d]+)", tag) or re.search(
+                    r"v?([\d]+\.[\d]+\.[\d]+)", name
+                )
+                if not m2:
+                    for a in assets:
+                        m2 = re.search(r"v?([\d]+\.[\d]+\.[\d]+)", a.get("name", ""))
+                        if m2:
+                            break
+                if m2:
+                    ver = m2.group(1)
+
+        if ver:
             if best is None or semver_tuple(ver) > semver_tuple(best_ver):
                 best = r
                 best_ver = ver
+
     return best
 
 
@@ -95,38 +127,6 @@ def pick_asset_url(release_json: dict, wanted_ext: str) -> Optional[Tuple[str, s
         if wanted_ext in name.lower():
             return name, a.get("browser_download_url")
     return None
-
-
-def run(cmd, cwd=None):
-    subprocess.run(cmd, cwd=cwd, check=True)
-
-
-def write_and_commit_repo_json(content: dict):
-    out_path = ROOT / "repo.json"
-    tmp = json.dumps(content, indent=2, ensure_ascii=False) + "\n"
-    if out_path.exists():
-        old = out_path.read_text(encoding="utf-8")
-        if old == tmp:
-            print("repo.json unchanged — nothing to commit.")
-            return False
-    out_path.write_text(tmp, encoding="utf-8")
-
-    run(["git", "add", str(out_path)])
-
-    try:
-        run(
-            [
-                "git",
-                "commit",
-                "-m",
-                "ci: update repo.json with latest scraper release URLs",
-            ]
-        )
-    except subprocess.CalledProcessError:
-        print("No changes to commit (git commit returned non-zero).")
-        return False
-    run(["git", "push", "origin", "HEAD"])
-    return True
 
 
 releases = list_releases()
@@ -180,5 +180,13 @@ for item in ALL:
     else:
         print("Unknown type", ptype)
 
-write_and_commit_repo_json(repo_content)
+out_path = ROOT / "repo.json"
+tmp = json.dumps(repo_content, indent=2, ensure_ascii=False) + "\n"
+if out_path.exists():
+    old = out_path.read_text(encoding="utf-8")
+    if old == tmp:
+        print("repo.json unchanged — nothing to commit.")
+        exit(0)
+
+out_path.write_text(tmp, encoding="utf-8")
 print("Done.")

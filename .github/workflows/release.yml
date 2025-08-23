@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
   prepare:
@@ -31,6 +32,13 @@ jobs:
           toolchain: stable
           profile: minimal
           override: true
+
+      - name: Cache Cargo registry & git index
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust-release"
+          cache-on-failure: true
+          shared-key: "rust-release-prepare-${{ runner.os }}"
 
       - name: Install cargo-component
         run: |
@@ -69,11 +77,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+
+      - name: Cache Cargo registry & git index
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust-release"
+          cache-on-failure: true
+          shared-key: "rust-release-build-${{ runner.os }}"
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
@@ -81,13 +98,16 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
+
       - name: Install Python deps
         run: python -m pip install --upgrade pip && pip install requests
+
       - name: Download manifest
         uses: actions/download-artifact@v4
         with:
           name: release-manifest
           path: .
+
       - name: Build & upload linux binaries + website
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -103,26 +123,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+
+      - name: Cache Cargo registry & git index
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust-release"
+          cache-on-failure: true
+          shared-key: "rust-release-build-scrapers-${{ runner.os }}"
+
       - name: Install cargo-component
         run: |
           rustup component add rust-src || true
           cargo install cargo-component --version 0.21.0 --force || true
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
+
       - name: Install Python deps
         run: python -m pip install --upgrade pip && pip install requests
+
       - name: Download manifest
         uses: actions/download-artifact@v4
         with:
           name: release-manifest
           path: .
+
       - name: Build & upload scrapers
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -138,22 +171,34 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Rust (Windows)
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+
+      - name: Cache Cargo registry & git index
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust-release"
+          cache-on-failure: true
+          shared-key: "rust-release-build-${{ runner.os }}"
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
+
       - name: Install Python deps
         run: python -m pip install --upgrade pip && pip install requests
+
       - name: Download manifest
         uses: actions/download-artifact@v4
         with:
           name: release-manifest
           path: .
+
       - name: Build & upload windows binaries
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -168,22 +213,34 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+
+      - name: Cache Cargo registry & git index
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust-release"
+          cache-on-failure: true
+          shared-key: "rust-release-build-${{ runner.os }}"
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
+
       - name: Install Python deps
         run: python -m pip install --upgrade pip && pip install requests
+
       - name: Download manifest
         uses: actions/download-artifact@v4
         with:
           name: release-manifest
           path: .
+
       - name: Build & upload macos-x86 binaries
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -198,22 +255,34 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+
+      - name: Cache Cargo registry & git index
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust-release"
+          cache-on-failure: true
+          shared-key: "rust-release-build-${{ runner.os }}"
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
+
       - name: Install Python deps
         run: python -m pip install --upgrade pip && pip install requests
+
       - name: Download manifest
         uses: actions/download-artifact@v4
         with:
           name: release-manifest
           path: .
+
       - name: Build & upload macos-arm binaries
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -252,3 +321,18 @@ jobs:
         run: |
           chmod +x ./.github/scripts/generate_repo_json.py || true
           python ./.github/scripts/generate_repo_json.py
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ci/update-repo-json
+          commit-message: "ci: update repo.json with latest scraper release URLs"
+          title: "ci: update repo.json"
+          body: |
+            Automated update of `repo.json` with the latest scraper releases.
+          base: master
+          delete-branch: true
+          labels: automated, release
+          draft: false
+          add-paths: "repo.json"
