@@ -1,9 +1,11 @@
-use std::{env, path::PathBuf};
+use std::env;
+use std::path::PathBuf;
 
 use axum::Router;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
-use tower_http::{compression::CompressionLayer, services::ServeDir};
+use tower_http::compression::CompressionLayer;
+use tower_http::services::ServeDir;
 
 fn current_exe_parent_dir() -> PathBuf {
 	env::current_exe()

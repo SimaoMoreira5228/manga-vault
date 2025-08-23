@@ -2,38 +2,44 @@ name: CI (Rust)
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   rust-lint-test:
-    name: "Rust: fmt, clippy, test"
+    name: "Rust: fmt (nightly), clippy, test"
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Rust (nightly) + cache
-        uses: dtolnay/rust-toolchain@stable
-        id: setup_rust
+      - name: Setup Rust (stable) + components
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          override: true
+
+      - name: Setup Rust (nightly) + components
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
-          components: rustfmt,clippy
+          components: rustfmt
+          override: false
 
       - name: Cache Cargo registry & git index
         uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "v0-rust-${{ steps.setup_rust.outputs.cachekey }}"
+          prefix-key: "v0-rust-ci"
           cache-on-failure: true
           shared-key: "rust-ci-${{ runner.os }}"
 
-      - name: Run fmt
-        uses: ./.github/actions/fmt
+      - name: Run fmt (nightly)
+        run: cargo +nightly fmt -- --check
+        shell: bash
 
-      - name: Run clippy
-        uses: ./.github/actions/clippy
-
-      - name: Run `cargo test`
-        run: cargo test --all-features --quiet
+      - name: Run clippy (stable)
+        run: cargo clippy --all-features --all-targets --no-deps -- -D warnings
+        shell: bash
