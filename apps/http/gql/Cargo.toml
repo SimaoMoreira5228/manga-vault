@@ -1,6 +1,6 @@
 [package]
 name = "gql-api"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [lib]
@@ -46,3 +46,4 @@ webp = "0.3"
 httpdate = "1.0.3"
 uuid = { version = "1.18", features = ["v4"] }
 tokio-util = "0.7"
+axum-server = { workspace = true }

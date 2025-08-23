@@ -1,4 +1,5 @@
 use std::env;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -7,6 +8,7 @@ use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::http::{HeaderMap, HeaderValue, Method, header};
 use axum::routing::{get, post};
 use axum::{Extension, Router};
+use axum_server::tls_rustls::RustlsConfig;
 use database_connection::Database;
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use rand::Rng;
@@ -60,6 +62,10 @@ pub struct Config {
 	pub uploads_folder: String,
 	#[serde(default)]
 	pub cors_allow_origins: Vec<String>,
+	#[serde(default)]
+	pub cert_path: Option<String>,
+	#[serde(default)]
+	pub key_path: Option<String>,
 }
 
 impl Default for Config {
@@ -71,6 +77,8 @@ impl Default for Config {
 			max_file_size: 10 * 1024 * 1024, // 10 MB
 			uploads_folder: format!("{}/uploads", current_exe_parent_dir().display()),
 			cors_allow_origins: vec!["http://localhost:5227".into()],
+			cert_path: None,
+			key_path: None,
 		}
 	}
 }
@@ -172,20 +180,39 @@ pub async fn run(db: Arc<Database>, scraper_manager: Arc<ScraperManager>) -> any
 		.layer(Extension(db))
 		.with_state(schema);
 
-	tracing::info!(
-		"GraphQL Playground available at http://localhost:{}/playground",
-		config.api_port
-	);
-	tracing::info!("GraphQL API available at http://localhost:{}/", config.api_port);
+	match (config.cert_path.clone(), config.key_path.clone()) {
+		(Some(cert_path), Some(key_path)) => {
+			let rustls_config = RustlsConfig::from_pem_file(cert_path, key_path)
+				.await
+				.expect("Failed to load TLS certs");
 
-	axum::serve(
-		TcpListener::bind(format!("0.0.0.0:{}", config.api_port))
+			tracing::info!("GraphQL API available at https://localhost:{}/", config.api_port);
+			tracing::info!(
+				"GraphQL Playground available at https://localhost:{}/playground",
+				config.api_port
+			);
+
+			axum_server::bind_rustls(SocketAddr::from(([0, 0, 0, 0], config.api_port)), rustls_config)
+				.serve(app.clone().into_make_service())
+				.await?;
+		}
+		_ => {
+			tracing::info!("GraphQL API available at http://localhost:{}/", config.api_port);
+			tracing::info!(
+				"GraphQL Playground available at http://localhost:{}/playground",
+				config.api_port
+			);
+
+			axum::serve(
+				TcpListener::bind(SocketAddr::from(([0, 0, 0, 0], config.api_port)))
+					.await
+					.expect("Failed to bind to port"),
+				app,
+			)
 			.await
-			.expect("Failed to bind to port"),
-		app,
-	)
-	.await
-	.expect("Failed to start server");
+			.expect("Failed to start server");
+		}
+	}
 
 	Ok(())
 }
