@@ -40,9 +40,9 @@
     {
       "name": "natomanga",
       "urls": {
-        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.1.3/natomanga.lua"
+        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.1.4/natomanga.lua"
       },
-      "version": "0.1.3",
+      "version": "0.1.4",
       "state": "updated",
       "build_state": "beta"
     }
