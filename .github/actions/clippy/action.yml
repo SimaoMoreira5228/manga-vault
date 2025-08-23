@@ -1,8 +1,0 @@
-name: Clippy
-description: "Run `cargo clippy` on all features and targets"
-
-runs:
-  using: "composite"
-  steps:
-    - name: Run `cargo clippy --all-features --all-targets --no-deps -- -D warnings`
-      run: cargo clippy --all-features --all-targets --no-deps -- -D warnings

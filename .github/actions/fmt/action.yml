@@ -1,8 +1,0 @@
-name: Fmt
-description: "Check Rust code formatting with `cargo fmt -- --check`"
-
-runs:
-  using: "composite"
-  steps:
-    - name: Run `cargo fmt -- --check`
-      run: cargo fmt -- --check

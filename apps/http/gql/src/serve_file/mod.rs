@@ -1,11 +1,10 @@
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
+use std::sync::Arc;
 
-use axum::{
-	Extension,
-	extract::Path,
-	http::{self, HeaderMap, HeaderValue, StatusCode},
-	response::Response,
-};
+use axum::Extension;
+use axum::extract::Path;
+use axum::http::{self, HeaderMap, HeaderValue, StatusCode};
+use axum::response::Response;
 use database_connection::Database;
 use jsonwebtoken::{DecodingKey, Validation};
 use reqwest::header;
@@ -13,7 +12,8 @@ use sea_orm::EntityTrait;
 use tokio::fs::File as TokioFile;
 use tokio_util::io::ReaderStream;
 
-use crate::{Config, mutations::auth::Claims};
+use crate::Config;
+use crate::mutations::auth::Claims;
 
 pub async fn serve_file(
 	Path(file_id): Path<i32>,
