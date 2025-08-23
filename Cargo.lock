@@ -3794,7 +3794,7 @@ dependencies = [
 
 [[package]]
 name = "manga-vault"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "config 0.1.0",
  "database-connection",
@@ -8576,8 +8576,9 @@ dependencies = [
 
 [[package]]
 name = "website-server"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
+ "anyhow",
  "axum",
  "config 0.1.0",
  "config-derive",
@@ -8586,6 +8587,7 @@ dependencies = [
  "tokio",
  "tower-http",
  "tracing",
+ "version-check",
 ]
 
 [[package]]

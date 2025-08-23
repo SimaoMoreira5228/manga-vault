@@ -1,6 +1,6 @@
 [package]
 name = "website-server"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 
 [lib]
@@ -19,3 +19,5 @@ serde_json = { workspace = true }
 config = { workspace = true }
 config-derive = { workspace = true }
 tracing = { workspace = true }
+version-check = { workspace = true }
+anyhow = { workspace = true }
