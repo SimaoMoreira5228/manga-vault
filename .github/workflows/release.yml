@@ -26,28 +26,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Setup Rust and tools
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-
-      - name: Cache Cargo registry & git index
-        uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "v0-rust-release"
-          cache-on-failure: true
-          shared-key: "rust-release-prepare-${{ runner.os }}"
-
-      - name: Install cargo-component
-        run: |
-          rustup component add rust-src || true
-          cargo install cargo-component --version 0.21.0 --force || true
-
-      - name: Setup Bun (for website build later; available on linux job too)
-        uses: oven-sh/setup-bun@v2
-
       - name: Setup Python 3.11
         uses: actions/setup-python@v4
         with:
