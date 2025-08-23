@@ -166,13 +166,11 @@ def find_latest_release_version_for_prefix(releases_json, prefix: str) -> Option
     best = None
     for r in releases_json:
         tag = r.get("tag_name", "")
-        m = re.search(rf"{re.escape(prefix)}@v?([\d]+\.[\d]+\.[\d]+)", tag)
-        if not m:
-            m = re.search(r"v?([\d]+\.[\d]+\.[\d]+)", tag)
-        if m:
-            ver = m.group(1)
-            if best is None or semver_tuple(ver) > semver_tuple(best):
-                best = ver
+        if not tag.startswith(f"{prefix}@v"):
+            continue
+        version = tag.split("@v")[1]
+        if best is None or semver_tuple(version) > semver_tuple(best):
+            best = version
     return best
 
 

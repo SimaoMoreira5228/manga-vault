@@ -68,49 +68,15 @@ def list_releases():
 def find_best_release_for_prefix(releases_json, prefix: str) -> Optional[dict]:
     best = None
     best_ver = None
-    pref_low = prefix.lower()
 
     for r in releases_json:
         tag = (r.get("tag_name") or "").strip()
-        name = (r.get("name") or "").strip()
-        assets = r.get("assets", [])
-
-        ver = None
-
-        m = re.search(
-            rf"{re.escape(prefix)}@v?([\d]+\.[\d]+\.[\d]+)", tag, re.IGNORECASE
-        )
-        if not m:
-            m = re.search(
-                rf"{re.escape(prefix)}@v?([\d]+\.[\d]+\.[\d]+)", name, re.IGNORECASE
-            )
-        if m:
-            ver = m.group(1)
-        else:
-            found_prefix = (pref_low in tag.lower()) or (pref_low in name.lower())
-            if not found_prefix:
-                for a in assets:
-                    if pref_low in (a.get("name", "").lower()):
-                        found_prefix = True
-                        break
-
-            if found_prefix:
-                m2 = re.search(r"v?([\d]+\.[\d]+\.[\d]+)", tag) or re.search(
-                    r"v?([\d]+\.[\d]+\.[\d]+)", name
-                )
-                if not m2:
-                    for a in assets:
-                        m2 = re.search(r"v?([\d]+\.[\d]+\.[\d]+)", a.get("name", ""))
-                        if m2:
-                            break
-                if m2:
-                    ver = m2.group(1)
-
-        if ver:
-            if best is None or semver_tuple(ver) > semver_tuple(best_ver):
-                best = r
-                best_ver = ver
-
+        if not tag.startswith(f"{prefix}@v"):
+            continue
+        version = tag.split("@v")[1]
+        if best is None or semver_tuple(version) > semver_tuple(best_ver or "0.0.0"):
+            best = r
+            best_ver = version
     return best
 
 
@@ -135,15 +101,13 @@ repo_content = {"name": "dewn_plugins", "plugins": []}
 for item in ALL:
     pid = item["id"]
     ptype = item["type"]
-    prefix = pid
-    rel = find_best_release_for_prefix(releases, prefix)
+    rel = find_best_release_for_prefix(releases, pid)
     if not rel:
         print(f"Warning: no release found for {pid}; skipping")
         continue
 
     tag = rel.get("tag_name", "")
-    m = re.search(r"v?([\d]+\.[\d]+\.[\d]+)", tag)
-    version = m.group(1) if m else rel.get("name", "unknown")
+    version = tag.split("@v")[1] if "@v" in tag else "unknown"
 
     if ptype == "scraper-rust-wasm":
         picked = pick_asset_url(rel, ".wasm")
