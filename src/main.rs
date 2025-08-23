@@ -70,6 +70,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		tracing::error!("GraphQL API encountered an error: {:?}", res);
 	});
 
-	website_server::run().await;
+	website_server::run().await?;
 	Ok(())
 }

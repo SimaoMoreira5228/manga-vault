@@ -1,6 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
+use anyhow::Context;
 use axum::Router;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
@@ -36,8 +37,60 @@ impl Default for Config {
 	}
 }
 
-pub async fn run() {
+#[derive(Debug, Deserialize, Serialize)]
+struct WebsiteVersionFile {
+	version: String,
+	tag_name: String,
+}
+
+pub async fn run() -> anyhow::Result<()> {
 	let config = Config::load();
+
+	let website_version_file = PathBuf::from(&config.folder).join("version.json");
+	let website_version = if website_version_file.exists() {
+		let content = tokio::fs::read_to_string(&website_version_file)
+			.await
+			.context("Failed to read website version file")?;
+		serde_json::from_str::<WebsiteVersionFile>(&content).context("Failed to parse website version file")?
+	} else {
+		WebsiteVersionFile {
+			version: "0.0.0".to_string(),
+			tag_name: "unknown".to_string(),
+		}
+	};
+
+	let latest_release = version_check::get_latest_release("website").await?;
+
+	match latest_release {
+		Some(release) => match version_check::is_update_available(&website_version.version, &release.version) {
+			Ok(needs_update) => {
+				if needs_update {
+					tracing::warn!(
+						"There is a new version of {} available: {} (current: {})",
+						"website",
+						release.version,
+						website_version.version
+					);
+					tracing::warn!(
+						"Download at: https://github.com/SimaoMoreira5228/manga-vault/releases/tag/{}",
+						release.tag_name
+					);
+					true
+				} else {
+					tracing::info!("Application is up to date");
+					false
+				}
+			}
+			Err(e) => {
+				tracing::warn!("Failed to compare versions: {}", e);
+				false
+			}
+		},
+		None => {
+			tracing::warn!("Failed to check for updates");
+			false
+		}
+	};
 
 	let assets_service = ServeDir::new(PathBuf::from(&config.folder).join("assets"))
 		.precompressed_gzip()
@@ -97,4 +150,6 @@ pub async fn run() {
 	)
 	.await
 	.expect("Failed to start website");
+
+	Ok(())
 }

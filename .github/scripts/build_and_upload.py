@@ -141,6 +141,15 @@ for entry in created:
         run(["bun", "run", "build"], cwd=website_dir)
         if website_build_dir.exists():
             try:
+                (website_build_dir / "version.json").write_text(
+                    json.dumps(
+                        {
+                            "version": entry.get("version"),
+                            "tag_name": entry.get("tag_name"),
+                        }
+                    )
+                )
+
                 zip_website(website_build_dir, entry.get("zip_name"))
                 upload_asset(entry["upload_url"], Path(entry.get("zip_name")))
                 Path(entry.get("zip_name")).unlink(missing_ok=True)
