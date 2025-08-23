@@ -101,34 +101,6 @@ def run(cmd, cwd=None):
     subprocess.run(cmd, cwd=cwd, check=True)
 
 
-def write_and_commit_repo_json(content: dict):
-    out_path = ROOT / "repo.json"
-    tmp = json.dumps(content, indent=2, ensure_ascii=False) + "\n"
-    if out_path.exists():
-        old = out_path.read_text(encoding="utf-8")
-        if old == tmp:
-            print("repo.json unchanged — nothing to commit.")
-            return False
-    out_path.write_text(tmp, encoding="utf-8")
-
-    run(["git", "add", str(out_path)])
-
-    try:
-        run(
-            [
-                "git",
-                "commit",
-                "-m",
-                "ci: update repo.json with latest scraper release URLs",
-            ]
-        )
-    except subprocess.CalledProcessError:
-        print("No changes to commit (git commit returned non-zero).")
-        return False
-    run(["git", "push", "origin", "HEAD"])
-    return True
-
-
 releases = list_releases()
 repo_content = {"name": "dewn_plugins", "plugins": []}
 
@@ -180,5 +152,13 @@ for item in ALL:
     else:
         print("Unknown type", ptype)
 
-write_and_commit_repo_json(repo_content)
+out_path = ROOT / "repo.json"
+tmp = json.dumps(repo_content, indent=2, ensure_ascii=False) + "\n"
+if out_path.exists():
+    old = out_path.read_text(encoding="utf-8")
+    if old == tmp:
+        print("repo.json unchanged — nothing to commit.")
+        exit(0)
+
+out_path.write_text(tmp, encoding="utf-8")
 print("Done.")

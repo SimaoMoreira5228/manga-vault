@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
   prepare:
@@ -61,6 +62,21 @@ jobs:
         with:
           name: release-manifest
           path: release_manifest.json
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ci/update-repo-json
+          commit-message: "ci: Bump manga-vault version"
+          title: "ci: Bump manga-vault version"
+          body: |
+            Automated bump of `manga-vault` version, and creation of releases if applicable.
+          base: master
+          delete-branch: true
+          labels: automated, release
+          draft: false
+
 
   linux-build:
     name: linux (build binaries + website, upload to releases)
@@ -252,3 +268,17 @@ jobs:
         run: |
           chmod +x ./.github/scripts/generate_repo_json.py || true
           python ./.github/scripts/generate_repo_json.py
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ci/update-repo-json
+          commit-message: "ci: update repo.json with latest scraper release URLs"
+          title: "ci: update repo.json"
+          body: |
+            Automated update of `repo.json` with the latest scraper releases.
+          base: master
+          delete-branch: true
+          labels: automated, release
+          draft: false

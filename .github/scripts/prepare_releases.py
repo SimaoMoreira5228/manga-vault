@@ -253,9 +253,6 @@ if manifest["created_releases"]:
                 text,
             )
             cargo.write_text(new_text, encoding="utf-8")
-            run(["git", "add", "Cargo.toml"])
-            run(["git", "commit", "-m", f"Bump manga-vault version to {new}"])
-            run(["git", "push", "origin", "HEAD"])
             tag = f"{MAIN_PACKAGE['tag_prefix']}@v{new}"
             try:
                 run(["git", "tag", "-a", tag, "-m", f"Release {tag}"])
