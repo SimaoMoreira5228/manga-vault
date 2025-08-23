@@ -10,7 +10,7 @@ impl MigrationTrait for Migration {
 			.alter_table(
 				Table::alter()
 					.table(Mangas::Table)
-					.add_column(ColumnDef::new(Mangas::AlternativeNames).string().null())
+					.add_column(ColumnDef::new(Mangas::AlternativeNames).text().null())
 					.to_owned(),
 			)
 			.await?;
@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
 			.alter_table(
 				Table::alter()
 					.table(Mangas::Table)
-					.add_column(ColumnDef::new(Mangas::Authors).string().null())
+					.add_column(ColumnDef::new(Mangas::Authors).text().null())
 					.to_owned(),
 			)
 			.await?;
@@ -26,7 +26,7 @@ impl MigrationTrait for Migration {
 			.alter_table(
 				Table::alter()
 					.table(Mangas::Table)
-					.add_column(ColumnDef::new(Mangas::Artists).string().null())
+					.add_column(ColumnDef::new(Mangas::Artists).text().null())
 					.to_owned(),
 			)
 			.await?;
@@ -66,7 +66,7 @@ impl MigrationTrait for Migration {
 			.alter_table(
 				Table::alter()
 					.table(Mangas::Table)
-					.add_column(ColumnDef::new(Mangas::Genres).string().null())
+					.add_column(ColumnDef::new(Mangas::Genres).text().null())
 					.to_owned(),
 			)
 			.await?;

@@ -6,7 +6,7 @@ use database_connection::Database;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::objects::mangas::Manga;
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(SimpleObject, Clone)]
 #[graphql(complex)]
@@ -16,6 +16,7 @@ pub struct MangaPack {
 	pub created_at: NaiveDateTime,
 }
 
+#[allow(dead_code)]
 #[derive(SimpleObject, Clone)]
 pub struct MangaPackMember {
 	pub id: i32,
@@ -25,13 +26,13 @@ pub struct MangaPackMember {
 
 #[async_graphql::ComplexObject]
 impl MangaPack {
-	async fn user(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<SanitizedUser> {
+	async fn user(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<User> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let user = database_entities::users::Entity::find_by_id(self.user_id)
 			.one(&db.conn)
 			.await?
 			.ok_or_else(|| async_graphql::Error::new("User not found"))?;
-		Ok(SanitizedUser::from(user))
+		Ok(User::from(user))
 	}
 
 	async fn mangas(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Vec<Manga>> {

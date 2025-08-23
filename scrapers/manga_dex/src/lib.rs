@@ -321,7 +321,6 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			return default_manga_page();
 		}
 
-		// Fetch manga details
 		let manga_url = format!(
 			"https://api.mangadex.org/manga/{}?includes[]=cover_art&includes[]=author&includes[]=artist",
 			manga_id
@@ -411,7 +410,6 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			}
 		}
 
-		// Fetch chapters
 		let chapters = fetch_chapters(manga_id);
 
 		MangaPage {
@@ -432,7 +430,6 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 	fn scrape_genres_list() -> Vec<Genre> {
 		// MangaDex doesn't have a direct genre list endpoint
-		// You'd need to implement this if required
 		Vec::new()
 	}
 
@@ -442,11 +439,13 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			name: "MangaDex".to_string(),
 			version: env!("CARGO_PKG_VERSION").to_string(),
 			img_url: "https://mangadex.org/pwa/icons/icon-180.png".to_string(),
+			referer_url: None,
+			base_url: None,
+			legacy_urls: None,
 		}
 	}
 }
 
-// Helper functions
 fn fetch_manga_items(url: &str) -> Vec<MangaItem> {
 	let response = match http_get(url) {
 		Some(res) => res,
@@ -502,7 +501,6 @@ fn fetch_chapters(manga_id: &str) -> Vec<Chapter> {
 		None => return Vec::new(),
 	};
 
-	// Create a mapping of group IDs to group names
 	let group_map: HashMap<String, String> = match json.get("included").and_then(|i| i.as_array()) {
 		Some(included) => included
 			.iter()

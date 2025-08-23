@@ -1,29 +1,28 @@
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use async_graphql::{Context, Object, Result};
 use chrono::Utc;
 use database_connection::Database;
+use image::imageops::FilterType;
 use sea_orm::{ActiveModelTrait, Set};
+use tokio_util::compat::FuturesAsyncReadCompatExt;
+use webp::Encoder;
 
-use crate::{
-	Config,
-	objects::{files::File, users::SanitizedUser},
-};
+use crate::Config;
+use crate::objects::files::File;
+use crate::objects::users::User;
 
 #[derive(Default)]
 pub struct FileMutation;
 
 #[Object]
 impl FileMutation {
-	async fn upload_file(&self, ctx: &Context<'_>, user_id: i32, file: async_graphql::Upload) -> Result<File> {
+	async fn upload_file(&self, ctx: &Context<'_>, file: async_graphql::Upload) -> Result<File> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let config = ctx.data::<Arc<Config>>().cloned()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 		let upload = file.value(ctx)?;
-
-		if current_user.id != user_id {
-			return Err(async_graphql::Error::new("Unauthorized"));
-		}
 
 		if upload.size()? >= config.max_file_size {
 			return Err(async_graphql::Error::new("File too large"));
@@ -38,33 +37,57 @@ impl FileMutation {
 			return Err(async_graphql::Error::new("Invalid file type"));
 		}
 
-		let file = database_entities::files::ActiveModel {
-			owner_id: Set(Some(user_id)),
-			name: Set(upload.filename.clone()),
+		let file_active_model = database_entities::files::ActiveModel {
+			owner_id: Set(Some(current_user.id)),
+			name: Set(uuid::Uuid::new_v4().to_string()),
 			created_at: Set(Utc::now().naive_utc()),
 			..Default::default()
 		};
 
-		let uploads_path = config.uploads_folder.clone();
-		let file_id_str = file.id.clone().into_value().map(|v| v.to_string()).unwrap_or_default();
-		let file_path = PathBuf::from(uploads_path).join(file_id_str);
+		let file_model = file_active_model.insert(&db.conn).await?;
 
-		tokio::task::spawn_blocking(move || -> Result<(), async_graphql::Error> {
-			if let Some(parent) = file_path.parent() {
-				std::fs::create_dir_all(parent)
-					.map_err(|e| async_graphql::Error::new(format!("Failed to create directory: {}", e)))?;
-			}
-			let mut reader = upload.into_read();
-			let mut file_handle = std::fs::File::create(&file_path)
-				.map_err(|e| async_graphql::Error::new(format!("Failed to create file: {}", e)))?;
-			std::io::copy(&mut reader, &mut file_handle)
-				.map_err(|e| async_graphql::Error::new(format!("Failed to write file: {}", e)))?;
-			Ok(())
+		let uploads_path = config.uploads_folder.clone();
+		let file_path = PathBuf::from(uploads_path)
+			.join(file_model.id.to_string())
+			.with_extension("webp");
+
+		let mut reader = upload.into_async_read().compat();
+		let mut buffer = Vec::new();
+		tokio::io::AsyncReadExt::read_to_end(&mut reader, &mut buffer)
+			.await
+			.map_err(|e| async_graphql::Error::new(format!("Failed to read upload: {}", e)))?;
+
+		let webp_data = tokio::task::spawn_blocking(move || -> Result<Vec<u8>, async_graphql::Error> {
+			let img = image::load_from_memory(&buffer)
+				.map_err(|e| async_graphql::Error::new(format!("Failed to decode image: {}", e)))?;
+
+			const MAX_WIDTH: u32 = 1920;
+			const MAX_HEIGHT: u32 = 1080;
+			let img = if img.width() > MAX_WIDTH || img.height() > MAX_HEIGHT {
+				img.resize_to_fill(MAX_WIDTH, MAX_HEIGHT, FilterType::Lanczos3)
+			} else {
+				img
+			};
+
+			let encoder =
+				Encoder::from_image(&img).map_err(|e| async_graphql::Error::new(format!("WebP encoding failed: {}", e)))?;
+			let webp_data = encoder.encode(80.0);
+
+			Ok(webp_data.to_vec())
 		})
 		.await
-		.map_err(|e| async_graphql::Error::new(format!("File upload task failed: {}", e)))??;
+		.map_err(|e| async_graphql::Error::new(format!("Image processing task failed: {}", e)))??;
 
-		let file = file.insert(&db.conn).await?;
-		Ok(File::from(file))
+		if let Some(parent) = file_path.parent() {
+			tokio::fs::create_dir_all(parent)
+				.await
+				.map_err(|e| async_graphql::Error::new(format!("Failed to create directory: {}", e)))?;
+		}
+
+		tokio::fs::write(&file_path, webp_data)
+			.await
+			.map_err(|e| async_graphql::Error::new(format!("Failed to write image: {}", e)))?;
+
+		Ok(File::from(file_model))
 	}
 }

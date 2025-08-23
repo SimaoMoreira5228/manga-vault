@@ -2,23 +2,30 @@ use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use async_graphql::{EmptyMutation, EmptySubscription, Schema};
+use async_graphql::{EmptySubscription, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
-use axum::Router;
+use axum::http::{HeaderMap, HeaderValue, Method, header};
 use axum::routing::{get, post};
+use axum::{Extension, Router};
 use database_connection::Database;
+use jsonwebtoken::{DecodingKey, Validation, decode};
 use rand::Rng;
 use scraper_core::ScraperManager;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
-use tower_http::services::ServeDir;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
-use crate::mutations::auth::AuthExtensionFactory;
+use crate::mutations::MutationRoot;
+use crate::mutations::auth::Claims;
+use crate::objects::users::User;
 use crate::queries::QueryRoot;
 
+mod image_proxy;
 mod mutations;
 mod objects;
 mod queries;
+mod serve_file;
 
 use axum::extract::{DefaultBodyLimit, State};
 
@@ -51,6 +58,8 @@ pub struct Config {
 	pub max_file_size: u64,
 	#[serde(default)]
 	pub uploads_folder: String,
+	#[serde(default)]
+	pub cors_allow_origins: Vec<String>,
 }
 
 impl Default for Config {
@@ -61,15 +70,51 @@ impl Default for Config {
 			jwt_duration_days: 30,
 			max_file_size: 10 * 1024 * 1024, // 10 MB
 			uploads_folder: format!("{}/uploads", current_exe_parent_dir().display()),
+			cors_allow_origins: vec!["http://localhost:5227".into()],
 		}
 	}
 }
 
 async fn graphql_handler(
-	State(schema): State<Schema<QueryRoot, EmptyMutation, EmptySubscription>>,
-	req: GraphQLRequest,
+	State(schema): State<Schema<QueryRoot, MutationRoot, EmptySubscription>>,
+	Extension(config): Extension<Arc<Config>>,
+	Extension(db): Extension<Arc<Database>>,
+	headers: HeaderMap,
+	request: GraphQLRequest,
 ) -> GraphQLResponse {
-	schema.execute(req.into_inner()).await.into()
+	let mut request = request.into_inner();
+	request = request.data(headers.clone());
+
+	if let Some(token) = headers.get(header::COOKIE).and_then(|h| h.to_str().ok()) {
+		let token = token.replace("token=", "");
+
+		if let Ok(token_data) = decode::<Claims>(
+			&token,
+			&DecodingKey::from_secret(config.secret_jwt.as_bytes()),
+			&Validation::default(),
+		) {
+			match database_entities::users::Entity::find()
+				.filter(database_entities::users::Column::Id.eq(token_data.claims.sub))
+				.one(&db.conn)
+				.await
+			{
+				Ok(Some(user_model)) => {
+					let sanitized = User::from(user_model);
+					request = request.data(sanitized);
+				}
+				Ok(None) => {
+					// User not found, do nothing
+				}
+				Err(e) => {
+					return GraphQLResponse::from(async_graphql::Response::from_errors(vec![
+						async_graphql::ServerError::new(format!("Database query error: {:?}", e), None),
+					]));
+				}
+			}
+		}
+	}
+
+	schema.execute(request).await.into()
 }
 
 async fn graphql_playground() -> axum::response::Html<String> {
@@ -81,18 +126,50 @@ async fn graphql_playground() -> axum::response::Html<String> {
 pub async fn run(db: Arc<Database>, scraper_manager: Arc<ScraperManager>) -> anyhow::Result<()> {
 	let config = Arc::new(Config::load());
 
-	let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
-		.data(db)
+	let cleanup_db = db.clone();
+	tokio::spawn(async move {
+		loop {
+			database_entities::temp::Entity::delete_many()
+				.filter(database_entities::temp::Column::ExpiresAt.lt(chrono::Utc::now().naive_utc()))
+				.exec(&cleanup_db.conn)
+				.await
+				.expect("Failed to clean up expired temp entries");
+
+			tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+		}
+	});
+
+	let cors = if config.cors_allow_origins.iter().any(|o| o == "*") {
+		tracing::warn!("CORS is set to allow all origins.");
+		CorsLayer::new().allow_origin(AllowOrigin::any()).allow_credentials(true)
+	} else {
+		let origins = config
+			.cors_allow_origins
+			.iter()
+			.filter_map(|o| o.parse::<HeaderValue>().ok())
+			.collect::<Vec<_>>();
+
+		tracing::debug!("CORS configured to allow origins: {:?}", origins);
+		CorsLayer::new().allow_origin(origins).allow_credentials(true)
+	}
+	.allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+	.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT]);
+
+	let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
+		.data(db.clone())
 		.data(scraper_manager)
 		.data(config.clone())
-		.extension(AuthExtensionFactory)
 		.finish();
 
 	let app = Router::new()
 		.route("/playground", get(graphql_playground))
 		.route("/", post(graphql_handler))
 		.layer(DefaultBodyLimit::max(config.max_file_size as usize))
-		.nest_service("/files", ServeDir::new(config.uploads_folder.clone()))
+		.route("/files/{file_id}", get(serve_file::serve_file))
+		.route("/proxy", get(image_proxy::proxy_image))
+		.layer(cors)
+		.layer(Extension(config.clone()))
+		.layer(Extension(db))
 		.with_state(schema);
 
 	tracing::info!(

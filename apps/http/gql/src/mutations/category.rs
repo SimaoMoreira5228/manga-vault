@@ -3,13 +3,13 @@ use std::sync::Arc;
 use async_graphql::{Context, InputObject, Object, Result};
 use chrono::Utc;
 use database_connection::Database;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, PaginatorTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 
-use crate::objects::{categories::Category, users::SanitizedUser};
+use crate::objects::categories::Category;
+use crate::objects::users::User;
 
 #[derive(InputObject)]
 struct CreateCategoryInput {
-	user_id: i32,
 	name: String,
 }
 
@@ -25,14 +25,10 @@ pub struct CategoryMutation;
 impl CategoryMutation {
 	async fn create_category(&self, ctx: &Context<'_>, input: CreateCategoryInput) -> Result<Category> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
-
-		if current_user.id != input.user_id {
-			return Err(async_graphql::Error::new("Unauthorized"));
-		}
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let category = database_entities::categories::ActiveModel {
-			user_id: Set(input.user_id),
+			user_id: Set(current_user.id),
 			name: Set(input.name),
 			created_at: Set(Utc::now().naive_utc()),
 			..Default::default()
@@ -44,9 +40,9 @@ impl CategoryMutation {
 
 	async fn update_category(&self, ctx: &Context<'_>, id: i32, input: UpdateCategoryInput) -> Result<Category> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
-		let mut category = database_entities::categories::Entity::find_by_id(id)
+		let category = database_entities::categories::Entity::find_by_id(id)
 			.one(&db.conn)
 			.await?
 			.ok_or_else(|| async_graphql::Error::new("Category not found"))?;
@@ -55,17 +51,19 @@ impl CategoryMutation {
 			return Err(async_graphql::Error::new("Unauthorized"));
 		}
 
-		if let Some(name) = input.name {
-			category.name = name;
-		}
+		let category_update = database_entities::categories::ActiveModel {
+			id: Set(category.id),
+			name: Set(input.name.unwrap_or(category.name)),
+			..Default::default()
+		};
 
-		let updated = category.into_active_model().update(&db.conn).await?;
+		let updated = category_update.update(&db.conn).await?;
 		Ok(Category::from(updated))
 	}
 
 	async fn delete_category(&self, ctx: &Context<'_>, id: i32) -> Result<bool> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let category = database_entities::categories::Entity::find_by_id(id)
 			.one(&db.conn)

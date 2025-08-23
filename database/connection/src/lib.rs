@@ -116,7 +116,7 @@ impl Database {
 
 			"postgresql" | "mysql" => {
 				let mut opt = ConnectOptions::new(parsed_url.to_string());
-				opt.sqlx_logging(true);
+				opt.sqlx_logging(false);
 
 				let conn = sea_orm::Database::connect(opt).await.map_err(Error::MigrationError)?;
 				database_migration::Migrator::up(&conn, None)

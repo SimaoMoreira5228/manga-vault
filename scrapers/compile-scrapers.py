@@ -2,15 +2,18 @@ import json
 import subprocess
 import os
 import sys
+import requests
+from typing import Optional, Tuple
+
 
 rust_scrapers = ["mangaread_org", "manga_dex", "hari_manga"]
-lua_scrapers = ["manhuafast"]
+lua_scrapers = ["manhuafast", "natomanga"]
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 manga_vault_path = os.path.dirname(current_path)
 
 
-def build_rust(scraper_name):
+def build_rust(scraper_name: str) -> Optional[str]:
     try:
         print(f"Building {scraper_name}...")
 
@@ -42,44 +45,48 @@ def build_rust(scraper_name):
         return None
 
 
-def upload_to_catbox_with_curl(file_path):
+def upload_to_catbox(file_path: str) -> Optional[str]:
     print(f"Uploading {os.path.basename(file_path)}...")
     try:
-        result = subprocess.run(
-            [
-                "curl",
-                "-X",
-                "POST",
-                "https://catbox.moe/user/api.php",
-                "-F",
-                f"fileToUpload=@{file_path}",
-                "-F",
-                "reqtype=fileupload",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout.strip() if result.stdout.startswith("https://") else None
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        with open(file_path, "rb") as f:
+            files = {"fileToUpload": (os.path.basename(file_path), f)}
+            data = {"reqtype": "fileupload"}
+            resp = requests.post(
+                "https://catbox.moe/user/api.php", files=files, data=data, timeout=60
+            )
+        resp.raise_for_status()
+        text = resp.text.strip()
+        return text if text.startswith("https://") else None
+    except (requests.RequestException, FileNotFoundError) as e:
         return None
 
 
-def get_plugin_info(path, is_lua=False):
+def get_plugin_info(
+    path: str, is_lua: bool = False
+) -> Tuple[Optional[str], Optional[str]]:
     try:
         if is_lua:
-            with open(path, "r") as file:
+            with open(path, "r", encoding="utf-8") as file:
+                version = None
                 for line in file:
                     if "PLUGIN_VERSION" in line:
-                        version = line.split("=")[1].strip().strip('"')
+                        parts = line.split("=")
+                        if len(parts) >= 2:
+                            version = parts[1].strip().strip('"').strip("'")
                         break
         else:
-            with open(os.path.join(path, "Cargo.toml"), "r") as file:
+            with open(os.path.join(path, "Cargo.toml"), "r", encoding="utf-8") as file:
                 version = next(
-                    line.split("=")[1].strip().strip('"')
-                    for line in file
-                    if line.strip().startswith("version")
+                    (
+                        line.split("=")[1].strip().strip('"').strip("'")
+                        for line in file
+                        if line.strip().startswith("version")
+                    ),
+                    None,
                 )
+
+        if not version:
+            raise ValueError("version not found")
 
         parts = list(map(int, version.split(".")))
         if parts[0] > 0:
@@ -95,12 +102,12 @@ def get_plugin_info(path, is_lua=False):
         return None, None
 
 
-def process_scraper(scraper, is_lua=False):
+def process_scraper(scraper: str, is_lua: bool = False) -> dict:
     try:
         if is_lua:
             path = os.path.join(current_path, scraper, f"{scraper}.lua")
             version, state = get_plugin_info(path, is_lua=True)
-            if not (url := upload_to_catbox_with_curl(path)):
+            if not (url := upload_to_catbox(path)):
                 raise RuntimeError("Upload failed")
 
             return {
@@ -117,7 +124,7 @@ def process_scraper(scraper, is_lua=False):
 
             if not (build_path := build_rust(scraper)):
                 raise RuntimeError("build failed")
-            if not (url := upload_to_catbox_with_curl(build_path)):
+            if not (url := upload_to_catbox(build_path)):
                 raise RuntimeError("upload failed")
 
             return {
@@ -141,7 +148,7 @@ try:
     for scraper in lua_scrapers:
         repo_content["plugins"].append(process_scraper(scraper, is_lua=True))
 
-    with open(os.path.join(manga_vault_path, "repo.json"), "w") as f:
+    with open(os.path.join(manga_vault_path, "repo.json"), "w", encoding="utf-8") as f:
         json.dump(repo_content, f, indent=2)
 
     print("All builds and uploads completed successfully!")

@@ -1,27 +1,23 @@
 use std::sync::Arc;
 
-use argon2::{
-	self, Argon2, PasswordVerifier,
-	password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
-};
-use async_graphql::{
-	Context, Error, InputObject, Object, Request, Response, Result, ServerResult, SimpleObject,
-	extensions::{Extension, ExtensionContext, ExtensionFactory, NextPrepareRequest, NextRequest},
-};
-use async_trait::async_trait;
-use axum::http::HeaderMap;
+use argon2::password_hash::SaltString;
+use argon2::password_hash::rand_core::OsRng;
+use argon2::{PasswordHasher, PasswordVerifier};
+use async_graphql::{Context, Error, InputObject, Object, Result};
 use chrono::Utc;
 use database_connection::Database;
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
+use jsonwebtoken::{EncodingKey, Header, encode};
+use sea_orm::ActiveValue::Set;
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 
-use crate::{Config, objects::users::SanitizedUser};
+use crate::Config;
+use crate::objects::users::User;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-	sub: i32,
-	exp: usize,
+pub struct Claims {
+	pub sub: i32,
+	pub exp: usize,
 }
 
 #[derive(InputObject)]
@@ -36,18 +32,12 @@ struct RegisterInput {
 	password: String,
 }
 
-#[derive(SimpleObject)]
-pub struct AuthPayload {
-	token: String,
-	user: SanitizedUser,
-}
-
 #[derive(Default)]
 pub struct AuthMutation;
 
 #[Object]
 impl AuthMutation {
-	async fn register(&self, ctx: &Context<'_>, input: RegisterInput) -> Result<AuthPayload> {
+	async fn register(&self, ctx: &Context<'_>, input: RegisterInput) -> Result<User> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let config = ctx.data::<Arc<Config>>()?;
 
@@ -61,10 +51,8 @@ impl AuthMutation {
 		}
 
 		let salt = SaltString::generate(&mut OsRng);
-		let argon2 = Argon2::default();
-		let password_hash = argon2
-			.hash_password(input.password.as_bytes(), &salt)
-			.map_err(|e| Error::new(format!("Password hashing failed: {}", e)))?
+		let password_hash = argon2::Argon2::default()
+			.hash_password(input.password.as_bytes(), &salt)?
 			.to_string();
 
 		let user = database_entities::users::ActiveModel {
@@ -77,14 +65,19 @@ impl AuthMutation {
 		let user: database_entities::users::Model = user.insert(&db.conn).await?;
 
 		let token = generate_jwt(user.id, &config.secret_jwt, config.jwt_duration_days)?;
+		ctx.append_http_header(
+			"Set-Cookie",
+			format!(
+				"token={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
+				token,
+				(config.jwt_duration_days as u64) * 24 * 60 * 60
+			),
+		);
 
-		Ok(AuthPayload {
-			token,
-			user: SanitizedUser::from(user),
-		})
+		Ok(User::from(user))
 	}
 
-	async fn login(&self, ctx: &Context<'_>, input: LoginInput) -> Result<AuthPayload> {
+	async fn login(&self, ctx: &Context<'_>, input: LoginInput) -> Result<User> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let config = ctx.data::<Arc<Config>>()?;
 
@@ -94,20 +87,26 @@ impl AuthMutation {
 			.await?
 			.ok_or_else(|| Error::new("Invalid credentials"))?;
 
-		let argon2 = Argon2::default();
-		let parsed_hash = argon2::PasswordHash::new(&user.hashed_password)
-			.map_err(|e| Error::new(format!("Invalid password hash: {}", e)))?;
-
-		argon2
-			.verify_password(input.password.as_bytes(), &parsed_hash)
-			.map_err(|_| Error::new("Invalid credentials"))?;
+		if !verify_password(&input.password, user.id, &db).await? {
+			return Err(Error::new("Invalid credentials"));
+		}
 
 		let token = generate_jwt(user.id, &config.secret_jwt, config.jwt_duration_days)?;
+		ctx.append_http_header(
+			"Set-Cookie",
+			format!(
+				"token={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
+				token,
+				(config.jwt_duration_days as u64) * 24 * 60 * 60
+			),
+		);
 
-		Ok(AuthPayload {
-			token,
-			user: SanitizedUser::from(user),
-		})
+		Ok(User::from(user))
+	}
+
+	async fn logout(&self, ctx: &Context<'_>) -> Result<bool> {
+		ctx.append_http_header("Set-Cookie", "token=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+		Ok(true)
 	}
 }
 
@@ -126,58 +125,46 @@ fn generate_jwt(user_id: i32, secret: &str, duration: u16) -> Result<String> {
 		.map_err(|e| Error::new(format!("JWT creation failed: {}", e)))
 }
 
-pub struct AuthExtensionFactory;
+async fn verify_password(password: &str, user_id: i32, db: &Arc<Database>) -> Result<bool> {
+	let user = database_entities::users::Entity::find_by_id(user_id)
+		.one(&db.conn)
+		.await?
+		.ok_or_else(|| Error::new("User not found"))?;
 
-impl ExtensionFactory for AuthExtensionFactory {
-	fn create(&self) -> Arc<dyn Extension> {
-		Arc::new(AuthExtension)
-	}
-}
+	match argon2::PasswordHash::new(&user.hashed_password) {
+		Ok(parsed_phc) => {
+			let ok = argon2::Argon2::default()
+				.verify_password(password.as_bytes(), &parsed_phc)
+				.is_ok();
 
-pub struct AuthExtension;
-
-#[async_trait]
-impl Extension for AuthExtension {
-	async fn request(&self, ctx: &ExtensionContext<'_>, next: NextRequest<'_>) -> Response {
-		next.run(ctx).await
-	}
-
-	async fn prepare_request(
-		&self,
-		ctx: &ExtensionContext<'_>,
-		mut request: Request,
-		next: NextPrepareRequest<'_>,
-	) -> ServerResult<Request> {
-		if let Some(headers) = ctx.data_opt::<HeaderMap>() {
-			if let Some(auth) = headers
-				.get("Authorization")
-				.and_then(|h| h.to_str().ok())
-				.and_then(|s| s.strip_prefix("Bearer "))
-			{
-				let config = ctx
-					.data::<Arc<Config>>()
-					.map_err(|e| async_graphql::ServerError::new(format!("Config error: {:?}", e), None))?;
-				if let Ok(token_data) = decode::<Claims>(
-					auth,
-					&DecodingKey::from_secret(config.secret_jwt.as_bytes()),
-					&Validation::default(),
-				) {
-					let db = ctx
-						.data::<Arc<Database>>()
-						.map_err(|e| async_graphql::ServerError::new(format!("Database error: {:?}", e), None))?;
-					if let Some(user_model) = database_entities::users::Entity::find()
-						.filter(database_entities::users::Column::Id.eq(token_data.claims.sub))
-						.one(&db.conn)
-						.await
-						.map_err(|e| async_graphql::ServerError::new(format!("Database query error: {:?}", e), None))?
-					{
-						let sanitized = SanitizedUser::from(user_model);
-						request = request.data(sanitized);
-					}
-				}
+			if ok {
+				return Ok(true);
+			} else {
+				return Ok(false);
 			}
 		}
 
-		next.run(ctx, request).await
+		Err(_) => {
+			let bcrypt_ok =
+				bcrypt::verify(password, &user.hashed_password).map_err(|_| Error::new("Password verification failed"))?;
+
+			if !bcrypt_ok {
+				return Ok(false);
+			}
+
+			let salt = SaltString::generate(&mut OsRng);
+			let new_hash = argon2::Argon2::default()
+				.hash_password(password.as_bytes(), &salt)?
+				.to_string();
+
+			let user_update = database_entities::users::ActiveModel {
+				id: Set(user_id),
+				hashed_password: Set(new_hash),
+				..Default::default()
+			};
+			user_update.update(&db.conn).await?;
+
+			return Ok(true);
+		}
 	}
 }

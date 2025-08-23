@@ -4,7 +4,7 @@ use async_graphql::{Context, InputObject, Object, Result};
 use database_connection::Database;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
 
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(InputObject, Default)]
 struct UpdateProfileInput {
@@ -17,15 +17,11 @@ pub struct ProfileMutation;
 
 #[Object]
 impl ProfileMutation {
-	async fn update_profile(&self, ctx: &Context<'_>, user_id: i32, input: UpdateProfileInput) -> Result<SanitizedUser> {
+	async fn update_profile(&self, ctx: &Context<'_>, input: UpdateProfileInput) -> Result<User> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
-		if current_user.id != user_id {
-			return Err(async_graphql::Error::new("Unauthorized"));
-		}
-
-		let mut user = database_entities::users::Entity::find_by_id(user_id)
+		let mut user = database_entities::users::Entity::find_by_id(current_user.id)
 			.one(&db.conn)
 			.await?
 			.ok_or_else(|| async_graphql::Error::new("User not found"))?
@@ -34,7 +30,7 @@ impl ProfileMutation {
 		if let Some(username) = input.username {
 			let exists = database_entities::users::Entity::find()
 				.filter(database_entities::users::Column::Username.eq(&username))
-				.filter(database_entities::users::Column::Id.ne(user_id))
+				.filter(database_entities::users::Column::Id.ne(current_user.id))
 				.one(&db.conn)
 				.await?;
 
@@ -54,6 +50,6 @@ impl ProfileMutation {
 		}
 
 		let user = user.update(&db.conn).await?;
-		Ok(SanitizedUser::from(user))
+		Ok(User::from(user))
 	}
 }

@@ -5,7 +5,8 @@ use chrono::Utc;
 use database_connection::Database;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 
-use crate::objects::{manga_packs::MangaPack, users::SanitizedUser};
+use crate::objects::manga_packs::MangaPack;
+use crate::objects::users::User;
 
 #[derive(InputObject)]
 struct CreateMangaPackInput {
@@ -25,7 +26,7 @@ pub struct MangaPackMutation;
 impl MangaPackMutation {
 	async fn create_manga_pack(&self, ctx: &Context<'_>, input: CreateMangaPackInput) -> Result<MangaPack> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		if current_user.id != input.user_id {
 			return Err(async_graphql::Error::new("Unauthorized"));
@@ -57,7 +58,7 @@ impl MangaPackMutation {
 
 	async fn update_manga_pack(&self, ctx: &Context<'_>, id: i32, input: UpdateMangaPackInput) -> Result<MangaPack> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let pack = database_entities::manga_packs::Entity::find_by_id(id)
 			.one(&db.conn)
@@ -92,7 +93,7 @@ impl MangaPackMutation {
 
 	async fn delete_manga_pack(&self, ctx: &Context<'_>, id: i32) -> Result<bool> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let current_user = ctx.data::<SanitizedUser>().cloned()?;
+		let current_user = ctx.data::<User>().cloned()?;
 
 		let pack = database_entities::manga_packs::Entity::find_by_id(id)
 			.one(&db.conn)

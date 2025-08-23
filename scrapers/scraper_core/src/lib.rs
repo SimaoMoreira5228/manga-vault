@@ -70,11 +70,9 @@ pub struct ScraperManager {
 }
 
 impl ScraperManager {
-	pub async fn new() -> Result<Arc<Self>> {
+	pub async fn new(update: bool) -> Result<Arc<Self>> {
 		let config = Arc::new(Config::load());
-		// TODO: Check if the current version is different from the upstream released
-		// version.
-		if env!("CARGO_PKG_VERSION") != env!("CARGO_PKG_VERSION") {
+		if update {
 			tracing::info!("Creating plugin manager without updating");
 			let manager = Self {
 				plugins: Arc::new(RwLock::new(HashMap::new())),

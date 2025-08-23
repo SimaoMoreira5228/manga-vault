@@ -16,6 +16,8 @@ where
 	let env_file = format!("{base}.{env_name}.json");
 	let config_dir = Path::new(base).parent().unwrap_or_else(|| Path::new("config"));
 
+	let default_config = T::default();
+
 	if !Path::new(&main_file).exists() {
 		fs::create_dir_all(config_dir)?;
 		let default = T::default();
@@ -24,16 +26,23 @@ where
 		eprintln!("⚠️  Created default config: {}", main_file);
 	}
 
-	let mut config = read_json_file(&main_file).unwrap_or_else(|_| Value::Object(Map::new()));
+	let config = read_json_file(&main_file).unwrap_or_else(|_| Value::Object(Map::new()));
+	let default_value = serde_json::to_value(&default_config)?;
+
+	let mut merged_config = default_value.clone();
+	merge_values(&mut merged_config, config);
 
 	if let Ok(env_config) = read_json_file(&env_file) {
-		merge_values(&mut config, env_config);
+		merge_values(&mut merged_config, env_config);
 	}
 
 	let env_vars = read_env_vars("MVAULT", "__");
-	merge_values(&mut config, env_vars);
+	merge_values(&mut merged_config, env_vars);
 
-	let result: T = serde_json::from_value(config)?;
+	let updated_json = serde_json::to_string_pretty(&merged_config)?;
+	fs::write(&main_file, updated_json)?;
+
+	let result: T = serde_json::from_value(merged_config)?;
 	Ok(result)
 }
 

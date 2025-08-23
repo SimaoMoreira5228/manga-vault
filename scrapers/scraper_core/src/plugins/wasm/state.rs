@@ -1,5 +1,5 @@
 use wasmtime::component::ResourceTable;
-use wasmtime_wasi::p2::{WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 
 use crate::plugins::wasm::bindings;
 
@@ -16,15 +16,12 @@ impl States {
 	}
 }
 
-impl wasmtime_wasi::p2::IoView for States {
-	fn table(&mut self) -> &mut ResourceTable {
-		&mut self.table
-	}
-}
-
 impl WasiView for States {
-	fn ctx(&mut self) -> &mut WasiCtx {
-		&mut self.ctx
+	fn ctx(&mut self) -> WasiCtxView<'_> {
+		WasiCtxView {
+			ctx: &mut self.ctx,
+			table: &mut self.table,
+		}
 	}
 }
 

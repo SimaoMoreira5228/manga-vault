@@ -9,6 +9,6 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 [dependencies]
 dashmap = "6.1"
 futures = "0.3"
-rand = "0.9"
+rand = { workspace = true }
 tokio = { version = "1", features = ["full", "test-util"] }
-tracing = "0.1"
+tracing = { workspace = true }

@@ -9,11 +9,11 @@ config = { workspace = true }
 config-derive = { workspace = true }
 scraper_core = { workspace = true }
 database-migration = { workspace = true }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
-tracing = "0.1"
+tracing = { workspace = true }
 url = "2.5"
 tokio = { version = "1", features = ["full"] }
 thiserror = "2.0"
-toml = "0.8"
+toml = "0.9"

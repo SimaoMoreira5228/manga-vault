@@ -39,6 +39,9 @@ interface scraper {
         name: string,
         version: string,
         img-url: string,
+        referer-url: option<string>,
+        base-url: option<string>,
+        legacy-urls: option<list<string>>,
     }
 
     scrape-chapter: func(url: string) -> list<string>;

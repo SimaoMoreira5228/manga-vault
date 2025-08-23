@@ -5,6 +5,7 @@ use database_connection::Database;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::objects::categories::Category;
+use crate::objects::users::User;
 
 #[derive(Default)]
 pub struct CategoryQuery;
@@ -17,10 +18,14 @@ impl CategoryQuery {
 		Ok(category.map(Category::from))
 	}
 
-	async fn categories_by_user(&self, ctx: &Context<'_>, user_id: i32) -> Result<Vec<Category>> {
+	async fn user_categories(&self, ctx: &Context<'_>) -> Result<Vec<Category>> {
+		let current_user = ctx
+			.data_opt::<User>()
+			.cloned()
+			.ok_or_else(|| async_graphql::Error::from("User not authenticated"))?;
 		let db = ctx.data::<Arc<Database>>()?;
 		let categories = database_entities::categories::Entity::find()
-			.filter(database_entities::categories::Column::UserId.eq(user_id))
+			.filter(database_entities::categories::Column::UserId.eq(current_user.id))
 			.all(&db.conn)
 			.await?;
 		Ok(categories.into_iter().map(Category::from).collect())

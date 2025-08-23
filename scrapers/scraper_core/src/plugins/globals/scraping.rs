@@ -3,22 +3,6 @@ use std::collections::HashMap;
 use mlua::{IntoLua, Lua, UserData, UserDataMethods};
 use scraper::{Html, Selector};
 
-fn get_image_url(img_element: &scraper::ElementRef) -> String {
-	let attrs = img_element.value().attrs().collect::<HashMap<&str, &str>>();
-
-	if attrs.contains_key("data-src") {
-		attrs.get("data-src").unwrap_or(&"").trim().to_string()
-	} else if attrs.contains_key("src") {
-		attrs.get("src").unwrap_or(&"").trim().to_string()
-	} else if attrs.contains_key("data-cfsrc") {
-		attrs.get("data-cfsrc").unwrap_or(&"").trim().to_string()
-	} else if attrs.contains_key("data-lazy-src") {
-		attrs.get("data-lazy-src").unwrap_or(&"").trim().to_string()
-	} else {
-		"".to_string()
-	}
-}
-
 struct CustomScraper;
 impl UserData for CustomScraper {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
@@ -26,7 +10,22 @@ impl UserData for CustomScraper {
 			let html = Html::parse_fragment(&html);
 			let img_element = html.select(&Selector::parse("img").unwrap()).next().unwrap();
 
-			Ok(get_image_url(&img_element))
+			let attrs = img_element.value().attrs().collect::<HashMap<&str, &str>>();
+
+			let url;
+			if attrs.contains_key("data-src") {
+				url = attrs.get("data-src").unwrap_or(&"").trim().to_string()
+			} else if attrs.contains_key("src") {
+				url = attrs.get("src").unwrap_or(&"").trim().to_string()
+			} else if attrs.contains_key("data-cfsrc") {
+				url = attrs.get("data-cfsrc").unwrap_or(&"").trim().to_string()
+			} else if attrs.contains_key("data-lazy-src") {
+				url = attrs.get("data-lazy-src").unwrap_or(&"").trim().to_string()
+			} else {
+				url = "".to_string()
+			}
+
+			Ok(url)
 		});
 
 		methods.add_async_method("get_text", |_, _, html: String| async move {
@@ -35,6 +34,10 @@ impl UserData for CustomScraper {
 				.nodes()
 				.filter_map(|n| n.first_child().and_then(|c| c.value().as_text().map(|t| t.to_string())))
 				.collect();
+
+			if texts.is_empty() {
+				return Ok("".to_string());
+			}
 
 			Ok(texts[0].clone().trim().to_string())
 		});

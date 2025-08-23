@@ -8,7 +8,7 @@ use sea_orm::EntityTrait;
 use crate::objects::files::File;
 
 #[derive(Clone)]
-pub struct User {
+pub struct RawUser {
 	pub id: i32,
 	pub username: String,
 	#[allow(dead_code)]
@@ -17,7 +17,7 @@ pub struct User {
 	pub image_id: Option<i32>,
 }
 
-impl From<database_entities::users::Model> for User {
+impl From<database_entities::users::Model> for RawUser {
 	fn from(user: database_entities::users::Model) -> Self {
 		Self {
 			id: user.id,
@@ -29,16 +29,16 @@ impl From<database_entities::users::Model> for User {
 	}
 }
 
-#[derive(SimpleObject, Clone)]
+#[derive(SimpleObject, Clone, Debug)]
 #[graphql(complex)]
-pub struct SanitizedUser {
+pub struct User {
 	pub id: i32,
 	pub username: String,
 	pub created_at: NaiveDateTime,
 	pub image_id: Option<i32>,
 }
 
-impl From<database_entities::users::Model> for SanitizedUser {
+impl From<database_entities::users::Model> for User {
 	fn from(user: database_entities::users::Model) -> Self {
 		Self {
 			id: user.id,
@@ -49,8 +49,8 @@ impl From<database_entities::users::Model> for SanitizedUser {
 	}
 }
 
-impl From<User> for SanitizedUser {
-	fn from(user: User) -> Self {
+impl From<RawUser> for User {
+	fn from(user: RawUser) -> Self {
 		Self {
 			id: user.id,
 			username: user.username,
@@ -61,8 +61,8 @@ impl From<User> for SanitizedUser {
 }
 
 #[async_graphql::ComplexObject]
-impl SanitizedUser {
-	async fn image(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<File> {
+impl User {
+	async fn image_from_image_id(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<File> {
 		if let Some(image_id) = self.image_id {
 			let db = ctx.data::<Arc<Database>>()?;
 			let file = database_entities::files::Entity::find_by_id(image_id)

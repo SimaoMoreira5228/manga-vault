@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-mlua = { version = "0.10", features = [
+serde = { workspace = true }
+mlua = { version = "0.11", features = [
   "lua54",
   "serialize",
   "send",
   "vendored",
 ] }
 regex = "1.11"
-chrono = "0.4"
+chrono = { workspace = true }

@@ -5,7 +5,7 @@ use chrono::NaiveDateTime;
 use database_connection::Database;
 use sea_orm::EntityTrait;
 
-use crate::objects::users::SanitizedUser;
+use crate::objects::users::User;
 
 #[derive(SimpleObject, Clone)]
 #[graphql(complex)]
@@ -29,12 +29,12 @@ impl From<database_entities::categories::Model> for Category {
 
 #[async_graphql::ComplexObject]
 impl Category {
-	async fn user(&self, ctx: &Context<'_>) -> async_graphql::Result<SanitizedUser> {
+	async fn user(&self, ctx: &Context<'_>) -> async_graphql::Result<User> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let user = database_entities::users::Entity::find_by_id(self.user_id)
 			.one(&db.conn)
 			.await?
 			.ok_or_else(|| async_graphql::Error::new("User not found"))?;
-		Ok(SanitizedUser::from(user))
+		Ok(User::from(user))
 	}
 }
