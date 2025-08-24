@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { getAuthState, updateAuth } from '$lib/auth.svelte';
+	import { getAuthState, updateAuth, waitForAuthState } from '$lib/auth.svelte';
 	import { client } from '$lib/graphql/client';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { getImage } from '$lib/utils/image';
@@ -64,6 +64,7 @@
 	}
 
 	async function uploadFile(file: File) {
+		const authState = await waitForAuthState();
 		if (authState.status !== 'authenticated') return;
 		isUploadingFile = true;
 

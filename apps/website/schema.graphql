@@ -49,6 +49,8 @@ type Chapter {
 type ChapterMutation {
   readChapter(chapterId: Int!): ReadChapter!
   unreadChapter(chapterId: Int!): Boolean!
+  readAllChapters(mangaId: Int!): Boolean!
+  unreadAllChapters(mangaId: Int!): Boolean!
 }
 
 type ChapterQuery {

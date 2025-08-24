@@ -29,12 +29,15 @@ type Documents = {
     "\n\t\t\t\t\t\t\tmutation favoriteManga($input: CreateFavoriteMangaInput!) {\n\t\t\t\t\t\t\t\tfavoriteManga {\n\t\t\t\t\t\t\t\t\tcreateFavoriteManga(input: $input) {\n\t\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t": typeof types.FavoriteMangaDocument,
     "\n\t\t\t\t\tmutation readChapter($chapterId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\treadChapter(chapterId: $chapterId) {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tchapterId\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": typeof types.ReadChapterDocument,
     "\n\t\t\t\t\tmutation unreadChapter($chapterId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\tunreadChapter(chapterId: $chapterId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": typeof types.UnreadChapterDocument,
+    "\n\t\t\t\t\tmutation readAllChapters($mangaId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\treadAllChapters(mangaId: $mangaId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": typeof types.ReadAllChaptersDocument,
+    "\n\t\t\t\t\tmutation unreadAllChapters($mangaId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\tunreadAllChapters(mangaId: $mangaId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": typeof types.UnreadAllChaptersDocument,
     "\n\t\t\t\tquery categories {\n\t\t\t\t\tcategories {\n\t\t\t\t\t\tuserCategories {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tname\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t": typeof types.CategoriesDocument,
     "\n\t\t\t\t\t\t\t\tmutation readChapter($chapterId: Int!) {\n\t\t\t\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\t\t\t\treadChapter(chapterId: $chapterId) {\n\t\t\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\t\t\tchapterId\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t": typeof types.ReadChapterDocument,
     "\n\t\t\t\t\tquery getChapterInfo($chapterId: Int!) {\n\t\t\t\t\t\tchapters {\n\t\t\t\t\t\t\tchapter(id: $chapterId) {\n\t\t\t\t\t\t\t\timages\n\t\t\t\t\t\t\t\tnextChapter {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\tpreviousChapter {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\tscraper {\n\t\t\t\t\t\t\t\t\trefererUrl\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": typeof types.GetChapterInfoDocument,
     "\n\t\t\t\t\tquery getUserFiles {\n\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": typeof types.GetUserFilesDocument,
     "\n\t\t\t\t\t\tmutation uploadProfileFile($file: Upload!) {\n\t\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\t\tuploadFile(file: $file) {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t": typeof types.UploadProfileFileDocument,
     "\n\t\t\t\t\t\tmutation updateProfile($input: UpdateProfileInput!) {\n\t\t\t\t\t\t\tprofile {\n\t\t\t\t\t\t\t\tupdateProfile(input: $input) {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t": typeof types.UpdateProfileDocument,
+    "\n\t\t\t\tquery getUserFiles {\n\t\t\t\t\tfiles {\n\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t": typeof types.GetUserFilesDocument,
     "\n\t\t\tquery GetSearch($scraperId: String!, $query: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tsearch(scraperId: $scraperId, query: $query, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": typeof types.GetSearchDocument,
     "\n\t\tquery GetScrapersSearch {\n\t\t\tscraping {\n\t\t\t\tscrapers {\n\t\t\t\t\tid\n\t\t\t\t\tname\n\t\t\t\t\trefererUrl\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.GetScrapersSearchDocument,
     "\n\t\tquery GetScrapers {\n\t\t\tscraping {\n\t\t\t\tscrapers {\n\t\t\t\t\tid\n\t\t\t\t\tname\n\t\t\t\t\timageUrl\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": typeof types.GetScrapersDocument,
@@ -59,12 +62,15 @@ const documents: Documents = {
     "\n\t\t\t\t\t\t\tmutation favoriteManga($input: CreateFavoriteMangaInput!) {\n\t\t\t\t\t\t\t\tfavoriteManga {\n\t\t\t\t\t\t\t\t\tcreateFavoriteManga(input: $input) {\n\t\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t": types.FavoriteMangaDocument,
     "\n\t\t\t\t\tmutation readChapter($chapterId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\treadChapter(chapterId: $chapterId) {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\tchapterId\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": types.ReadChapterDocument,
     "\n\t\t\t\t\tmutation unreadChapter($chapterId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\tunreadChapter(chapterId: $chapterId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": types.UnreadChapterDocument,
+    "\n\t\t\t\t\tmutation readAllChapters($mangaId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\treadAllChapters(mangaId: $mangaId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": types.ReadAllChaptersDocument,
+    "\n\t\t\t\t\tmutation unreadAllChapters($mangaId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\tunreadAllChapters(mangaId: $mangaId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": types.UnreadAllChaptersDocument,
     "\n\t\t\t\tquery categories {\n\t\t\t\t\tcategories {\n\t\t\t\t\t\tuserCategories {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tname\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t": types.CategoriesDocument,
     "\n\t\t\t\t\t\t\t\tmutation readChapter($chapterId: Int!) {\n\t\t\t\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\t\t\t\treadChapter(chapterId: $chapterId) {\n\t\t\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t\t\t\tchapterId\n\t\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t": types.ReadChapterDocument,
     "\n\t\t\t\t\tquery getChapterInfo($chapterId: Int!) {\n\t\t\t\t\t\tchapters {\n\t\t\t\t\t\t\tchapter(id: $chapterId) {\n\t\t\t\t\t\t\t\timages\n\t\t\t\t\t\t\t\tnextChapter {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\tpreviousChapter {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\tscraper {\n\t\t\t\t\t\t\t\t\trefererUrl\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": types.GetChapterInfoDocument,
     "\n\t\t\t\t\tquery getUserFiles {\n\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t": types.GetUserFilesDocument,
     "\n\t\t\t\t\t\tmutation uploadProfileFile($file: Upload!) {\n\t\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\t\tuploadFile(file: $file) {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t": types.UploadProfileFileDocument,
     "\n\t\t\t\t\t\tmutation updateProfile($input: UpdateProfileInput!) {\n\t\t\t\t\t\t\tprofile {\n\t\t\t\t\t\t\t\tupdateProfile(input: $input) {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t": types.UpdateProfileDocument,
+    "\n\t\t\t\tquery getUserFiles {\n\t\t\t\t\tfiles {\n\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t": types.GetUserFilesDocument,
     "\n\t\t\tquery GetSearch($scraperId: String!, $query: String!, $page: Int!) {\n\t\t\t\tscraping {\n\t\t\t\t\tsearch(scraperId: $scraperId, query: $query, page: $page) {\n\t\t\t\t\t\tid\n\t\t\t\t\t\ttitle\n\t\t\t\t\t\timgUrl\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t": types.GetSearchDocument,
     "\n\t\tquery GetScrapersSearch {\n\t\t\tscraping {\n\t\t\t\tscrapers {\n\t\t\t\t\tid\n\t\t\t\t\tname\n\t\t\t\t\trefererUrl\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.GetScrapersSearchDocument,
     "\n\t\tquery GetScrapers {\n\t\t\tscraping {\n\t\t\t\tscrapers {\n\t\t\t\t\tid\n\t\t\t\t\tname\n\t\t\t\t\timageUrl\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t": types.GetScrapersDocument,
@@ -151,6 +157,14 @@ export function graphql(source: "\n\t\t\t\t\tmutation unreadChapter($chapterId: 
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "\n\t\t\t\t\tmutation readAllChapters($mangaId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\treadAllChapters(mangaId: $mangaId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t"): (typeof documents)["\n\t\t\t\t\tmutation readAllChapters($mangaId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\treadAllChapters(mangaId: $mangaId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n\t\t\t\t\tmutation unreadAllChapters($mangaId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\tunreadAllChapters(mangaId: $mangaId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t"): (typeof documents)["\n\t\t\t\t\tmutation unreadAllChapters($mangaId: Int!) {\n\t\t\t\t\t\tchapter {\n\t\t\t\t\t\t\tunreadAllChapters(mangaId: $mangaId)\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "\n\t\t\t\tquery categories {\n\t\t\t\t\tcategories {\n\t\t\t\t\t\tuserCategories {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tname\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t"): (typeof documents)["\n\t\t\t\tquery categories {\n\t\t\t\t\tcategories {\n\t\t\t\t\t\tuserCategories {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\tname\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -172,6 +186,10 @@ export function graphql(source: "\n\t\t\t\t\t\tmutation uploadProfileFile($file:
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n\t\t\t\t\t\tmutation updateProfile($input: UpdateProfileInput!) {\n\t\t\t\t\t\t\tprofile {\n\t\t\t\t\t\t\t\tupdateProfile(input: $input) {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t"): (typeof documents)["\n\t\t\t\t\t\tmutation updateProfile($input: UpdateProfileInput!) {\n\t\t\t\t\t\t\tprofile {\n\t\t\t\t\t\t\t\tupdateProfile(input: $input) {\n\t\t\t\t\t\t\t\t\tid\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t}\n\t\t\t\t\t"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n\t\t\t\tquery getUserFiles {\n\t\t\t\t\tfiles {\n\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t"): (typeof documents)["\n\t\t\t\tquery getUserFiles {\n\t\t\t\t\tfiles {\n\t\t\t\t\t\tfiles {\n\t\t\t\t\t\t\tid\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
