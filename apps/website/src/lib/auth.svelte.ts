@@ -17,7 +17,7 @@ export async function waitForAuthState() {
 					clearInterval(interval);
 					resolve();
 				}
-			}, 100);
+			}, 50);
 		});
 	}
 

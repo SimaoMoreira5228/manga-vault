@@ -13,6 +13,7 @@
 	let { data }: { data: PageData } = $props();
 	let manga = $state(data.manga);
 	const categories = data.categories;
+	let loadingStates: Record<string, boolean> = $state({});
 
 	let isFavoriting = $state<{ open: boolean; categoryId: number | null }>({
 		open: false,
@@ -160,6 +161,74 @@
 		};
 	}
 
+	async function readAllChapters() {
+		if (authState.status !== 'authenticated') return;
+		loadingStates = { ...loadingStates, readAll: true };
+
+		const { error } = await client
+			.mutation(
+				gql`
+					mutation readAllChapters($mangaId: Int!) {
+						chapter {
+							readAllChapters(mangaId: $mangaId)
+						}
+					}
+				`,
+				{ mangaId: manga?.id }
+			)
+			.toPromise();
+
+		if (error) {
+			console.error('unreadChapter failed', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to mark all chapters as read'
+			});
+			return;
+		}
+
+		manga = {
+			...(manga as any),
+			userReadChapters: manga?.chapters.map((c) => ({ id: -1, chapterId: c.id })) ?? []
+		};
+
+		loadingStates = { ...loadingStates, readAll: false };
+	}
+
+	async function unreadAllChapters() {
+		if (authState.status !== 'authenticated') return;
+		loadingStates = { ...loadingStates, unreadAll: true };
+
+		const { error } = await client
+			.mutation(
+				gql`
+					mutation unreadAllChapters($mangaId: Int!) {
+						chapter {
+							unreadAllChapters(mangaId: $mangaId)
+						}
+					}
+				`,
+				{ mangaId: manga?.id }
+			)
+			.toPromise();
+
+		if (error) {
+			console.error('unreadChapter failed', error);
+			toaster.error({
+				title: 'Error',
+				description: 'Failed to mark all chapters as unread'
+			});
+			return;
+		}
+
+		manga = {
+			...(manga as any),
+			userReadChapters: []
+		};
+
+		loadingStates = { ...loadingStates, unreadAll: false };
+	}
+
 	function getResumeChapter(): number | null {
 		const chapters = [...(manga?.chapters ?? [])];
 		for (const chapter of chapters.reverse() ?? []) {
@@ -169,6 +238,17 @@
 		}
 
 		return null;
+	}
+
+	function areAllChaptersRead(): boolean {
+		const chapters = [...(manga?.chapters ?? [])];
+		for (const chapter of chapters ?? []) {
+			if (!wasChapterRead(chapter.id)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 </script>
 
@@ -305,14 +385,33 @@
 					</a>
 				{/each}
 			</div>
-			{#if manga?.chapters && manga?.chapters?.length > 0 && getResumeChapter() !== null && authState.status === 'authenticated'}
-				<div class="mt-4 w-full">
-					<a
-						href="/manga/{manga?.id}/chapter/{getResumeChapter()}"
-						class="btn preset-filled w-full"
-					>
-						Resume Reading
-					</a>
+			{#if manga?.chapters && manga?.chapters?.length > 0 && authState.status === 'authenticated'}
+				<div class="mt-4 flex w-full flex-row gap-2">
+					{#if getResumeChapter() !== null}
+						<a
+							href="/manga/{manga?.id}/chapter/{getResumeChapter()}"
+							class="btn preset-filled w-full"
+						>
+							Resume Reading
+						</a>
+					{/if}
+					{#if areAllChaptersRead()}
+						<button
+							class="btn preset-tonal w-full"
+							onclick={unreadAllChapters}
+							disabled={loadingStates.unreadAll}
+						>
+							Mark All as Unread
+						</button>
+					{:else}
+						<button
+							class="btn preset-tonal w-full"
+							onclick={readAllChapters}
+							disabled={loadingStates.readAll}
+						>
+							Mark All as Read
+						</button>
+					{/if}
 				</div>
 			{/if}
 		</div>

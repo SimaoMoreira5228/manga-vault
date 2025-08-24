@@ -99,13 +99,25 @@ export type Chapter = {
 
 export type ChapterMutation = {
   __typename?: 'ChapterMutation';
+  readAllChapters: Scalars['Boolean']['output'];
   readChapter: ReadChapter;
+  unreadAllChapters: Scalars['Boolean']['output'];
   unreadChapter: Scalars['Boolean']['output'];
+};
+
+
+export type ChapterMutationReadAllChaptersArgs = {
+  mangaId: Scalars['Int']['input'];
 };
 
 
 export type ChapterMutationReadChapterArgs = {
   chapterId: Scalars['Int']['input'];
+};
+
+
+export type ChapterMutationUnreadAllChaptersArgs = {
+  mangaId: Scalars['Int']['input'];
 };
 
 
@@ -578,6 +590,20 @@ export type UnreadChapterMutationVariables = Exact<{
 
 export type UnreadChapterMutation = { __typename?: 'MutationRoot', chapter: { __typename?: 'ChapterMutation', unreadChapter: boolean } };
 
+export type ReadAllChaptersMutationVariables = Exact<{
+  mangaId: Scalars['Int']['input'];
+}>;
+
+
+export type ReadAllChaptersMutation = { __typename?: 'MutationRoot', chapter: { __typename?: 'ChapterMutation', readAllChapters: boolean } };
+
+export type UnreadAllChaptersMutationVariables = Exact<{
+  mangaId: Scalars['Int']['input'];
+}>;
+
+
+export type UnreadAllChaptersMutation = { __typename?: 'MutationRoot', chapter: { __typename?: 'ChapterMutation', unreadAllChapters: boolean } };
+
 export type GetChapterInfoQueryVariables = Exact<{
   chapterId: Scalars['Int']['input'];
 }>;
@@ -671,6 +697,8 @@ export const UnfavoriteMangaDocument = {"kind":"Document","definitions":[{"kind"
 export const FavoriteMangaDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"favoriteManga"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateFavoriteMangaInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"favoriteManga"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createFavoriteManga"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<FavoriteMangaMutation, FavoriteMangaMutationVariables>;
 export const ReadChapterDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"readChapter"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"readChapter"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"chapterId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"chapterId"}}]}}]}}]}}]} as unknown as DocumentNode<ReadChapterMutation, ReadChapterMutationVariables>;
 export const UnreadChapterDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"unreadChapter"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unreadChapter"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"chapterId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}}}]}]}}]}}]} as unknown as DocumentNode<UnreadChapterMutation, UnreadChapterMutationVariables>;
+export const ReadAllChaptersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"readAllChapters"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"mangaId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"readAllChapters"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"mangaId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"mangaId"}}}]}]}}]}}]} as unknown as DocumentNode<ReadAllChaptersMutation, ReadAllChaptersMutationVariables>;
+export const UnreadAllChaptersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"unreadAllChapters"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"mangaId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"unreadAllChapters"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"mangaId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"mangaId"}}}]}]}}]}}]} as unknown as DocumentNode<UnreadAllChaptersMutation, UnreadAllChaptersMutationVariables>;
 export const GetChapterInfoDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getChapterInfo"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapters"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"chapter"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"chapterId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"images"}},{"kind":"Field","name":{"kind":"Name","value":"nextChapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"previousChapter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"scraper"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"refererUrl"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetChapterInfoQuery, GetChapterInfoQueryVariables>;
 export const GetUserFilesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"getUserFiles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"files"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"files"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<GetUserFilesQuery, GetUserFilesQueryVariables>;
 export const UploadProfileFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"uploadProfileFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"file"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Upload"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"files"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"uploadFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"file"},"value":{"kind":"Variable","name":{"kind":"Name","value":"file"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<UploadProfileFileMutation, UploadProfileFileMutationVariables>;
@@ -771,13 +799,25 @@ export type Chapter = {
 
 export type ChapterMutation = {
   __typename?: 'ChapterMutation';
+  readAllChapters: Scalars['Boolean']['output'];
   readChapter: ReadChapter;
+  unreadAllChapters: Scalars['Boolean']['output'];
   unreadChapter: Scalars['Boolean']['output'];
+};
+
+
+export type ChapterMutationReadAllChaptersArgs = {
+  mangaId: Scalars['Int']['input'];
 };
 
 
 export type ChapterMutationReadChapterArgs = {
   chapterId: Scalars['Int']['input'];
+};
+
+
+export type ChapterMutationUnreadAllChaptersArgs = {
+  mangaId: Scalars['Int']['input'];
 };
 
 
@@ -1249,6 +1289,20 @@ export type UnreadChapterMutationVariables = Exact<{
 
 
 export type UnreadChapterMutation = { __typename?: 'MutationRoot', chapter: { __typename?: 'ChapterMutation', unreadChapter: boolean } };
+
+export type ReadAllChaptersMutationVariables = Exact<{
+  mangaId: Scalars['Int']['input'];
+}>;
+
+
+export type ReadAllChaptersMutation = { __typename?: 'MutationRoot', chapter: { __typename?: 'ChapterMutation', readAllChapters: boolean } };
+
+export type UnreadAllChaptersMutationVariables = Exact<{
+  mangaId: Scalars['Int']['input'];
+}>;
+
+
+export type UnreadAllChaptersMutation = { __typename?: 'MutationRoot', chapter: { __typename?: 'ChapterMutation', unreadAllChapters: boolean } };
 
 export type GetChapterInfoQueryVariables = Exact<{
   chapterId: Scalars['Int']['input'];
@@ -1575,6 +1629,28 @@ export const UnreadChapterDocument = gql`
 
 export function useUnreadChapterMutation() {
   return Urql.useMutation<UnreadChapterMutation, UnreadChapterMutationVariables>(UnreadChapterDocument);
+};
+export const ReadAllChaptersDocument = gql`
+    mutation readAllChapters($mangaId: Int!) {
+  chapter {
+    readAllChapters(mangaId: $mangaId)
+  }
+}
+    `;
+
+export function useReadAllChaptersMutation() {
+  return Urql.useMutation<ReadAllChaptersMutation, ReadAllChaptersMutationVariables>(ReadAllChaptersDocument);
+};
+export const UnreadAllChaptersDocument = gql`
+    mutation unreadAllChapters($mangaId: Int!) {
+  chapter {
+    unreadAllChapters(mangaId: $mangaId)
+  }
+}
+    `;
+
+export function useUnreadAllChaptersMutation() {
+  return Urql.useMutation<UnreadAllChaptersMutation, UnreadAllChaptersMutationVariables>(UnreadAllChaptersDocument);
 };
 export const GetChapterInfoDocument = gql`
     query getChapterInfo($chapterId: Int!) {

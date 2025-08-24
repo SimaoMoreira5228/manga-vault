@@ -58,4 +58,56 @@ impl ChapterMutation {
 
 		Ok(true)
 	}
+
+	async fn read_all_chapters(&self, ctx: &Context<'_>, manga_id: i32) -> Result<bool> {
+		let db = ctx.data::<Arc<Database>>()?;
+		let current_user = ctx.data::<User>().cloned()?;
+
+		let chapters = database_entities::chapters::Entity::find()
+			.filter(database_entities::chapters::Column::MangaId.eq(manga_id))
+			.all(&db.conn)
+			.await?;
+
+		let read_chapters = database_entities::read_chapters::Entity::find()
+			.filter(database_entities::read_chapters::Column::UserId.eq(current_user.id))
+			.filter(database_entities::read_chapters::Column::MangaId.eq(manga_id))
+			.all(&db.conn)
+			.await?;
+
+		let mut acs = Vec::new();
+		for chapter in chapters {
+			if read_chapters.iter().any(|rc| rc.chapter_id == chapter.id) {
+				continue;
+			}
+
+			let read_chapter = database_entities::read_chapters::ActiveModel {
+				user_id: Set(current_user.id),
+				chapter_id: Set(chapter.id),
+				manga_id: Set(chapter.manga_id),
+				created_at: Set(Utc::now().naive_utc()),
+				..Default::default()
+			};
+
+			acs.push(read_chapter);
+		}
+
+		database_entities::read_chapters::Entity::insert_many(acs)
+			.exec(&db.conn)
+			.await?;
+
+		Ok(true)
+	}
+
+	async fn unread_all_chapters(&self, ctx: &Context<'_>, manga_id: i32) -> Result<bool> {
+		let db = ctx.data::<Arc<Database>>()?;
+		let current_user = ctx.data::<User>().cloned()?;
+
+		database_entities::read_chapters::Entity::delete_many()
+			.filter(database_entities::read_chapters::Column::UserId.eq(current_user.id))
+			.filter(database_entities::read_chapters::Column::MangaId.eq(manga_id))
+			.exec(&db.conn)
+			.await?;
+
+		Ok(true)
+	}
 }

@@ -15,7 +15,6 @@ use rand::Rng;
 use scraper_core::ScraperManager;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
-use tokio::net::TcpListener;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::mutations::MutationRoot;
@@ -203,14 +202,10 @@ pub async fn run(db: Arc<Database>, scraper_manager: Arc<ScraperManager>) -> any
 				config.api_port
 			);
 
-			axum::serve(
-				TcpListener::bind(SocketAddr::from(([0, 0, 0, 0], config.api_port)))
-					.await
-					.expect("Failed to bind to port"),
-				app,
-			)
-			.await
-			.expect("Failed to start server");
+			axum_server::bind(SocketAddr::from(([0, 0, 0, 0], config.api_port)))
+				.serve(app.into_make_service())
+				.await
+				.unwrap();
 		}
 	}
 

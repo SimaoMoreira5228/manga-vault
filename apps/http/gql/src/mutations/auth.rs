@@ -65,16 +65,33 @@ impl AuthMutation {
 		let user: database_entities::users::Model = user.insert(&db.conn).await?;
 
 		let token = generate_jwt(user.id, &config.secret_jwt, config.jwt_duration_days)?;
-		ctx.append_http_header(
-			"Set-Cookie",
-			format!(
-				"token={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
-				token,
-				(config.jwt_duration_days as u64) * 24 * 60 * 60
-			),
-		);
 
-		Ok(User::from(user))
+		#[cfg(not(debug_assertions))]
+		{
+			ctx.append_http_header(
+				"Set-Cookie",
+				format!(
+					"token={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
+					token,
+					(config.jwt_duration_days as u64) * 24 * 60 * 60
+				),
+			);
+
+			Ok(User::from(user))
+		}
+
+		#[cfg(debug_assertions)]
+		{
+			ctx.append_http_header(
+				"Set-Cookie",
+				format!(
+					"token={}; HttpOnly; SameSite=Lax; Path=/; Max-Age={}",
+					token,
+					(config.jwt_duration_days as u64) * 24 * 60 * 60
+				),
+			);
+			Ok(User::from(user))
+		}
 	}
 
 	async fn login(&self, ctx: &Context<'_>, input: LoginInput) -> Result<User> {
@@ -92,16 +109,32 @@ impl AuthMutation {
 		}
 
 		let token = generate_jwt(user.id, &config.secret_jwt, config.jwt_duration_days)?;
-		ctx.append_http_header(
-			"Set-Cookie",
-			format!(
-				"token={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
-				token,
-				(config.jwt_duration_days as u64) * 24 * 60 * 60
-			),
-		);
 
-		Ok(User::from(user))
+		#[cfg(not(debug_assertions))]
+		{
+			ctx.append_http_header(
+				"Set-Cookie",
+				format!(
+					"token={}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={}",
+					token,
+					(config.jwt_duration_days as u64) * 24 * 60 * 60
+				),
+			);
+			return Ok(User::from(user));
+		}
+
+		#[cfg(debug_assertions)]
+		{
+			ctx.append_http_header(
+				"Set-Cookie",
+				format!(
+					"token={}; HttpOnly; SameSite=Lax; Path=/; Max-Age={}",
+					token,
+					(config.jwt_duration_days as u64) * 24 * 60 * 60
+				),
+			);
+			return Ok(User::from(user));
+		}
 	}
 
 	async fn logout(&self, ctx: &Context<'_>) -> Result<bool> {
