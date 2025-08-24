@@ -133,7 +133,7 @@
 	async function unreadChapter(chapterId: number) {
 		if (authState.status !== 'authenticated') return;
 
-		const { data, error } = await client
+		const { error } = await client
 			.mutation(
 				gql`
 					mutation unreadChapter($chapterId: Int!) {
