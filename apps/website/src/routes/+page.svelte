@@ -8,21 +8,30 @@
 	import { onMount } from 'svelte';
 	import { proxyImage } from '$lib/utils/image';
 	import { toaster } from '$lib/utils/toaster-svelte';
-	import type { PageData } from './$types';
+	import { load, type FavoriteMangaShell } from '$lib/utils/personalLibrary';
+	import { afterNavigate } from '$app/navigation';
 
-	let { data }: { data: PageData } = $props();
-
-	let favoriteMangas = $state(data.favoriteMangas);
-	let categories = $state(data.categories);
+	let favoriteMangas = $state<FavoriteMangaShell[]>([]);
+	let categories = $state<{ id: string; name: string }[]>([]);
 	let isLoading = $state(false);
 	let areMangasLoading = $state(false);
 	let orderType: 'unread' | 'alphabetical' = $state('unread');
-
+	let currentCategory = $state<string>('');
 	let authState = $derived(getAuthState());
-	let currentCategory = $state(data.currentCategory);
 
-	onMount(() => {
+	onMount(async () => {
 		orderType = (localStorage.getItem('orderType') as 'unread' | 'alphabetical') || 'unread';
+		const res = await load();
+		categories = res.categories;
+		currentCategory = res.currentCategory;
+		favoriteMangas = res.favoriteMangas;
+	});
+
+	afterNavigate(async () => {
+		const res = await load();
+		categories = res.categories;
+		currentCategory = res.currentCategory;
+		favoriteMangas = res.favoriteMangas;
 	});
 
 	$effect(() => {

@@ -11,7 +11,6 @@
 	import { proxyImage } from '$lib/utils/image';
 	import { Slider } from '@skeletonlabs/skeleton-svelte';
 	import { getAuthState } from '$lib/auth.svelte';
-	import type { PageData } from './$types';
 
 	const chapterIdStr = $derived(page.params.chapter_id);
 	const chapterId = $derived(parseInt(chapterIdStr || ''));
@@ -24,11 +23,10 @@
 	let ticking = false;
 	let imageContainer: HTMLElement | null = $state(null);
 
-	let { data }: { data: PageData } = $props();
-	let imageUrls: string[] = data.imageUrls;
-	let nextChapter: number | null = data.nextChapter;
-	let previousChapter: number | null = data.previousChapter;
-	let refererUrl: string | null = data.refererUrl;
+	let imageUrls: string[] = $state([]);
+	let nextChapter: number | null = $state(null);
+	let previousChapter: number | null = $state(null);
+	let refererUrl: string | null = $state(null);
 
 	onMount(async () => {
 		if (!browser) return;
@@ -37,6 +35,10 @@
 		if (savedMargin) {
 			imageMargin = parseInt(savedMargin, 10) || 0;
 		}
+
+		isLoading = true;
+		await loadChapter();
+		isLoading = false;
 
 		window.addEventListener('keydown', handleKeyPress);
 	});
@@ -56,11 +58,52 @@
 		if (savedMargin) {
 			imageMargin = parseInt(savedMargin, 10) || 0;
 		}
+
+		isLoading = true;
+		await loadChapter();
+		isLoading = false;
 	});
 
 	$effect(() => {
 		localStorage.setItem('imageMargin', imageMargin.toString());
 	});
+
+	async function loadChapter() {
+		const response = await client
+			.query(
+				gql`
+					query getChapterInfo($chapterId: Int!) {
+						chapters {
+							chapter(id: $chapterId) {
+								images
+								nextChapter {
+									id
+								}
+								previousChapter {
+									id
+								}
+								scraper {
+									refererUrl
+								}
+							}
+						}
+					}
+				`,
+				{ chapterId }
+			)
+			.toPromise();
+
+		if (response.error) {
+			console.error('Failed to load chapter', response.error);
+			toaster.error({ title: 'Error', description: 'Failed to load chapter' });
+			return;
+		}
+
+		nextChapter = response.data.chapters.chapter?.nextChapter?.id;
+		previousChapter = response.data.chapters.chapter?.previousChapter?.id;
+		imageUrls = response.data.chapters.chapter?.images || [];
+		refererUrl = response.data.chapters.chapter?.scraper?.refererUrl;
+	}
 
 	function handleScroll() {
 		if (ticking || !chapterId || authState.status !== 'authenticated') return;
