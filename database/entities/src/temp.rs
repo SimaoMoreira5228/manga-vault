@@ -11,8 +11,7 @@ pub struct Model {
 	pub key: String,
 	#[sea_orm(column_type = "Text")]
 	pub value: String,
-	#[sea_orm(column_type = "Text")]
-	pub expires_at: String,
+	pub expires_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

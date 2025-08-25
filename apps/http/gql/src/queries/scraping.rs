@@ -35,7 +35,7 @@ impl ScrapingQuery {
 				key: Set(format!("search:{}:{}", scraper_id, query.replace(" ", "_"))),
 				value: Set(serde_json::to_string(&mangas.iter().map(|m| m.id).collect::<Vec<_>>())
 					.map_err(|_| async_graphql::Error::new("Failed to serialize manga"))?),
-				expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(10)).naive_utc().to_string()),
+				expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(10)).naive_utc()),
 				..Default::default()
 			};
 
@@ -72,7 +72,7 @@ impl ScrapingQuery {
 				key: Set(format!("latest:{}:{}", scraper_id, page)),
 				value: Set(serde_json::to_string(&mangas.iter().map(|m| m.id).collect::<Vec<_>>())
 					.map_err(|_| async_graphql::Error::new("Failed to serialize manga"))?),
-				expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(2)).naive_utc().to_string()),
+				expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(2)).naive_utc()),
 				..Default::default()
 			};
 
@@ -109,7 +109,7 @@ impl ScrapingQuery {
 				key: Set(format!("trending:{}:{}", scraper_id, page)),
 				value: Set(serde_json::to_string(&mangas.iter().map(|m| m.id).collect::<Vec<_>>())
 					.map_err(|_| async_graphql::Error::new("Failed to serialize manga"))?),
-				expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(20)).naive_utc().to_string()),
+				expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(20)).naive_utc()),
 				..Default::default()
 			};
 
