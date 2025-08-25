@@ -80,7 +80,7 @@ impl Chapter {
 				active_models.push(database_entities::temp::ActiveModel {
 					key: Set(format!("chapter_{}_{}", self.id, index)),
 					value: Set(url.clone()),
-					expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(15)).naive_utc().to_string()),
+					expires_at: Set((chrono::Utc::now() + chrono::Duration::minutes(15)).naive_utc()),
 					..Default::default()
 				});
 			}

@@ -38,7 +38,7 @@ impl FileMutation {
 		}
 
 		let file_active_model = database_entities::files::ActiveModel {
-			owner_id: Set(Some(current_user.id)),
+			owner_id: Set(current_user.id),
 			name: Set(uuid::Uuid::new_v4().to_string()),
 			created_at: Set(Utc::now().naive_utc()),
 			..Default::default()

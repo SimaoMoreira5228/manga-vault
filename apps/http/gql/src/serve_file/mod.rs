@@ -52,11 +52,8 @@ pub async fn serve_file(
 		None => return Err(StatusCode::NOT_FOUND),
 	};
 
-	match file_model.owner_id {
-		Some(owner_id) if owner_id != user_id => {
-			return Err(StatusCode::FORBIDDEN);
-		}
-		_ => {}
+	if file_model.owner_id != user_id {
+		return Err(StatusCode::FORBIDDEN);
 	}
 
 	let path = PathBuf::from(&config.uploads_folder).join(format!("{}.{}", file_id, "webp"));

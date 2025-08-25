@@ -21,7 +21,7 @@ impl From<database_entities::files::Model> for File {
 		Self {
 			id: file.id,
 			name: file.name,
-			owner_id: file.owner_id.unwrap_or(0),
+			owner_id: file.owner_id,
 			created_at: file.created_at,
 		}
 	}

@@ -12,14 +12,18 @@ pub struct Model {
 	pub img_url: String,
 	pub scraper: String,
 	pub updated_at: DateTime,
+	#[sea_orm(column_type = "Text", nullable)]
 	pub alternative_names: Option<String>,
+	#[sea_orm(column_type = "Text", nullable)]
 	pub authors: Option<String>,
+	#[sea_orm(column_type = "Text", nullable)]
 	pub artists: Option<String>,
 	pub status: Option<String>,
 	pub manga_type: Option<String>,
 	pub release_date: Option<DateTime>,
 	#[sea_orm(column_type = "Text", nullable)]
 	pub description: Option<String>,
+	#[sea_orm(column_type = "Text", nullable)]
 	pub genres: Option<String>,
 	pub created_at: Option<DateTime>,
 }

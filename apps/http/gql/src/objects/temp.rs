@@ -1,4 +1,5 @@
 use async_graphql::SimpleObject;
+use chrono::NaiveDateTime;
 
 #[allow(dead_code)]
 #[derive(SimpleObject, Clone)]
@@ -6,7 +7,7 @@ pub struct Temp {
 	pub id: i32,
 	pub key: String,
 	pub value: String,
-	pub expires_at: String,
+	pub expires_at: NaiveDateTime,
 }
 
 impl From<database_entities::temp::Model> for Temp {
