@@ -63,8 +63,6 @@ pub async fn load_plugin_file(
 	file_path: PathBuf,
 	plugin_type: PluginType,
 ) -> Result<()> {
-	tracing::info!("Processing plugin file: {}", file_path.display());
-
 	remove_existing_plugin(&plugins, &file_path, &plugin_type).await;
 
 	match plugin_type {
