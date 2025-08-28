@@ -134,10 +134,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 
 	fn scrape_trending(page: u32) -> Vec<exports::scraper::types::scraper::MangaItem> {
-		let url = format!(
-			"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=trending&paged={}",
-			page
-		);
+		let url = format!("https://www.mangaread.org/?s=&post_type=wp-manga&paged={}", page);
 
 		let mut res = match scraper::types::http::get(&url, None) {
 			Some(res) => res,

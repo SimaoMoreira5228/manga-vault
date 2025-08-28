@@ -1,5 +1,7 @@
 wasmtime::component::bindgen!({
-	path: "scraper.wit"
+	path: "scraper.wit",
+	imports: { default: async | trappable },
+	exports: { default: async },
 });
 
 impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::MangaItem> for scraper_types::MangaItem {

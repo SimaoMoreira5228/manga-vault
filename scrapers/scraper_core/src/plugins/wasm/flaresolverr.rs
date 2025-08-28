@@ -10,15 +10,16 @@ const _FLARE_SOLVERR_MANAGER: LazyLock<Arc<FlareSolverrManager>> =
 	LazyLock::new(|| Arc::new(FlareSolverrManager::new(&CONFIG)));
 
 impl bindings::scraper::types::flare_solverr::Host for States {
-	fn create_session(&mut self) -> Result<String, String> {
+	async fn create_session(&mut self) -> Result<Result<String, String>, anyhow::Error> {
 		let session = _FLARE_SOLVERR_MANAGER.create_session();
-		match session {
+		let inner_result = match session {
 			Ok(s) => Ok(s.to_string()),
 			Err(e) => Err(e.to_string()),
-		}
+		};
+		Ok(inner_result)
 	}
 
-	fn get(&mut self, url: String, session_id: Option<String>) -> Option<Response> {
+	async fn get(&mut self, url: String, session_id: Option<String>) -> Result<Option<Response>, anyhow::Error> {
 		let session_uuid = match session_id {
 			Some(id) => match uuid::Uuid::parse_str(&id) {
 				Ok(uuid) => Some(uuid),
@@ -28,11 +29,10 @@ impl bindings::scraper::types::flare_solverr::Host for States {
 		};
 
 		let manager = _FLARE_SOLVERR_MANAGER.clone();
-		let fut = manager.get(url, session_uuid);
-		let result = tokio::runtime::Handle::current().block_on(fut);
+		let result = manager.get(url, session_uuid).await;
 
 		match result {
-			Ok(res) => Some(Response {
+			Ok(res) => Ok(Some(Response {
 				status: res.status,
 				headers: res
 					.headers
@@ -40,10 +40,10 @@ impl bindings::scraper::types::flare_solverr::Host for States {
 					.map(|h| bindings::scraper::types::http::Header { name: h.0, value: h.1 })
 					.collect(),
 				body: res.text,
-			}),
+			})),
 			Err(e) => {
 				tracing::error!("FlareSolverr get error: {}", e);
-				None
+				Ok(None)
 			}
 		}
 	}

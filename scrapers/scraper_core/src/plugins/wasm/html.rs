@@ -22,31 +22,33 @@ impl Into<html::HtmlElement> for Element {
 }
 
 impl bindings::scraper::types::html::Host for States {
-	fn find(&mut self, html: String, selector: String) -> Vec<Element> {
+	async fn find(&mut self, html: String, selector: String) -> Result<Vec<Element>, anyhow::Error> {
 		let doc = html::HtmlDocument::new(html);
 
-		doc.find(selector)
+		let elements = doc
+			.find(selector)
 			.unwrap_or_default()
 			.into_iter()
 			.map(Element::from)
-			.collect()
+			.collect();
+		Ok(elements)
 	}
 
-	fn find_one(&mut self, html: String, selector: String) -> Option<Element> {
+	async fn find_one(&mut self, html: String, selector: String) -> Result<Option<Element>, anyhow::Error> {
 		let doc = html::HtmlDocument::new(html);
 		match doc.find_one(selector) {
-			Ok(opt) => opt.map(Element::from),
-			Err(_) => None,
+			Ok(opt) => Ok(opt.map(Element::from)),
+			Err(e) => Err(anyhow::Error::from(e)),
 		}
 	}
 
-	fn text(&mut self, elem: Element) -> String {
+	async fn text(&mut self, elem: Element) -> Result<String, anyhow::Error> {
 		let elem: html::HtmlElement = elem.into();
-		elem.text()
+		Ok(elem.text())
 	}
 
-	fn attr(&mut self, elem: Element, name: String) -> Option<String> {
+	async fn attr(&mut self, elem: Element, name: String) -> Result<Option<String>, anyhow::Error> {
 		let elem: html::HtmlElement = elem.into();
-		elem.attr(name)
+		Ok(elem.attr(name))
 	}
 }
