@@ -13,9 +13,9 @@
     {
       "name": "manga_dex",
       "urls": {
-        "wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/manga_dex%40v0.4.2/manga_dex.wasm"
+        "wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/manga_dex%40v0.5.0/manga_dex.wasm"
       },
-      "version": "0.4.2",
+      "version": "0.5.0",
       "state": "updated",
       "build_state": "beta"
     },
