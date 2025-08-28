@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use mlua::{IntoLua, Lua, UserData, UserDataMethods};
 use scraper::{Html, Selector};
 
+use crate::plugins::common::html;
+
 struct CustomScraper;
 impl UserData for CustomScraper {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
@@ -29,40 +31,31 @@ impl UserData for CustomScraper {
 		});
 
 		methods.add_async_method("get_text", |_, _, html: String| async move {
-			let texts: Vec<String> = Html::parse_fragment(&html)
-				.tree
-				.nodes()
-				.filter_map(|n| n.first_child().and_then(|c| c.value().as_text().map(|t| t.to_string())))
-				.collect();
-
-			if texts.is_empty() {
-				return Ok("".to_string());
-			}
-
-			Ok(texts[0].clone().trim().to_string())
+			let html = html::HtmlElement::new(html, "".to_string());
+			let text = html.text();
+			Ok(text.trim().to_string())
 		});
 
 		methods.add_async_method("get_url", |_, _, html: String| async move {
-			let html = Html::parse_fragment(&html);
-			let url = html
-				.select(&Selector::parse("a").unwrap())
-				.next()
-				.unwrap()
-				.value()
-				.attr("href")
-				.unwrap_or("");
-
-			Ok(url.trim().to_string())
+			let html = html::HtmlElement::new(html, "a".to_string());
+			let url = html.attr("href".to_string());
+			Ok(url.unwrap_or_default().trim().to_string())
 		});
 
 		methods.add_async_method("select_elements", |lua, _, (html, selector): (String, String)| async move {
-			let selector =
-				Selector::parse(&selector).map_err(|e| mlua::Error::external(format!("Selector parsing error: {}", e)))?;
-
-			let html = Html::parse_fragment(&html);
-			let elements = html.select(&selector).collect::<Vec<_>>();
+			let html = html::HtmlDocument::new(html);
+			let elements = html.find(selector).map_err(mlua::Error::external)?;
 			let elements_html: Vec<String> = elements.into_iter().map(|e| e.html()).collect();
 			Ok(elements_html.into_lua(&lua))
+		});
+
+		methods.add_async_method("select_element", |lua, _, (html, selector): (String, String)| async move {
+			let html = html::HtmlDocument::new(html);
+			let elements = html.find_one(selector).map_err(mlua::Error::external)?;
+			match elements {
+				Some(e) => Ok(e.html().into_lua(&lua)?),
+				None => Ok(mlua::Value::Nil),
+			}
 		});
 	}
 }

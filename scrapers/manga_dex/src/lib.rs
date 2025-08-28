@@ -205,7 +205,7 @@ fn http_get(url: &str) -> Option<http::Response> {
 	let body = response.text().ok()?;
 
 	let response = http::Response {
-		status: status as u32,
+		status: status,
 		body,
 		headers: headers
 			.iter()

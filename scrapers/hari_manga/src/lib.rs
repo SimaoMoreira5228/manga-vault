@@ -30,13 +30,22 @@ export!(ScraperImpl);
 
 impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	fn scrape_chapter(url: String) -> Vec<String> {
-		let response = match http::get(&url, None) {
+		let mut response = match http::get(&url, None) {
 			Some(res) => res,
 			None => {
-				println!("Error: Failed to get chapter page");
+				println!("Error: Failed to get manga list");
 				return Vec::new();
 			}
 		};
+
+		if http::has_cloudflare_protection(&response.body, Some(response.status), Some(&response.headers)) {
+			if let Some(new_response) = flare_solverr::get(&url, None) {
+				response = new_response;
+			} else {
+				println!("Error: Failed to bypass Cloudflare");
+				return Vec::new();
+			}
+		}
 
 		if response.status != 200 {
 			println!("Error: Non-200 status for chapter page");
@@ -70,13 +79,22 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 
 	fn scrape_manga(url: String) -> MangaPage {
-		let response = match http::get(&url, None) {
+		let mut response = match http::get(&url, None) {
 			Some(res) => res,
 			None => {
-				println!("Error: Failed to get manga page");
+				println!("Error: Failed to get manga list");
 				return default_manga_page();
 			}
 		};
+
+		if http::has_cloudflare_protection(&response.body, Some(response.status), Some(&response.headers)) {
+			if let Some(new_response) = flare_solverr::get(&url, None) {
+				response = new_response;
+			} else {
+				println!("Error: Failed to bypass Cloudflare");
+				return default_manga_page();
+			}
+		}
 
 		if response.status != 200 {
 			println!("Error: Non-200 status for manga page");
@@ -274,13 +292,23 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 
 	fn scrape_genres_list() -> Vec<Genre> {
-		let response = match http::get("https://harimanga.me/", None) {
+		let url = "https://harimanga.me/";
+		let mut response = match http::get(url, None) {
 			Some(res) => res,
 			None => {
-				println!("Error: Failed to get genres page");
+				println!("Error: Failed to get manga list");
 				return Vec::new();
 			}
 		};
+
+		if http::has_cloudflare_protection(&response.body, Some(response.status), Some(&response.headers)) {
+			if let Some(new_response) = flare_solverr::get(url, None) {
+				response = new_response;
+			} else {
+				println!("Error: Failed to bypass Cloudflare");
+				return Vec::new();
+			}
+		}
 
 		if response.status != 200 {
 			println!("Error: Non-200 status for genres page");
@@ -317,13 +345,22 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 }
 
 fn scrape_manga_list(url: &str) -> Vec<MangaItem> {
-	let response = match http::get(url, None) {
+	let mut response = match http::get(url, None) {
 		Some(res) => res,
 		None => {
 			println!("Error: Failed to get manga list");
 			return Vec::new();
 		}
 	};
+
+	if http::has_cloudflare_protection(&response.body, Some(response.status), Some(&response.headers)) {
+		if let Some(new_response) = flare_solverr::get(url, None) {
+			response = new_response;
+		} else {
+			println!("Error: Failed to bypass Cloudflare");
+			return Vec::new();
+		}
+	}
 
 	if response.status != 200 {
 		println!("Error: Non-200 status for manga list");

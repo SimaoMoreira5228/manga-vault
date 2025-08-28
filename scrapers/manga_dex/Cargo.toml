@@ -13,7 +13,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 once_cell = "1.21.3"
 serde = { workspace = true }
 serde_json = { workspace = true }
-wit-bindgen = "0.44"
+wit-bindgen = { workspace = true }
 
 [dev-dependencies]
 reqwest = { workspace = true }

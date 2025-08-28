@@ -1,6 +1,6 @@
 [package]
 name = "scraper_core"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 
 [lints.rust]
@@ -24,12 +24,18 @@ mlua = { version = "0.11", features = [
   "lua54",
   "serialize",
   "anyhow",
+  "async",
+  "userdata-wrappers",
   "vendored",
   "async",
 ] }
-scraper = "0.24"
+scraper = { version = "0.24.0", features = ["serde", "atomic"] }
 fantoccini = "0.22"
 urlencoding = "2.1"
+uuid = { version = "1.18", features = ["v4"] }
+regex = { workspace = true }
+thiserror = "2.0"
+async-trait = "0.1"
 
 [dev-dependencies]
 mockito = "1.7.0"

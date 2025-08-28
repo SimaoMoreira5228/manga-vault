@@ -4,6 +4,7 @@ use std::pin::Pin;
 use anyhow::Result;
 use scraper_types::{Genre, MangaItem, MangaPage, ScraperInfo};
 
+mod common;
 mod globals;
 pub mod lua;
 pub mod wasm;

@@ -1,6 +1,6 @@
 [package]
 name = "manga-vault"
-version = "1.4.0"
+version = "1.5.0"
 edition = "2024"
 
 [[bin]]
@@ -54,6 +54,8 @@ rand = "0.9"
 reqwest = { version = "0.12", features = ["stream", "blocking", "json"] }
 version-check = { path = "apps/http/version_check" }
 axum-server = { version = "0.7.2", features = ["tls-rustls"] }
+regex = "1.11"
+wit-bindgen = "0.45"
 
 [dependencies]
 tracing = { workspace = true }

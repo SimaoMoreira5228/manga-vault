@@ -26,10 +26,22 @@ export!(ScraperImpl);
 
 impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	fn scrape_chapter(url: String) -> Vec<String> {
-		let Some(response) = scraper::types::http::get(&url, None) else {
-			println!("Error while getting response on scrape_chapter: None response");
-			return Vec::new();
+		let mut response = match scraper::types::http::get(&url, None) {
+			Some(res) => res,
+			None => {
+				println!("Error: Failed to get manga list");
+				return Vec::new();
+			}
 		};
+
+		if scraper::types::http::has_cloudflare_protection(&response.body, Some(response.status), Some(&response.headers)) {
+			if let Some(new_response) = scraper::types::flare_solverr::get(&url, None) {
+				response = new_response;
+			} else {
+				println!("Error: Failed to bypass Cloudflare");
+				return Vec::new();
+			}
+		}
 
 		if response.status != 200 {
 			println!("Error while getting response on scrape_chapter: {}", response.status);
@@ -54,10 +66,22 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			page
 		);
 
-		let Some(res) = scraper::types::http::get(&url, None) else {
-			println!("Error while getting response on scrape_chapter: None response");
-			return Vec::new();
+		let mut res = match scraper::types::http::get(&url, None) {
+			Some(res) => res,
+			None => {
+				println!("Error: Failed to get manga list");
+				return Vec::new();
+			}
 		};
+
+		if scraper::types::http::has_cloudflare_protection(&res.body, Some(res.status), Some(&res.headers)) {
+			if let Some(new_response) = scraper::types::flare_solverr::get(&url, None) {
+				res = new_response;
+			} else {
+				println!("Error: Failed to bypass Cloudflare");
+				return Vec::new();
+			}
+		}
 
 		if res.status != 200 {
 			println!("Error while getting response on scrape_latest: {}", res.status);
@@ -115,10 +139,22 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			page
 		);
 
-		let Some(res) = scraper::types::http::get(&url, None) else {
-			println!("Error while getting response on scrape_chapter: None response");
-			return Vec::new();
+		let mut res = match scraper::types::http::get(&url, None) {
+			Some(res) => res,
+			None => {
+				println!("Error: Failed to get manga list");
+				return Vec::new();
+			}
 		};
+
+		if scraper::types::http::has_cloudflare_protection(&res.body, Some(res.status), Some(&res.headers)) {
+			if let Some(new_response) = scraper::types::flare_solverr::get(&url, None) {
+				res = new_response;
+			} else {
+				println!("Error: Failed to bypass Cloudflare");
+				return Vec::new();
+			}
+		}
 
 		if res.status != 200 {
 			println!("Error while getting response on scrape_trending: {}", res.status);
@@ -175,10 +211,22 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			query, page
 		);
 
-		let Some(res) = scraper::types::http::get(&url, None) else {
-			println!("Error while getting response on scrape_chapter: None response");
-			return Vec::new();
+		let mut res = match scraper::types::http::get(&url, None) {
+			Some(res) => res,
+			None => {
+				println!("Error: Failed to get manga list");
+				return Vec::new();
+			}
 		};
+
+		if scraper::types::http::has_cloudflare_protection(&res.body, Some(res.status), Some(&res.headers)) {
+			if let Some(new_response) = scraper::types::flare_solverr::get(&url, None) {
+				res = new_response;
+			} else {
+				println!("Error: Failed to bypass Cloudflare");
+				return Vec::new();
+			}
+		}
 
 		if res.status != 200 {
 			println!("Error while getting response on scrape_search: {}", res.status);
@@ -230,23 +278,22 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 
 	fn scrape_manga(url: String) -> exports::scraper::types::scraper::MangaPage {
-		let Some(res) = scraper::types::http::get(&url, None) else {
-			println!("Error while getting response on scrape_manga: None response");
-			return exports::scraper::types::scraper::MangaPage {
-				title: String::new(),
-				img_url: String::new(),
-				alternative_names: Vec::new(),
-				authors: Vec::new(),
-				artists: None,
-				status: String::new(),
-				manga_type: None,
-				release_date: None,
-				description: String::new(),
-				genres: Vec::new(),
-				chapters: Vec::new(),
-				url,
-			};
+		let mut res = match scraper::types::http::get(&url, None) {
+			Some(res) => res,
+			None => {
+				println!("Error: Failed to get manga list");
+				return default_manga_page(url);
+			}
 		};
+
+		if scraper::types::http::has_cloudflare_protection(&res.body, Some(res.status), Some(&res.headers)) {
+			if let Some(new_response) = scraper::types::flare_solverr::get(&url, None) {
+				res = new_response;
+			} else {
+				println!("Error: Failed to bypass Cloudflare");
+				return default_manga_page(url);
+			}
+		}
 
 		if res.status != 200 {
 			println!("Error while getting response on scrape_manga: {}", res.status);
@@ -461,10 +508,22 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 	fn scrape_genres_list() -> Vec<exports::scraper::types::scraper::Genre> {
 		let url = "https://www.mangaread.org/";
-		let Some(res) = scraper::types::http::get(&url, None) else {
-			println!("Error while getting response on scrape_chapter: None response");
-			return Vec::new();
+		let mut res = match scraper::types::http::get(&url, None) {
+			Some(res) => res,
+			None => {
+				println!("Error: Failed to get manga list");
+				return Vec::new();
+			}
 		};
+
+		if scraper::types::http::has_cloudflare_protection(&res.body, Some(res.status), Some(&res.headers)) {
+			if let Some(new_response) = scraper::types::flare_solverr::get(&url, None) {
+				res = new_response;
+			} else {
+				println!("Error: Failed to bypass Cloudflare");
+				return Vec::new();
+			}
+		}
 
 		if res.status != 200 {
 			println!("Error while getting response on scrape_genres_list: {}", res.status);
@@ -500,4 +559,21 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			legacy_urls: None,
 		}
 	}
+}
+
+fn default_manga_page(url: String) -> exports::scraper::types::scraper::MangaPage {
+	return exports::scraper::types::scraper::MangaPage {
+		title: String::new(),
+		img_url: String::new(),
+		alternative_names: Vec::new(),
+		authors: Vec::new(),
+		artists: None,
+		status: String::new(),
+		manga_type: None,
+		release_date: None,
+		description: String::new(),
+		genres: Vec::new(),
+		chapters: Vec::new(),
+		url,
+	};
 }

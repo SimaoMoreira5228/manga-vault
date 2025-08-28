@@ -1,6 +1,6 @@
 [package]
 name = "hari_manga"
-version = "0.3.2"
+version = "0.4.0"
 edition = "2024"
 
 [lib]
@@ -9,4 +9,4 @@ crate-type = ["cdylib"]
 [dependencies]
 reqwest = { workspace = true }
 scraper = "0.24"
-wit-bindgen = "0.44"
+wit-bindgen = { workspace = true }

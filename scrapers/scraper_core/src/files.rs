@@ -69,12 +69,7 @@ pub async fn load_plugin_file(
 
 	match plugin_type {
 		PluginType::Lua => {
-			let plugin = tokio::task::spawn_blocking({
-				let config = config.clone();
-				let file_path = file_path.clone();
-				move || LuaPlugin::new(config, &file_path)
-			})
-			.await??;
+			let plugin = LuaPlugin::new(config, &file_path).await?;
 
 			plugins
 				.write()

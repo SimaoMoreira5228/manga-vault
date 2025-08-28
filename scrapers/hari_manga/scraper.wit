@@ -6,14 +6,14 @@ interface scraper {
         url: string,
         img-url: string,
     }
-    
+
     record chapter {
         title: string,
         url: string,
         date: string,
         scanlation-group: option<string>,
     }
-    
+
     record manga-page {
         title: string,
         url: string,
@@ -28,12 +28,12 @@ interface scraper {
         genres: list<string>,
         chapters: list<chapter>,
     }
-    
+
     record genre {
         name: string,
         url: string,
     }
-    
+
     record scraper-info {
         id: string,
         name: string,
@@ -60,16 +60,49 @@ interface http {
     }
 
     record response {
-        status: u32,
+        status: u16,
         headers: list<header>,
         body: string,
     }
 
     get: func(url: string, headers: option<list<header>>) -> option<response>;
     post: func(url: string, body: string, headers: option<list<header>>) -> option<response>;
+    has-cloudflare-protection: func(text: string, status-code: option<u16>, headers: option<list<header>>) -> bool;
+}
+
+interface flare-solverr {
+    use http.{response};
+
+    create-session: func() -> result<string, string>;
+    get: func(url: string, session-id: option<string>) -> option<response>;
+}
+
+interface headless {
+    use html.{element};
+
+    goto: func(url: string) -> result<_, string>;
+    find-one: func(selector: string) -> option<element>;
+    find-all: func(selector: string) -> list<element>;
+    close: func() -> bool;
+}
+
+interface html {
+    record element {
+        html: string,
+        selector: string,
+    }
+
+    find: func(html: string, selector: string) -> list<element>;
+    find-one: func(html: string, selector: string) -> option<element>;
+    text: func(elem: element) -> string;
+    attr: func(elem: element, name: string) -> option<string>;
 }
 
 world root {
     export scraper;
+
     import http;
+    import flare-solverr;
+    import headless;
+    import html;
 }

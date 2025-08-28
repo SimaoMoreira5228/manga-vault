@@ -1,10 +1,14 @@
 ---@diagnostic disable: undefined-global, undefined-field
 
 PLUGIN_NAME = "natomanga"
-PLUGIN_VERSION = "0.1.4"
+PLUGIN_VERSION = "0.2.0"
 
 function Scrape_chapter(url)
-    local html = http:get(url).text
+    local request = http:get(url)
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
 
     local cdn_json = string.match(html, "var cdns = (%[.-%]);")
     local chapter_images_json = string.match(html, "var chapterImages = (%[.-%]);")
@@ -36,7 +40,11 @@ end
 
 function Scrape_latest(page)
     local url = "https://www.natomanga.com/manga-list/latest-manga?page=" .. tostring(page)
-    local html = http:get(url).text
+    local request = http:get(url)
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
 
     local manga_divs = scraping:select_elements(html, "div.list-truyen-item-wrap")
     local manga_items = {}
@@ -64,7 +72,11 @@ end
 
 function Scrape_trending(page)
     local url = "https://www.natomanga.com/manga-list/hot-manga?page=" .. tostring(page)
-    local html = http:get(url).text
+    local request = http:get(url)
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
 
     local manga_divs = scraping:select_elements(html, "div.list-truyen-item-wrap")
     local manga_items = {}
@@ -92,7 +104,11 @@ end
 
 function Scrape_search(query, page)
     local url = "https://www.natomanga.com/search/story/" .. query .. "?page=" .. tostring(page)
-    local html = http:get(url, { referer = "https://www.natomanga.com/" }).text
+    local request = http:get(url, { referer = "https://www.natomanga.com/" })
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
 
     local manga_divs = scraping:select_elements(html, "div.story_item")
 
@@ -119,7 +135,11 @@ function Scrape_search(query, page)
 end
 
 function Scrape_manga(url)
-    local html = http:get(url).text
+    local request = http:get(url)
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
 
     local title = scraping:get_text(scraping:select_elements(html, ".manga-info-content h1")[1]) or ""
     local img_url = scraping:get_image_url(scraping:select_elements(html, ".manga-info-pic img")[1]) or ""
@@ -179,7 +199,11 @@ end
 
 function Scrape_genres_list()
     local url = "https://www.natomanga.com/"
-    local html = http:get(url).text
+    local request = http:get(url)
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
 
     local genres = {}
     local genre_rows = scraping:select_elements(html, ".panel-category table tr")

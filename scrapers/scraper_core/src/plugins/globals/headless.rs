@@ -1,105 +1,77 @@
-use anyhow::Context;
-use fantoccini::wd::Capabilities;
-use fantoccini::{ClientBuilder, Locator};
+use std::sync::Arc;
+
 use mlua::{Lua, UserData, UserDataMethods};
 
 use crate::Config;
+use crate::plugins::common::headless::fallback::FallbackBackend;
+use crate::plugins::common::headless::fantoccini::FantocciniBackend;
+use crate::plugins::common::headless::traits::{HeadlessBackend, HeadlessElement};
 
 struct HeadlessClient {
-	client: fantoccini::client::Client,
-}
-
-struct Element {
-	element: fantoccini::elements::Element,
+	inner: Arc<dyn HeadlessBackend>,
 }
 
 impl UserData for HeadlessClient {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-		methods.add_async_method("get", |_, this, url: String| async move {
-			let client = this.client.clone();
-			client
-				.goto(&url)
-				.await
-				.with_context(|| format!("Failed to navigate to URL: {}", url))?;
-
-			client
-				.wait()
-				.for_element(Locator::Css("body"))
-				.await
-				.with_context(|| format!("Failed to wait for page to load: {}", url))?;
-
-			Ok(())
+		methods.add_async_method("goto", |_, this, url: String| async move {
+			this.inner.goto(url).await.map_err(mlua::Error::external)
 		});
 
-		methods.add_async_method("find", |_, this, selector: String| async move {
-			let client = this.client.clone();
-			let element = client
-				.find(Locator::Css(&selector))
-				.await
-				.with_context(|| format!("Failed to find element with selector: {}", selector))?;
-
-			Ok(Element { element })
+		methods.add_async_method("find", |lua, this, selector: String| async move {
+			let result = this.inner.find(selector).await.map_err(mlua::Error::external)?;
+			match result {
+				Some(element) => {
+					let ud = lua.create_userdata(LuaHeadlessElement(Arc::from(element)))?;
+					Ok(Some(ud))
+				}
+				None => Ok(None),
+			}
 		});
 
-		methods.add_async_method("find_all", |_, this, selector: String| async move {
-			let client = this.client.clone();
-			let elements = client
-				.find_all(Locator::Css(&selector))
-				.await
-				.with_context(|| format!("Failed to find elements with selector: {}", selector))?;
-
-			let elements = elements.into_iter().map(|e| Element { element: e }).collect::<Vec<_>>();
-
-			Ok(elements)
+		methods.add_async_method("find_all", |lua, this, selector: String| async move {
+			let elements = this.inner.find_all(selector).await.map_err(mlua::Error::external)?;
+			let lua_elements = elements
+				.into_iter()
+				.map(|element| lua.create_userdata(LuaHeadlessElement(Arc::from(element))))
+				.collect::<Result<Vec<_>, _>>()?;
+			Ok(lua_elements)
 		});
 
 		methods.add_async_method("close", |_, this, _: ()| async move {
-			let client = this.client.clone();
-			client.close().await.with_context(|| "Failed to close the browser")?;
-
-			Ok(())
+			this.inner.close().await.map_err(mlua::Error::external)
 		});
 	}
 }
 
-impl UserData for Element {
+#[derive(Clone)]
+struct LuaHeadlessElement(Arc<dyn HeadlessElement>);
+
+impl UserData for LuaHeadlessElement {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method("click", |_, this, _: ()| async move {
-			let element = this.element.clone();
-			element.click().await.with_context(|| "Failed to click the element")?;
-
-			Ok(())
+			this.0.click().await.map_err(mlua::Error::external)
 		});
 
 		methods.add_async_method("text", |_, this, _: ()| async move {
-			let element = this.element.clone();
-			let text = element.text().await.with_context(|| "Failed to get text from the element")?;
-
-			Ok(text)
+			this.0.text().await.map_err(mlua::Error::external)
 		});
 	}
 }
 
-#[cfg_attr(all(coverage_nightly, test), coverage(off))]
-#[allow(dead_code)]
 pub(crate) async fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
 	if config.headless.is_none() {
-		tracing::debug!("Headless mode is not enabled in the config");
+		tracing::debug!("Headless mode is not enabled in the config — registering DummyHeadless fallback");
+		let dummy: Arc<dyn HeadlessBackend> = Arc::new(FallbackBackend::new());
+		let headless_client = HeadlessClient { inner: dummy };
+		lua.globals().set("headless_client", headless_client)?;
 		return Ok(());
 	}
 
-	let cap: Capabilities = serde_json::from_str(
-		r#"{"moz:firefoxOptions": {"args": ["-headless"]}, "goog:chromeOptions": {"args": ["--headless"]}}"#,
-	)
-	.context("Failed to parse capabilities")?;
+	let headless_client = FantocciniBackend::new(config);
+	let headless_client = HeadlessClient {
+		inner: Arc::new(headless_client),
+	};
 
-	let client = ClientBuilder::native()
-		.capabilities(cap)
-		.connect(config.headless.as_ref().unwrap())
-		.await
-		.context("Failed to connect to WebDriver")?;
-
-	let headless_client = HeadlessClient { client };
 	lua.globals()
 		.set("headless_client", headless_client)
 		.expect("Failed to set global variable");
@@ -111,11 +83,13 @@ pub(crate) async fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
 #[cfg_attr(all(coverage_nightly, test), coverage(off))]
 mod tests {
 
+	use std::sync::Arc;
+
 	use fantoccini::ClientBuilder;
 	use fantoccini::wd::Capabilities;
 	use mlua::Lua;
 
-	use super::HeadlessClient;
+	use crate::plugins::common::headless::fantoccini::FantocciniBackend;
 
 	async fn setup() -> Result<(Lua, fantoccini::client::Client), ()> {
 		let lua = Lua::new();
@@ -131,7 +105,14 @@ mod tests {
 			.await
 			.unwrap();
 
-		let headless_client = HeadlessClient { client: client.clone() };
+		let headless_client = FantocciniBackend::new(&crate::Config {
+			headless: Some("http://localhost:4444".to_string()),
+			..Default::default()
+		});
+		let headless_client = super::HeadlessClient {
+			inner: Arc::new(headless_client),
+		};
+
 		lua.globals()
 			.set("headless_client", headless_client)
 			.expect("Failed to set global variable");
