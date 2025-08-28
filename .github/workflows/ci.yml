@@ -46,3 +46,55 @@ jobs:
       - name: Run clippy (stable)
         run: cargo clippy --all-features --all-targets --no-deps -- -D warnings
         shell: bash
+
+  test:
+    name: "Rust: tests"
+    runs-on: ubuntu-latest
+    needs: [fmt, clippy]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install OS deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y chromium-chromedriver
+        shell: bash
+
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rust-src
+
+      - name: Cache Cargo registry & git index
+        uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: "v0-rust-ci"
+          cache-on-failure: true
+          shared-key: "rust-ci-${{ runner.os }}"
+
+      - name: Install cargo-component (if missing)
+        run: |
+          if ! command -v cargo-component >/dev/null 2>&1; then
+            cargo install cargo-component
+          fi
+        shell: bash
+        env:
+          CARGO_TERM_COLOR: always
+
+      - name: Build wasm plugin and run tests
+        run: |
+          set -euo pipefail
+          cargo component build --target wasm32-wasip1 --release --package mangaread_org
+
+          export VAULT_TEST_WASM_PLUGIN="$(pwd)/target/wasm32-wasip1/release/mangaread_org.wasm"
+          echo "VAULT_TEST_WASM_PLUGIN=$VAULT_TEST_WASM_PLUGIN"
+          export VAULT_TEST_WASM_PLUGIN_MANGA_URL="https://www.mangaread.org/manga/solo-leveling-manhwa/"
+          echo "VAULT_TEST_WASM_PLUGIN_MANGA_URL=$VAULT_TEST_WASM_PLUGIN_MANGA_URL"
+
+          chromedriver --port=4444 &
+          chromedriver_pid=$!
+          trap 'kill $chromedriver_pid 2>/dev/null || true' EXIT
+
+          INSTA_FORCE_PASS=1 cargo test --workspace --all-features -- --nocapture
+        shell: bash

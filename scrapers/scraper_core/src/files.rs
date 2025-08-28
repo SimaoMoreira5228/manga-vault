@@ -77,11 +77,7 @@ pub async fn load_plugin_file(
 				.insert(plugin.name.clone(), Arc::new(Plugin::Lua(plugin)));
 		}
 		PluginType::Wasm => {
-			let plugin = tokio::task::spawn_blocking({
-				let file_path = file_path.clone();
-				move || WasmPlugin::new(&file_path)
-			})
-			.await??;
+			let plugin = WasmPlugin::new(&file_path).await?;
 
 			plugins
 				.write()

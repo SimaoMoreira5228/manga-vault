@@ -13,7 +13,7 @@ struct HeadlessClient {
 
 impl UserData for HeadlessClient {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-		methods.add_async_method("goto", |_, this, url: String| async move {
+		methods.add_async_method("go", |_, this, url: String| async move {
 			this.inner.goto(url).await.map_err(mlua::Error::external)
 		});
 
@@ -49,10 +49,15 @@ struct LuaHeadlessElement(Arc<dyn HeadlessElement>);
 impl UserData for LuaHeadlessElement {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method("click", |_, this, _: ()| async move {
+			println!("Clicking element with selector: {}", this.0._selector().unwrap_or_default());
 			this.0.click().await.map_err(mlua::Error::external)
 		});
 
 		methods.add_async_method("text", |_, this, _: ()| async move {
+			println!(
+				"Getting text of element with selector: {}",
+				this.0._selector().unwrap_or_default()
+			);
 			this.0.text().await.map_err(mlua::Error::external)
 		});
 	}
@@ -67,7 +72,7 @@ pub(crate) async fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
 		return Ok(());
 	}
 
-	let headless_client = FantocciniBackend::new(config);
+	let headless_client = FantocciniBackend::new(config).await?;
 	let headless_client = HeadlessClient {
 		inner: Arc::new(headless_client),
 	};
@@ -105,10 +110,7 @@ mod tests {
 			.await
 			.unwrap();
 
-		let headless_client = FantocciniBackend::new(&crate::Config {
-			headless: Some("http://localhost:4444".to_string()),
-			..Default::default()
-		});
+		let headless_client = FantocciniBackend::_from_client(client.clone());
 		let headless_client = super::HeadlessClient {
 			inner: Arc::new(headless_client),
 		};
@@ -125,7 +127,7 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://quotes.toscrape.com/")
+      headless_client:go("https://quotes.toscrape.com/")
     "#;
 
 		lua.load(script).exec_async().await.unwrap();
@@ -141,7 +143,7 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://quotes.toscrape.com/")
+      headless_client:go("https://quotes.toscrape.com/")
       local element = headless_client:find(".quote")
       assert(element ~= nil)
     "#;
@@ -155,7 +157,7 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://quotes.toscrape.com/")
+      headless_client:go("https://quotes.toscrape.com/")
       local elements = headless_client:find_all(".quote")
       assert(#elements > 0)
     "#;
@@ -181,7 +183,7 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://quotes.toscrape.com/")
+      headless_client:go("https://quotes.toscrape.com/")
       local next = headless_client:find(".next a")
       next:click()
     "#;
@@ -201,7 +203,7 @@ mod tests {
 		let (lua, client) = setup().await.unwrap();
 
 		let script = r#"
-      headless_client:get("https://quotes.toscrape.com/")
+      headless_client:go("https://quotes.toscrape.com/")
       local element = headless_client:find(".quote .text")
       local text = element:text()
       assert(text ~= nil and text:find("The world as we have created it"))

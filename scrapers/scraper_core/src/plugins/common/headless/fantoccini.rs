@@ -52,22 +52,29 @@ pub struct FantocciniBackend {
 }
 
 impl FantocciniBackend {
-	pub fn new(config: &Config) -> Self {
-		let client = tokio::runtime::Handle::current().block_on(async {
-			let cap: Capabilities = serde_json::from_str(
-				r#"{"moz:firefoxOptions": {"args": ["-headless"]}, "goog:chromeOptions": {"args": ["--headless"]}}"#,
-			)
+	pub async fn new(config: &Config) -> Result<Self, HeadlessError> {
+		let cap: Capabilities = serde_json::from_str(
+			r#"{
+                "moz:firefoxOptions": {"args": ["-headless"]},
+                "goog:chromeOptions": {"args": ["--headless"]}
+            }"#,
+		)
+		.map_err(|e| HeadlessError::InitializationError(e.to_string()))?;
+
+		let client = fantoccini::ClientBuilder::native()
+			.capabilities(cap)
+			.connect(config.headless.as_ref().unwrap())
+			.await
 			.map_err(|e| HeadlessError::InitializationError(e.to_string()))?;
 
-			fantoccini::ClientBuilder::native()
-				.capabilities(cap)
-				.connect(config.headless.as_ref().unwrap())
-				.await
-				.map_err(|e| HeadlessError::InitializationError(e.to_string()))
-		});
+		Ok(Self {
+			client: Arc::new(Mutex::new(Some(client))),
+		})
+	}
 
+	pub fn _from_client(client: fantoccini::client::Client) -> Self {
 		Self {
-			client: Arc::new(Mutex::new(Some(client.expect("Failed to create fantoccini client")))),
+			client: Arc::new(Mutex::new(Some(client))),
 		}
 	}
 }

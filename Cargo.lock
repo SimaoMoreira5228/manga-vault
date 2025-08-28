@@ -6031,6 +6031,7 @@ dependencies = [
  "config 0.1.0",
  "config-derive",
  "fantoccini",
+ "futures",
  "mlua",
  "mockito",
  "notify",
