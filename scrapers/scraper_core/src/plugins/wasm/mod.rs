@@ -180,12 +180,13 @@ impl WasmPlugin {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use core::panic;
 	use std::env;
 	use std::fs::File;
 	use std::path::{Path, PathBuf};
 	use std::time::{SystemTime, UNIX_EPOCH};
+
+	use super::*;
 
 	fn unique_temp_path(suffix: &str) -> PathBuf {
 		let nanos = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
