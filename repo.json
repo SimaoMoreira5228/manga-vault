@@ -4,9 +4,9 @@
     {
       "name": "mangaread_org",
       "urls": {
-        "wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangaread_org%40v0.4.2/mangaread_org.wasm"
+        "wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangaread_org%40v0.5.0/mangaread_org.wasm"
       },
-      "version": "0.4.2",
+      "version": "0.5.0",
       "state": "updated",
       "build_state": "beta"
     },
@@ -22,27 +22,27 @@
     {
       "name": "hari_manga",
       "urls": {
-        "wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/hari_manga%40v0.3.2/hari_manga.wasm"
+        "wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/hari_manga%40v0.4.0/hari_manga.wasm"
       },
-      "version": "0.3.2",
+      "version": "0.4.0",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "manhuafast",
       "urls": {
-        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/manhuafast%40v0.2.0/manhuafast.lua"
+        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/manhuafast%40v0.3.0/manhuafast.lua"
       },
-      "version": "0.2.0",
+      "version": "0.3.0",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "natomanga",
       "urls": {
-        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.1.4/natomanga.lua"
+        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.2.0/natomanga.lua"
       },
-      "version": "0.1.4",
+      "version": "0.2.0",
       "state": "updated",
       "build_state": "beta"
     }
