@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-regex = "1.11"
+regex = { workspace = true }
 semver = "1.0"
 serde = { workspace = true }
 thiserror = "2.0"

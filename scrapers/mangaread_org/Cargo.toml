@@ -1,6 +1,6 @@
 [package]
 name = "mangaread_org"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2024"
 
 [lib]
@@ -8,7 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 scraper = "0.24"
-wit-bindgen = "0.44"
+wit-bindgen = { workspace = true }
 
 [build-dependencies]
 cargo-component = "0.21"

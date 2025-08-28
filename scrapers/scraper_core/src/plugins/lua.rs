@@ -19,9 +19,9 @@ pub struct LuaPlugin {
 }
 
 impl LuaPlugin {
-	pub fn new(config: Arc<Config>, file: &Path) -> anyhow::Result<Self> {
+	pub async fn new(config: Arc<Config>, file: &Path) -> anyhow::Result<Self> {
 		let runtime = Lua::new();
-		globals::load(&config, &runtime)?;
+		globals::load(&config, &runtime).await?;
 
 		let mut lua_file = fs::File::open(&file)?;
 		let mut script_content = String::new();

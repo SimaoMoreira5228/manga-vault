@@ -1,10 +1,16 @@
----@diagnostic disable: undefined-global, undefined-field
+---@type _G
 
 PLUGIN_NAME = "manhuafast"
-PLUGIN_VERSION = "0.2.0"
+PLUGIN_VERSION = "0.3.0"
 
+---@param url string
 local function scrape_manga_list(url)
-    local html = http:get(url).text
+    local request = http:get(url)
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
+
     local manga_items = {}
 
     local manga_divs = scraping:select_elements(html, "div.c-tabs-item")
@@ -50,7 +56,12 @@ local function scrape_manga_list(url)
 end
 
 function Scrape_chapter(url)
-    local html = http:get(url).text
+    local request = http:get(url)
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
+
     local img_elements = scraping:select_elements(html, "img.wp-manga-chapter-img")
     local imgs = {}
 
@@ -143,7 +154,11 @@ local function scrape_manga_chapters(url)
 end
 
 function Scrape_manga(url)
-    local html = http:get(url).text
+    local request = http:get(url)
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
 
     local title_element = scraping:select_elements(html, "div.post-title h1")[1]
     local title = title_element and scraping:get_text(title_element) or ""
@@ -179,7 +194,12 @@ end
 
 function Scrape_genres_list()
     local url = "https://manhuafast.com/?s=&post_type=wp-manga"
-    local html = http:get(url).text
+    local request = http:get(url)
+    local html = request.text
+    if http:has_cloudflare_protection(html, request.status, request.headers) then
+        html = flaresolverr:get(url).text
+    end
+
     local genres = {}
 
     local genre_elements = scraping:select_elements(html, "div.checkbox-group div.checkbox label")

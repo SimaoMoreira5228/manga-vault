@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::time::Instant;
 
 use anyhow::{Context, Result};
@@ -39,6 +39,8 @@ pub struct Config {
 	pub repositories: Vec<RepositoryConfig>,
 	#[serde(default)]
 	pub headless: Option<String>,
+	#[serde(default)]
+	pub flaresolverr_url: Option<String>,
 }
 
 impl Default for Config {
@@ -47,6 +49,7 @@ impl Default for Config {
 			plugins_folder: format!("{}/plugins", current_exe_parent_dir().display()),
 			repositories: Vec::new(),
 			headless: None,
+			flaresolverr_url: None,
 		}
 	}
 }
@@ -63,21 +66,20 @@ struct FileModification {
 type PluginMap = Arc<RwLock<HashMap<String, Arc<Plugin>>>>;
 type ModificationTracker = Arc<RwLock<HashMap<PathBuf, FileModification>>>;
 
+pub(crate) const CONFIG: LazyLock<Arc<Config>> = LazyLock::new(|| Arc::new(Config::load()));
+
 pub struct ScraperManager {
 	plugins: PluginMap,
 	modification_tracker: ModificationTracker,
-	config: Arc<Config>,
 }
 
 impl ScraperManager {
 	pub async fn new(update: bool) -> Result<Arc<Self>> {
-		let config = Arc::new(Config::load());
 		if update {
 			tracing::info!("Creating plugin manager without updating");
 			let manager = Self {
 				plugins: Arc::new(RwLock::new(HashMap::new())),
 				modification_tracker: Arc::new(RwLock::new(HashMap::new())),
-				config,
 			};
 
 			manager.initialize(false).await?;
@@ -88,7 +90,6 @@ impl ScraperManager {
 		let manager = Self {
 			plugins: Arc::new(RwLock::new(HashMap::new())),
 			modification_tracker: Arc::new(RwLock::new(HashMap::new())),
-			config,
 		};
 
 		manager.initialize(true).await?;
@@ -101,7 +102,7 @@ impl ScraperManager {
 
 		if update {
 			tracing::info!("Updating plugins");
-			repository::load_repos(&self.config).await?;
+			repository::load_repos(&CONFIG).await?;
 		}
 
 		self.load_initial_plugins().await?;
@@ -109,7 +110,7 @@ impl ScraperManager {
 	}
 
 	fn setup_plugins_directory(&self) -> Result<()> {
-		let plugins_dir = PathBuf::from(&self.config.plugins_folder);
+		let plugins_dir = PathBuf::from(&CONFIG.plugins_folder);
 		if !plugins_dir.exists() {
 			tracing::debug!("Creating plugins folder: {}", plugins_dir.display());
 			std::fs::create_dir_all(&plugins_dir)
@@ -120,8 +121,8 @@ impl ScraperManager {
 
 	async fn load_initial_plugins(&self) -> Result<()> {
 		let plugins = self.plugins.clone();
-		let config = self.config.clone();
-		let plugins_folder = self.config.plugins_folder.clone();
+		let config = CONFIG.clone();
+		let plugins_folder = CONFIG.plugins_folder.clone();
 
 		files::read_directory(&PathBuf::from(plugins_folder), 1, move |path| {
 			let plugins = plugins.clone();
@@ -150,7 +151,7 @@ impl ScraperManager {
 	fn start_file_watcher(&self) -> Result<()> {
 		let plugins = self.plugins.clone();
 		let modification_tracker = self.modification_tracker.clone();
-		let config = self.config.clone();
+		let config = CONFIG.clone();
 
 		let (tx, rx) = std::sync::mpsc::channel();
 
@@ -170,7 +171,7 @@ impl ScraperManager {
 				}
 			})?;
 
-		let config = self.config.clone();
+		let config = CONFIG.clone();
 		tokio::spawn(async move {
 			while let Ok(event) = rx.recv() {
 				match event {

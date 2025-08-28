@@ -1,95 +1,61 @@
 use std::collections::HashMap;
 
-use anyhow::Context;
-use mlua::{Lua, LuaSerdeExt, Table, UserData, UserDataMethods};
+use mlua::{Lua, LuaSerdeExt, UserData, UserDataMethods};
 
-fn create_response_table(lua: &Lua, text: String) -> mlua::Result<Table> {
-	let response_table = lua.create_table()?;
-	response_table.set("text", text.clone())?;
+use crate::plugins::common::http::CommonHttp;
+use crate::plugins::globals::utils::create_response_table;
 
-	response_table.set(
-		"json",
-		lua.create_function(move |lua, ()| {
-			let json: serde_json::Value = match serde_json::from_str(&text) {
-				Ok(value) => value,
-				Err(_) => serde_json::Value::Null,
-			};
-
-			lua.to_value(&json)
-		})?,
-	)?;
-
-	Ok(response_table)
-}
-
-struct Http;
-
-impl UserData for Http {
+impl UserData for CommonHttp {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method(
 			"get",
-			|lua, _, (url, headers_map): (String, Option<HashMap<String, String>>)| async move {
-				let headers_map = headers_map.unwrap_or_default();
-				let headers = headers_map
-					.iter()
-					.map(|(k, v)| {
-						let key = reqwest::header::HeaderName::from_bytes(k.as_bytes()).unwrap();
-						let value = reqwest::header::HeaderValue::from_str(v).unwrap();
-						(key, value)
-					})
-					.collect();
-
-				let client = reqwest::Client::new();
-				let response = client
-					.get(&url)
-					.headers(headers)
-					.send()
-					.await
-					.with_context(|| format!("Failed to send GET request to {}", url))?;
-
-				create_response_table(
-					&lua,
-					response
-						.text()
-						.await
-						.with_context(|| format!("Failed to read response text from {}", url))?,
-				)
+			|lua, this, (url, headers_map): (String, Option<HashMap<String, String>>)| async move {
+				let resp = this.get(url, headers_map).await.map_err(mlua::Error::external)?;
+				create_response_table(&lua, resp.text, resp.status, resp.headers)
 			},
 		);
 
 		methods.add_async_method(
 			"post",
-			|lua, _, (url, body, headers_map): (String, String, Option<HashMap<String, String>>)| async move {
-				let headers_map = headers_map.unwrap_or_default();
-				let headers = headers_map
-					.iter()
-					.map(|(k, v)| {
-						let key = reqwest::header::HeaderName::from_bytes(k.as_bytes()).unwrap();
-						let value = reqwest::header::HeaderValue::from_str(v).unwrap();
-						(key, value)
-					})
-					.collect();
-
-				let client = reqwest::Client::new();
-				let response = client
-					.post(&url)
-					.headers(headers)
-					.body(body)
-					.send()
-					.await
-					.with_context(|| format!("Failed to send POST request to {}", url))?;
-
-				create_response_table(
-					&lua,
-					response
-						.text()
-						.await
-						.with_context(|| format!("Failed to read response text from {}", url))?,
-				)
+			|lua, this, (url, body, headers_map): (String, String, Option<HashMap<String, String>>)| async move {
+				let resp = this.post(url, body, headers_map).await.map_err(mlua::Error::external)?;
+				create_response_table(&lua, resp.text, resp.status, resp.headers)
 			},
 		);
 
-		methods.add_async_method("url_encode", |lua, _, string: String| async move {
+		methods.add_method(
+			"has_cloudflare_protection",
+			|_lua, _this, (text, status_code, headers): (String, Option<u16>, Option<HashMap<String, String>>)| {
+				let is_protected = text.contains("Attention Required! | Cloudflare")
+					|| text.contains("Just a moment...")
+					|| text.contains("cf-browser-verification")
+					|| text.contains("/cdn-cgi/l/chk_jschl");
+
+				if is_protected {
+					return Ok(true);
+				}
+
+				let re = regex::Regex::new(r#"<script[^>]+src=["'][^"']*(cdn-cgi|cf-)[^"']*["']"#)
+					.map_err(|e| mlua::Error::external(e))?;
+				if re.is_match(&text) {
+					return Ok(true);
+				}
+
+				if let Some(503) = status_code {
+					if let Some(ref headers) = headers {
+						if let Some(server) = headers.get("Server").or_else(|| headers.get("server")) {
+							if server.to_lowercase().contains("cloudflare") {
+								return Ok(true);
+							}
+						}
+					}
+				}
+
+				Ok(false)
+			},
+		);
+
+		methods.add_method("url_encode", |lua, _this, string: String| {
 			let encoded = urlencoding::encode(&string);
 			lua.to_value(&encoded)
 		});
@@ -98,7 +64,7 @@ impl UserData for Http {
 
 #[cfg_attr(all(coverage_nightly, test), coverage(off))]
 pub(crate) fn load(lua: &Lua) -> anyhow::Result<()> {
-	lua.globals().set("http", Http)?;
+	lua.globals().set("http", CommonHttp::new())?;
 	Ok(())
 }
 

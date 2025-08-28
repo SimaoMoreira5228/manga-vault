@@ -7,6 +7,10 @@ use wasmtime::{Engine, Store};
 use crate::plugins::wasm::state::States;
 
 mod bindings;
+mod flaresolverr;
+mod headless;
+mod html;
+mod http;
 mod state;
 
 pub struct WasmPlugin {

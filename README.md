@@ -28,6 +28,31 @@ Manga Vault is a **single Rust binary** that launches a server, a scheduler for 
 
 ---
 
+### Database support — SQLite, MySQL, PostgreSQL
+Single-binary installs can use SQLite. If you run the separate binaries (scheduler / API / website) across different Docker containers or machines, use MySQL or PostgreSQL so all services share the same DB. Configure DB in `config/database.json` (example below). Note: built-in automatic backups apply only to SQLite — if you use MySQL/Postgres, run your own backup strategy.
+
+MySQL Example `config/database.json`:
+```json
+{
+  "backup_interval": 2,
+  "backup_retention_days": 7,
+  "database_backup_folder": "/path/to/backups",
+  "database_url": "mysql://localhost:3306/manga-vault?user=root"
+}
+```
+
+SQLite Example `config/database.json`:
+```json
+{
+  "backup_interval": 2,
+  "backup_retention_days": 7,
+  "database_backup_folder": "/path/to/backups",
+  "database_url": "sqlite://./manga-vault.db"
+}
+```
+
+---
+
 ## Configuration (plugins)
 
 Plugin-related settings live in the app config under the `repositories` and `plugins_folder` keys. Example minimal config:
@@ -95,7 +120,11 @@ Notes:
   * `scrape_search(query, page)` -> `Vec<MangaItem>`
   * `scrape_manga(url)` -> `MangaPage`
   * `scrape_genres_list()` -> `Vec<Genre>`
-* The host provides HTTP bindings and a WASI context for plugins that need it.
+* WASM plugins have access to host-provided capabilities through these interfaces:
+  - **HTTP**: `get()`, `post()`, `has_cloudflare_protection()`
+  - **HTML Parsing**: `find()`, `find_one()`, `text()`, `attr()`
+  - **Headless Browser** (when configured): `goto()`, `find_one()`, `find_all()`, `close()`
+  - **FlareSolverr Integration**: `create_session()`, `get()`
 
 ### Lua plugins
 
@@ -112,7 +141,35 @@ Notes:
   * `Scrape_search(query, page)` -> returns a list of `MangaItem`
   * `Scrape_manga(url)` -> returns a `MangaPage`
   * `Scrape_genres_list()` -> returns a list of genres
-* The host injects helper globals (for example `http`, `headless_client`, `scraping`, `string`, `table`) so plugins can reuse utilities.
+* Lua plugins receive these additional global helpers:
+  - **`http`**: HTTP client with methods like `get()`, `post()`, `has_cloudflare_protection()`
+  - **`headless_client`**: Headless browser control (when configured)
+  - **`flaresolverr`**: Cloudflare bypass capabilities
+  - **`scraping`**: HTML parsing utilities
+  - **Extended `string` library**: Additional methods like `split()`, `trim()`, `replace()`
+  - **Extended `table` library**: Additional methods like `reverse()`
+
+---
+
+### Development Environment
+For Lua plugin development, we recommend using these VS Code settings (`settings.json`) for better development experience:
+
+```json
+{
+  "Lua.workspace.library": [
+    "/path/to/manga-vault/scrapers/scraper_core/types.lua"
+  ],
+  "Lua.diagnostics.globals": [
+    "http",
+    "headless_client",
+    "flaresolverr",
+    "scraping",
+    "PLUGIN_NAME",
+    "PLUGIN_VERSION"
+  ]
+}
+```
+The `types.lua` file provides type definitions and IntelliSense support for the host-provided APIs. Place this file in your Lua workspace library path to get autocompletion and type checking.
 
 ---
 
@@ -147,4 +204,5 @@ cargo build --release
 * No plugins or repository errors: verify the `repositories` URLs are reachable and `plugins_folder` is writable.
 * Headless failures: ensure a WebDriver is running at the configured `headless` URL and accepts headless sessions.
 * WASM plugin errors: make sure the component is built for the WASM component model the host expects and that `get_info()` returns valid metadata.
-
+* For Lua plugin errors: Verify your development environment is properly configured with the correct `types.lua` path and global variables are recognized
+* For WASM component errors: Ensure your component properly implements all required WIT interfaces and handles host-provided capabilities correctly
