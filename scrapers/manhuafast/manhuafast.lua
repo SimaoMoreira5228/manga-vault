@@ -1,5 +1,3 @@
----@type _G
-
 PLUGIN_NAME = "manhuafast"
 PLUGIN_VERSION = "0.3.0"
 

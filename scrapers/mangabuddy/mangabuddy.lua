@@ -1,7 +1,5 @@
----@diagnostic disable: undefined-global, undefined-field
-
 PLUGIN_NAME = "mangabuddy"
-PLUGIN_VERSION = "1.0.0"
+PLUGIN_VERSION = "0.1.0"
 
 function Scrape_chapter(url)
   local request = http:get(url)
