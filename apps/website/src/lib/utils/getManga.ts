@@ -9,7 +9,7 @@ export type MangaWithFavorite = Manga & {
 	userReadChaptersAmount?: number | null;
 	chaptersAmount?: number | null;
 	categoryId?: number | null;
-	userReadChapters?: number[] | null;
+	userReadChapters?: { id: number; chapterId: number }[];
 	genres?: string[] | undefined;
 };
 
@@ -27,7 +27,6 @@ function normalizeMangaData(manga: any): MangaWithFavorite | null {
 		normalizedGenres = manga.genres;
 	}
 
-	// Normalize alternative names
 	const normalizedAlternativeNames: string[] = [];
 	for (const name of manga.alternativeNames ?? []) {
 		if (name !== '') {
@@ -41,25 +40,6 @@ function normalizeMangaData(manga: any): MangaWithFavorite | null {
 		alternativeNames: normalizedAlternativeNames,
 		isFavorite: false,
 		userReadChapters: manga.userReadChapters || []
-	};
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeFavoriteData(fav: any, manga: Manga): MangaWithFavorite | null {
-	if (!fav || !manga) return null;
-
-	const normalizedManga = normalizeMangaData(manga);
-	if (!normalizedManga) return null;
-
-	return {
-		...normalizedManga,
-		isFavorite: true,
-		favoriteId: fav.id != null ? Number(fav.id) : null,
-		userReadChaptersAmount:
-			fav.manga?.userReadChaptersAmount != null ? Number(fav.manga.userReadChaptersAmount) : 0,
-		chaptersAmount: fav.manga?.chaptersAmount != null ? Number(fav.manga.chaptersAmount) : 0,
-		categoryId: fav.categoryId != null ? Number(fav.categoryId) : null,
-		userReadChapters: fav.manga?.userReadChapters || []
 	};
 }
 
@@ -116,13 +96,20 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 				favoriteMangaByMangaId(mangaId: $id) {
 					id
 					categoryId
-					manga {
-						userReadChaptersAmount
-						chaptersAmount
-						userReadChapters {
-							id
-							chapterId
-						}
+				}
+			}
+		}
+	`;
+
+	const readChaptersQuery = gql`
+		query getReadChapters($id: Int!) {
+			mangas {
+				manga(id: $id) {
+					userReadChaptersAmount
+					chaptersAmount
+					userReadChapters {
+						id
+						chapterId
 					}
 				}
 			}
@@ -130,30 +117,42 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 	`;
 
 	try {
-		const [mangaRes, favoriteRes] = await Promise.all([
+		const [mangaRes, favoriteRes, readChaptersRes] = await Promise.all([
 			client.query(mangaQuery, { id }).toPromise(),
 			isAuthenticated
 				? client.query(favoriteQuery, { id }).toPromise()
+				: Promise.resolve({ data: null }),
+			isAuthenticated
+				? client.query(readChaptersQuery, { id }).toPromise()
 				: Promise.resolve({ data: null })
 		]);
 
-		const mangaData = mangaRes?.data?.mangas?.manga ?? null;
+		const rawManga = mangaRes?.data?.mangas?.manga ?? null;
+		if (!rawManga) return null;
 
-		if (!mangaData) {
-			return null;
-		}
+		const normalized = normalizeMangaData(rawManga);
+		if (!normalized) return null;
 
 		if (isAuthenticated && favoriteRes?.data) {
 			const favData = favoriteRes.data.favoriteMangas;
-			const isUserFavorite = Boolean(favData?.isUserFavorite);
 			const fav = favData?.favoriteMangaByMangaId ?? null;
-
-			if (isUserFavorite && fav) {
-				return normalizeFavoriteData(fav, mangaData);
+			if (favData?.isUserFavorite && fav) {
+				normalized.isFavorite = true;
+				normalized.favoriteId = fav.id != null ? Number(fav.id) : null;
+				normalized.categoryId = fav.categoryId != null ? Number(fav.categoryId) : null;
 			}
 		}
 
-		return normalizeMangaData(mangaData);
+		if (isAuthenticated && readChaptersRes?.data) {
+			const readChaptersData = readChaptersRes.data.mangas.manga;
+			if (readChaptersData) {
+				normalized.userReadChaptersAmount = readChaptersData.userReadChaptersAmount;
+				normalized.chaptersAmount = readChaptersData.chaptersAmount;
+				normalized.userReadChapters = readChaptersData.userReadChapters;
+			}
+		}
+
+		return normalized;
 	} catch (err) {
 		console.error('getManga error', err);
 		return null;
