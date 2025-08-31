@@ -9,7 +9,7 @@
 	import { afterNavigate, goto } from '$app/navigation';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
 	import { proxyImage } from '$lib/utils/image';
-	import { Slider } from '@skeletonlabs/skeleton-svelte';
+	import { Slider, Switch } from '@skeletonlabs/skeleton-svelte';
 	import { getAuthState } from '$lib/auth.svelte';
 
 	const chapterIdStr = $derived(page.params.chapter_id);
@@ -18,13 +18,13 @@
 	let authState = $derived(getAuthState());
 	let isLoading = $state(false);
 	let imageMargin = $state<number>(0);
+	let autoNext = $state<boolean>(false);
 	let areControlsOpen = $state(false);
 	let markedRead = false;
 	let ticking = false;
 	let imageContainer: HTMLElement | null = $state(null);
-
 	let imageUrls: string[] = $state([]);
-	let nextChapter: number | null = $state(null);
+	let nextChapter: { id: number; title: string } | null = $state(null);
 	let previousChapter: number | null = $state(null);
 	let refererUrl: string | null = $state(null);
 
@@ -34,6 +34,11 @@
 		const savedMargin = localStorage.getItem('imageMargin');
 		if (savedMargin) {
 			imageMargin = parseInt(savedMargin, 10) || 0;
+		}
+
+		const savedAutoNext = localStorage.getItem('autoNext');
+		if (savedAutoNext) {
+			autoNext = savedAutoNext === 'true';
 		}
 
 		isLoading = true;
@@ -59,6 +64,11 @@
 			imageMargin = parseInt(savedMargin, 10) || 0;
 		}
 
+		const savedAutoNext = localStorage.getItem('autoNext');
+		if (savedAutoNext) {
+			autoNext = savedAutoNext === 'true';
+		}
+
 		isLoading = true;
 		await loadChapter();
 		isLoading = false;
@@ -66,6 +76,10 @@
 
 	$effect(() => {
 		localStorage.setItem('imageMargin', imageMargin.toString());
+	});
+
+	$effect(() => {
+		localStorage.setItem('autoNext', String(autoNext));
 	});
 
 	async function loadChapter() {
@@ -78,6 +92,7 @@
 								images
 								nextChapter {
 									id
+									title
 								}
 								previousChapter {
 									id
@@ -99,46 +114,60 @@
 			return;
 		}
 
-		nextChapter = response.data.chapters.chapter?.nextChapter?.id;
+		const next = response.data.chapters.chapter?.nextChapter;
+		nextChapter = { id: next?.id, title: next?.title };
 		previousChapter = response.data.chapters.chapter?.previousChapter?.id;
 		imageUrls = response.data.chapters.chapter?.images || [];
 		refererUrl = response.data.chapters.chapter?.scraper?.refererUrl;
 	}
 
 	function handleScroll() {
-		if (ticking || !chapterId || authState.status !== 'authenticated') return;
+		if (!imageContainer || ticking) {
+			return;
+		}
+
 		ticking = true;
+
 		requestAnimationFrame(async () => {
-			if (!imageContainer || markedRead) {
-				ticking = false;
-				return;
-			}
+			if (!imageContainer) return;
 
 			const scrollPercentage =
 				(imageContainer.scrollTop + imageContainer.clientHeight) / imageContainer.scrollHeight;
-			if (scrollPercentage > 0.95) {
-				markedRead = true;
-				try {
-					await client
-						.mutation(
-							gql`
-								mutation readChapter($chapterId: Int!) {
-									chapter {
-										readChapter(chapterId: $chapterId) {
-											id
-											chapterId
+
+			if (!markedRead && authState.status === 'authenticated') {
+				if (scrollPercentage > 0.95) {
+					markedRead = true;
+					try {
+						await client
+							.mutation(
+								gql`
+									mutation readChapter($chapterId: Int!) {
+										chapter {
+											readChapter(chapterId: $chapterId) {
+												id
+												chapterId
+											}
 										}
 									}
-								}
-							`,
-							{ chapterId }
-						)
-						.toPromise();
-				} catch (err) {
-					console.error('Failed to mark chapter as read', err);
-					toaster.error({ title: 'Error', description: 'Failed to mark chapter as read' });
+								`,
+								{ chapterId }
+							)
+							.toPromise();
+					} catch (err) {
+						console.error('Failed to mark chapter as read', err);
+						toaster.error({ title: 'Error', description: 'Failed to mark chapter as read' });
+					}
 				}
 			}
+
+			if (autoNext && nextChapter?.id && scrollPercentage >= 1.0) {
+				try {
+					goto(`/manga/${page.params.manga_id}/chapter/${nextChapter?.id}`);
+				} catch (err) {
+					console.error('Navigation to next chapter failed', err);
+				}
+			}
+
 			ticking = false;
 		});
 	}
@@ -162,8 +191,8 @@
 			if (!previousChapter) return;
 			goto(`/manga/${page.params.manga_id}/chapter/${previousChapter}`);
 		} else if (event.key === 'ArrowRight') {
-			if (!nextChapter) return;
-			goto(`/manga/${page.params.manga_id}/chapter/${nextChapter}`);
+			if (!nextChapter?.id) return;
+			goto(`/manga/${page.params.manga_id}/chapter/${nextChapter?.id}`);
 		} else if (event.key === 'Escape') {
 			if (areControlsOpen) return (areControlsOpen = false);
 			if (!areControlsOpen) goto(`/manga/${page.params.manga_id}`);
@@ -190,6 +219,9 @@
 							/>
 						</div>
 					{/each}
+					{#if nextChapter?.id}
+						<p class="w-full py-24 text-center">Next Chapter: {nextChapter?.title}</p>
+					{/if}
 				{:else}
 					<div class="flex h-full w-full items-center justify-center">
 						<p>No images found.</p>
@@ -209,16 +241,27 @@
 						>
 							<ArrowLeft />
 						</a>
-						<label class="label">
-							<span class="label-text">Image Margin: {imageMargin}%</span>
-							<Slider
-								name="image-margin"
-								value={[imageMargin]}
-								onValueChange={(e) => (imageMargin = e.value[0])}
-								min={0}
-								max={45}
-							/>
-						</label>
+						<div class="flex w-full items-center gap-4">
+							<label class="label w-9/10 flex items-center gap-2">
+								<span class="label-text">Image Margin: {imageMargin}%</span>
+								<Slider
+									name="image-margin"
+									value={[imageMargin]}
+									onValueChange={(e) => (imageMargin = e.value[0])}
+									min={0}
+									max={45}
+								/>
+							</label>
+
+							<label class="label w-1/10 flex items-center gap-2">
+								<span class="label-text">Auto-next</span>
+								<Switch
+									name="auto-next"
+									checked={autoNext}
+									onCheckedChange={(e) => (autoNext = e.checked)}
+								/>
+							</label>
+						</div>
 					</div>
 					<div class="flex gap-2">
 						{#if previousChapter}
@@ -230,10 +273,10 @@
 								<ArrowBigLeft />
 							</button>
 						{/if}
-						{#if nextChapter}
+						{#if nextChapter?.id}
 							<button
 								class="btn-icon preset-filled"
-								onclick={() => goto(`/manga/${page.params.manga_id}/chapter/${nextChapter}`)}
+								onclick={() => goto(`/manga/${page.params.manga_id}/chapter/${nextChapter?.id}`)}
 								aria-label="Next Chapter"
 							>
 								<ArrowBigRight />

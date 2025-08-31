@@ -102,6 +102,13 @@ PACKAGES = [
         "type": "lua-plugin",
         "lua_file": "natomanga.lua",
         "tag_prefix": "natomanga",
+    },
+    {
+        "id": "mangabuddy",
+        "path": "scrapers/mangabuddy",
+        "type": "lua-plugin",
+        "lua_file": "mangabuddy.lua",
+        "tag_prefix": "mangabuddy",
     }
 ]
 

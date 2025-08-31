@@ -522,7 +522,8 @@ fn fetch_chapters(manga_id: &str) -> Vec<Chapter> {
 		None => return Vec::new(),
 	};
 
-	data.iter()
+	let mut chapters = data
+		.iter()
 		.filter_map(|chapter| {
 			let attributes = chapter["attributes"].as_object()?;
 			let chapter_num = attributes.get("chapter")?.as_str()?;
@@ -555,7 +556,11 @@ fn fetch_chapters(manga_id: &str) -> Vec<Chapter> {
 				scanlation_group,
 			})
 		})
-		.collect()
+		.collect::<Vec<Chapter>>();
+
+	chapters.reverse();
+
+	chapters
 }
 
 fn default_manga_page() -> MangaPage {
