@@ -1,5 +1,3 @@
----@diagnostic disable: undefined-global, undefined-field
-
 PLUGIN_NAME = "natomanga"
 PLUGIN_VERSION = "0.2.0"
 
