@@ -109,6 +109,13 @@ PACKAGES = [
         "type": "lua-plugin",
         "lua_file": "mangabuddy.lua",
         "tag_prefix": "mangabuddy",
+    },
+    {
+        "id": "mangakakalot",
+        "path": "scrapers/mangakakalot",
+        "type": "lua-plugin",
+        "lua_file": "mangakakalot.lua",
+        "tag_prefix": "mangakakalot",
     }
 ]
 
