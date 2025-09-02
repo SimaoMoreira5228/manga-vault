@@ -1,3 +1,4 @@
+-- @ignore
 ---@meta
 
 -- HTTP and response types

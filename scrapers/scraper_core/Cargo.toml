@@ -28,6 +28,7 @@ mlua = { version = "0.11", features = [
   "userdata-wrappers",
   "vendored",
   "async",
+  "send",
 ] }
 scraper = { version = "0.24.0", features = ["serde", "atomic"] }
 fantoccini = "0.22"
@@ -36,7 +37,8 @@ uuid = { version = "1.18", features = ["v4"] }
 regex = { workspace = true }
 thiserror = "2.0"
 async-trait = "0.1"
-futures = "0.3.31"
+futures = "0.3"
 
 [dev-dependencies]
 mockito = "1.7.0"
+walkdir = "2"

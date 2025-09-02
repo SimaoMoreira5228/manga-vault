@@ -20,6 +20,7 @@ pub fn create_response_table(lua: &Lua, text: String, status: u16, headers: Hash
 				Ok(value) => value,
 				Err(_) => serde_json::Value::Null,
 			};
+			
 			lua.to_value(&json)
 		})?,
 	)?;

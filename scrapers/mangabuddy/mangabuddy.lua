@@ -1,14 +1,15 @@
 PLUGIN_NAME = "mangabuddy"
-PLUGIN_VERSION = "0.1.0"
+PLUGIN_VERSION = "0.2.0"
+BASE_URL = "https://mangabuddy.com"
 
 function Scrape_chapter(url)
   local request = http:get(url)
   local html = request.text
 
-  local chap_images_str = string.match(html, "var chapImages = '(.+)'")
+  local chap_images_str = string.match(html, "var chapImages = '([^']+)'")
   if not chap_images_str then
     local imgs = {}
-    local image_elements = scraping:select_elements(html, "#chapter-images .chapter-image img")
+    local image_elements = scraping:select_elements(html, "#chapter-images .chapter-image img, .chapter-image[data-src]")
     for _, img_html in ipairs(image_elements) do
       local img_url = scraping:get_image_url(img_html)
       if img_url then
@@ -27,7 +28,7 @@ function Scrape_chapter(url)
 end
 
 function Scrape_latest(page)
-  local url = "https://mangabuddy.com/latest?page=" .. tostring(page)
+  local url = BASE_URL .. "/latest?page=" .. tostring(page)
   local request = http:get(url)
   local html = request.text
 
@@ -46,7 +47,7 @@ function Scrape_latest(page)
       table.insert(manga_items, {
         title = title,
         img_url = img_url,
-        url = manga_url
+        url = BASE_URL .. manga_url
       })
     end
   end
@@ -55,7 +56,7 @@ function Scrape_latest(page)
 end
 
 function Scrape_trending(page)
-  local url = "https://mangabuddy.com/top/week?page=" .. tostring(page)
+  local url = BASE_URL .. "/top/week?page=" .. tostring(page)
   local request = http:get(url)
   local html = request.text
 
@@ -74,7 +75,7 @@ function Scrape_trending(page)
       table.insert(manga_items, {
         title = title,
         img_url = img_url,
-        url = manga_url
+        url = BASE_URL .. manga_url
       })
     end
   end
@@ -83,7 +84,7 @@ function Scrape_trending(page)
 end
 
 function Scrape_search(query, page)
-  local url = "https://mangabuddy.com/search?q=" .. http:url_encode(query) .. "&page=" .. tostring(page)
+  local url = BASE_URL .. "/search?q=" .. http:url_encode(query) .. "&page=" .. tostring(page)
   local request = http:get(url)
   local html = request.text
 
@@ -102,7 +103,7 @@ function Scrape_search(query, page)
       table.insert(manga_items, {
         title = title,
         img_url = img_url,
-        url = manga_url
+        url = BASE_URL .. manga_url
       })
     end
   end
@@ -121,7 +122,9 @@ function Scrape_manga(url)
   local genres = {}
   local genre_elements = scraping:select_elements(html, ".detail .meta p a[href*='/genres/']")
   for _, genre_html in ipairs(genre_elements) do
-    table.insert(genres, scraping:get_text(genre_html) or "")
+    local trimmed_genre = string.trim(scraping:get_text(genre_html) or "")
+    local genre = string.gsub(trimmed_genre, ",", "")
+    table.insert(genres, genre)
   end
 
   local authors = {}
@@ -137,7 +140,10 @@ function Scrape_manga(url)
   if alt_names_header then
     local alt_text = scraping:get_text(alt_names_header)
     for name in string.gmatch(alt_text, "([^,;]+)") do
-      table.insert(alternative_names, string.trim(name))
+      local trimmed_name = string.trim(name)
+      if trimmed_name ~= title then
+        table.insert(alternative_names, trimmed_name)
+      end
     end
   end
 
@@ -148,14 +154,14 @@ function Scrape_manga(url)
     local chapter_title = scraping:get_text(scraping:select_element(link_element, ".chapter-title") or "") or ""
     local chapter_url = scraping:get_url(link_element) or ""
     local chapter_date = scraping:get_text(scraping:select_element(link_element, ".chapter-update") or "") or ""
-    table.insert(chapters, { title = chapter_title, url = chapter_url, date = chapter_date })
+    table.insert(chapters, { title = chapter_title, url = BASE_URL .. chapter_url, date = chapter_date })
   end
 
   local show_more = scraping:select_element(html, "#show-more-chapters")
   if show_more then
     local book_id = string.match(html, "var bookId = (%d+);")
     if book_id then
-      local api_url = "https://mangabuddy.com/api/manga/" .. book_id .. "/chapters?source=detail"
+      local api_url = BASE_URL .. "/api/manga/" .. book_id .. "/chapters?source=detail"
       local api_request = http:get(api_url)
       local api_html = api_request.text
       local api_chapter_elements = scraping:select_elements(api_html, "#chapter-list > li")
@@ -168,16 +174,18 @@ function Scrape_manga(url)
       for _, chapter_html in ipairs(api_chapter_elements) do
         local link_element = scraping:select_element(chapter_html, "a") or ""
         local chapter_url = scraping:get_url(link_element) or ""
+        local full_chapter_url = BASE_URL .. chapter_url
 
-        if not existing_urls[chapter_url] then
+        if not existing_urls[full_chapter_url] then
           local chapter_title = scraping:get_text(scraping:select_element(link_element, ".chapter-title") or "") or ""
           local chapter_date = scraping:get_text(scraping:select_element(link_element, ".chapter-update") or "") or ""
-          table.insert(chapters, { title = chapter_title, url = chapter_url, date = chapter_date })
+          table.insert(chapters, { title = chapter_title, url = full_chapter_url, date = chapter_date })
         end
       end
     end
   end
 
+  table.reverse(chapters)
 
   local page = {
     title = title,
@@ -191,14 +199,14 @@ function Scrape_manga(url)
     manga_type = "",
     release_date = "",
     description = description,
-    chapters = table.reverse(chapters),
+    chapters = chapters,
   }
 
   return page
 end
 
 function Scrape_genres_list()
-  local url = "https://mangabuddy.com/home"
+  local url = BASE_URL .. "/home"
   local request = http:get(url)
   local html = request.text
 
@@ -208,7 +216,7 @@ function Scrape_genres_list()
     local name = scraping:get_text(genre_element) or ""
     local genre_url = scraping:get_url(genre_element) or ""
     if name ~= "" and genre_url ~= "" then
-      table.insert(genres, { name = name, url = genre_url })
+      table.insert(genres, { name = name, url = BASE_URL .. genre_url })
     end
   end
 
@@ -223,3 +231,42 @@ function Get_info()
     referer_url = "https://mangabuddy.com/"
   }
 end
+
+Tests = {
+  Test_Scrape_manga = function()
+    local manga = Scrape_manga("https://mangabuddy.com/solo-leveling")
+    assert(manga.title == "Solo Leveling", "Manga title mismatch")
+    assert(manga.url == "https://mangabuddy.com/solo-leveling", "Manga URL mismatch")
+    assert(manga.img_url ~= "", "Manga image URL is empty")
+    assert(#manga.genres > 0, "No genres found")
+    assert(#manga.authors > 0, "No authors found")
+    assert(manga.status ~= "", "Manga status is empty")
+    assert(manga.description ~= "", "Manga description is empty")
+    assert(#manga.chapters > 0, "No chapters found")
+  end,
+
+  Test_Scrape_chapter = function()
+    local images = Scrape_chapter("https://mangabuddy.com/solo-leveling/chapter-197")
+    assert(#images > 0, "No images found")
+  end,
+
+  Test_Scrape_latest = function()
+    local mangas = Scrape_latest(1)
+    assert(#mangas > 0, "No mangas found in latest")
+  end,
+
+  Test_Scrape_trending = function()
+    local mangas = Scrape_trending(1)
+    assert(#mangas > 0, "No mangas found in trending")
+  end,
+
+  Test_Scrape_search = function()
+    local mangas = Scrape_search("nano", 1)
+    assert(#mangas > 0, "No mangas found in search")
+  end,
+
+  Test_Scrape_genres_list = function()
+    local genres = Scrape_genres_list()
+    assert(#genres > 0, "No genres found")
+  end
+}
