@@ -92,12 +92,12 @@ mod tests {
 	use std::path::{Path, PathBuf};
 	use std::sync::Arc;
 	use std::{env, fs};
-	use futures::{stream, StreamExt};
-use walkdir::WalkDir;
 
-	use crate::Config;
+	use futures::{StreamExt, stream};
+	use walkdir::WalkDir;
 
 	use super::LuaPlugin;
+	use crate::Config;
 
 	fn should_ignore_file(path: &Path) -> bool {
 		let mut file = match fs::File::open(path) {
