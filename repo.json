@@ -54,6 +54,15 @@
       "version": "0.2.0",
       "state": "updated",
       "build_state": "beta"
+    },
+    {
+      "name": "mangakakalot",
+      "urls": {
+        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangakakalot%40v0.2.0/mangakakalot.lua"
+      },
+      "version": "0.2.0",
+      "state": "updated",
+      "build_state": "beta"
     }
   ]
 }
