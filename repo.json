@@ -40,20 +40,20 @@
     {
       "name": "natomanga",
       "urls": {
-        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.2.0/natomanga.lua"
+        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.2.1/natomanga.lua"
       },
-      "version": "0.2.0",
+      "version": "0.2.1",
       "state": "updated",
       "build_state": "beta"
     },
     {
       "name": "mangabuddy",
       "urls": {
-        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangabuddy%40v1.0.0/mangabuddy.lua"
+        "lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangabuddy%40v0.2.0/mangabuddy.lua"
       },
-      "version": "1.0.0",
+      "version": "0.2.0",
       "state": "updated",
-      "build_state": "stable"
+      "build_state": "beta"
     }
   ]
 }
