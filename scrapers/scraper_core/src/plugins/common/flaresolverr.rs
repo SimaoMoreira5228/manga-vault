@@ -33,11 +33,15 @@ pub struct FlareSolverrManager {
 
 impl FlareSolverrManager {
 	pub fn new(config: &Config) -> Self {
-		let mut url = config.flaresolverr_url.clone().unwrap_or_else(|| String::from(""));
-
-		if !url.ends_with("/v1") {
-			url.push_str("/v1");
-		}
+		let url = if let Some(ref base_url) = config.flaresolverr_url {
+			if base_url.ends_with("/v1") {
+				base_url.clone()
+			} else {
+				format!("{}/v1", base_url)
+			}
+		} else {
+			String::new()
+		};
 
 		Self {
 			url,
