@@ -1,36 +1,56 @@
 PLUGIN_NAME = "mangakakalot"
-PLUGIN_VERSION = "0.1.0"
+PLUGIN_VERSION = "0.2.0"
+
+FLARESOLVERR_SESSION = nil
+
+local function get_or_create_flaresolverr_session()
+  if FLARESOLVERR_SESSION == nil then
+    FLARESOLVERR_SESSION = flaresolverr:create_session()
+  end
+  return FLARESOLVERR_SESSION
+end
 
 function Scrape_chapter(url)
   local request = http:get(url)
   local html = request.text
   if http:has_cloudflare_protection(html, request.status, request.headers) then
-    html = flaresolverr:get(url).text
+    local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+    if req.status == 200 then
+      html = req.text
+    end
   end
 
   local cdn_json = string.match(html, "var cdns = (%[.-%]);")
   local chapter_images_json = string.match(html, "var chapterImages = (%[.-%]);")
 
-  if not cdn_json or not chapter_images_json then
-    return {}
-  end
+  if cdn_json and chapter_images_json then
+    local cdn = string.match(cdn_json, '"(.-)"')
+    if cdn then
+      cdn = string.gsub(cdn, "\\", "")
+    else
+      return {}
+    end
 
-  local cdn = string.match(cdn_json, '"(.-)"')
-  if cdn then
-    cdn = string.gsub(cdn, "\\", "")
-  else
-    return {}
+    local imgs = {}
+    for img_path in string.gmatch(chapter_images_json, '"(.-)"') do
+      img_path = string.gsub(img_path, "\\/", "/")
+
+      if not string.match(cdn, "/$") then
+        cdn = cdn .. "/"
+      end
+
+      table.insert(imgs, cdn .. img_path)
+    end
+    return imgs
   end
 
   local imgs = {}
-  for img_path in string.gmatch(chapter_images_json, '"(.-)"') do
-    img_path = string.gsub(img_path, "\\/", "/")
-
-    if not string.match(cdn, "/$") then
-      cdn = cdn .. "/"
+  local image_elements = scraping:select_elements(html, "div.container-chapter-reader > img")
+  for _, img_element in ipairs(image_elements) do
+    local img_url = scraping:get_image_url(img_element)
+    if img_url then
+      table.insert(imgs, img_url)
     end
-
-    table.insert(imgs, cdn .. img_path)
   end
 
   return imgs
@@ -41,7 +61,10 @@ function Scrape_latest(page)
   local request = http:get(url)
   local html = request.text
   if http:has_cloudflare_protection(html, request.status, request.headers) then
-    html = flaresolverr:get(url).text
+    local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+    if req.status == 200 then
+      html = req.text
+    end
   end
 
   local manga_divs = scraping:select_elements(html, "div.list-truyen-item-wrap")
@@ -73,7 +96,10 @@ function Scrape_trending(page)
   local request = http:get(url)
   local html = request.text
   if http:has_cloudflare_protection(html, request.status, request.headers) then
-    html = flaresolverr:get(url).text
+    local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+    if req.status == 200 then
+      html = req.text
+    end
   end
 
   local manga_divs = scraping:select_elements(html, "div.list-truyen-item-wrap")
@@ -105,7 +131,10 @@ function Scrape_search(query, page)
   local request = http:get(url, { referer = "https://www.mangakakalot.gg/" })
   local html = request.text
   if http:has_cloudflare_protection(html, request.status, request.headers) then
-    html = flaresolverr:get(url).text
+    local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+    if req.status == 200 then
+      html = req.text
+    end
   end
 
   local manga_divs = scraping:select_elements(html, "div.story_item")
@@ -136,19 +165,29 @@ function Scrape_manga(url)
   local request = http:get(url)
   local html = request.text
   if http:has_cloudflare_protection(html, request.status, request.headers) then
-    html = flaresolverr:get(url).text
+    local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+    if req.status == 200 then
+      html = req.text
+    end
   end
 
-  local title = scraping:get_text(scraping:select_elements(html, ".manga-info-content h1")[1]) or ""
-  local img_url = scraping:get_image_url(scraping:select_elements(html, ".manga-info-pic img")[1]) or ""
-  local description = scraping:get_text(scraping:select_elements(html, "#contentBox")[1]) or ""
+  local title_element = scraping:select_elements(html, ".manga-info-top h1, .panel-story-info h1, .panel-story-info h2")
+      [1]
+  local title = title_element and scraping:get_text(title_element) or ""
+
+  local img_element = scraping:select_elements(html, ".manga-info-pic img, .info-image img")[1]
+  local img_url = img_element and scraping:get_image_url(img_element) or ""
+
+  local desc_element = scraping:select_elements(html, "#panel-story-info-description, #noidungm, #contentBox")[1]
+  local description = desc_element and scraping:get_text(desc_element) or ""
+
 
   local genres = {}
   local authors = {}
   local status = ""
   local alternative_names = {}
 
-  local info_elements = scraping:select_elements(html, ".manga-info-text li")
+  local info_elements = scraping:select_elements(html, ".manga-info-text li, .variations-tableInfo tr")
   for _, item in ipairs(info_elements) do
     local item_text = scraping:get_text(item)
     if string.find(item_text, "Author(s)") then
@@ -163,26 +202,35 @@ function Scrape_manga(url)
       status = string.trim(string.gsub(item_text, "Status :", ""))
     elseif string.find(item_text, "Alternative") then
       local alt_name_text = string.trim(string.gsub(item_text, "Alternative :", ""))
-      local names = string.split(alt_name_text, ";")
+      local names = string.split(alt_name_text, "[;,]")
       for _, name in ipairs(names) do
-        table.insert(alternative_names, string.trim(name))
+        local trimmed_name = string.trim(name)
+        if trimmed_name ~= "" then
+          table.insert(alternative_names, trimmed_name)
+        end
       end
     elseif string.find(item_text, "Genres") then
       local genre_elements = scraping:select_elements(item, "a")
-      for _, genre in ipairs(genre_elements) do
-        table.insert(genres, scraping:get_text(genre) or "")
+      for _, genre_element in ipairs(genre_elements) do
+        table.insert(genres, scraping:get_text(genre_element) or "")
       end
     end
   end
 
 
   local chapters = {}
-  local chapter_elements = scraping:select_elements(html, ".chapter-list .row")
+  local chapter_elements = scraping:select_elements(html, ".row-content-chapter li, .chapter-list .row")
   for _, chapter in ipairs(chapter_elements) do
-    local chapter_title = scraping:get_text(scraping:select_elements(chapter, "a")[1]) or ""
-    local chapter_url = scraping:get_url(scraping:select_elements(chapter, "a")[1]) or ""
-    local chapter_date = scraping:get_text(scraping:select_elements(chapter, "span")[3]) or "New"
-    table.insert(chapters, { title = chapter_title, url = chapter_url, date = chapter_date })
+    local title_element = scraping:select_elements(chapter, "a")[1]
+    local chapter_title = title_element and scraping:get_text(title_element) or ""
+    local chapter_url = title_element and scraping:get_url(title_element) or ""
+
+    local date_elements = scraping:select_elements(chapter, "span")
+    local chapter_date = #date_elements > 0 and scraping:get_text(date_elements[#date_elements]) or "New"
+
+    if chapter_url ~= "" then
+      table.insert(chapters, { title = chapter_title, url = chapter_url, date = chapter_date })
+    end
   end
 
   local page = {
@@ -208,7 +256,10 @@ function Scrape_genres_list()
   local request = http:get(url)
   local html = request.text
   if http:has_cloudflare_protection(html, request.status, request.headers) then
-    html = flaresolverr:get(url).text
+    local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+    if req.status == 200 then
+      html = req.text
+    end
   end
 
   local genres = {}
@@ -235,3 +286,41 @@ function Get_info()
     referer_url = "https://www.mangakakalot.gg/"
   }
 end
+
+Tests = {
+  Test_Scrape_manga = function()
+    local manga = Scrape_manga("https://www.mangakakalot.gg/manga/solo-leveling")
+    assert(manga.title == "Solo Leveling", "Manga title mismatch")
+    assert(manga.url == "https://www.mangakakalot.gg/manga/solo-leveling", "Manga URL mismatch")
+    assert(manga.img_url ~= "", "Manga image URL is empty")
+    assert(#manga.genres > 0, "No genres found")
+    assert(manga.status ~= "", "Manga status is empty")
+    assert(manga.description ~= "", "Manga description is empty")
+    assert(#manga.chapters > 0, "No chapters found")
+  end,
+
+  Test_Scrape_chapter = function()
+    local images = Scrape_chapter("https://www.mangakakalot.gg/manga/solo-leveling/chapter-202")
+    assert(#images > 0, "No images found")
+  end,
+
+  Test_Scrape_latest = function()
+    local mangas = Scrape_latest(1)
+    assert(#mangas > 0, "No mangas found in latest")
+  end,
+
+  Test_Scrape_trending = function()
+    local mangas = Scrape_trending(1)
+    assert(#mangas > 0, "No mangas found in trending")
+  end,
+
+  Test_Scrape_search = function()
+    local mangas = Scrape_search("nano", 1)
+    assert(#mangas > 0, "No mangas found in search")
+  end,
+
+  Test_Scrape_genres_list = function()
+    local genres = Scrape_genres_list()
+    assert(#genres > 0, "No genres found")
+  end
+}

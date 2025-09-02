@@ -21,9 +21,14 @@ pub struct CommonHttp {
 
 impl CommonHttp {
 	pub fn new() -> Self {
-		Self {
-			client: reqwest::Client::new(),
-		}
+		let client = reqwest::Client::builder()
+			.user_agent(
+				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+			)
+			.build()
+			.expect("Failed to build HTTP client");
+
+		Self { client }
 	}
 }
 

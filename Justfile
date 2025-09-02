@@ -25,14 +25,15 @@ test *args:
     if [ -f target/wasm32-wasip1/release/mangaread_org.wasm ]; then
         export VAULT_TEST_WASM_PLUGIN="$(pwd)/target/wasm32-wasip1/release/mangaread_org.wasm"
         export VAULT_TEST_WASM_PLUGIN_MANGA_URL="https://www.mangaread.org/manga/solo-leveling-manhwa/"
-    elif [ -f target/wasm32-wasip1/release/hari_manga.wasm ]; then
-        export VAULT_TEST_WASM_PLUGIN="$(pwd)/target/wasm32-wasip1/release/hari_manga.wasm"
-        export VAULT_TEST_WASM_PLUGIN_MANGA_URL="https://harimanga.com/manga/solo-leveling/"
-    elif [ -f target/wasm32-wasip1/release/manga_dex.wasm ]; then
-        export VAULT_TEST_WASM_PLUGIN="$(pwd)/target/wasm32-wasip1/release/manga_dex.wasm"
-        export VAULT_TEST_WASM_PLUGIN_MANGA_URL="https://mangadex.org/title/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/solo-leveling"
+    else
+        echo "WASM plugin not found, building..."
+        cargo component build -p mangaread_org --target wasm32-wasip1 --release
+        export VAULT_TEST_WASM_PLUGIN="$(pwd)/target/wasm32-wasip1/release/mangaread_org.wasm"
+        export VAULT_TEST_WASM_PLUGIN_MANGA_URL="https://www.mangaread.org/manga/solo-leveling-manhwa/"
     fi
 
-    INSTA_FORCE_PASS=1 cargo test --workspace --all-features {{args}}
+    export LUA_PLUGIN_TEST_DIR="$(pwd)/scrapers/"
+
+    cargo test --workspace --all-features {{args}}
 
 

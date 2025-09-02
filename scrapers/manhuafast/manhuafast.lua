@@ -1,7 +1,6 @@
 PLUGIN_NAME = "manhuafast"
 PLUGIN_VERSION = "0.3.0"
 
----@param url string
 local function scrape_manga_list(url)
     local request = http:get(url)
     local html = request.text
@@ -221,3 +220,39 @@ function Get_info()
         referer_url = "https://manhuafast.com/"
     }
 end
+
+Tests = {
+    Test_Scrape_manga = function()
+        local manga = Scrape_manga("https://manhuafast.com/manga/nano-machine-all-chapters/")
+        assert(manga.title == "Nano Machine", "Title does not match")
+        assert(#manga.chapters > 0, "No chapters found")
+        assert(manga.img_url ~= "", "Image URL is empty")
+        assert(manga.description ~= "", "Description is empty")
+        assert(#manga.genres > 0, "No genres found")
+    end,
+
+    Test_Scrape_chapter = function()
+        local images = Scrape_chapter("https://manhuafast.com/manga/nano-machine-all-chapters/chapter-256/")
+        assert(#images > 0, "No images found")
+    end,
+
+    Test_Scrape_latest = function()
+        local mangas = Scrape_latest(1)
+        assert(#mangas > 0, "No mangas found in latest")
+    end,
+
+    Test_Scrape_trending = function()
+        local mangas = Scrape_trending(1)
+        assert(#mangas > 0, "No mangas found in trending")
+    end,
+
+    Test_Scrape_search = function()
+        local mangas = Scrape_search("nano", 1)
+        assert(#mangas > 0, "No mangas found in search")
+    end,
+
+    Test_Scrape_genres_list = function()
+        local genres = Scrape_genres_list()
+        assert(#genres > 0, "No genres found")
+    end
+}

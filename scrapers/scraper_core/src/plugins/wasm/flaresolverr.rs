@@ -11,7 +11,7 @@ const _FLARE_SOLVERR_MANAGER: LazyLock<Arc<FlareSolverrManager>> =
 
 impl bindings::scraper::types::flare_solverr::Host for States {
 	async fn create_session(&mut self) -> Result<Result<String, String>, anyhow::Error> {
-		let session = _FLARE_SOLVERR_MANAGER.create_session();
+		let session = _FLARE_SOLVERR_MANAGER.create_session().await;
 		let inner_result = match session {
 			Ok(s) => Ok(s.to_string()),
 			Err(e) => Err(e.to_string()),

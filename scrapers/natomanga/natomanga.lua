@@ -1,11 +1,23 @@
 PLUGIN_NAME = "natomanga"
-PLUGIN_VERSION = "0.2.0"
+PLUGIN_VERSION = "0.2.1"
+
+FLARESOLVERR_SESSION = nil
+
+local function get_or_create_flaresolverr_session()
+    if FLARESOLVERR_SESSION == nil then
+        FLARESOLVERR_SESSION = flaresolverr:create_session()
+    end
+    return FLARESOLVERR_SESSION
+end
 
 function Scrape_chapter(url)
     local request = http:get(url)
     local html = request.text
     if http:has_cloudflare_protection(html, request.status, request.headers) then
-        html = flaresolverr:get(url).text
+        local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+        if req.status == 200 then
+            html = req.text
+        end
     end
 
     local cdn_json = string.match(html, "var cdns = (%[.-%]);")
@@ -41,7 +53,10 @@ function Scrape_latest(page)
     local request = http:get(url)
     local html = request.text
     if http:has_cloudflare_protection(html, request.status, request.headers) then
-        html = flaresolverr:get(url).text
+        local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+        if req.status == 200 then
+            html = req.text
+        end
     end
 
     local manga_divs = scraping:select_elements(html, "div.list-truyen-item-wrap")
@@ -73,7 +88,10 @@ function Scrape_trending(page)
     local request = http:get(url)
     local html = request.text
     if http:has_cloudflare_protection(html, request.status, request.headers) then
-        html = flaresolverr:get(url).text
+        local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+        if req.status == 200 then
+            html = req.text
+        end
     end
 
     local manga_divs = scraping:select_elements(html, "div.list-truyen-item-wrap")
@@ -105,7 +123,10 @@ function Scrape_search(query, page)
     local request = http:get(url, { referer = "https://www.natomanga.com/" })
     local html = request.text
     if http:has_cloudflare_protection(html, request.status, request.headers) then
-        html = flaresolverr:get(url).text
+        local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+        if req.status == 200 then
+            html = req.text
+        end
     end
 
     local manga_divs = scraping:select_elements(html, "div.story_item")
@@ -136,7 +157,10 @@ function Scrape_manga(url)
     local request = http:get(url)
     local html = request.text
     if http:has_cloudflare_protection(html, request.status, request.headers) then
-        html = flaresolverr:get(url).text
+        local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+        if req.status == 200 then
+            html = req.text
+        end
     end
 
     local title = scraping:get_text(scraping:select_elements(html, ".manga-info-content h1")[1]) or ""
@@ -200,7 +224,10 @@ function Scrape_genres_list()
     local request = http:get(url)
     local html = request.text
     if http:has_cloudflare_protection(html, request.status, request.headers) then
-        html = flaresolverr:get(url).text
+        local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
+        if req.status == 200 then
+            html = req.text
+        end
     end
 
     local genres = {}
@@ -227,3 +254,62 @@ function Get_info()
         referer_url = "https://www.natomanga.com/"
     }
 end
+
+Tests = {
+    Test_Scrape_manga = function()
+        local manga = Scrape_manga("https://www.natomanga.com/manga/solo-leveling")
+        assert(manga.title == "Solo Leveling", "Title should be 'Solo Leveling'")
+        assert(manga.url == "https://www.natomanga.com/manga/solo-leveling", "URL should match")
+        assert(manga.img_url ~= "", "Image URL should not be empty")
+        assert(#manga.genres > 0, "Genres should not be empty")
+        assert(manga.status ~= "", "Status should not be empty")
+        assert(manga.description ~= "", "Description should not be empty")
+    end,
+
+    Test_Scrape_chapter = function()
+        local images = Scrape_chapter("https://www.natomanga.com/manga/solo-leveling/chapter-1")
+        assert(#images > 0, "There should be images in the chapter")
+        for _, img_url in ipairs(images) do
+            assert(string.match(img_url, "^https?://"), "Image URL should be valid: " .. img_url)
+        end
+    end,
+
+    Test_Scrape_latest = function()
+        local mangas = Scrape_latest(1)
+        assert(#mangas > 0, "There should be mangas in the latest list")
+        for _, manga in ipairs(mangas) do
+            assert(manga.title ~= "", "Manga title should not be empty")
+            assert(manga.url ~= "", "Manga URL should not be empty")
+            assert(manga.img_url ~= "", "Manga image URL should not be empty")
+        end
+    end,
+
+    Test_Scrape_trending = function()
+        local mangas = Scrape_trending(1)
+        assert(#mangas > 0, "There should be mangas in the trending list")
+        for _, manga in ipairs(mangas) do
+            assert(manga.title ~= "", "Manga title should not be empty")
+            assert(manga.url ~= "", "Manga URL should not be empty")
+            assert(manga.img_url ~= "", "Manga image URL should not be empty")
+        end
+    end,
+
+    Test_Scrape_search = function()
+        local mangas = Scrape_search("solo", 1)
+        assert(#mangas > 0, "There should be mangas in the search results")
+        for _, manga in ipairs(mangas) do
+            assert(manga.title ~= "", "Manga title should not be empty")
+            assert(manga.url ~= "", "Manga URL should not be empty")
+            assert(manga.img_url ~= "", "Manga image URL should not be empty")
+        end
+    end,
+
+    Test_Scrape_genres_list = function()
+        local genres = Scrape_genres_list()
+        assert(#genres > 0, "There should be genres in the genres list")
+        for _, genre in ipairs(genres) do
+            assert(genre.name ~= "", "Genre name should not be empty")
+            assert(genre.url ~= "", "Genre URL should not be empty")
+        end
+    end
+}

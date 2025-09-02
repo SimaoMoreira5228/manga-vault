@@ -595,7 +595,6 @@ mod tests {
 	fn test_scrape_manga() {
 		let manga_page =
 			ScraperImpl::scrape_manga("https://mangadex.org/title/aa070232-a668-4c73-8305-a68825db32e4".to_string());
-		println!("{:?}", manga_page);
 		assert_eq!(manga_page.title, "Hatsukoi wa Marude Yaiba no You ni");
 		assert_eq!(
 			manga_page.url,

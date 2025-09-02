@@ -7,8 +7,8 @@ use crate::plugins::globals::utils::create_response_table;
 
 impl UserData for FlareSolverrManager {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-		methods.add_method("create_session", |lua, this, _: ()| {
-			let id = this.create_session().map_err(mlua::Error::external)?;
+		methods.add_async_method("create_session", |lua, this, _: ()| async move {
+			let id = this.create_session().await.map_err(mlua::Error::external)?;
 			lua.to_value(&id.to_string())
 		});
 
@@ -34,7 +34,7 @@ pub fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
 #[cfg(test)]
 #[cfg_attr(all(coverage_nightly, test), coverage(off))]
 mod tests {
-	use mlua::{Lua, LuaSerdeExt};
+	use mlua::{Lua, LuaSerdeExt, Table};
 	use mockito::Server;
 	use serde_json::json;
 
@@ -42,7 +42,8 @@ mod tests {
 	async fn test_flaresolverr_get() {
 		let mut server = Server::new_async().await;
 		let mock_server = server
-			.mock("POST", "/")
+			.mock("POST", "/v1")
+			.expect_at_least(2)
 			.with_status(200)
 			.with_header("content-type", "application/json")
 			.with_body(
@@ -72,10 +73,10 @@ mod tests {
 		};
 		super::load(&config, &lua).unwrap();
 		let script = r#"
-      local response = flaresolverr:get("https://jsonplaceholder.typicode.com/posts/1", nil)
-      return response.text, response.json()
-    "#;
-		let result: (String, mlua::Table) = lua.load(script).eval_async().await.unwrap();
+	  local response = flaresolverr:get("https://jsonplaceholder.typicode.com/posts/1", nil)
+	  return response.text, response.json()"#;
+
+		let result: (String, Table) = lua.load(script).eval_async().await.unwrap();
 		let json: serde_json::Value = lua.from_value(mlua::Value::Table(result.1)).unwrap();
 		mock_server.assert_async().await;
 		assert_eq!(json["userId"], 1);
