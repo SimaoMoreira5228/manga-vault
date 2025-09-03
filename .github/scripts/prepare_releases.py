@@ -141,8 +141,30 @@ def parse_version_from_lua(lua_path: Path) -> Optional[str]:
         txt = lua_path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return None
-    m = re.search(r'PLUGIN_VERSION\s*=\s*["\']([\d\.]+[^\n"\']*)["\']', txt)
-    return m.group(1).strip() if m else None
+
+    m = re.search(
+        r'function\s+Get_info\s*\([^)]*\)\s*return\s*\{(.*?)\}\s*end',
+        txt,
+        re.DOTALL,
+    )
+
+    if not m:
+        m = re.search(
+            r'Get_info\s*=\s*function\s*\([^)]*\)\s*return\s*\{(.*?)\}\s*end',
+            txt,
+            re.DOTALL,
+        )
+
+    if not m:
+        return None
+
+    table_body = m.group(1)
+
+    vm = re.search(r'version\s*=\s*["\']([^"\']+)["\']', table_body)
+    if vm:
+        return vm.group(1).strip()
+
+    return None
 
 def parse_version_from_package_json(package_json_path: Path) -> Optional[str]:
     try:
