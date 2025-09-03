@@ -92,5 +92,7 @@ jobs:
           chromedriver_pid=$!
           trap 'kill $chromedriver_pid 2>/dev/null || true' EXIT
 
+          export LUA_PLUGIN_TEST_DIR="$(pwd)/scrapers/"
+
           INSTA_FORCE_PASS=1 cargo test --workspace --all-features -- --nocapture
         shell: bash
