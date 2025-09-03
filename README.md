@@ -128,12 +128,7 @@ Notes:
 
 ### Lua plugins
 
-* Each Lua plugin must expose at least these globals:
-
-  * `PLUGIN_NAME` (string)
-  * `PLUGIN_VERSION` (string)
-* And these functions:
-
+* Each Lua plugin must expose at least these functions:
   * `Get_info()` -> returns scraper info
   * `Scrape_chapter(url)` -> returns a list of page URLs
   * `Scrape_latest(page)` -> returns a list of `MangaItem`
@@ -141,6 +136,7 @@ Notes:
   * `Scrape_search(query, page)` -> returns a list of `MangaItem`
   * `Scrape_manga(url)` -> returns a `MangaPage`
   * `Scrape_genres_list()` -> returns a list of genres
+
 * Lua plugins receive these additional global helpers:
   - **`http`**: HTTP client with methods like `get()`, `post()`, `has_cloudflare_protection()`
   - **`headless_client`**: Headless browser control (when configured)
@@ -163,9 +159,7 @@ For Lua plugin development, we recommend using these VS Code settings (`settings
     "http",
     "headless_client",
     "flaresolverr",
-    "scraping",
-    "PLUGIN_NAME",
-    "PLUGIN_VERSION"
+    "scraping"
   ]
 }
 ```
