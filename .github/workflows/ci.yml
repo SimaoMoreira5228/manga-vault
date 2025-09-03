@@ -72,14 +72,11 @@ jobs:
           cache-on-failure: true
           shared-key: "rust-ci-${{ runner.os }}"
 
-      - name: Install cargo-component (if missing)
-        run: |
-          if ! command -v cargo-component >/dev/null 2>&1; then
-            cargo install cargo-component
-          fi
-        shell: bash
-        env:
-          CARGO_TERM_COLOR: always
+      - name: Install cargo-binstall
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+      - name: Install cargo-component
+        run: cargo binstall -y cargo-component
 
       - name: Build wasm plugin and run tests
         run: |

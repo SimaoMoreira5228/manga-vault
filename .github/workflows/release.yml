@@ -109,10 +109,11 @@ jobs:
           cache-on-failure: true
           shared-key: "rust-release-build-scrapers-${{ runner.os }}"
 
+      - name: Install cargo-binstall
+        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
       - name: Install cargo-component
-        run: |
-          rustup component add rust-src || true
-          cargo install cargo-component --version 0.21.0 --force || true
+        run: cargo binstall -y cargo-component
 
       - name: Setup Python
         uses: actions/setup-python@v4
