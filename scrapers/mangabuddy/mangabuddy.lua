@@ -1,5 +1,3 @@
-PLUGIN_NAME = "mangabuddy"
-PLUGIN_VERSION = "0.2.0"
 BASE_URL = "https://mangabuddy.com"
 
 function Scrape_chapter(url)
@@ -185,8 +183,6 @@ function Scrape_manga(url)
     end
   end
 
-  table.reverse(chapters)
-
   local page = {
     title = title,
     url = url,
@@ -199,7 +195,7 @@ function Scrape_manga(url)
     manga_type = "",
     release_date = "",
     description = description,
-    chapters = chapters,
+    chapters = table.reverse(chapters),
   }
 
   return page
@@ -226,6 +222,7 @@ end
 function Get_info()
   return {
     id = "mangabuddy",
+    version = "0.3.0",
     name = "MangaBuddy",
     img_url = "https://mangabuddy.com/favicon.ico",
     referer_url = "https://mangabuddy.com/"

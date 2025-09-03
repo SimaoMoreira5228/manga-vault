@@ -69,10 +69,7 @@ pub async fn load_plugin_file(
 		PluginType::Lua => {
 			let plugin = LuaPlugin::new(config, &file_path).await?;
 
-			plugins
-				.write()
-				.await
-				.insert(plugin.name.clone(), Arc::new(Plugin::Lua(plugin)));
+			plugins.write().await.insert(plugin.id.clone(), Arc::new(Plugin::Lua(plugin)));
 		}
 		PluginType::Wasm => {
 			let plugin = WasmPlugin::new(&file_path).await?;

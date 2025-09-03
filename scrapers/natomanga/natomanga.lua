@@ -1,6 +1,3 @@
-PLUGIN_NAME = "natomanga"
-PLUGIN_VERSION = "0.2.1"
-
 FLARESOLVERR_SESSION = nil
 
 local function get_or_create_flaresolverr_session()
@@ -249,6 +246,7 @@ end
 function Get_info()
     return {
         id = "natomanga",
+        version = "0.3.0",
         name = "NatoManga",
         img_url = "https://www.natomanga.com/images/favicon-manganato.webp",
         referer_url = "https://www.natomanga.com/"

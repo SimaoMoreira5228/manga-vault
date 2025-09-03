@@ -12,7 +12,7 @@ use crate::Config;
 
 #[derive(Debug, Clone)]
 pub struct LuaPlugin {
-	pub name: String,
+	pub id: String,
 	pub version: String,
 	pub file: std::path::PathBuf,
 	pub(crate) runtime: Lua,
@@ -30,14 +30,15 @@ impl LuaPlugin {
 		runtime.load(&script_content).exec()?;
 
 		let globals = runtime.globals();
-		let name: mlua::String = globals.get("PLUGIN_NAME").context("Missing PLUGIN_NAME in Lua plugin")?;
-		let version: mlua::String = globals
-			.get("PLUGIN_VERSION")
-			.context("Missing PLUGIN_VERSION in Lua plugin")?;
+		let info: mlua::Function = globals.get("Get_info").context("Missing PLUGIN_NAME in Lua plugin")?;
+		let info_table: mlua::Table = info
+			.call_async(())
+			.await
+			.context("Get_info() did not return valid plugin info")?;
 
 		Ok(Self {
-			name: name.to_str()?.to_string(),
-			version: version.to_str()?.to_string(),
+			id: info_table.get("id").context("Missing 'id' in plugin info")?,
+			version: info_table.get("version").context("Missing 'version' in plugin info")?,
 			file: file.into(),
 			runtime,
 		})
