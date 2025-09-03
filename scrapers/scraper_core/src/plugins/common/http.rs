@@ -1,11 +1,18 @@
 use std::collections::HashMap;
 
+use reqwest::Url;
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+
 #[derive(thiserror::Error, Debug)]
 pub enum HttpError {
 	#[error("Request failed: {0}")]
 	RequestFailed(String),
 	#[error("Parsing error: {0}")]
 	ParsingError(String),
+	#[error("Invalid header: {0}")]
+	InvalidHeader(String),
+	#[error("Invalid URL: {0}")]
+	InvalidUrl(String),
 }
 
 pub struct Response {
@@ -19,9 +26,16 @@ pub struct CommonHttp {
 	client: reqwest::Client,
 }
 
+impl Default for CommonHttp {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 impl CommonHttp {
 	pub fn new() -> Self {
 		let client = reqwest::Client::builder()
+			.timeout(std::time::Duration::from_secs(30))
 			.user_agent(
 				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
 			)
@@ -30,33 +44,32 @@ impl CommonHttp {
 
 		Self { client }
 	}
-}
 
-impl Default for CommonHttp {
-	fn default() -> Self {
-		Self::new()
+	fn build_header_map(headers_map: &HashMap<String, String>) -> Result<HeaderMap, HttpError> {
+		let mut map = HeaderMap::new();
+		for (k, v) in headers_map {
+			let name = HeaderName::from_bytes(k.as_bytes())
+				.map_err(|e| HttpError::InvalidHeader(format!("invalid header name '{}': {}", k, e)))?;
+			let value = HeaderValue::from_str(v)
+				.map_err(|e| HttpError::InvalidHeader(format!("invalid header value for '{}': {}", k, e)))?;
+			map.insert(name, value);
+		}
+		Ok(map)
 	}
-}
 
-impl CommonHttp {
 	pub async fn get(&self, url: String, headers_map: Option<HashMap<String, String>>) -> Result<Response, HttpError> {
+		let parsed = Url::parse(&url).map_err(|e| HttpError::InvalidUrl(format!("invalid url '{}': {}", url, e)))?;
+
 		let headers_map = headers_map.unwrap_or_default();
-		let headers = headers_map
-			.iter()
-			.map(|(k, v)| {
-				let key = reqwest::header::HeaderName::from_bytes(k.as_bytes()).unwrap();
-				let value = reqwest::header::HeaderValue::from_str(v).unwrap();
-				(key, value)
-			})
-			.collect();
+		let headers = Self::build_header_map(&headers_map)?;
 
 		let response = self
 			.client
-			.get(&url)
+			.get(parsed)
 			.headers(headers)
 			.send()
 			.await
-			.map_err(|e| HttpError::RequestFailed(e.to_string()))?;
+			.map_err(|e| HttpError::RequestFailed(format!("request to '{}' failed: {}", url, e)))?;
 
 		get_response(response).await
 	}
@@ -67,24 +80,19 @@ impl CommonHttp {
 		body: String,
 		headers_map: Option<HashMap<String, String>>,
 	) -> Result<Response, HttpError> {
+		let parsed = Url::parse(&url).map_err(|e| HttpError::InvalidUrl(format!("invalid url '{}': {}", url, e)))?;
+
 		let headers_map = headers_map.unwrap_or_default();
-		let headers = headers_map
-			.iter()
-			.map(|(k, v)| {
-				let key = reqwest::header::HeaderName::from_bytes(k.as_bytes()).unwrap();
-				let value = reqwest::header::HeaderValue::from_str(v).unwrap();
-				(key, value)
-			})
-			.collect();
+		let headers = Self::build_header_map(&headers_map)?;
 
 		let response = self
 			.client
-			.post(&url)
+			.post(parsed)
 			.headers(headers)
 			.body(body)
 			.send()
 			.await
-			.map_err(|e| HttpError::RequestFailed(e.to_string()))?;
+			.map_err(|e| HttpError::RequestFailed(format!("request to '{}' failed: {}", url, e)))?;
 
 		get_response(response).await
 	}

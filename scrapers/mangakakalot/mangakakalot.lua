@@ -1,6 +1,3 @@
-PLUGIN_NAME = "mangakakalot"
-PLUGIN_VERSION = "0.2.0"
-
 FLARESOLVERR_SESSION = nil
 
 local function get_or_create_flaresolverr_session()
@@ -281,6 +278,7 @@ end
 function Get_info()
   return {
     id = "mangakakalotgg",
+    version = "0.3.0",
     name = "MangaKakalot",
     img_url = "https://www.mangakakalot.gg/images/favicon.ico",
     referer_url = "https://www.mangakakalot.gg/"
