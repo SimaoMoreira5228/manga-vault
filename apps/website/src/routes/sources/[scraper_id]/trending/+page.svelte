@@ -192,7 +192,10 @@
 				>
 					<div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/75"></div>
 
-					<div class="relative z-10 w-full truncate p-4 text-center text-base text-white">
+					<div
+						class="relative z-10 w-full truncate p-4 text-center text-base text-white"
+						title={item.title}
+					>
 						{item.title}
 					</div>
 				</a>

@@ -386,7 +386,7 @@
 				{/each}
 			</div>
 			{#if manga?.chapters && manga?.chapters?.length > 0 && authState.status === 'authenticated'}
-				<div class="mt-4 flex w-full flex-row gap-2">
+				<div class="my-4 flex w-full flex-row gap-2">
 					{#if getResumeChapter() !== null}
 						<a
 							href="/manga/{manga?.id}/chapter/{getResumeChapter()}"
