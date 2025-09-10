@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { getAuthState, login } from '$lib/auth.svelte';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
+	import { Eye, EyeClosed } from '@lucide/svelte';
 	import * as z from 'zod';
 
 	let authState = $derived(getAuthState());
@@ -16,6 +17,8 @@
 	let formError: string | null = $state(null);
 	let usernameError: string | null = $state(null);
 	let passwordError: string | null = $state(null);
+
+	let showPassword = $state(false);
 
 	const input = z.object({
 		username: z
@@ -78,66 +81,112 @@
 	}
 </script>
 
-<div class="flex h-full w-full flex-col items-center justify-center p-4">
-	<div
-		class="card preset-filled-surface-100-900 border-surface-200-800 card-hover divide-surface-200-800 w-4/10 h-5/10 flex flex-col items-center justify-center gap-8 overflow-hidden border-[1px]"
+<div class="flex h-full w-full items-center justify-center p-4 pt-16 sm:items-center sm:pt-0">
+	<main
+		class="card preset-filled-surface-100-900 border-surface-200-800 card-hover divide-surface-200-800 mx-auto max-h-[calc(100vh-4rem)] w-full max-w-md space-y-4 overflow-auto rounded-lg border-[1px]
+			p-4 sm:p-6"
+		aria-labelledby="login-heading"
 	>
 		<header class="text-center">
-			<h3 class="h3">Login</h3>
-			<span class="text-sm opacity-60">
-				If you don't have an account, you can create one
-				<a href="/register" class="anchor"> here </a>
-				.
-			</span>
+			<h3 id="login-heading" class="h3 text-lg sm:text-xl">Login</h3>
+			<p class="mt-1 text-sm opacity-70">
+				Don't have an account?
+				<a href="/register" class="anchor">Create one</a>.
+			</p>
 		</header>
-		<article class="flex flex-col items-center justify-center space-y-4 p-4">
-			{#if formError}
-				<div role="alert" aria-live="assertive" class="mb-2 text-red-600">
-					{formError}
-				</div>
-			{/if}
-			<form
-				class="flex h-full w-full flex-col items-center justify-center space-y-4"
-				onsubmit={handleSubmit}
-			>
-				<label class="label w-full">
-					<span class="label-text">Username</span>
+
+		{#if formError}
+			<div role="alert" aria-live="assertive" class="text-sm text-red-600">
+				{formError}
+			</div>
+		{/if}
+
+		<form class="w-full space-y-4" onsubmit={handleSubmit}>
+			<label class="label block w-full">
+				<span class="label-text text-sm">Username</span>
+				<input
+					type="text"
+					name="username"
+					class="input w-full py-3 text-base"
+					aria-invalid={usernameError ? 'true' : 'false'}
+					aria-describedby={usernameError ? 'username-error' : undefined}
+					autocomplete="username"
+					autocapitalize="off"
+					autocorrect="off"
+					spellcheck="false"
+					enterkeyhint="next"
+					disabled={submitting}
+				/>
+				{#if usernameError}
+					<span
+						id="username-error"
+						role="alert"
+						aria-live="polite"
+						class="mt-1 block text-sm text-red-500"
+					>
+						{usernameError}
+					</span>
+				{/if}
+			</label>
+
+			<label class="label block w-full">
+				<span class="label-text text-sm">Password</span>
+
+				<div class="relative">
 					<input
-						type="text"
-						name="username"
-						class="input"
-						aria-invalid={usernameError ? 'true' : 'false'}
-						aria-describedby={usernameError ? 'username-error' : undefined}
-						autocomplete="username"
-					/>
-					{#if usernameError}
-						<span id="username-error" role="alert" aria-live="polite" class="text-red-500">
-							{usernameError}
-						</span>
-					{/if}
-				</label>
-				<label class="label">
-					<span class="label-text">Password</span>
-					<input
-						type="password"
+						type={showPassword ? 'text' : 'password'}
 						name="password"
-						class="input"
+						class="input w-full py-3 pr-10 text-base"
 						aria-invalid={passwordError ? 'true' : 'false'}
 						aria-describedby={passwordError ? 'password-error' : undefined}
 						autocomplete="current-password"
+						spellcheck="false"
+						enterkeyhint="go"
+						disabled={submitting}
 					/>
-					{#if passwordError}
-						<span id="password-error" role="alert" aria-live="polite" class="text-red-500">
-							{passwordError}
-						</span>
-					{/if}
-				</label>
-				{#if !submitting}
-					<button type="submit" class="btn preset-filled">Login</button>
-				{:else}
-					<button type="button" class="btn-icon preset-filled"><DotsSpinner /></button>
+
+					<button
+						type="button"
+						class="absolute right-2 top-1/2 inline-flex -translate-y-1/2 items-center justify-center p-1"
+						onclick={() => (showPassword = !showPassword)}
+						aria-pressed={showPassword}
+						aria-label={showPassword ? 'Hide password' : 'Show password'}
+						disabled={submitting}
+					>
+						{#if showPassword}
+							<EyeClosed />
+						{:else}
+							<Eye />
+						{/if}
+					</button>
+				</div>
+
+				{#if passwordError}
+					<span
+						id="password-error"
+						role="alert"
+						aria-live="polite"
+						class="mt-1 block text-sm text-red-500"
+					>
+						{passwordError}
+					</span>
 				{/if}
-			</form>
-		</article>
-	</div>
+			</label>
+
+			<div class="w-full">
+				{#if !submitting}
+					<button type="submit" class="btn preset-filled w-full py-3 text-base">Login</button>
+				{:else}
+					<button
+						type="button"
+						class="btn-icon preset-filled w-full py-3"
+						disabled
+						aria-busy="true"
+					>
+						<DotsSpinner />
+					</button>
+				{/if}
+			</div>
+		</form>
+	</main>
 </div>

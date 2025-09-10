@@ -4,12 +4,15 @@
 	import { client } from '$lib/graphql/client';
 	import { gql } from '@urql/svelte';
 	import DotsSpinner from '$lib/icons/DotsSpinner.svelte';
-	import { ArrowDown10, ArrowDownAZ, PenLine, Plus } from '@lucide/svelte';
+	import { ArrowDown10, ArrowDownAZ, Moon, PenLine, Plus, Sun } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import { proxyImage } from '$lib/utils/image';
 	import { toaster } from '$lib/utils/toaster-svelte';
 	import { load, type FavoriteMangaShell } from '$lib/utils/personalLibrary';
 	import { afterNavigate } from '$app/navigation';
+	import { DropdownMenu } from 'bits-ui';
+	import ThemeSelector from '$lib/components/ThemeSelector.svelte';
+	import { getTheme } from '$lib/theme.svelte';
 
 	let favoriteMangas = $state<FavoriteMangaShell[]>([]);
 	let categories = $state<{ id: string; name: string }[]>([]);
@@ -18,6 +21,7 @@
 	let orderType: 'unread' | 'alphabetical' = $state('unread');
 	let currentCategory = $state<string>('');
 	let authState = $derived(getAuthState());
+	let theme = $derived(getTheme());
 
 	onMount(async () => {
 		orderType = (localStorage.getItem('orderType') as 'unread' | 'alphabetical') || 'unread';
@@ -325,6 +329,7 @@
 												></div>
 
 												<div
+													title={favoriteManga.manga.title}
 													class="relative z-10 w-full truncate p-4 text-center text-base text-white"
 												>
 													{favoriteManga.manga.title}
