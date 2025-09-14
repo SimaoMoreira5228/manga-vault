@@ -64,7 +64,7 @@ PACKAGES = [
   {
     "id": "website",
     "path": "apps/website",
-    "type": "bun-app",
+    "type": "web-app",
     "zip_name": "website.zip",
     "tag_prefix": "website",
   },
@@ -244,7 +244,7 @@ def read_local_version_for_pkg(entry):
   elif entry["type"] == "lua-plugin":
     lua = p / entry["lua_file"]
     return parse_version_from_lua(lua)
-  elif entry["type"] == "bun-app":
+  elif entry["type"] == "web-app":
     package_json = p / "package.json"
     return parse_version_from_package_json(package_json)
   return None

@@ -1,4 +1,4 @@
-name: CI (Rust)
+name: CI
 
 on:
   push:
@@ -21,15 +21,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enable pnpm via corepack
+        run: corepack enable pnpm
 
       - name: Install dependencies
-        run: bun install
+        run: pnpm install
         working-directory: ./apps/website
 
       - name: Run ESLint
-        run: bun run ci:lint
+        run: pnpm run ci:lint
         working-directory: ./apps/website
 
   clippy:
