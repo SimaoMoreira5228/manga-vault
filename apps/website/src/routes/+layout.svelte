@@ -77,7 +77,7 @@ function toggleExpanded() {
 			{/snippet}
 
 			{#snippet tiles()}
-				{#each navigationTiles as tile (tile.id)}
+				{#each navigationTiles as tile, i (i)}
 					<Navigation.Tile
 						id={tile.id}
 						label={tile.label}
@@ -94,7 +94,6 @@ function toggleExpanded() {
 				<ThemeSelector expanded={isExpanded} />
 			{/snippet}
 		</Navigation.Rail>
-
 		<div class="h-full min-h-0 w-full overflow-auto">
 			{@render children?.()}
 		</div>
@@ -104,9 +103,8 @@ function toggleExpanded() {
 		<div class="h-full min-h-0 w-full overflow-auto">
 			{@render children?.()}
 		</div>
-
 		<Navigation.Bar>
-			{#each navigationTiles as tile (tile.id)}
+			{#each navigationTiles as tile, i (i)}
 				<Navigation.Tile label={tile.label} href={tile.location}>
 					<tile.icon />
 				</Navigation.Tile>
