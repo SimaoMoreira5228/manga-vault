@@ -2776,7 +2776,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gql-api"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "anyhow",
  "argon2",
@@ -3953,7 +3953,7 @@ dependencies = [
 
 [[package]]
 name = "manga-vault"
-version = "1.5.3"
+version = "1.5.4"
 dependencies = [
  "config 0.1.0",
  "database-connection",

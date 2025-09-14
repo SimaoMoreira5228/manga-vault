@@ -286,6 +286,11 @@ jobs:
           chmod +x ./.github/scripts/generate_repo_json.py || true
           python ./.github/scripts/generate_repo_json.py
 
+      - name: Run dprint
+        run: |
+          curl -fsSL https://dprint.dev/install.sh | sh > /dev/null 2>&1
+          $HOME/.dprint/bin/dprint fmt repo.json
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
