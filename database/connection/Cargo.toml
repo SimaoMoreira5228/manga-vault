@@ -4,16 +4,16 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-sea-orm = { workspace = true }
+chrono = { version = "0.4", features = ["serde"] }
 config = { workspace = true }
 config-derive = { workspace = true }
-scraper_core = { workspace = true }
 database-migration = { workspace = true }
+scraper_core = { workspace = true }
+sea-orm = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2.0"
+tokio = { version = "1", features = ["full"] }
+toml = "0.9"
 tracing = { workspace = true }
 url = "2.5"
-tokio = { version = "1", features = ["full"] }
-thiserror = "2.0"
-toml = "0.9"

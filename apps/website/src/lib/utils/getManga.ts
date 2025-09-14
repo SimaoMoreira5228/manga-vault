@@ -1,7 +1,7 @@
-import type { Manga } from '$gql/graphql';
-import { client } from '$lib/graphql/client';
-import { gql } from '@urql/svelte';
-import { waitForAuthState } from '$lib/auth.svelte';
+import type { Manga } from "$gql/graphql";
+import { waitForAuthState } from "$lib/auth.svelte";
+import { client } from "$lib/graphql/client";
+import { gql } from "@urql/svelte";
 
 export type MangaWithFavorite = Manga & {
 	isFavorite: boolean;
@@ -18,9 +18,9 @@ function normalizeMangaData(manga: any): MangaWithFavorite | null {
 	if (!manga) return null;
 
 	let normalizedGenres: string[] | undefined;
-	if (manga.genres && typeof manga.genres === 'string') {
+	if (manga.genres && typeof manga.genres === "string") {
 		normalizedGenres = manga.genres
-			.split(',')
+			.split(",")
 			.map((s: string) => s.trim())
 			.filter(Boolean);
 	} else if (Array.isArray(manga.genres)) {
@@ -29,7 +29,7 @@ function normalizeMangaData(manga: any): MangaWithFavorite | null {
 
 	const normalizedAlternativeNames: string[] = [];
 	for (const name of manga.alternativeNames ?? []) {
-		if (name !== '') {
+		if (name !== "") {
 			normalizedAlternativeNames.push(name);
 		}
 	}
@@ -39,13 +39,13 @@ function normalizeMangaData(manga: any): MangaWithFavorite | null {
 		genres: normalizedGenres,
 		alternativeNames: normalizedAlternativeNames,
 		isFavorite: false,
-		userReadChapters: manga.userReadChapters || []
+		userReadChapters: manga.userReadChapters || [],
 	};
 }
 
 export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 	const authState = await waitForAuthState();
-	const isAuthenticated = authState.status === 'authenticated';
+	const isAuthenticated = authState.status === "authenticated";
 
 	const mangaQuery = gql`
 		fragment MangaFields on Manga {
@@ -124,7 +124,7 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 				: Promise.resolve({ data: null }),
 			isAuthenticated
 				? client.query(readChaptersQuery, { id }).toPromise()
-				: Promise.resolve({ data: null })
+				: Promise.resolve({ data: null }),
 		]);
 
 		const rawManga = mangaRes?.data?.mangas?.manga ?? null;
@@ -154,7 +154,7 @@ export async function getManga(id: number): Promise<MangaWithFavorite | null> {
 
 		return normalized;
 	} catch (err) {
-		console.error('getManga error', err);
+		console.error("getManga error", err);
 		return null;
 	}
 }

@@ -1,6 +1,6 @@
-import { browser } from '$app/environment';
+import { browser } from "$app/environment";
 
-let theme = $state({ theme: 'cerberus', dark: true });
+let theme = $state({ theme: "cerberus", dark: true });
 
 export function toggleDarkMode() {
 	theme.dark = !theme.dark;
@@ -20,15 +20,15 @@ export function loadTheme() {
 	if (!browser) return;
 
 	try {
-		theme = JSON.parse(localStorage.getItem('theme') || '{"theme":"cerberus","dark":true}');
+		theme = JSON.parse(localStorage.getItem("theme") || '{"theme":"cerberus","dark":true}');
 	} catch {
-		theme = { theme: 'cerberus', dark: true };
+		theme = { theme: "cerberus", dark: true };
 	}
 }
 
 function saveTheme() {
 	if (!browser) return;
-	document.documentElement.setAttribute('data-theme', theme.theme);
-	document.documentElement.setAttribute('data-mode', theme.dark ? 'dark' : 'light');
-	localStorage.setItem('theme', JSON.stringify(theme));
+	document.documentElement.setAttribute("data-theme", theme.theme);
+	document.documentElement.setAttribute("data-mode", theme.dark ? "dark" : "light");
+	localStorage.setItem("theme", JSON.stringify(theme));
 }

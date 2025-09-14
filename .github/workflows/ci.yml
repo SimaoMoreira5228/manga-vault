@@ -8,21 +8,29 @@ on:
 
 jobs:
   fmt:
-    name: "Rust: fmt (nightly)"
+    name: "Fmt"
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v4
+      - uses: dprint/check@v2.3
 
-      - name: Setup Rust (nightly)
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt
+  eslint:
+    name: "ESLint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Run fmt (nightly)
-        run: cargo +nightly fmt -- --check
-        shell: bash
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install
+        working-directory: ./apps/website
+
+      - name: Run ESLint
+        run: bun run ci:lint
+        working-directory: ./apps/website
 
   clippy:
     name: "Rust: clippy (stable)"

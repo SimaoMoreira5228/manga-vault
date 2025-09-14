@@ -1,5 +1,5 @@
-import { client } from '$lib/graphql/client';
-import { gql } from '@urql/svelte';
+import { client } from "$lib/graphql/client";
+import { gql } from "@urql/svelte";
 
 export type FavoriteMangaShell = {
 	id: number;
@@ -28,12 +28,12 @@ export async function load() {
 						}
 					}
 				`,
-				{}
+				{},
 			)
 			.toPromise();
 
 		const categories = categoriesResult?.data?.categories.userCategories || [];
-		const currentCategory = categories[0]?.id.toString() || '';
+		const currentCategory = categories[0]?.id.toString() || "";
 
 		let favoriteMangas = [];
 		if (currentCategory) {
@@ -57,7 +57,7 @@ export async function load() {
 							}
 						}
 					`,
-					{ categoryId: parseInt(currentCategory) }
+					{ categoryId: parseInt(currentCategory) },
 				)
 				.toPromise();
 
@@ -67,14 +67,10 @@ export async function load() {
 		return {
 			categories: categories as { id: string; name: string }[],
 			currentCategory: currentCategory as string,
-			favoriteMangas: favoriteMangas as FavoriteMangaShell[]
+			favoriteMangas: favoriteMangas as FavoriteMangaShell[],
 		};
 	} catch (error) {
-		console.error('Failed to load data:', error);
-		return {
-			categories: [],
-			currentCategory: '',
-			favoriteMangas: []
-		};
+		console.error("Failed to load data:", error);
+		return { categories: [], currentCategory: "", favoriteMangas: [] };
 	}
 }

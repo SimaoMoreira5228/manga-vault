@@ -9,62 +9,53 @@ path = "src/main.rs"
 
 [workspace]
 members = [
-  "apps/http/*",
-  "apps/scheduler",
-  "apps/scheduler/queue",
-  "apps/website/server",
-  "config",
-  "config/derive",
-  "database/*",
-  "scrapers/*",
+	"apps/http/*",
+	"apps/scheduler",
+	"apps/scheduler/queue",
+	"apps/website/server",
+	"config",
+	"config/derive",
+	"database/*",
+	"scrapers/*",
 ]
 exclude = ["scrapers/manhuafast", "scrapers/natomanga", "scrapers/mangabuddy", "scrapers/mangakakalot"]
 
 [workspace.dependencies]
+anyhow = "1"
+axum = { version = "0.8", features = ["http2"] }
+axum-server = { version = "0.7.2", features = ["tls-rustls"] }
+chrono = "0.4"
 config = { path = "config" }
 config-derive = { path = "config/derive" }
 database-connection = { path = "database/connection" }
 database-entities = { path = "database/entities" }
 database-migration = { path = "database/migration" }
+gql-api = { path = "apps/http/gql" }
+queue = { path = "apps/scheduler/queue" }
+rand = "0.9"
+regex = "1.11"
+reqwest = { version = "0.12", features = ["stream", "blocking", "json"] }
+scheduler = { path = "apps/scheduler" }
 scraper_core = { path = "scrapers/scraper_core" }
 scraper_types = { path = "scrapers/scraper_types" }
-gql-api = { path = "apps/http/gql" }
-sea-orm = { version = "1.1", features = [
-  "sqlx-sqlite",
-  "sqlx-postgres",
-  "sqlx-mysql",
-  "runtime-tokio-native-tls",
-  "macros",
-  "with-chrono",
-  "with-json",
-  "with-uuid",
-] }
-queue = { path = "apps/scheduler/queue" }
-scheduler = { path = "apps/scheduler" }
-website-server = { path = "apps/website/server" }
-tokio = { version = "1", features = ["full"] }
-axum = { version = "0.8", features = ["http2"] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
-chrono = "0.4"
+sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-postgres", "sqlx-mysql", "runtime-tokio-native-tls", "macros", "with-chrono", "with-json", "with-uuid"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
-anyhow = "1"
-rand = "0.9"
-reqwest = { version = "0.12", features = ["stream", "blocking", "json"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
 version-check = { path = "apps/http/version_check" }
-axum-server = { version = "0.7.2", features = ["tls-rustls"] }
-regex = "1.11"
+website-server = { path = "apps/website/server" }
 wit-bindgen = "0.45"
 
 [dependencies]
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-tokio = { workspace = true }
-scraper_core = { workspace = true }
-scheduler = { workspace = true }
 config = { workspace = true }
 database-connection = { workspace = true }
 gql-api = { workspace = true }
-website-server = { workspace = true }
+scheduler = { workspace = true }
+scraper_core = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 version-check = { workspace = true }
+website-server = { workspace = true }

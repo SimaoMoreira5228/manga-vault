@@ -1,5 +1,5 @@
-import { client } from '$lib/graphql/client';
-import { gql } from '@urql/svelte';
+import { client } from "$lib/graphql/client";
+import { gql } from "@urql/svelte";
 
 export async function load() {
 	const query = gql`
@@ -25,6 +25,6 @@ export async function load() {
 			id: number;
 			name: string;
 			imageUrl: string;
-		}>
+		}>,
 	};
 }

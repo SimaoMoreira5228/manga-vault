@@ -1,181 +1,181 @@
 schema {
-  query: QueryRoot
-  mutation: MutationRoot
+	query: QueryRoot
+	mutation: MutationRoot
 }
 
 # Indicates that an Input Object is a OneOf Input Object (and thus requires exactly one of its field be provided)
 directive @oneOf on INPUT_OBJECT
 
 type AuthMutation {
-  register(input: RegisterInput!): User!
-  login(input: LoginInput!): User!
-  logout: Boolean!
+	register(input: RegisterInput!): User!
+	login(input: LoginInput!): User!
+	logout: Boolean!
 }
 
 type Category {
-  id: Int!
-  name: String!
-  userId: Int!
-  createdAt: NaiveDateTime!
-  user: User!
+	id: Int!
+	name: String!
+	userId: Int!
+	createdAt: NaiveDateTime!
+	user: User!
 }
 
 type CategoryMutation {
-  createCategory(input: CreateCategoryInput!): Category!
-  updateCategory(id: Int!, input: UpdateCategoryInput!): Category!
-  deleteCategory(id: Int!): Boolean!
+	createCategory(input: CreateCategoryInput!): Category!
+	updateCategory(id: Int!, input: UpdateCategoryInput!): Category!
+	deleteCategory(id: Int!): Boolean!
 }
 
 type CategoryQuery {
-  category(id: Int!): Category
-  userCategories: [Category!]!
+	category(id: Int!): Category
+	userCategories: [Category!]!
 }
 
 type Chapter {
-  id: Int!
-  title: String!
-  url: String!
-  createdAt: NaiveDateTime!
-  updatedAt: NaiveDateTime!
-  mangaId: Int!
-  scanlationGroup: String
-  manga: Manga!
-  images: [String!]!
-  nextChapter: Chapter
-  previousChapter: Chapter
-  scraper: Scraper!
+	id: Int!
+	title: String!
+	url: String!
+	createdAt: NaiveDateTime!
+	updatedAt: NaiveDateTime!
+	mangaId: Int!
+	scanlationGroup: String
+	manga: Manga!
+	images: [String!]!
+	nextChapter: Chapter
+	previousChapter: Chapter
+	scraper: Scraper!
 }
 
 type ChapterMutation {
-  readChapter(chapterId: Int!): ReadChapter!
-  unreadChapter(chapterId: Int!): Boolean!
-  readAllChapters(mangaId: Int!): Boolean!
-  unreadAllChapters(mangaId: Int!): Boolean!
+	readChapter(chapterId: Int!): ReadChapter!
+	unreadChapter(chapterId: Int!): Boolean!
+	readAllChapters(mangaId: Int!): Boolean!
+	unreadAllChapters(mangaId: Int!): Boolean!
 }
 
 type ChapterQuery {
-  chapter(id: Int!): Chapter
-  chaptersByManga(mangaId: Int!, page: Int, perPage: Int): [Chapter!]!
+	chapter(id: Int!): Chapter
+	chaptersByManga(mangaId: Int!, page: Int, perPage: Int): [Chapter!]!
 }
 
 input CreateCategoryInput {
-  name: String!
+	name: String!
 }
 
 input CreateFavoriteMangaInput {
-  mangaId: Int!
-  categoryId: Int!
+	mangaId: Int!
+	categoryId: Int!
 }
 
 input CreateMangaPackInput {
-  userId: Int!
-  mangaIds: [Int!]!
+	userId: Int!
+	mangaIds: [Int!]!
 }
 
 type FavoriteManga {
-  id: Int!
-  userId: Int!
-  mangaId: Int!
-  categoryId: Int!
-  createdAt: NaiveDateTime!
-  user: User!
-  manga: Manga!
-  category: Category!
-  pack: MangaPack
+	id: Int!
+	userId: Int!
+	mangaId: Int!
+	categoryId: Int!
+	createdAt: NaiveDateTime!
+	user: User!
+	manga: Manga!
+	category: Category!
+	pack: MangaPack
 }
 
 type FavoriteMangaMutation {
-  createFavoriteManga(input: CreateFavoriteMangaInput!): FavoriteManga!
-  updateFavoriteManga(
-    id: Int!
-    input: UpdateFavoriteMangaInput!
-  ): FavoriteManga!
-  deleteFavoriteManga(id: Int!): Boolean!
+	createFavoriteManga(input: CreateFavoriteMangaInput!): FavoriteManga!
+	updateFavoriteManga(
+		id: Int!
+		input: UpdateFavoriteMangaInput!
+	): FavoriteManga!
+	deleteFavoriteManga(id: Int!): Boolean!
 }
 
 type FavoriteMangaQuery {
-  favoriteManga(id: Int!): FavoriteManga
-  favoriteMangaByMangaId(mangaId: Int!): FavoriteManga
-  userFavoriteMangas(categoryId: Int): [FavoriteManga!]!
-  isUserFavorite(mangaId: Int!): Boolean!
+	favoriteManga(id: Int!): FavoriteManga
+	favoriteMangaByMangaId(mangaId: Int!): FavoriteManga
+	userFavoriteMangas(categoryId: Int): [FavoriteManga!]!
+	isUserFavorite(mangaId: Int!): Boolean!
 }
 
 type File {
-  id: Int!
-  name: String!
-  ownerId: Int!
-  createdAt: NaiveDateTime!
-  owner: User!
+	id: Int!
+	name: String!
+	ownerId: Int!
+	createdAt: NaiveDateTime!
+	owner: User!
 }
 
 type FileMutation {
-  uploadFile(file: Upload!): File!
+	uploadFile(file: Upload!): File!
 }
 
 type FileQuery {
-  files: [File!]!
+	files: [File!]!
 }
 
 input LoginInput {
-  username: String!
-  password: String!
+	username: String!
+	password: String!
 }
 
 type Manga {
-  id: Int!
-  title: String!
-  url: String!
-  imgUrl: String!
-  scraper: String!
-  createdAt: NaiveDateTime
-  updatedAt: NaiveDateTime!
-  alternativeNames: [String!]!
-  authors: [String!]!
-  artists: [String!]!
-  status: String
-  mangaType: String
-  releaseDate: NaiveDateTime
-  description: String
-  genres: String
-  chapters: [Chapter!]!
-  userReadChapters: [ReadChapter!]!
-  userReadChaptersAmount: Int!
-  chaptersAmount: Int!
-  scraperInfo: Scraper
+	id: Int!
+	title: String!
+	url: String!
+	imgUrl: String!
+	scraper: String!
+	createdAt: NaiveDateTime
+	updatedAt: NaiveDateTime!
+	alternativeNames: [String!]!
+	authors: [String!]!
+	artists: [String!]!
+	status: String
+	mangaType: String
+	releaseDate: NaiveDateTime
+	description: String
+	genres: String
+	chapters: [Chapter!]!
+	userReadChapters: [ReadChapter!]!
+	userReadChaptersAmount: Int!
+	chaptersAmount: Int!
+	scraperInfo: Scraper
 }
 
 type MangaPack {
-  id: Int!
-  userId: Int!
-  createdAt: NaiveDateTime!
-  user: User!
-  mangas: [Manga!]!
+	id: Int!
+	userId: Int!
+	createdAt: NaiveDateTime!
+	user: User!
+	mangas: [Manga!]!
 }
 
 type MangaPackMutation {
-  createMangaPack(input: CreateMangaPackInput!): MangaPack!
-  updateMangaPack(id: Int!, input: UpdateMangaPackInput!): MangaPack!
-  deleteMangaPack(id: Int!): Boolean!
+	createMangaPack(input: CreateMangaPackInput!): MangaPack!
+	updateMangaPack(id: Int!, input: UpdateMangaPackInput!): MangaPack!
+	deleteMangaPack(id: Int!): Boolean!
 }
 
 type MangaPackQuery {
-  mangaPack(id: Int!): MangaPack
-  userMangaPacks: [MangaPack!]!
+	mangaPack(id: Int!): MangaPack
+	userMangaPacks: [MangaPack!]!
 }
 
 type MangaQuery {
-  manga(id: Int!): Manga
-  mangasByIds(ids: [Int!]!): [Manga!]!
+	manga(id: Int!): Manga
+	mangasByIds(ids: [Int!]!): [Manga!]!
 }
 
 type MutationRoot {
-  auth: AuthMutation!
-  profile: ProfileMutation!
-  favoriteManga: FavoriteMangaMutation!
-  category: CategoryMutation!
-  mangaPack: MangaPackMutation!
-  chapter: ChapterMutation!
-  files: FileMutation!
+	auth: AuthMutation!
+	profile: ProfileMutation!
+	favoriteManga: FavoriteMangaMutation!
+	category: CategoryMutation!
+	mangaPack: MangaPackMutation!
+	chapter: ChapterMutation!
+	files: FileMutation!
 }
 
 # ISO 8601 combined date and time without timezone.
@@ -186,86 +186,86 @@ type MutationRoot {
 scalar NaiveDateTime
 
 type ProfileMutation {
-  updateProfile(input: UpdateProfileInput!): User!
+	updateProfile(input: UpdateProfileInput!): User!
 }
 
 type QueryRoot {
-  users: UserQuery!
-  mangas: MangaQuery!
-  chapters: ChapterQuery!
-  favoriteMangas: FavoriteMangaQuery!
-  readChapters: ReadChapterQuery!
-  categories: CategoryQuery!
-  mangaPacks: MangaPackQuery!
-  files: FileQuery!
-  scraping: ScrapingQuery!
+	users: UserQuery!
+	mangas: MangaQuery!
+	chapters: ChapterQuery!
+	favoriteMangas: FavoriteMangaQuery!
+	readChapters: ReadChapterQuery!
+	categories: CategoryQuery!
+	mangaPacks: MangaPackQuery!
+	files: FileQuery!
+	scraping: ScrapingQuery!
 }
 
 type ReadChapter {
-  id: Int!
-  userId: Int!
-  chapterId: Int!
-  mangaId: Int!
-  createdAt: NaiveDateTime!
-  user: User!
-  chapter: Chapter!
-  manga: Manga!
+	id: Int!
+	userId: Int!
+	chapterId: Int!
+	mangaId: Int!
+	createdAt: NaiveDateTime!
+	user: User!
+	chapter: Chapter!
+	manga: Manga!
 }
 
 type ReadChapterQuery {
-  readChapter(id: Int!): ReadChapter
-  userReadChaptersByManga(mangaId: Int): [ReadChapter!]!
+	readChapter(id: Int!): ReadChapter
+	userReadChaptersByManga(mangaId: Int): [ReadChapter!]!
 }
 
 input RegisterInput {
-  username: String!
-  password: String!
+	username: String!
+	password: String!
 }
 
 type Scraper {
-  id: String!
-  name: String!
-  imageUrl: String!
-  refererUrl: String
+	id: String!
+	name: String!
+	imageUrl: String!
+	refererUrl: String
 }
 
 type ScrapingQuery {
-  search(scraperId: String!, query: String!, page: Int!): [Manga!]!
-  scrapeLatest(scraperId: String!, page: Int!): [Manga!]!
-  scrapeTrending(scraperId: String!, page: Int!): [Manga!]!
-  scrapers: [Scraper!]!
-  scraper(scraperId: String!): Scraper!
+	search(scraperId: String!, query: String!, page: Int!): [Manga!]!
+	scrapeLatest(scraperId: String!, page: Int!): [Manga!]!
+	scrapeTrending(scraperId: String!, page: Int!): [Manga!]!
+	scrapers: [Scraper!]!
+	scraper(scraperId: String!): Scraper!
 }
 
 input UpdateCategoryInput {
-  name: String
+	name: String
 }
 
 input UpdateFavoriteMangaInput {
-  categoryId: Int
+	categoryId: Int
 }
 
 input UpdateMangaPackInput {
-  mangaIds: [Int!]!
+	mangaIds: [Int!]!
 }
 
 input UpdateProfileInput {
-  username: String
-  imageId: Int
+	username: String
+	imageId: Int
 }
 
 scalar Upload
 
 type User {
-  id: Int!
-  username: String!
-  createdAt: NaiveDateTime!
-  imageId: Int
-  imageFromImageId: File!
+	id: Int!
+	username: String!
+	createdAt: NaiveDateTime!
+	imageId: Int
+	imageFromImageId: File!
 }
 
 type UserQuery {
-  users(page: Int, perPage: Int): [User!]!
-  user(id: Int!): User
-  me: User
+	users(page: Int, perPage: Int): [User!]!
+	user(id: Int!): User
+	me: User
 }

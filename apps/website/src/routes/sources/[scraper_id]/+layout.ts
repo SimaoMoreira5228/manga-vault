@@ -1,5 +1,5 @@
-import { client } from '$lib/graphql/client';
-import { gql } from '@urql/svelte';
+import { client } from "$lib/graphql/client";
+import { gql } from "@urql/svelte";
 
 export async function load({ params: { scraper_id } }) {
 	const query = gql`
@@ -19,5 +19,5 @@ export async function load({ params: { scraper_id } }) {
 		return;
 	}
 
-	return { scraper: result.data.scraping.scraper as { refererUrl: string, id: number } };
+	return { scraper: result.data.scraping.scraper as { refererUrl: string; id: number } };
 }
