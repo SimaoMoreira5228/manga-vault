@@ -82,19 +82,22 @@ A repository JSON must contain a `name` and a `plugins` array. Each plugin entry
 ```json
 {
 	"name": "dewn_plugins",
-	"plugins": [{
-		"name": "mangaread_org",
-		"urls": { "wasm": "https://.../mangaread_org.wasm" },
-		"version": "0.4.2",
-		"state": "updated",
-		"build_state": "beta"
-	}, {
-		"name": "manhuafast",
-		"urls": { "lua": "https://.../manhuafast.lua" },
-		"version": "0.2.0",
-		"state": "updated",
-		"build_state": "beta"
-	}]
+	"plugins": [
+		{
+			"name": "mangaread_org",
+			"urls": { "wasm": "https://.../mangaread_org.wasm" },
+			"version": "0.4.2",
+			"state": "updated",
+			"build_state": "beta"
+		},
+		{
+			"name": "manhuafast",
+			"urls": { "lua": "https://.../manhuafast.lua" },
+			"version": "0.2.0",
+			"state": "updated",
+			"build_state": "beta"
+		}
+	]
 }
 ```
 
@@ -168,9 +171,7 @@ When `headless` in config is set to a WebDriver URL (e.g. `"http://localhost:444
 Example config snippet to enable a local WebDriver (e.g. geckodriver / chromedriver):
 
 ```json
-{
-	"headless": "http://localhost:4444"
-}
+{ "headless": "http://localhost:4444" }
 ```
 
 ---

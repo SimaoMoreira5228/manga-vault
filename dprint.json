@@ -11,14 +11,13 @@
 		"objectExpression.preferSingleLine": true
 	},
 	"json": {
-		"array.preferSingleLine": true
+		"array.preferSingleLine": true,
+		"object.preferSingleLine": true,
+		"trailingCommas": "jsonc",
+		"commentLine.forceSpaceAfterSlashes": true
 	},
-	"toml": {
-		"cargo.applyConventions": true
-	},
-	"markup": {
-		"quotes": "double"
-	},
+	"toml": { "cargo.applyConventions": true },
+	"markup": { "quotes": "double" },
 	"yaml": {
 		"quotes": "preferDouble",
 		"trailingComma": true,
@@ -27,17 +26,9 @@
 		"flowSequence.preferSingleLine": true,
 		"formatComments": true
 	},
-	"ruff": {
-		"quoteStyle": "double"
-	},
+	"ruff": { "quoteStyle": "double" },
 	"excludes": ["**/node_modules", "**/*-lock.json", "**/target", "**/dist", "**/build"],
-	"exec": {
-		"commands": [{
-			"command": "rustfmt --edition 2024",
-			"exts": ["rs"],
-			"cacheKeyFiles": ["rustfmt.toml"]
-		}]
-	},
+	"exec": { "commands": [{ "command": "rustfmt --edition 2024", "exts": ["rs"], "cacheKeyFiles": ["rustfmt.toml"] }] },
 	"plugins": [
 		"https://plugins.dprint.dev/typescript-0.95.11.wasm",
 		"https://plugins.dprint.dev/json-0.20.0.wasm",
