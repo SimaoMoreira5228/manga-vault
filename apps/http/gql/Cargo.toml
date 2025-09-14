@@ -11,39 +11,34 @@ name = "manga-vault-gql"
 path = "src/main.rs"
 
 [dependencies]
-async-graphql = { version = "7.0", features = [
-  "tracing",
-  "chrono",
-  "unblock",
-  "tokio-sync",
-] }
+anyhow = { workspace = true }
+argon2 = "0.5.3"
+async-graphql = { version = "7.0", features = ["tracing", "chrono", "unblock", "tokio-sync"] }
 async-graphql-axum = "7.0"
-tokio = { workspace = true }
+async-trait = "0.1"
 axum = { workspace = true }
-tracing = { workspace = true }
-jsonwebtoken = "9.3"
+axum-server = { workspace = true }
 bcrypt = "0.17"
 chrono = { workspace = true }
-tower-http = { version = "0.6", features = ["cors", "fs"] }
-serde = { workspace = true }
-serde_json = { workspace = true }
 config = { workspace = true }
 config-derive = { workspace = true }
 database-connection = { workspace = true }
 database-entities = { workspace = true }
-anyhow = { workspace = true }
-sea-orm = { workspace = true }
-scraper_core = { workspace = true }
-scraper_types = { workspace = true }
+futures-util = "0.3"
+httpdate = "1.0.3"
+image = "0.25"
+jsonwebtoken = "9.3"
 rand = { workspace = true }
 reqwest = { workspace = true }
-version-check = { workspace = true }
-async-trait = "0.1"
-argon2 = "0.5.3"
-futures-util = "0.3"
-image = "0.25"
-webp = "0.3"
-httpdate = "1.0.3"
-uuid = { version = "1.18", features = ["v4"] }
+scraper_core = { workspace = true }
+scraper_types = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
 tokio-util = "0.7"
-axum-server = { workspace = true }
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+tracing = { workspace = true }
+uuid = { version = "1.18", features = ["v4"] }
+version-check = { workspace = true }
+webp = "0.3"

@@ -1,41 +1,41 @@
 <script lang="ts">
-	import { getTheme, setTheme, toggleDarkMode } from '$lib/theme.svelte';
-	import { Moon, Sun } from '@lucide/svelte';
-	let { expanded = true }: { expanded: boolean | undefined } = $props();
-	let theme = $derived(getTheme());
+import { getTheme, setTheme, toggleDarkMode } from "$lib/theme.svelte";
+import { Moon, Sun } from "@lucide/svelte";
+let { expanded = true }: { expanded: boolean | undefined } = $props();
+let theme = $derived(getTheme());
 
-	const THEME_LIST = [
-		'catppuccin',
-		'cerberus',
-		'concord',
-		'crimson',
-		'fennec',
-		'hamlindigo',
-		'legacy',
-		'mint',
-		'modern',
-		'mona',
-		'nosh',
-		'nouveau',
-		'pine',
-		'reign',
-		'rocket',
-		'rose',
-		'sahara',
-		'seafoam',
-		'terminus',
-		'vintage',
-		'vox',
-		'wintry'
-	];
+const THEME_LIST = [
+	"catppuccin",
+	"cerberus",
+	"concord",
+	"crimson",
+	"fennec",
+	"hamlindigo",
+	"legacy",
+	"mint",
+	"modern",
+	"mona",
+	"nosh",
+	"nouveau",
+	"pine",
+	"reign",
+	"rocket",
+	"rose",
+	"sahara",
+	"seafoam",
+	"terminus",
+	"vintage",
+	"vox",
+	"wintry",
+];
 
-	function onThemeChange(e: Event) {
-		const v = (e.target as HTMLSelectElement).value;
-		setTheme(v);
-	}
-	function toggleDark() {
-		toggleDarkMode();
-	}
+function onThemeChange(e: Event) {
+	const v = (e.target as HTMLSelectElement).value;
+	setTheme(v);
+}
+function toggleDark() {
+	toggleDarkMode();
+}
 </script>
 
 {#if expanded}
@@ -43,7 +43,7 @@
 		<label class="label">
 			<span class="label-text">Theme</span>
 			<select class="select" onchange={onThemeChange} bind:value={theme.theme}>
-				{#each THEME_LIST as t}
+				{#each THEME_LIST as t (t)}
 					<option value={t}>{t[0].toUpperCase() + t.slice(1)}</option>
 				{/each}
 			</select>

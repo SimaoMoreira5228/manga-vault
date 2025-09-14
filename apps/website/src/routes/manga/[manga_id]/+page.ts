@@ -1,6 +1,6 @@
-import { client } from '$lib/graphql/client';
-import { getManga } from '$lib/utils/getManga';
-import { gql } from '@urql/svelte';
+import { client } from "$lib/graphql/client";
+import { getManga } from "$lib/utils/getManga";
+import { gql } from "@urql/svelte";
 
 export async function load({ params: { manga_id } }) {
 	const manga = await getManga(parseInt(manga_id));
@@ -18,19 +18,16 @@ export async function load({ params: { manga_id } }) {
 					}
 				}
 			`,
-			{}
+			{},
 		)
 		.toPromise();
 
 	if (error) {
-		console.error('categories error', error);
+		console.error("categories error", error);
 		categories = [];
 	}
 
 	categories = data?.categories?.userCategories || [];
 
-	return {
-		manga,
-		categories
-	};
+	return { manga, categories };
 }

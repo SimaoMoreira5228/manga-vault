@@ -1,19 +1,19 @@
-import { gql } from '@urql/svelte';
-import { client } from './graphql/client';
-import type { User } from '$gql/graphql';
+import type { User } from "$gql/graphql";
+import { gql } from "@urql/svelte";
+import { client } from "./graphql/client";
 
-type AuthState =
-	| { status: 'loading' }
-	| { status: 'unauthorized' }
-	| { status: 'authenticated'; user: User };
+export type AuthState =
+	| { status: "loading" }
+	| { status: "unauthorized" }
+	| { status: "authenticated"; user: User };
 
-let authState = $state<AuthState>({ status: 'loading' });
+let authState = $state<AuthState>({ status: "loading" });
 
 export async function waitForAuthState() {
-	if (authState.status === 'loading') {
+	if (authState.status === "loading") {
 		await new Promise<void>((resolve) => {
 			const interval = setInterval(() => {
-				if (authState.status !== 'loading') {
+				if (authState.status !== "loading") {
 					clearInterval(interval);
 					resolve();
 				}
@@ -29,7 +29,7 @@ export function getAuthState() {
 }
 
 export function currentUser() {
-	if (authState.status === 'authenticated') {
+	if (authState.status === "authenticated") {
 		return authState.user;
 	}
 
@@ -50,15 +50,15 @@ export async function initAuth() {
 					}
 				}
 			`,
-			{}
+			{},
 		);
 
 		if (!data.users.me) {
-			authState = { status: 'unauthorized' };
+			authState = { status: "unauthorized" };
 			return;
 		}
 
-		authState = { status: 'authenticated', user: data.users.me };
+		authState = { status: "authenticated", user: data.users.me };
 	} catch {
 		clearAuth();
 	}
@@ -78,16 +78,16 @@ export async function login(input: { username: string; password: string }) {
 					}
 				}
 			`,
-			{ input }
+			{ input },
 		)
 		.toPromise();
 
 	if (result.error) {
-		throw new Error(result.error.message.replace('[GraphQL] ', ''));
+		throw new Error(result.error.message.replace("[GraphQL] ", ""));
 	}
 
 	if (result.data?.auth.login) {
-		authState = { status: 'authenticated', user: result.data.auth.login };
+		authState = { status: "authenticated", user: result.data.auth.login };
 	}
 }
 
@@ -105,12 +105,12 @@ export async function register(input: { username: string; password: string }) {
 					}
 				}
 			`,
-			{ input }
+			{ input },
 		)
 		.toPromise();
 
 	if (result.data?.auth.register) {
-		authState = { status: 'authenticated', user: result.data.auth.register };
+		authState = { status: "authenticated", user: result.data.auth.register };
 	}
 }
 
@@ -128,15 +128,15 @@ export async function updateAuth() {
 					}
 				}
 			`,
-			{}
+			{},
 		);
 
 		if (!data.users.me) {
-			authState = { status: 'unauthorized' };
+			authState = { status: "unauthorized" };
 			return;
 		}
 
-		authState = { status: 'authenticated', user: data.users.me };
+		authState = { status: "authenticated", user: data.users.me };
 	} catch {
 		clearAuth();
 	}
@@ -152,7 +152,7 @@ export async function logout() {
 					}
 				}
 			`,
-			{}
+			{},
 		)
 		.toPromise();
 
@@ -160,7 +160,7 @@ export async function logout() {
 }
 
 function clearAuth() {
-	authState = { status: 'unauthorized' };
+	authState = { status: "unauthorized" };
 }
 
 initAuth();

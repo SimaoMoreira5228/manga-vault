@@ -1,12 +1,10 @@
-import { createClient, cacheExchange, fetchExchange } from '@urql/svelte';
-import { env } from '$env/dynamic/public';
+import { env } from "$env/dynamic/public";
+import { cacheExchange, createClient, fetchExchange } from "@urql/svelte";
 
 export const client = createClient({
 	url: env.PUBLIC_API_URL,
 	fetchOptions: () => {
-		return {
-			credentials: 'include'
-		};
+		return { credentials: "include" };
 	},
-	exchanges: [cacheExchange, fetchExchange]
+	exchanges: [cacheExchange, fetchExchange],
 });

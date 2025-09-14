@@ -7,8 +7,8 @@ edition = "2024"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [dependencies]
+config-derive = { workspace = true }
+rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-rand = { workspace = true }
 tracing = { workspace = true }
-config-derive = { workspace = true }

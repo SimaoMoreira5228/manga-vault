@@ -3,10 +3,11 @@ mod? local
 export RUST_TOOLCHAIN := env_var_or_default('RUST_TOOLCHAIN', 'nightly')
 
 fmt *args:
-    cargo +{{RUST_TOOLCHAIN}} fmt --all {{args}}
+    dprint fmt {{args}}
 
 lint *args:
     cargo clippy --fix --allow-dirty --allow-staged --all-features --all-targets {{args}}
+    cd apps/website && bun run lint
 
 alias coverage := test
 test *args:

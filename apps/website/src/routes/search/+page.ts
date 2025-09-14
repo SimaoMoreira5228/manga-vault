@@ -19,7 +19,5 @@ export async function load() {
 		console.error(`Failed to load scrapers: ${result.error.message}`);
 	}
 
-	return {
-		scrapers: result.data.scraping.scrapers as { id: string; name: string; refererUrl: string }[]
-	};
+	return { scrapers: result.data.scraping.scrapers as { id: string; name: string; refererUrl: string }[] };
 }

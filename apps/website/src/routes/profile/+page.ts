@@ -1,10 +1,10 @@
-import { waitForAuthState } from '$lib/auth.svelte';
-import { client } from '$lib/graphql/client';
-import { gql } from '@urql/svelte';
+import { waitForAuthState } from "$lib/auth.svelte";
+import { client } from "$lib/graphql/client";
+import { gql } from "@urql/svelte";
 
 export async function load() {
 	const authState = await waitForAuthState();
-	if (authState.status !== 'authenticated') return;
+	if (authState.status !== "authenticated") return;
 
 	const result = await client
 		.query(
@@ -17,12 +17,12 @@ export async function load() {
 					}
 				}
 			`,
-			{}
+			{},
 		)
 		.toPromise();
 
 	if (result.error) {
-		console.error('Failed to fetch user files', result.error);
+		console.error("Failed to fetch user files", result.error);
 	}
 
 	const filesArray = result.data?.files.files as { id: number }[];

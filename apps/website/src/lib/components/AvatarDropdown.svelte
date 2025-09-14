@@ -1,56 +1,59 @@
 <script lang="ts">
-	import { CircleUserRound, UserRound } from '@lucide/svelte';
-	import { Avatar, DropdownMenu } from 'bits-ui';
+import { resolve } from "$app/paths";
+import type { AuthState } from "$lib/auth.svelte";
+import { CircleUserRound, UserRound } from "@lucide/svelte";
+import { Avatar, DropdownMenu } from "bits-ui";
 
-	let {
-		authState,
-		getImage,
-		logout,
-		size
-	}: {
-		authState: any;
-		getImage: (id: number) => string;
-		logout: () => void;
-		size?: 'lg' | 'md';
-	} = $props();
+let {
+	authState,
+	getImage,
+	logout,
+	size,
+}: {
+	authState: AuthState;
+	getImage: (id: number) => string;
+	logout: () => void;
+	size?: "lg" | "md";
+} = $props();
 
-	size = size ?? 'lg';
+size = size ?? "lg";
 
-	const avatarSizes = {
-		lg: { root: 'h-20 w-20', img: 'h-20 w-20', fallback: 'h-20 w-20', fallbackIconSize: 96 },
-		md: { root: 'h-16 w-16', img: 'h-16 w-16', fallback: 'h-12 w-12', fallbackIconSize: 64 }
-	};
+const avatarSizes = {
+	lg: { root: "h-20 w-20", img: "h-20 w-20", fallback: "h-20 w-20", fallbackIconSize: 96 },
+	md: { root: "h-16 w-16", img: "h-16 w-16", fallback: "h-12 w-12", fallbackIconSize: 64 },
+};
 
-	const classes = $derived(avatarSizes[size]);
+const classes = $derived(avatarSizes[size]);
 </script>
 
-{#if authState?.status === 'authenticated'}
+{#if authState?.status === "authenticated"}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
 			{#if authState.user?.imageId}
-				<Avatar.Root delayMs={200} class={classes.root + ' rounded-full'}>
-					<div
-						class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-transparent"
-					>
+				<Avatar.Root delayMs={200} class={classes.root + " rounded-full"}>
+					<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-transparent">
 						<Avatar.Image
 							src={getImage(authState.user.imageId)}
 							alt=""
-							class={classes.img + ' rounded-full object-cover'}
+							class={classes.img + " rounded-full object-cover"}
 						/>
 						<Avatar.Fallback
-							class={'flex ' + classes.fallback + ' items-center justify-center rounded-full'}
+							class={"flex " + classes.fallback
+							+ " items-center justify-center rounded-full"}
 						>
 							<UserRound size={classes.fallbackIconSize} />
 						</Avatar.Fallback>
 					</div>
 				</Avatar.Root>
 			{:else}
-				<Avatar.Root delayMs={200} class={classes.root + ' rounded-full border'}>
-					<div
-						class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent"
-					>
+				<Avatar.Root
+					delayMs={200}
+					class={classes.root + " rounded-full border"}
+				>
+					<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
 						<Avatar.Fallback
-							class={'flex ' + classes.fallback + ' items-center justify-center rounded-full'}
+							class={"flex " + classes.fallback
+							+ " items-center justify-center rounded-full"}
 						>
 							<UserRound size={classes.fallbackIconSize} />
 						</Avatar.Fallback>
@@ -68,7 +71,10 @@
 				<DropdownMenu.Item
 					class="hover:bg-surface-300-700 focus:bg-surface-200-800 outline-hidden flex cursor-pointer items-center rounded-md px-2 py-2 text-sm transition-colors"
 				>
-					<a href="/profile" class="flex w-full flex-row items-center justify-start">
+					<a
+						href={resolve("/profile")}
+						class="flex w-full flex-row items-center justify-start"
+					>
 						<CircleUserRound class="mr-2 h-4 w-4" />
 						<span>Profile</span>
 					</a>
