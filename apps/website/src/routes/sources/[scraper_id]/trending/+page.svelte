@@ -14,36 +14,39 @@ let isLoading = $state(false);
 let isLoadingMore = $state(false);
 let searchQuery = $state("");
 let items = $state<{ id: string; title: string; imgUrl: string }[]>([]);
-let Sentinel: HTMLElement | null = $state(null);
-let ListContainer: HTMLElement | null = $state(null);
+let sentinel: HTMLElement | null = $state(null);
+let listContainer: HTMLElement | null = $state(null);
 let intersectionObserver: IntersectionObserver | null = $state(null);
 let resizeObserver: ResizeObserver | null = $state(null);
 let currentPage = $state(1);
 let { data }: { data: PageData } = $props();
 const scraper = data.scraper;
 
-onMount(async () => {
+async function resetAndLoad() {
 	items = [];
 	currentPage = 1;
-
 	isLoading = true;
-	await loadTrending();
-	isLoading = false;
+	try {
+		await loadTrending();
+	} finally {
+		isLoading = false;
+	}
 	await setupObservers();
+}
+
+onMount(async () => {
+	await resetAndLoad();
 });
 
 onDestroy(() => {
 	intersectionObserver?.disconnect();
+	resizeObserver?.disconnect();
 });
 
-afterNavigate(() => {
-	items = [];
-	currentPage = 1;
-
-	isLoading = true;
-	loadTrending().finally(() => {
-		isLoading = false;
-	});
+afterNavigate(async () => {
+	intersectionObserver?.disconnect();
+	resizeObserver?.disconnect();
+	await resetAndLoad();
 });
 
 async function setupObservers() {
@@ -52,19 +55,18 @@ async function setupObservers() {
 
 	await tick();
 
-	if (!Sentinel || !ListContainer) {
+	if (!sentinel || !listContainer) {
 		console.warn("No sentinel or list container yet to observe");
 		return;
 	}
 
-	const rootElement: Element | null = ListContainer;
+	const rootElement: Element | null = listContainer;
 
 	intersectionObserver = new IntersectionObserver(
 		(entries) => {
 			for (const entry of entries) {
 				if (entry.isIntersecting && !isLoadingMore) {
 					isLoadingMore = true;
-
 					loadTrending()
 						.catch((err) => {
 							console.error("load failed", err);
@@ -78,28 +80,28 @@ async function setupObservers() {
 		{ root: rootElement, rootMargin: "400px 0px", threshold: 0.1 },
 	);
 
-	intersectionObserver.observe(Sentinel);
+	intersectionObserver.observe(sentinel);
 
 	resizeObserver = new ResizeObserver(() => {
 		fillIfNeeded().catch((e) => console.error("fillIfNeeded failed", e));
 	});
-	resizeObserver.observe(ListContainer);
+	resizeObserver.observe(listContainer);
 
 	await fillIfNeeded();
 }
 
 async function loadTrending() {
 	const query = gql`
-			query GetTrending($scraperId: String!, $page: Int!) {
-				scraping {
-					scrapeTrending(scraperId: $scraperId, page: $page) {
-						id
-						title
-						imgUrl
-					}
+		query GetTrending($scraperId: String!, $page: Int!) {
+			scraping {
+				scrapeTrending(scraperId: $scraperId, page: $page) {
+					id
+					title
+					imgUrl
 				}
 			}
-		`;
+		}
+	`;
 
 	const result = await client
 		.query(query, { scraperId: scraper?.id, page: currentPage })
@@ -108,10 +110,10 @@ async function loadTrending() {
 	if (result.error) {
 		console.error(`Failed to load trending: ${result.error.message}`);
 		toaster.error({ title: "Error", description: "Failed to load trending" });
-		return;
+		return 0;
 	}
 
-	const loadedItems = result.data.scraping.scrapeTrending ?? [];
+	const loadedItems = result.data?.scraping?.scrapeTrending ?? [];
 	if (loadedItems.length === 0) return 0;
 
 	currentPage += 1;
@@ -122,22 +124,27 @@ async function loadTrending() {
 async function fillIfNeeded() {
 	if (isLoadingMore) return;
 
-	let loaded = 0;
-	let attempts = 0;
-	const maxAttempts = 10;
+	isLoadingMore = true;
+	try {
+		let loaded = 0;
+		let attempts = 0;
+		const maxAttempts = 10;
 
-	do {
-		if (attempts++ >= maxAttempts) break;
-		loaded = await loadTrending();
+		do {
+			if (attempts++ >= maxAttempts) break;
+			loaded = await loadTrending();
 
-		if (loaded > 0) {
-			await tick();
-		}
-	} while (
-		loaded > 0
-		&& ListContainer
-		&& ListContainer.scrollHeight <= ListContainer.clientHeight
-	);
+			if (loaded > 0) {
+				await tick();
+			}
+		} while (
+			loaded > 0
+			&& listContainer
+			&& listContainer.scrollHeight <= listContainer.clientHeight
+		);
+	} finally {
+		isLoadingMore = false;
+	}
 }
 </script>
 
@@ -182,10 +189,10 @@ async function fillIfNeeded() {
 		</div>
 		<div
 			class="mt-2 grid h-full w-full justify-items-center gap-4 overflow-y-scroll"
-			bind:this={ListContainer}
+			bind:this={listContainer}
 			style="grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); height: calc(100vh - 8rem);"
 		>
-			{#each items as item (item.id)}
+			{#each items as item, i (i)}
 				<a
 					class="card relative flex h-80 w-full max-w-[12rem] flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat shadow-lg"
 					style="background-image: url({proxyImage(item.imgUrl, scraper?.refererUrl)});"
@@ -206,7 +213,7 @@ async function fillIfNeeded() {
 					<DotsSpinner class="text-primary-500 h-18 w-18" />
 				</div>
 			{/if}
-			<div bind:this={Sentinel} class="h-10 w-full"></div>
+			<div bind:this={sentinel} class="h-10 w-full"></div>
 		</div>
 	</div>
 {/if}
