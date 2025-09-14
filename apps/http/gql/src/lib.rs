@@ -82,6 +82,12 @@ impl Default for Config {
 	}
 }
 
+impl Config {
+	pub fn use_tls(&self) -> bool {
+		self.cert_path.is_some() && self.key_path.is_some()
+	}
+}
+
 async fn graphql_handler(
 	State(schema): State<Schema<QueryRoot, MutationRoot, EmptySubscription>>,
 	Extension(config): Extension<Arc<Config>>,

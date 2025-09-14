@@ -66,8 +66,7 @@ impl AuthMutation {
 
 		let token = generate_jwt(user.id, &config.secret_jwt, config.jwt_duration_days)?;
 
-		#[cfg(not(debug_assertions))]
-		{
+		if config.use_tls() {
 			ctx.append_http_header(
 				"Set-Cookie",
 				format!(
@@ -78,10 +77,7 @@ impl AuthMutation {
 			);
 
 			Ok(User::from(user))
-		}
-
-		#[cfg(debug_assertions)]
-		{
+		} else {
 			ctx.append_http_header(
 				"Set-Cookie",
 				format!(
@@ -90,6 +86,7 @@ impl AuthMutation {
 					(config.jwt_duration_days as u64) * 24 * 60 * 60
 				),
 			);
+
 			Ok(User::from(user))
 		}
 	}
