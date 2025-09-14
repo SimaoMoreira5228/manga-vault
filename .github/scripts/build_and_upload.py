@@ -130,15 +130,15 @@ for entry in created:
       print("Uploaded", out_name)
     except Exception as e:
       print("Failed to build/upload", crate, ":", e)
-  elif entry.get("type") == "bun-app" and platform == "linux":
+  elif entry.get("type") == "web-app" and platform == "linux":
     website_dir = Path(entry.get("path"))
-    run(["bun", "install"], cwd=website_dir)
+    run(["pnpm", "install"], cwd=website_dir)
 
     os.rename(website_dir / ".env.example", website_dir / ".env")
 
     website_build_dir = website_dir / "build"
-    print("Building bun app in", website_dir)
-    run(["bun", "run", "build"], cwd=website_dir)
+    print("Building web app in", website_dir)
+    run(["pnpm", "run", "build"], cwd=website_dir)
     if website_build_dir.exists():
       try:
         (website_build_dir / "version.json").write_text(
@@ -155,4 +155,4 @@ for entry in created:
         Path(entry.get("zip_name")).unlink(missing_ok=True)
         print("Uploaded", entry.get("zip_name"))
       except Exception as e:
-        print("Failed to zip/upload bun app:", e)
+        print("Failed to zip/upload web app:", e)

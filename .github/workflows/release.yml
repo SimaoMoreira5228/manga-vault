@@ -66,8 +66,13 @@ jobs:
           cache-on-failure: true
           shared-key: "rust-release-build-${{ runner.os }}"
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enable pnpm via corepack
+        run: corepack enable pnpm
 
       - name: Setup Python
         uses: actions/setup-python@v4
