@@ -51,6 +51,10 @@ impl FlareSolverrManager {
 		}
 	}
 
+	pub fn using_flaresolverr(&self) -> bool {
+		!self.url.is_empty()
+	}
+
 	pub async fn create_session(&self) -> Result<Uuid, FlareError> {
 		let id = Uuid::new_v4();
 		let session = FlareSession {

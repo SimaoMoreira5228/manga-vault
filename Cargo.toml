@@ -1,6 +1,6 @@
 [package]
 name = "manga-vault"
-version = "1.5.4"
+version = "1.5.5"
 edition = "2024"
 
 [[bin]]
@@ -23,7 +23,6 @@ exclude = ["scrapers/manhuafast", "scrapers/natomanga", "scrapers/mangabuddy", "
 [workspace.dependencies]
 anyhow = "1"
 axum = { version = "0.8", features = ["http2"] }
-axum-server = { version = "0.7.2", features = ["tls-rustls"] }
 chrono = "0.4"
 config = { path = "config" }
 config-derive = { path = "config/derive" }
@@ -35,9 +34,12 @@ queue = { path = "apps/scheduler/queue" }
 rand = "0.9"
 regex = "1.11"
 reqwest = { version = "0.12", features = ["stream", "blocking", "json"] }
+rustls = "0.23"
+rustls-pemfile = "2.2"
 scheduler = { path = "apps/scheduler" }
 scraper_core = { path = "scrapers/scraper_core" }
 scraper_types = { path = "scrapers/scraper_types" }
+scuffle-http = { version = "0.3.2", features = ["http3", "http3-tls-rustls", "tls-rustls"] }
 sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-postgres", "sqlx-mysql", "runtime-tokio-native-tls", "macros", "with-chrono", "with-json", "with-uuid"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
@@ -46,7 +48,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 version-check = { path = "apps/http/version_check" }
 website-server = { path = "apps/website/server" }
-wit-bindgen = "0.45"
+wit-bindgen = "0.46"
 
 [dependencies]
 config = { workspace = true }

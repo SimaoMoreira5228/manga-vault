@@ -18,6 +18,7 @@ pub async fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
 	flaresolverr::load(config, lua)?;
 	string::load(lua)?;
 	table::load(lua)?;
+	utils::load(lua)?;
 
 	Ok(())
 }

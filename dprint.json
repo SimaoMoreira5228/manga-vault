@@ -28,7 +28,16 @@
 	},
 	"ruff": { "quoteStyle": "double" },
 	"excludes": ["**/node_modules", "**/*-lock.json", "**/target", "**/dist", "**/build"],
-	"exec": { "commands": [{ "command": "rustfmt --edition 2024", "exts": ["rs"], "cacheKeyFiles": ["rustfmt.toml"] }] },
+	"exec": {
+		"commands": [
+			{ "command": "rustfmt --edition 2024", "exts": ["rs"], "cacheKeyFiles": ["rustfmt.toml"] },
+			{
+				"command": "./tools/stylua.dotslash --stdin-filepath {{file_path}} -",
+				"exts": ["lua"],
+				"cacheKeyFiles": ["stylua.toml"]
+			}
+		]
+	},
 	"plugins": [
 		"https://plugins.dprint.dev/typescript-0.95.11.wasm",
 		"https://plugins.dprint.dev/json-0.20.0.wasm",

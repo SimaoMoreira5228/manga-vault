@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
 	let scraper_manager = scraper_core::ScraperManager::new(update).await?;
 
 	let scheduler = Arc::new(MangaUpdateScheduler::new(
-		db.conn.clone(),
+		db.clone(),
 		scraper_manager,
 		5,
 		Duration::from_secs(30 * 60),
@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
 
 	let scheduler_clone = Arc::clone(&scheduler);
 
-	scheduler_clone.start().await;
+	scheduler_clone.start().await?;
 
 	Ok(())
 }

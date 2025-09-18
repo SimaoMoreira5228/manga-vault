@@ -14,80 +14,99 @@ let isLoading = $state(false);
 let isLoadingMore = $state(false);
 let searchQuery = $state("");
 let items = $state<{ id: string; title: string; imgUrl: string }[]>([]);
-let sentinel: HTMLElement | null = $state(null);
 let listContainer: HTMLElement | null = $state(null);
-let intersectionObserver: IntersectionObserver | null = $state(null);
-let resizeObserver: ResizeObserver | null = $state(null);
 let currentPage = $state(1);
 let { data }: { data: PageData } = $props();
 const scraper = data.scraper;
+let lastLoadFailed = $state(false);
+
+let _rAF = 0;
 
 async function resetAndLoad() {
 	items = [];
 	currentPage = 1;
 	isLoading = true;
+	lastLoadFailed = false;
 	try {
 		await loadTrending();
 	} finally {
 		isLoading = false;
 	}
-	await setupObservers();
+
+	await tick();
+	await fillIfNeeded();
+}
+
+async function retryLoad() {
+	isLoading = true;
+	lastLoadFailed = false;
+	try {
+		await loadTrending();
+	} finally {
+		isLoading = false;
+	}
+
+	await tick();
+	await fillIfNeeded();
 }
 
 onMount(async () => {
 	await resetAndLoad();
+
+	if (listContainer) {
+		listContainer.addEventListener("scroll", onScroll, { passive: true });
+	}
+
+	window.addEventListener("resize", onWindowResize);
 });
 
 onDestroy(() => {
-	intersectionObserver?.disconnect();
-	resizeObserver?.disconnect();
+	if (listContainer) listContainer.removeEventListener("scroll", onScroll);
+	window.removeEventListener("resize", onWindowResize);
+	if (_rAF) cancelAnimationFrame(_rAF);
 });
 
 afterNavigate(async () => {
-	intersectionObserver?.disconnect();
-	resizeObserver?.disconnect();
+	if (listContainer) listContainer.removeEventListener("scroll", onScroll);
+	window.removeEventListener("resize", onWindowResize);
+
 	await resetAndLoad();
+
+	if (listContainer) {
+		listContainer.addEventListener("scroll", onScroll, { passive: true });
+	}
+	window.addEventListener("resize", onWindowResize);
 });
 
-async function setupObservers() {
-	intersectionObserver?.disconnect();
-	resizeObserver?.disconnect();
+function onScroll() {
+	if (_rAF) return;
+	_rAF = requestAnimationFrame(async () => {
+		_rAF = 0;
+		if (!listContainer || isLoading || isLoadingMore || lastLoadFailed) return;
 
-	await tick();
+		const scrollTop = listContainer.scrollTop;
+		const clientHeight = listContainer.clientHeight;
+		const scrollHeight = listContainer.scrollHeight;
 
-	if (!sentinel || !listContainer) {
-		console.warn("No sentinel or list container yet to observe");
-		return;
-	}
-
-	const rootElement: Element | null = listContainer;
-
-	intersectionObserver = new IntersectionObserver(
-		(entries) => {
-			for (const entry of entries) {
-				if (entry.isIntersecting && !isLoadingMore) {
-					isLoadingMore = true;
-					loadTrending()
-						.catch((err) => {
-							console.error("load failed", err);
-						})
-						.finally(() => {
-							isLoadingMore = false;
-						});
+		if (scrollTop + clientHeight >= scrollHeight * 0.8) {
+			console.log("loading more...");
+			isLoadingMore = true;
+			try {
+				const res = await loadTrending();
+				if (res === 0) {
+					toaster.warning({ title: "No items were loaded" });
 				}
+			} catch (err) {
+				console.error("load failed", err);
+			} finally {
+				isLoadingMore = false;
 			}
-		},
-		{ root: rootElement, rootMargin: "400px 0px", threshold: 0.1 },
-	);
-
-	intersectionObserver.observe(sentinel);
-
-	resizeObserver = new ResizeObserver(() => {
-		fillIfNeeded().catch((e) => console.error("fillIfNeeded failed", e));
+		}
 	});
-	resizeObserver.observe(listContainer);
+}
 
-	await fillIfNeeded();
+function onWindowResize() {
+	fillIfNeeded().catch((e) => console.error("fillIfNeeded failed", e));
 }
 
 async function loadTrending() {
@@ -103,22 +122,36 @@ async function loadTrending() {
 		}
 	`;
 
-	const result = await client
-		.query(query, { scraperId: scraper?.id, page: currentPage })
-		.toPromise();
+	try {
+		const result = await client
+			.query(query, { scraperId: scraper?.id, page: currentPage })
+			.toPromise();
 
-	if (result.error) {
-		console.error(`Failed to load trending: ${result.error.message}`);
-		toaster.error({ title: "Error", description: "Failed to load trending" });
+		if (result.error) {
+			console.error(`Failed to load trending: ${result.error.message}`);
+			toaster.error({ title: "Error", description: "Failed to load trending" });
+			lastLoadFailed = true;
+			return 0;
+		}
+
+		const loadedItems = result.data?.scraping?.scrapeTrending ?? [];
+		if (loadedItems.length === 0) {
+			lastLoadFailed = true;
+			return 0;
+		}
+
+		currentPage += 1;
+		items = [...items, ...loadedItems];
+		lastLoadFailed = false;
+
+		await tick();
+		return loadedItems.length;
+	} catch (error) {
+		console.error("Unexpected error in loadTrending:", error);
+		lastLoadFailed = true;
+		toaster.error({ title: "Error", description: "Unexpected error occurred" });
 		return 0;
 	}
-
-	const loadedItems = result.data?.scraping?.scrapeTrending ?? [];
-	if (loadedItems.length === 0) return 0;
-
-	currentPage += 1;
-	items = [...items, ...loadedItems];
-	return loadedItems.length;
 }
 
 async function fillIfNeeded() {
@@ -212,8 +245,13 @@ async function fillIfNeeded() {
 				<div class="flex h-full w-full items-center justify-center">
 					<DotsSpinner class="text-primary-500 h-18 w-18" />
 				</div>
+			{:else if lastLoadFailed}
+				<div class="flex w-full items-center justify-center p-4 col-span-full">
+					<button onclick={retryLoad} class="btn preset-tonal-primary">
+						Retry
+					</button>
+				</div>
 			{/if}
-			<div bind:this={sentinel} class="h-10 w-full"></div>
 		</div>
 	</div>
 {/if}

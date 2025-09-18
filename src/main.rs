@@ -50,26 +50,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let db = Database::new().await?;
 	let scraper_manager = ScraperManager::new(update).await?;
 
-	let scheduler_db = db.clone();
-	let scheduler_scraper_manager = scraper_manager.clone();
+	let scheduler_fut = Arc::new(MangaUpdateScheduler::new(
+		db.clone(),
+		scraper_manager.clone(),
+		5,
+		Duration::from_secs(30 * 60),
+		Duration::from_secs(10),
+	))
+	.start();
+	let gql_fut = gql_api::run(db.clone(), scraper_manager.clone());
+	let web_fut = website_server::run();
 
-	tokio::spawn(async move {
-		Arc::new(MangaUpdateScheduler::new(
-			scheduler_db.conn.clone(),
-			scheduler_scraper_manager,
-			5,
-			Duration::from_secs(30 * 60),
-			Duration::from_secs(10),
-		))
-		.start()
-		.await;
-	});
+	match tokio::try_join!(gql_fut, web_fut, scheduler_fut) {
+		Ok((_, _, _)) => {
+			tracing::info!("Servers exited gracefully");
+		}
+		Err(e) => {
+			tracing::error!("One of the servers exited with error: {:?}", e);
+		}
+	}
 
-	tokio::spawn(async move {
-		let res = gql_api::run(db, scraper_manager).await;
-		tracing::error!("GraphQL API encountered an error: {:?}", res);
-	});
-
-	website_server::run().await?;
 	Ok(())
 }

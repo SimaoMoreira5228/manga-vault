@@ -27,3 +27,40 @@ pub fn create_response_table(lua: &Lua, text: String, status: u16, headers: Hash
 
 	Ok(response_table)
 }
+
+pub fn load(lua: &Lua) -> anyhow::Result<()> {
+	let utils_table = lua.create_table()?;
+
+	utils_table.set(
+		"sleep",
+		lua.create_async_function(|_lua, ms: u64| async move {
+			tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+			Ok(())
+		})?,
+	)?;
+
+	lua.globals().set("utils", utils_table)?;
+	Ok(())
+}
+
+#[cfg(test)]
+#[cfg_attr(all(coverage_nightly, test), coverage(off))]
+mod tests {
+	use mlua::Lua;
+	use std::time::Instant;
+
+	#[tokio::test]
+	async fn test_utils_sleep() {
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+		let script = r#"
+			utils.sleep(2000)
+			return true
+		"#;
+		let start = Instant::now();
+		let result: bool = lua.load(script).eval_async().await.unwrap();
+		let elapsed = start.elapsed();
+		assert!(result);
+		assert!(elapsed.as_secs_f64() >= 2.0, "Sleep was less than 2 seconds: {:?}", elapsed);
+	}
+}

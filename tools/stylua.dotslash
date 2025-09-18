@@ -1,0 +1,46 @@
+#!/usr/bin/env dotslash
+{
+  "name": "stylua",
+  "platforms": {
+    "linux-x86_64": {
+      "hash": "sha256",
+      "digest": "6334c228ddf93e93e095d28206eae9fd25fd0110e568d720a5004b33d09d17b8",
+      "size": 3225598,
+      "format": "zip",
+      "path": "stylua",
+      "providers": [
+        { "type": "github-release", "repo": "https://github.com/JohnnyMorganz/stylua", "tag": "v2.2.0", "name": "stylua-linux-x86_64.zip" }
+      ]
+    },
+    "macos-aarch64":{
+      "hash": "sha256",
+      "digest": "addbaed63cef8fd95aae474885d4929b1ef42dbe3376cbe57235aa46ea62ecf7",
+      "size": 2918859,
+      "format": "zip",
+      "path": "stylua",
+      "providers": [
+        { "type": "github-release", "repo": "https://github.com/JohnnyMorganz/stylua", "tag": "v2.2.0", "name": "stylua-macos-aarch64.zip" }
+      ]
+    },
+    "macos-x86_64": {
+      "hash": "sha256",
+      "digest": "b631414953f9701434e9fcc7ce0e999ced604bdda8a644c14a043c41b07ab769",
+      "size": 3033371,
+      "format": "zip",
+      "path": "stylua",
+      "providers": [
+        { "type": "github-release", "repo": "https://github.com/JohnnyMorganz/stylua", "tag": "v2.2.0", "name": "stylua-macos-x86_64.zip" }
+      ]
+    },
+    "windows-x86_64": {
+      "hash": "sha256",
+      "digest": "c88fdba114242601d7c9a3ed9f0a7ddfb5ca0b4c85146405daa38d459d0dfa29",
+      "size": 2732438,
+      "format": "zip",
+      "path": "stylua.exe",
+      "providers": [
+        { "type": "github-release", "repo": "https://github.com/JohnnyMorganz/stylua", "tag": "v2.2.0", "name": "stylua-windows-x86_64.zip" }
+      ]
+    }
+  }
+}

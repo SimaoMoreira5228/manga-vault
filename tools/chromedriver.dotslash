@@ -1,0 +1,54 @@
+#!/usr/bin/env dotslash
+{
+  "name": "chromedriver",
+  "platforms": {
+    "linux-x86_64": {
+      "hash": "sha256",
+      "digest": "f5eaf884a5dc2c59f47332f7465cc0df18fa4644a6d16990b3aae52d88abaddb",
+      "size": 9949774,
+      "format": "zip",
+      "path": "chromedriver-linux64/chromedriver",
+      "providers": [
+        {
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/linux64/chromedriver-linux64.zip"
+        }
+      ]
+    },
+    "macos-aarch64": {
+      "hash": "sha256",
+      "digest": "de20bbbb71a2a902fb38d92c08ecd43a8dd896b896b8ab69af79b7489cbb5464",
+      "size": 8779935,
+      "format": "zip",
+      "path": "chromedriver-mac-arm64/chromedriver",
+      "providers": [
+        {
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/mac-arm64/chromedriver-mac-arm64.zip"
+        }
+      ]
+    },
+    "macos-x86_64": {
+      "hash": "sha256",
+      "digest": "36ac36651eb0c0afe45854e626dd78c259b539d54c12d48f4f9c47692c4639b8",
+      "size": 9161047,
+      "format": "zip",
+      "path": "chromedriver-mac-x64/chromedriver",
+      "providers": [
+        {
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/mac-x64/chromedriver-mac-x64.zip"
+        }
+      ]
+    },
+    "windows-x86_64": {
+      "hash": "sha256",
+      "digest": "71435de3bec5bc8d23446167255579daa893c8517e4e7a1498b10cc98d92df77",
+      "size": 9911630,
+      "format": "zip",
+      "path": "chromedriver-win64/chromedriver.exe",
+      "providers": [
+        {
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/win64/chromedriver-win64.zip"
+        }
+      ]
+    }
+  }
+}

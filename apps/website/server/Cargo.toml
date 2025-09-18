@@ -1,6 +1,6 @@
 [package]
 name = "website-server"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 
 [lib]
@@ -13,9 +13,11 @@ path = "src/main.rs"
 [dependencies]
 anyhow = { workspace = true }
 axum = { workspace = true }
-axum-server = { workspace = true }
 config = { workspace = true }
 config-derive = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+scuffle-http = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
