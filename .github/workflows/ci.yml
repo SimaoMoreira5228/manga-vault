@@ -9,17 +9,23 @@ on:
 jobs:
   fmt:
     name: "Fmt"
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Install dotslash
+        run: curl -LSfs "https://github.com/facebook/dotslash/releases/latest/download/dotslash-ubuntu-22.04.$(uname -m).tar.gz" | tar fxz - -C /usr/local/bin dotslash
+
       - uses: dprint/check@v2.3
 
   eslint:
     name: "ESLint"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -63,15 +69,14 @@ jobs:
   test:
     name: "Rust: tests"
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Install OS deps
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y chromium-chromedriver
-        shell: bash
+      - name: Install dotslash
+        run: curl -LSfs "https://github.com/facebook/dotslash/releases/latest/download/dotslash-ubuntu-22.04.$(uname -m).tar.gz" | tar fxz - -C /usr/local/bin dotslash
 
       - name: Setup Rust (stable)
         uses: dtolnay/rust-toolchain@stable
@@ -101,7 +106,7 @@ jobs:
           export VAULT_TEST_WASM_PLUGIN_MANGA_URL="https://www.mangaread.org/manga/solo-leveling-manhwa/"
           echo "VAULT_TEST_WASM_PLUGIN_MANGA_URL=$VAULT_TEST_WASM_PLUGIN_MANGA_URL"
 
-          chromedriver --port=4444 &
+          ./tools/chromedriver.dotslash run --port=4444 &
           chromedriver_pid=$!
           trap 'kill $chromedriver_pid 2>/dev/null || true' EXIT
 

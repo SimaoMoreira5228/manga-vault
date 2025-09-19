@@ -5,21 +5,19 @@ use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
+use database_connection::Database;
 use database_entities::{favorite_mangas, mangas};
 use queue::queue_item::QueueItem;
 use queue::{EnqueueStrategy, TaskQueue};
 use scraper_core::ScraperManager;
-use sea_orm::{
-	ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set,
-	TransactionTrait,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set, TransactionTrait};
 use tokio::sync::Mutex;
 use url::Url;
 
 #[allow(dead_code)]
 pub struct MangaUpdateScheduler {
 	queue: Arc<TaskQueue<MangaUpdateJob>>,
-	db: DatabaseConnection,
+	db: Arc<Database>,
 	interval: Duration,
 	scraper_manager: Arc<ScraperManager>,
 	scraper_cooldown: Arc<Mutex<ScraperCooldownTracker>>,
@@ -67,7 +65,7 @@ impl MangaUpdateScheduler {
 	/// * `search_interval` - The interval at which to search for manga updates.
 	/// * `cooldown_duration` - The cooldown duration for each scraper.
 	pub fn new(
-		db: DatabaseConnection,
+		db: Arc<Database>,
 		scraper_manager: Arc<ScraperManager>,
 		max_concurrency: usize,
 		search_interval: Duration,
@@ -108,7 +106,7 @@ impl MangaUpdateScheduler {
 
 					let result = (async {
 						let mut manga = database_entities::mangas::Entity::find_by_id(item.payload.manga_id)
-							.one(&db)
+							.one(&db.conn)
 							.await
 							.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?
 							.ok_or_else(|| anyhow::anyhow!("Manga {} not found", item.payload.manga_id))?;
@@ -154,7 +152,7 @@ impl MangaUpdateScheduler {
 										manga_host,
 										canonical_host
 									);
-									let txn = db.begin().await?;
+									let txn = db.conn.begin().await?;
 									{
 										use database_entities::mangas;
 										let mut am: mangas::ActiveModel = manga.clone().into();
@@ -222,7 +220,10 @@ impl MangaUpdateScheduler {
 							manga.created_at = Set(Some(Utc::now().naive_utc()));
 						}
 
-						let manga = manga.update(&db).await.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
+						let manga = manga
+							.update(&db.conn)
+							.await
+							.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
 
 						let mut active_models: Vec<database_entities::chapters::ActiveModel> = Vec::new();
 						let chapter_urls: Vec<String> = scraped_manga.chapters.iter().map(|c| c.url.clone()).collect();
@@ -231,7 +232,7 @@ impl MangaUpdateScheduler {
 							database_entities::chapters::Entity::find()
 								.filter(database_entities::chapters::Column::MangaId.eq(manga.id.clone()))
 								.filter(database_entities::chapters::Column::Url.is_in(chapter_urls.clone()))
-								.all(&db)
+								.all(&db.conn)
 								.await
 								.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
 
@@ -255,7 +256,7 @@ impl MangaUpdateScheduler {
 
 						if !active_models.is_empty() {
 							database_entities::chapters::Entity::insert_many(active_models)
-								.exec(&db)
+								.exec(&db.conn)
 								.await
 								.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
 						}
@@ -291,7 +292,7 @@ impl MangaUpdateScheduler {
 		}
 	}
 
-	pub async fn start(self: Arc<Self>) {
+	pub async fn start(self: Arc<Self>) -> anyhow::Result<()> {
 		loop {
 			if let Err(e) = self.schedule_updates().await {
 				tracing::error!("Failed to schedule manga updates: {:#}", e);
@@ -324,7 +325,7 @@ impl MangaUpdateScheduler {
 			.order_by_desc(mangas::Column::UpdatedAt)
 			.limit(500)
 			.find_with_related(favorite_mangas::Entity)
-			.all(&self.db)
+			.all(&self.db.conn)
 			.await?
 			.into_iter()
 			.map(|(manga, favs)| {
@@ -338,7 +339,7 @@ impl MangaUpdateScheduler {
 		mangas::Entity::find()
 			.filter(mangas::Column::UpdatedAt.lt(threshold))
 			.find_with_related(favorite_mangas::Entity)
-			.all(&self.db)
+			.all(&self.db.conn)
 			.await?
 			.into_iter()
 			.map(|(manga, favs)| {

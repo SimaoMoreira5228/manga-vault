@@ -15,7 +15,7 @@ test *args:
     set -euo pipefail
 
     if [ -x ./temp/chromedriver ]; then
-        ./temp/chromedriver --port=4444 &
+        ./tools/chromedriver.dotslash --port=4444 &
         chromedriver_pid=$!
     else
         chromedriver --port=4444 &

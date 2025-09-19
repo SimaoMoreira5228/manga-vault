@@ -1,6 +1,6 @@
 [package]
 name = "gql-api"
-version = "0.5.4"
+version = "0.5.5"
 edition = "2024"
 
 [lib]
@@ -17,7 +17,6 @@ async-graphql = { version = "7.0", features = ["tracing", "chrono", "unblock", "
 async-graphql-axum = "7.0"
 async-trait = "0.1"
 axum = { workspace = true }
-axum-server = { workspace = true }
 bcrypt = "0.17"
 chrono = { workspace = true }
 config = { workspace = true }
@@ -30,8 +29,11 @@ image = "0.25"
 jsonwebtoken = "9.3"
 rand = { workspace = true }
 reqwest = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
 scraper_core = { workspace = true }
 scraper_types = { workspace = true }
+scuffle-http = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

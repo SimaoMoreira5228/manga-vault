@@ -22,6 +22,8 @@ impl UserData for FlareSolverrManager {
 
 			create_response_table(&lua, response.text, response.status, response.headers)
 		});
+
+		methods.add_method("using_flaresolverr", |_, this, _: ()| Ok(this.using_flaresolverr()));
 	}
 }
 

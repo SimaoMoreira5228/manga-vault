@@ -1,14 +1,16 @@
-use std::env;
-use std::net::SocketAddr;
+use anyhow::Context;
+use rustls::pki_types::CertificateDer;
+use rustls_pemfile::certs;
+use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::{env, fs};
 
 use async_graphql::{EmptySubscription, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::http::{HeaderMap, HeaderValue, Method, header};
 use axum::routing::{get, post};
 use axum::{Extension, Router};
-use axum_server::tls_rustls::RustlsConfig;
 use database_connection::Database;
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use rand::Rng;
@@ -183,37 +185,59 @@ pub async fn run(db: Arc<Database>, scraper_manager: Arc<ScraperManager>) -> any
 		.layer(cors)
 		.layer(Extension(config.clone()))
 		.layer(Extension(db))
-		.with_state(schema);
+		.with_state(schema)
+		.into_make_service();
 
-	match (config.cert_path.clone(), config.key_path.clone()) {
-		(Some(cert_path), Some(key_path)) => {
-			let rustls_config = RustlsConfig::from_pem_file(cert_path, key_path)
-				.await
-				.expect("Failed to load TLS certs");
+	tracing::info!("GraphQL API will be available at https://localhost:{}/", config.api_port);
+	tracing::info!(
+		"GraphQL Playground will be available at https://localhost:{}/playground",
+		config.api_port
+	);
 
-			tracing::info!("GraphQL API available at https://localhost:{}/", config.api_port);
-			tracing::info!(
-				"GraphQL Playground available at https://localhost:{}/playground",
-				config.api_port
-			);
-
-			axum_server::bind_rustls(SocketAddr::from(([0, 0, 0, 0], config.api_port)), rustls_config)
-				.serve(app.clone().into_make_service())
-				.await?;
-		}
-		_ => {
-			tracing::info!("GraphQL API available at http://localhost:{}/", config.api_port);
-			tracing::info!(
-				"GraphQL Playground available at http://localhost:{}/playground",
-				config.api_port
-			);
-
-			axum_server::bind(SocketAddr::from(([0, 0, 0, 0], config.api_port)))
-				.serve(app.into_make_service())
-				.await
-				.unwrap();
-		}
+	if let (Some(cert), Some(key)) = (config.cert_path.clone(), config.key_path.clone()) {
+		let rustls_config = load_tls_config(&cert, &key).context("Failed to load TLS certs")?;
+		scuffle_http::HttpServer::builder()
+			.rustls_config(rustls_config)
+			.tower_make_service_factory(app)
+			.bind(format!("[::]:{}", config.api_port).parse()?)
+			.enable_http3(true)
+			.build()
+			.run()
+			.await?;
+	} else {
+		tracing::warn!("TLS certs not provided, starting server without TLS!");
+		scuffle_http::HttpServer::builder()
+			.tower_make_service_factory(app)
+			.bind(format!("[::]:{}", config.api_port).parse()?)
+			.build()
+			.run()
+			.await?;
 	}
 
 	Ok(())
+}
+
+fn load_tls_config(cert_path: &str, key_path: &str) -> anyhow::Result<rustls::ServerConfig> {
+	let cert_file = fs::File::open(cert_path).map_err(|e| anyhow::anyhow!("failed to open {}: {}", cert_path, e))?;
+	let mut cert_reader = BufReader::new(cert_file);
+
+	let certs_vec: Vec<CertificateDer<'static>> = certs(&mut cert_reader)
+		.collect::<Result<_, _>>()
+		.map_err(|e| anyhow::anyhow!("failed to read certificates: {}", e))?;
+
+	if certs_vec.is_empty() {
+		anyhow::bail!("No certificates found in {}", cert_path);
+	}
+
+	let key_file = fs::File::open(key_path).map_err(|e| anyhow::anyhow!("failed to open {}: {}", key_path, e))?;
+	let mut key_reader = BufReader::new(key_file);
+	let key = rustls_pemfile::private_key(&mut key_reader)?
+		.ok_or_else(|| anyhow::anyhow!("No private keys found in {}", key_path))?;
+
+	let server_config = rustls::ServerConfig::builder()
+		.with_no_client_auth()
+		.with_single_cert(certs_vec, key)
+		.map_err(|e| anyhow::anyhow!("failed to build ServerConfig: {}", e))?;
+
+	Ok(server_config)
 }

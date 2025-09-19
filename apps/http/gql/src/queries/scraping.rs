@@ -29,6 +29,10 @@ impl ScrapingQuery {
 		if fetched_result.is_none() {
 			let scraper = self.get_scraper(ctx, &scraper_id).await?;
 			let searched_mangas = scraper.scrape_search(query.clone(), page).await?;
+			if searched_mangas.is_empty() {
+				return Ok(vec![]);
+			}
+
 			let mangas = self.process_mangas(db.clone(), &scraper_id, searched_mangas).await?;
 
 			let active_model = database_entities::temp::ActiveModel {

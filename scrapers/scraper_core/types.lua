@@ -29,6 +29,7 @@
 ---@class FlareSolverrManager
 ---@field create_session fun(self: FlareSolverrManager): string
 ---@field get fun(self: FlareSolverrManager, url: string, session_id?: string): HttpResponse
+---@field using_flaresolverr fun(self: FlareSolverrManager): boolean
 
 -- Custom scraper helpers
 ---@class CustomScraper
@@ -37,6 +38,10 @@
 ---@field get_url fun(self: CustomScraper, html: string): string
 ---@field select_elements fun(self: CustomScraper, html: string, selector: string): string[]
 ---@field select_element fun(self: CustomScraper, html: string, selector: string): string?
+
+-- Utility functions
+---@class Utils
+---@field sleep fun(ms: number)
 
 -- Declare the runtime globals (so the server knows they exist)
 ---@type CommonHttp
@@ -51,14 +56,10 @@ flaresolverr = nil
 ---@type CustomScraper
 scraping = nil
 
--- Plugin metadata globals
----@type string
-PLUGIN_NAME = nil
----@type string
-PLUGIN_VERSION = nil
+---@type Utils
+utils = nil
 
 -- Extend the builtin string/table libraries so the language server won't mark our runtime-added helpers as undefined.
-
 ---@class stringlib
 ---@field split fun(s: string, delimiter: string): string[]
 ---@field trim fun(s: string): string
