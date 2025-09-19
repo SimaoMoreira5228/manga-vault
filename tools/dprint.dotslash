@@ -1,0 +1,46 @@
+#!/usr/bin/env dotslash
+{
+  "name": "stylua",
+  "platforms": {
+    "linux-x86_64": {
+      "hash": "sha256",
+      "digest": "95c7e633a67531ffc4990c152d59ed0802e1c0caf7e27e424e9cea9ef3d499d4",
+      "size": 8712704,
+      "format": "zip",
+      "path": "dprint",
+      "providers": [
+        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.50.2", "name": "dprint-x86_64-unknown-linux-gnu.zip" }
+      ]
+    },
+    "macos-aarch64":{
+      "hash": "sha256",
+      "digest": "f534bcc054947ab2a42c069b5f6027914d252729bd15c1109812313b35a662a5",
+      "size": 7875009,
+      "format": "zip",
+      "path": "dprint",
+      "providers": [
+        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.50.2", "name": "dprint-aarch64-apple-darwin.zip" }
+      ]
+    },
+    "macos-x86_64": {
+      "hash": "sha256",
+      "digest": "61becbf8d1b16540e364a4f00be704266ae322ee0ff3ba66a4a21033f66a8d55",
+      "size": 8265462,
+      "format": "zip",
+      "path": "dprint",
+      "providers": [
+        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.50.2", "name": "dprint-x86_64-apple-darwin.zip" }
+      ]
+    },
+    "windows-x86_64": {
+      "hash": "sha256",
+      "digest": "2dbdb57106818acd930a00bc0c2c33370bd4c7265f78a6cda000e3621f2d3c1c",
+      "size": 7383585,
+      "format": "zip",
+      "path": "dprint.exe",
+      "providers": [
+        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.50.2", "name": "dprint-x86_64-pc-windows-msvc.zip" }
+      ]
+    }
+  }
+}
