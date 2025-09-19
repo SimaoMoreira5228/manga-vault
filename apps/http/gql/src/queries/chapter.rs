@@ -31,6 +31,7 @@ impl ChapterQuery {
 
 		let chapters = database_entities::chapters::Entity::find()
 			.filter(database_entities::chapters::Column::MangaId.eq(manga_id))
+			.order_by_desc(database_entities::chapters::Column::Id)
 			.order_by_desc(database_entities::chapters::Column::CreatedAt)
 			.paginate(&db.conn, per_page)
 			.fetch_page(page - 1)
