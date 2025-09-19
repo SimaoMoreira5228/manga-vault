@@ -17,7 +17,7 @@ config = { workspace = true }
 config-derive = { workspace = true }
 rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
-scuffle-http = { workspace = true }
+scuffle-http = { workspace = true, features = ["http3", "http3-tls-rustls", "tls-rustls"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }

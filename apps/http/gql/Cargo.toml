@@ -33,7 +33,7 @@ rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
 scraper_core = { workspace = true }
 scraper_types = { workspace = true }
-scuffle-http = { workspace = true }
+scuffle-http = { workspace = true, features = ["http3", "http3-tls-rustls", "tls-rustls"] }
 sea-orm = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
