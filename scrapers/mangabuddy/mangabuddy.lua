@@ -146,40 +146,21 @@ function Scrape_manga(url)
 	end
 
 	local chapters = {}
-	local chapter_elements = scraping:select_elements(html, "#chapter-list > li")
-	for _, chapter_html in ipairs(chapter_elements) do
-		local link_element = scraping:select_element(chapter_html, "a") or ""
-		local chapter_title = scraping:get_text(scraping:select_element(link_element, ".chapter-title") or "") or ""
-		local chapter_url = scraping:get_url(link_element) or ""
-		local chapter_date = scraping:get_text(scraping:select_element(link_element, ".chapter-update") or "") or ""
-		table.insert(chapters, { title = chapter_title, url = BASE_URL .. chapter_url, date = chapter_date })
-	end
+	local book_id = string.match(html, "var bookId = (%d+);")
+	if book_id then
+		local api_url = BASE_URL .. "/api/manga/" .. book_id .. "/chapters?source=detail"
+		local api_request = http:get(api_url)
+		local api_html = api_request.text
+		local api_chapter_elements = scraping:select_elements(api_html, "#chapter-list > li")
 
-	local show_more = scraping:select_element(html, "#show-more-chapters")
-	if show_more then
-		local book_id = string.match(html, "var bookId = (%d+);")
-		if book_id then
-			local api_url = BASE_URL .. "/api/manga/" .. book_id .. "/chapters?source=detail"
-			local api_request = http:get(api_url)
-			local api_html = api_request.text
-			local api_chapter_elements = scraping:select_elements(api_html, "#chapter-list > li")
+		for _, chapter_html in ipairs(api_chapter_elements) do
+			local link_element = scraping:select_element(chapter_html, "a") or ""
+			local chapter_url = scraping:get_url(link_element) or ""
+			local full_chapter_url = BASE_URL .. chapter_url
 
-			local existing_urls = {}
-			for _, chap in ipairs(chapters) do
-				existing_urls[chap.url] = true
-			end
-
-			for _, chapter_html in ipairs(api_chapter_elements) do
-				local link_element = scraping:select_element(chapter_html, "a") or ""
-				local chapter_url = scraping:get_url(link_element) or ""
-				local full_chapter_url = BASE_URL .. chapter_url
-
-				if not existing_urls[full_chapter_url] then
-					local chapter_title = scraping:get_text(scraping:select_element(link_element, ".chapter-title") or "") or ""
-					local chapter_date = scraping:get_text(scraping:select_element(link_element, ".chapter-update") or "") or ""
-					table.insert(chapters, { title = chapter_title, url = full_chapter_url, date = chapter_date })
-				end
-			end
+			local chapter_title = scraping:get_text(scraping:select_element(link_element, ".chapter-title") or "") or ""
+			local chapter_date = scraping:get_text(scraping:select_element(link_element, ".chapter-update") or "") or ""
+			table.insert(chapters, { title = chapter_title, url = full_chapter_url, date = chapter_date })
 		end
 	end
 
@@ -222,7 +203,7 @@ end
 function Get_info()
 	return {
 		id = "mangabuddy",
-		version = "0.3.0",
+		version = "0.3.1",
 		name = "MangaBuddy",
 		img_url = "https://mangabuddy.com/favicon.ico",
 		referer_url = "https://mangabuddy.com/",

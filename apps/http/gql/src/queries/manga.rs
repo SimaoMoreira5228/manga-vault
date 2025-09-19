@@ -92,17 +92,19 @@ impl MangaQuery {
 
 		let existing_urls: std::collections::HashSet<_> = existing_chapters.iter().map(|c| c.url.as_str()).collect();
 
+		let now = chrono::Utc::now().naive_utc();
 		let new_chapters: Vec<_> = scraped_manga
 			.chapters
 			.into_iter()
 			.filter(|c| !existing_urls.contains(c.url.as_str()))
-			.map(|c| database_entities::chapters::ActiveModel {
+			.enumerate()
+			.map(|(i, c)| database_entities::chapters::ActiveModel {
 				manga_id: Set(manga.id),
 				title: Set(c.title),
 				url: Set(c.url),
 				scanlation_group: Set(c.scanlation_group),
-				created_at: Set(chrono::Utc::now().naive_utc()),
-				updated_at: Set(chrono::Utc::now().naive_utc()),
+				created_at: Set(now + chrono::Duration::seconds(i as i64)),
+				updated_at: Set(now + chrono::Duration::seconds(i as i64)),
 				..Default::default()
 			})
 			.collect();

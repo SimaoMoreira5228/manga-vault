@@ -69,6 +69,7 @@ impl Manga {
 		let chapters = database_entities::chapters::Entity::find()
 			.filter(database_entities::chapters::Column::MangaId.eq(self.id))
 			.order_by_desc(database_entities::chapters::Column::Id)
+			.order_by_desc(database_entities::chapters::Column::CreatedAt)
 			.all(&db.conn)
 			.await?;
 		Ok(chapters.into_iter().map(Chapter::from).collect())
