@@ -223,7 +223,7 @@ end
 function Get_info()
 	return {
 		id = "manhuafast",
-		version = "0.4.0",
+		version = "0.4.1",
 		name = "Manhuafast",
 		img_url = "https://manhuafast.com/wp-content/uploads/2021/01/cropped-Dark-Star-Emperor-Manga-193x278-1-32x32.jpg",
 		referer_url = "https://manhuafast.com/",
