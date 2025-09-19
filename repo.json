@@ -31,18 +31,18 @@
 		{
 			"name": "manhuafast",
 			"urls": {
-				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/manhuafast%40v0.4.0/manhuafast.lua"
+				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/manhuafast%40v0.4.1/manhuafast.lua"
 			},
-			"version": "0.4.0",
+			"version": "0.4.1",
 			"state": "updated",
 			"build_state": "beta"
 		},
 		{
 			"name": "natomanga",
 			"urls": {
-				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.3.0/natomanga.lua"
+				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.3.1/natomanga.lua"
 			},
-			"version": "0.3.0",
+			"version": "0.3.1",
 			"state": "updated",
 			"build_state": "beta"
 		},
@@ -58,9 +58,9 @@
 		{
 			"name": "mangakakalot",
 			"urls": {
-				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangakakalot%40v0.3.0/mangakakalot.lua"
+				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangakakalot%40v0.3.1/mangakakalot.lua"
 			},
-			"version": "0.3.0",
+			"version": "0.3.1",
 			"state": "updated",
 			"build_state": "beta"
 		}
