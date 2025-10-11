@@ -68,11 +68,13 @@ impl Manga {
 		let db = ctx.data::<Arc<Database>>()?;
 		let chapters = database_entities::chapters::Entity::find()
 			.filter(database_entities::chapters::Column::MangaId.eq(self.id))
-			.order_by_desc(database_entities::chapters::Column::Id)
-			.order_by_desc(database_entities::chapters::Column::CreatedAt)
 			.all(&db.conn)
 			.await?;
-		Ok(chapters.into_iter().map(Chapter::from).collect())
+
+		let mut chapters: Vec<Chapter> = chapters.into_iter().map(Chapter::from).collect();
+		Chapter::sort_chapters(&mut chapters);
+
+		Ok(chapters)
 	}
 
 	async fn user_read_chapters(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Vec<ReadChapter>> {

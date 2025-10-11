@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_graphql::{Context, Object, Result};
 use database_connection::Database;
 use database_entities;
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 
 use crate::objects::chapters::Chapter;
 
@@ -31,12 +31,13 @@ impl ChapterQuery {
 
 		let chapters = database_entities::chapters::Entity::find()
 			.filter(database_entities::chapters::Column::MangaId.eq(manga_id))
-			.order_by_desc(database_entities::chapters::Column::Id)
-			.order_by_desc(database_entities::chapters::Column::CreatedAt)
 			.paginate(&db.conn, per_page)
 			.fetch_page(page - 1)
 			.await?;
 
-		Ok(chapters.into_iter().map(Chapter::from).collect())
+		let mut chapters: Vec<Chapter> = chapters.into_iter().map(Chapter::from).collect();
+		Chapter::sort_chapters(&mut chapters);
+
+		Ok(chapters)
 	}
 }
