@@ -17,8 +17,8 @@ static CHAPTER_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
 fn get_patterns() -> &'static Vec<Regex> {
 	CHAPTER_PATTERNS.get_or_init(|| {
 		vec![
-			Regex::new(r"(?i)chapter[\s:_-]+(\d+)(?:\.(\d+))?").unwrap(),
-			Regex::new(r"(?i)ch\.?[\s:_-]+(\d+)(?:\.(\d+))?").unwrap(),
+			Regex::new(r"(?i)chapter[\s:_-]*(\d+)(?:\.(\d+))?").unwrap(),
+			Regex::new(r"(?i)ch\.?[\s:_-]*(\d+)(?:\.(\d+))?").unwrap(),
 			Regex::new(r"(?i)(?:ep|episode)\.?[\s:_-]+(\d+)(?:\.(\d+))?").unwrap(),
 			Regex::new(r"#\s*(\d+)(?:\.(\d+))?").unwrap(),
 			Regex::new(r"\b(\d+)(?:\.(\d+))?\b").unwrap(),
@@ -197,7 +197,18 @@ impl ChapterNumber {
 			return Some(num);
 		}
 
-		for pattern in get_patterns() {
+		let patterns = get_patterns();
+		for pattern in &patterns[..patterns.len() - 1] {
+			if let Some(caps) = pattern.captures(s) {
+				if let Some(major_match) = caps.get(1) {
+					let major = major_match.as_str().parse().ok()?;
+					let minor = caps.get(2).and_then(|m| m.as_str().parse().ok()).unwrap_or(0);
+					return Some(Self::new(major, minor));
+				}
+			}
+		}
+
+		if let Some(pattern) = patterns.last() {
 			if let Some(caps) = pattern.captures(s) {
 				if let Some(major_match) = caps.get(1) {
 					let major = major_match.as_str().parse().ok()?;
@@ -218,7 +229,7 @@ impl ChapterNumber {
 		let parts: Vec<&str> = s.split('.').collect();
 
 		match parts.len() {
-			1 => {
+			1 if !parts[0].is_empty() => {
 				let major = parts[0].parse().ok()?;
 				Some(Self::new(major, 0))
 			}
@@ -226,6 +237,15 @@ impl ChapterNumber {
 				let major = parts[0].parse().ok()?;
 				let minor = parts[1].parse().ok()?;
 				Some(Self::new(major, minor))
+			}
+			2 if parts[0].is_empty() && !parts[1].is_empty() => {
+				let major = 0;
+				let minor = parts[1].parse().ok()?;
+				Some(Self::new(major, minor))
+			}
+			2 if !parts[0].is_empty() && parts[1].is_empty() => {
+				let major = parts[0].parse().ok()?;
+				Some(Self::new(major, 0))
 			}
 			_ => None,
 		}
@@ -317,9 +337,9 @@ mod tests {
 		assert_eq!(ChapterNumber::parse(""), None);
 		assert_eq!(ChapterNumber::parse("   "), None);
 		assert_eq!(ChapterNumber::parse("abc"), None);
-		assert_eq!(ChapterNumber::parse("67."), None);
-		assert_eq!(ChapterNumber::parse(".67"), None);
-		assert_eq!(ChapterNumber::parse("67.1.2"), None);
+		assert_eq!(ChapterNumber::parse("67."), Some(ChapterNumber { major: 67, minor: 0 }));
+		assert_eq!(ChapterNumber::parse(".67"), Some(ChapterNumber { major: 0, minor: 67 }));
+		assert_eq!(ChapterNumber::parse("67.1.2"), Some(ChapterNumber { major: 67, minor: 1 }));
 	}
 
 	#[test]
@@ -382,8 +402,8 @@ mod tests {
 
 		Chapter::sort_chapters(&mut chapters);
 
-		assert_eq!(chapters[0].title, "Chapter 66");
+		assert_eq!(chapters[0].title, "Chapter 67.5");
 		assert_eq!(chapters[1].title, "Chapter 67");
-		assert_eq!(chapters[2].title, "Chapter 67.5");
+		assert_eq!(chapters[2].title, "Chapter 66");
 	}
 }
