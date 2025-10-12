@@ -34,12 +34,20 @@ function Scrape_chapter(url)
 	local chapter_images_json = string.match(html, "var chapterImages = (%[.-%]);")
 
 	if not cdn_json or not chapter_images_json then
-		return {}
+		local imgs = {}
+		local img_elements = scraping:select_elements(html, "div.container-chapter-reader > img")
+		for i, img in ipairs(img_elements) do
+			table.insert(imgs, scraping:get_image_url(img) or "")
+		end
+		return imgs
 	end
 
 	local cdn = string.match(cdn_json, "\"(.-)\"")
 	if cdn then
 		cdn = string.gsub(cdn, "\\", "")
+		if not string.match(cdn, "/$") then
+			cdn = cdn .. "/"
+		end
 	else
 		return {}
 	end
@@ -47,10 +55,7 @@ function Scrape_chapter(url)
 	local imgs = {}
 	for img_path in string.gmatch(chapter_images_json, "\"(.-)\"") do
 		img_path = string.gsub(img_path, "\\/", "/")
-
-		if not string.match(cdn, "/$") then
-			cdn = cdn .. "/"
-		end
+		img_path = string.gsub(img_path, "^/", "")
 
 		table.insert(imgs, cdn .. img_path)
 	end
@@ -62,11 +67,11 @@ function Scrape_latest(page)
 	local url = "https://www.natomanga.com/manga-list/latest-manga?page=" .. tostring(page)
 	local html = http_get(url, { referer = "https://www.natomanga.com/" })
 
-	local manga_divs = scraping:select_elements(html, "div.list-truyen-item-wrap")
+	local manga_divs = scraping:select_elements(html, "div.truyen-list .list-truyen-item-wrap, div.comic-list .list-comic-item-wrap")
 	local manga_items = {}
 
 	for _, manga_div_html in ipairs(manga_divs) do
-		local img_elements = scraping:select_elements(manga_div_html, "a.list-story-item img")
+		local img_elements = scraping:select_elements(manga_div_html, "a img")
 		local img_url = scraping:get_image_url(img_elements[1]) or ""
 
 		local title_elements = scraping:select_elements(manga_div_html, "h3 a")
@@ -90,11 +95,11 @@ function Scrape_trending(page)
 	local url = "https://www.natomanga.com/manga-list/hot-manga?page=" .. tostring(page)
 	local html = http_get(url, { referer = "https://www.natomanga.com/" })
 
-	local manga_divs = scraping:select_elements(html, "div.list-truyen-item-wrap")
+	local manga_divs = scraping:select_elements(html, "div.truyen-list .list-truyen-item-wrap, div.comic-list .list-comic-item-wrap")
 	local manga_items = {}
 
 	for _, manga_div_html in ipairs(manga_divs) do
-		local img_elements = scraping:select_elements(manga_div_html, "a.list-story-item img")
+		local img_elements = scraping:select_elements(manga_div_html, "a img")
 		local img_url = scraping:get_image_url(img_elements[1]) or ""
 
 		local title_elements = scraping:select_elements(manga_div_html, "h3 a")
@@ -118,17 +123,17 @@ function Scrape_search(query, page)
 	local url = "https://www.natomanga.com/search/story/" .. query .. "?page=" .. tostring(page)
 	local html = http_get(url, { referer = "https://www.natomanga.com/" })
 
-	local manga_divs = scraping:select_elements(html, "div.story_item")
+	local manga_divs = scraping:select_elements(html, ".panel_story_list .story_item, div.truyen-list .list-truyen-item-wrap, div.comic-list .list-comic-item-wrap")
 
 	local manga_items = {}
 	for _, manga_div_html in ipairs(manga_divs) do
 		local img_elements = scraping:select_elements(manga_div_html, "a img")
 		local img_url = scraping:get_image_url(img_elements[1]) or ""
 
-		local title_elements = scraping:select_elements(manga_div_html, "h3.story_name a")
+		local title_elements = scraping:select_elements(manga_div_html, "h3.story_name a, h3 a")
 		local title = scraping:get_text(title_elements[1]) or ""
 
-		local url_elements = scraping:select_elements(manga_div_html, "h3.story_name a")
+		local url_elements = scraping:select_elements(manga_div_html, "h3.story_name a, h3 a")
 		local url = scraping:get_url(url_elements[1]) or ""
 
 		local manga_item = {
@@ -145,23 +150,20 @@ end
 function Scrape_manga(url)
 	local html = http_get(url, { referer = "https://www.natomanga.com/" })
 
-	local title = scraping:get_text(scraping:select_elements(html, ".manga-info-content h1")[1]) or ""
-	local img_url = scraping:get_image_url(scraping:select_elements(html, ".manga-info-pic img")[1]) or ""
-	local description = scraping:get_text(scraping:select_elements(html, "#contentBox")[1]) or ""
+	local title = scraping:get_text(scraping:select_elements(html, ".manga-info-content h1, .panel-story-info-right h1")[1]) or ""
+	local img_url = scraping:get_image_url(scraping:select_elements(html, ".manga-info-pic img, .story-info-left span.info-image img")[1]) or ""
+	local description = scraping:get_text(scraping:select_elements(html, "#noidungm, #panel-story-info-description, #contentBox")[1]) or ""
 
-	local genres = {}
-	local genres_div = scraping:select_elements(html, ".genres-wrap .genre-list a")
-	for _, genre in ipairs(genres_div) do
-		table.insert(genres, scraping:get_text(genre) or "")
-	end
-
-	local info_elements = scraping:select_elements(html, ".manga-info-text li")
+	local info_elements = scraping:select_elements(html, ".manga-info-text li, .story-info-right li")
 	local authors = {}
 	local status = ""
-	for _, item in ipairs(info_elements) do
-		local item_text = scraping:get_text(item)
+	local genres = {}
+
+	for _, item_html in ipairs(info_elements) do
+		local item_text = scraping:get_text(item_html)
+
 		if string.find(item_text, "Author(s)") then
-			local author_elements = scraping:select_elements(item, "a")
+			local author_elements = scraping:select_elements(item_html, "a")
 			for _, author_element in ipairs(author_elements) do
 				local author_text = scraping:get_text(author_element)
 				if author_text ~= "" then
@@ -170,14 +172,26 @@ function Scrape_manga(url)
 			end
 		elseif string.find(item_text, "Status") then
 			status = string.trim(string.gsub(item_text, "Status :", ""))
+		elseif string.find(item_text, "Genres") then
+			local genre_elements = scraping:select_elements(item_html, "a")
+			for _, genre_element in ipairs(genre_elements) do
+				table.insert(genres, scraping:get_text(genre_element) or "")
+			end
+		end
+	end
+	
+	if #genres == 0 then
+		local genres_div = scraping:select_elements(html, ".genres-wrap .genre-list a")
+		for _, genre in ipairs(genres_div) do
+			table.insert(genres, scraping:get_text(genre) or "")
 		end
 	end
 
 	local chapters = {}
-	local chapter_elements = scraping:select_elements(html, ".chapter-list .row")
+	local chapter_elements = scraping:select_elements(html, ".chapter-list .row, ul.row-content-chapter li")
 	for _, chapter in ipairs(chapter_elements) do
-		local chapter_title = scraping:get_text(scraping:select_elements(chapter, "span a")[1]) or ""
-		local chapter_url = scraping:get_url(scraping:select_elements(chapter, "span a")[1]) or ""
+		local chapter_title = scraping:get_text(scraping:select_elements(chapter, "a")[1]) or ""
+		local chapter_url = scraping:get_url(scraping:select_elements(chapter, "a")[1]) or ""
 		local chapter_date = scraping:get_text(scraping:select_elements(chapter, "span")[3]) or "New"
 		table.insert(chapters, { title = chapter_title, url = chapter_url, date = chapter_date })
 	end
@@ -223,7 +237,7 @@ end
 function Get_info()
 	return {
 		id = "natomanga",
-		version = "0.3.1",
+		version = "0.4.0",
 		name = "NatoManga",
 		img_url = "https://www.natomanga.com/images/favicon-manganato.webp",
 		referer_url = "https://www.natomanga.com/",
