@@ -40,9 +40,9 @@
 		{
 			"name": "natomanga",
 			"urls": {
-				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.3.1/natomanga.lua"
+				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/natomanga%40v0.4.0/natomanga.lua"
 			},
-			"version": "0.3.1",
+			"version": "0.4.0",
 			"state": "updated",
 			"build_state": "beta"
 		},
@@ -58,9 +58,9 @@
 		{
 			"name": "mangakakalot",
 			"urls": {
-				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangakakalot%40v0.3.1/mangakakalot.lua"
+				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangakakalot%40v0.4.0/mangakakalot.lua"
 			},
-			"version": "0.3.1",
+			"version": "0.4.0",
 			"state": "updated",
 			"build_state": "beta"
 		}
