@@ -107,8 +107,7 @@ impl AuthMutation {
 
 		let token = generate_jwt(user.id, &config.secret_jwt, config.jwt_duration_days)?;
 
-		#[cfg(not(debug_assertions))]
-		{
+		if config.use_tls() {
 			ctx.append_http_header(
 				"Set-Cookie",
 				format!(
@@ -117,11 +116,7 @@ impl AuthMutation {
 					(config.jwt_duration_days as u64) * 24 * 60 * 60
 				),
 			);
-			return Ok(User::from(user));
-		}
-
-		#[cfg(debug_assertions)]
-		{
+		} else {
 			ctx.append_http_header(
 				"Set-Cookie",
 				format!(
@@ -130,12 +125,20 @@ impl AuthMutation {
 					(config.jwt_duration_days as u64) * 24 * 60 * 60
 				),
 			);
-			return Ok(User::from(user));
 		}
+
+		Ok(User::from(user))
 	}
 
 	async fn logout(&self, ctx: &Context<'_>) -> Result<bool> {
-		ctx.append_http_header("Set-Cookie", "token=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+		let config = ctx.data::<Arc<Config>>()?;
+
+		if config.use_tls() {
+			ctx.append_http_header("Set-Cookie", "token=; Secure; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+		} else {
+			ctx.append_http_header("Set-Cookie", "token=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0");
+		}
+
 		Ok(true)
 	}
 }
