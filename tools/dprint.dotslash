@@ -1,6 +1,6 @@
 #!/usr/bin/env dotslash
 {
-  "name": "stylua",
+  "name": "dprint",
   "platforms": {
     "linux-x86_64": {
       "hash": "sha256",
