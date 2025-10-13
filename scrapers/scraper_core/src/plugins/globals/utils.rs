@@ -4,26 +4,39 @@ use mlua::{Lua, LuaSerdeExt, Table};
 
 pub fn create_response_table(lua: &Lua, text: String, status: u16, headers: HashMap<String, String>) -> mlua::Result<Table> {
 	let response_table = lua.create_table()?;
-	response_table.set("text", text.clone())?;
-	response_table.set("status", status)?;
+	response_table
+		.set("text", text.clone())
+		.map_err(|e| mlua::Error::external(format!("Failed to set text field: {}", e)))?;
+	response_table
+		.set("status", status)
+		.map_err(|e| mlua::Error::external(format!("Failed to set status field: {}", e)))?;
 
-	let headers_table = lua.create_table()?;
+	let headers_table = lua
+		.create_table()
+		.map_err(|e| mlua::Error::external(format!("Failed to create headers table: {}", e)))?;
 	for (key, value) in headers {
-		headers_table.set(key, value)?;
+		headers_table
+			.set(key.clone(), value)
+			.map_err(|e| mlua::Error::external(format!("Failed to set header {}: {}", key, e)))?;
 	}
-	response_table.set("headers", headers_table)?;
+	response_table
+		.set("headers", headers_table)
+		.map_err(|e| mlua::Error::external(format!("Failed to set headers field: {}", e)))?;
 
-	response_table.set(
-		"json",
-		lua.create_function(move |lua, ()| {
-			let json: serde_json::Value = match serde_json::from_str(&text) {
-				Ok(value) => value,
-				Err(_) => serde_json::Value::Null,
-			};
+	response_table
+		.set(
+			"json",
+			lua.create_function(move |lua, ()| {
+				let json: serde_json::Value = match serde_json::from_str(&text) {
+					Ok(value) => value,
+					Err(_) => serde_json::Value::Null,
+				};
 
-			lua.to_value(&json)
-		})?,
-	)?;
+				lua.to_value(&json)
+			})
+			.map_err(|e| mlua::Error::external(format!("Failed to create json function: {}", e)))?,
+		)
+		.map_err(|e| mlua::Error::external(format!("Failed to set json field: {}", e)))?;
 
 	Ok(response_table)
 }

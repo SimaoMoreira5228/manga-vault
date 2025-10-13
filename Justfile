@@ -3,7 +3,7 @@ mod? local
 export RUST_TOOLCHAIN := env_var_or_default('RUST_TOOLCHAIN', 'nightly')
 
 fmt *args:
-    dprint fmt {{args}}
+    tools/dprint.dotslash fmt {{args}}
 
 lint *args:
     cargo clippy --fix --allow-dirty --allow-staged --all-features --all-targets {{args}}
@@ -14,13 +14,8 @@ test *args:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    if [ -x ./temp/chromedriver ]; then
-        ./tools/chromedriver.dotslash --port=4444 &
-        chromedriver_pid=$!
-    else
-        chromedriver --port=4444 &
-        chromedriver_pid=$!
-    fi
+    ./tools/chromedriver.dotslash --port=4444 &
+    chromedriver_pid=$!
     trap "kill $chromedriver_pid" EXIT
 
     if [ -f target/wasm32-wasip1/release/mangaread_org.wasm ]; then
