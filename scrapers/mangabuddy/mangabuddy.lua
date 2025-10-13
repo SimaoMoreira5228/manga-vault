@@ -42,6 +42,9 @@ function Scrape_manga_list(url)
 		local link_element = scraping:select_element(manga_div_html, "h3 a") or ""
 		local title = scraping:get_text(link_element) or ""
 		local manga_url = scraping:get_url(link_element) or ""
+		if manga_url ~= "" and not string.match(manga_url, "^https?://") then
+			manga_url = BASE_URL .. manga_url
+		end
 
 		local img_element = scraping:select_element(manga_div_html, ".thumb img")
 		local img_url = scraping:get_image_url(img_element or "") or ""
@@ -184,7 +187,7 @@ end
 function Get_info()
 	return {
 		id = "mangabuddy",
-		version = "0.3.3",
+		version = "0.3.4",
 		name = "MangaBuddy",
 		img_url = "https://mangabuddy.com/favicon.ico",
 		referer_url = "https://mangabuddy.com/",
