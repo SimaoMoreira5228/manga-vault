@@ -122,6 +122,9 @@ function Scrape_manga(url)
 	for _, chapter_html in ipairs(initial_chapter_elements) do
 		local link_element = scraping:select_element(chapter_html, "a") or ""
 		local chapter_url = scraping:get_url(link_element) or ""
+		if chapter_url ~= "" and not string.match(chapter_url, "^https?://") then
+			chapter_url = BASE_URL .. chapter_url
+		end
 		local chapter_title = scraping:get_text(scraping:select_element(link_element, ".chapter-title") or "") or ""
 		local chapter_date = scraping:get_text(scraping:select_element(link_element, ".chapter-update") or "") or ""
 		table.insert(chapters, { title = chapter_title, url = chapter_url, date = chapter_date })
@@ -137,7 +140,7 @@ function Scrape_manga(url)
 		local api_chapters = {}
 		for _, chapter_html in ipairs(api_chapter_elements) do
 			local link_element = scraping:select_element(chapter_html, "a") or ""
-			local chapter_url = scraping:get_url(link_element) or ""
+			local chapter_url = string.format("%s%s", BASE_URL, scraping:get_url(link_element) or "")
 			local chapter_title = scraping:get_text(scraping:select_element(link_element, ".chapter-title") or "") or ""
 			local chapter_date = scraping:get_text(scraping:select_element(link_element, ".chapter-update") or "") or ""
 			table.insert(api_chapters, { title = chapter_title, url = chapter_url, date = chapter_date })
@@ -181,7 +184,7 @@ end
 function Get_info()
 	return {
 		id = "mangabuddy",
-		version = "0.3.2",
+		version = "0.3.3",
 		name = "MangaBuddy",
 		img_url = "https://mangabuddy.com/favicon.ico",
 		referer_url = "https://mangabuddy.com/",
