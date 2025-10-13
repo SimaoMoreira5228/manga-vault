@@ -1,7 +1,7 @@
 BASE_URL = "https://mangabuddy.com"
 
 local function make_request(url)
-	local options = { headers = { Referer = BASE_URL .. "/" } }
+	local options = { Referer = BASE_URL .. "/" }
 	return http:get(url, options)
 end
 
