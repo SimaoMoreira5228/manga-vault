@@ -49,9 +49,9 @@
 		{
 			"name": "mangabuddy",
 			"urls": {
-				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangabuddy%40v0.3.3/mangabuddy.lua"
+				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangabuddy%40v0.3.4/mangabuddy.lua"
 			},
-			"version": "0.3.3",
+			"version": "0.3.4",
 			"state": "updated",
 			"build_state": "beta"
 		},
