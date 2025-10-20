@@ -11,6 +11,11 @@ local function get_or_create_flaresolverr_session()
 end
 
 local function http_get(url, headers)
+	if url == "https://" or string.match(url, "^https?://[^/]+//") then
+		print("[mangakakalot] Invalid URL provided to http_get: " .. url)
+		return { text = "", status = 0, headers = {} }
+	end
+
 	headers = headers or {}
 	headers.referer = BASE_URL .. "/"
 	local request = http:get(url, headers)
@@ -227,7 +232,7 @@ end
 function Get_info()
 	return {
 		id = "mangakakalotgg",
-		version = "0.4.0",
+		version = "0.4.1",
 		name = "MangaKakalot",
 		img_url = BASE_URL .. "/images/favicon.ico",
 		referer_url = BASE_URL .. "/",

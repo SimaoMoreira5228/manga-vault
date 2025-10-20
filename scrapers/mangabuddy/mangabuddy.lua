@@ -1,8 +1,29 @@
+FLARESOLVERR_SESSION_ID = nil
 BASE_URL = "https://mangabuddy.com"
 
-local function make_request(url)
-	local options = { Referer = BASE_URL .. "/" }
-	return http:get(url, options)
+local function get_or_create_flaresolverr_session()
+	if FLARESOLVERR_SESSION_ID == nil then
+		FLARESOLVERR_SESSION_ID = flaresolverr:create_session()
+	end
+	return FLARESOLVERR_SESSION_ID
+end
+
+local function make_request(url, headers)
+	if url == "https://" or string.match(url, "^https?://[^/]+//") then
+		print("[mangabuddy] Invalid URL provided to http_get: " .. url)
+		return { text = "", status = 0, headers = {} }
+	end
+
+	headers = headers or { Referer = BASE_URL .. "/" }
+	local response = http:get(url, headers)
+
+	if
+		flaresolverr:using_flaresolverr() and http:has_cloudflare_protection(response.text, response.status, response.headers)
+	then
+		response = flaresolverr:get(url, get_or_create_flaresolverr_session())
+	end
+
+	return response
 end
 
 function Scrape_chapter(url)
@@ -187,7 +208,7 @@ end
 function Get_info()
 	return {
 		id = "mangabuddy",
-		version = "0.3.4",
+		version = "0.3.5",
 		name = "MangaBuddy",
 		img_url = "https://mangabuddy.com/favicon.ico",
 		referer_url = "https://mangabuddy.com/",

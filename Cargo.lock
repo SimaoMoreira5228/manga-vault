@@ -4052,7 +4052,7 @@ dependencies = [
 
 [[package]]
 name = "manga-vault"
-version = "1.5.8"
+version = "1.5.9"
 dependencies = [
  "config 0.1.0",
  "database-connection",
@@ -6076,7 +6076,7 @@ dependencies = [
 
 [[package]]
 name = "scheduler"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "anyhow",
  "chrono",

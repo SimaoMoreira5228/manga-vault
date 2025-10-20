@@ -9,6 +9,11 @@ local function get_or_create_flaresolverr_session()
 end
 
 local function http_get(url, headers)
+	if url == "https://" or string.match(url, "^https?://[^/]+//") then
+		print("[natomanga] Invalid URL provided to http_get: " .. url)
+		return { text = "", status = 0, headers = {} }
+	end
+
 	headers = headers or {}
 	local request = http:get(url, headers)
 	local html = request.text
@@ -247,7 +252,7 @@ end
 function Get_info()
 	return {
 		id = "natomanga",
-		version = "0.4.0",
+		version = "0.4.1",
 		name = "NatoManga",
 		img_url = "https://www.natomanga.com/images/favicon-manganato.webp",
 		referer_url = "https://www.natomanga.com/",
