@@ -1,7 +1,6 @@
 BASE_URL = "https://www.mangakakalot.gg"
 GET_REQUEST_TIMEOUT = 2000
 
-
 local function http_get(url, headers)
 	if url == "https://" or string.match(url, "^https?://[^/]+//") then
 		print("[mangakakalot] Invalid URL provided to http_get: " .. url)
