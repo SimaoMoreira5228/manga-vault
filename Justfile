@@ -29,6 +29,8 @@ test *args:
     fi
 
     export LUA_PLUGIN_TEST_DIR="$(pwd)/scrapers/"
+    export LUA_PLUGIN_TEST_FLARESOLVERR_URL="http://localhost:8191/v1"
+    export LUA_PLUGIN_TEST_HEADLESS_URL="http://localhost:4444"
 
     cargo test --workspace --all-features {{args}}
 

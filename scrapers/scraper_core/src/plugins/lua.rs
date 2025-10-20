@@ -161,8 +161,8 @@ mod tests {
 
 		let concurrency: usize = 8;
 		let config = Arc::new(Config {
-			flaresolverr_url: Some("http://localhost:8191".to_string()),
-			headless: Some("http://localhost:4444".to_string()),
+			flaresolverr_url: Some(env::var("LUA_PLUGIN_TEST_FLARESOLVERR_URL").unwrap_or_else(|_| "".to_string())),
+			headless: Some(env::var("LUA_PLUGIN_TEST_HEADLESS_URL").unwrap_or_else(|_| "".to_string())),
 			..Default::default()
 		});
 
