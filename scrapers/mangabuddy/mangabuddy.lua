@@ -1,12 +1,4 @@
-FLARESOLVERR_SESSION_ID = nil
 BASE_URL = "https://mangabuddy.com"
-
-local function get_or_create_flaresolverr_session()
-	if FLARESOLVERR_SESSION_ID == nil then
-		FLARESOLVERR_SESSION_ID = flaresolverr:create_session()
-	end
-	return FLARESOLVERR_SESSION_ID
-end
 
 local function make_request(url, headers)
 	if url == "https://" or string.match(url, "^https?://[^/]+//") then
@@ -20,7 +12,7 @@ local function make_request(url, headers)
 	if
 		flaresolverr:using_flaresolverr() and http:has_cloudflare_protection(response.text, response.status, response.headers)
 	then
-		response = flaresolverr:get(url, get_or_create_flaresolverr_session())
+		response = flaresolverr:get(url)
 	end
 
 	return response
@@ -208,7 +200,7 @@ end
 function Get_info()
 	return {
 		id = "mangabuddy",
-		version = "0.3.5",
+		version = "0.3.6",
 		name = "MangaBuddy",
 		img_url = "https://mangabuddy.com/favicon.ico",
 		referer_url = "https://mangabuddy.com/",

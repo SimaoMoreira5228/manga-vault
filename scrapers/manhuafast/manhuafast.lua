@@ -1,12 +1,3 @@
-FLARESOLVERR_SESSION_ID = nil
-
-local function get_or_create_flaresolverr_session()
-	if FLARESOLVERR_SESSION_ID == nil then
-		FLARESOLVERR_SESSION_ID = flaresolverr:create_session()
-	end
-	return FLARESOLVERR_SESSION_ID
-end
-
 local function http_get(url, headers)
 	if url == "https://" or string.match(url, "^https?://[^/]+//") then
 		print("[manhuafast] Invalid URL provided to http_get: " .. url)
@@ -19,7 +10,7 @@ local function http_get(url, headers)
 	if
 		flaresolverr:using_flaresolverr() and http:has_cloudflare_protection(response.text, response.status, response.headers)
 	then
-		response = flaresolverr:get(url, get_or_create_flaresolverr_session())
+		response = flaresolverr:get(url)
 	end
 
 	return response
@@ -28,9 +19,6 @@ end
 local function scrape_manga_list(url)
 	local request = http_get(url)
 	local html = request.text
-	if http:has_cloudflare_protection(html, request.status, request.headers) then
-		html = flaresolverr:get(url, get_or_create_flaresolverr_session()).text
-	end
 
 	local manga_items = {}
 
@@ -79,9 +67,6 @@ end
 function Scrape_chapter(url)
 	local request = http_get(url)
 	local html = request.text
-	if http:has_cloudflare_protection(html, request.status, request.headers) then
-		html = flaresolverr:get(url, get_or_create_flaresolverr_session()).text
-	end
 
 	local img_elements = scraping:select_elements(html, "img.wp-manga-chapter-img")
 	local imgs = {}
@@ -178,9 +163,6 @@ end
 function Scrape_manga(url)
 	local request = http_get(url)
 	local html = request.text
-	if http:has_cloudflare_protection(html, request.status, request.headers) then
-		html = flaresolverr:get(url, get_or_create_flaresolverr_session()).text
-	end
 
 	local title_element = scraping:select_elements(html, "div.post-title h1")[1]
 	local title = title_element and scraping:get_text(title_element) or ""
@@ -218,9 +200,6 @@ function Scrape_genres_list()
 	local url = "https://manhuafast.com/?s=&post_type=wp-manga"
 	local request = http_get(url)
 	local html = request.text
-	if http:has_cloudflare_protection(html, request.status, request.headers) then
-		html = flaresolverr:get(url, get_or_create_flaresolverr_session()).text
-	end
 
 	local genres = {}
 
@@ -241,7 +220,7 @@ end
 function Get_info()
 	return {
 		id = "manhuafast",
-		version = "0.4.2",
+		version = "0.4.3",
 		name = "Manhuafast",
 		img_url = "https://manhuafast.com/wp-content/uploads/2021/01/cropped-Dark-Star-Emperor-Manga-193x278-1-32x32.jpg",
 		referer_url = "https://manhuafast.com/",
