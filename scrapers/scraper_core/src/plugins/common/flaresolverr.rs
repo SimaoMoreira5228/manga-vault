@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
+use reqwest::Url;
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -14,6 +15,8 @@ pub enum FlareError {
 	RequestFailed(String),
 	#[error("Session error: {0}")]
 	SessionError(String),
+	#[error("Invalid URL: {0}")]
+	InvalidUrl(String),
 }
 
 #[derive(Clone)]
@@ -118,10 +121,13 @@ impl FlareSolverrManager {
 		target_url: String,
 		session_id: Option<Uuid>,
 	) -> Result<crate::plugins::common::http::Response, FlareError> {
+		let parsed_target_url =
+			Url::parse(&target_url).map_err(|e| FlareError::InvalidUrl(format!("invalid url '{}': {}", target_url, e)))?;
+
 		if self.url.is_empty() {
 			let resp = self
 				.fallback
-				.get(target_url.to_string(), None)
+				.get(parsed_target_url.to_string(), None)
 				.await
 				.map_err(|e| FlareError::RequestFailed(e.to_string()))?;
 			return Ok(resp);
@@ -131,7 +137,7 @@ impl FlareSolverrManager {
 
 		let payload = serde_json::json!({
 			"cmd": "request.get",
-			"url": target_url,
+			"url": parsed_target_url,
 			"maxTimeout": 60000,
 			"session": session.to_string()
 		});
@@ -219,7 +225,7 @@ impl FlareSolverrManager {
 
 		let resp = self
 			.fallback
-			.get(target_url.to_string(), None)
+			.get(parsed_target_url.to_string(), None)
 			.await
 			.map_err(|e| FlareError::RequestFailed(e.to_string()))?;
 		Ok(resp)

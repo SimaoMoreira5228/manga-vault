@@ -15,6 +15,10 @@ pub async fn proxy_image(Query(params): Query<std::collections::HashMap<String, 
 		None => return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response(),
 	};
 
+	if url.is_empty() {
+		return (StatusCode::BAD_REQUEST, "Empty URL parameter").into_response();
+	}
+
 	let referer = match params.get("referer") {
 		Some(referer) => Some(referer.clone()),
 		None => headers

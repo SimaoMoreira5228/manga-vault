@@ -7,8 +7,26 @@ local function get_or_create_flaresolverr_session()
 	return FLARESOLVERR_SESSION_ID
 end
 
+local function http_get(url, headers)
+	if url == "https://" or string.match(url, "^https?://[^/]+//") then
+		print("[manhuafast] Invalid URL provided to http_get: " .. url)
+		return { text = "", status = 0, headers = {} }
+	end
+
+	headers = headers or {}
+	local response = http:get(url, headers)
+
+	if
+		flaresolverr:using_flaresolverr() and http:has_cloudflare_protection(response.text, response.status, response.headers)
+	then
+		response = flaresolverr:get(url, get_or_create_flaresolverr_session())
+	end
+
+	return response
+end
+
 local function scrape_manga_list(url)
-	local request = http:get(url)
+	local request = http_get(url)
 	local html = request.text
 	if http:has_cloudflare_protection(html, request.status, request.headers) then
 		html = flaresolverr:get(url, get_or_create_flaresolverr_session()).text
@@ -59,7 +77,7 @@ local function scrape_manga_list(url)
 end
 
 function Scrape_chapter(url)
-	local request = http:get(url)
+	local request = http_get(url)
 	local html = request.text
 	if http:has_cloudflare_protection(html, request.status, request.headers) then
 		html = flaresolverr:get(url, get_or_create_flaresolverr_session()).text
@@ -158,7 +176,7 @@ local function scrape_manga_chapters(url)
 end
 
 function Scrape_manga(url)
-	local request = http:get(url)
+	local request = http_get(url)
 	local html = request.text
 	if http:has_cloudflare_protection(html, request.status, request.headers) then
 		html = flaresolverr:get(url, get_or_create_flaresolverr_session()).text
@@ -198,7 +216,7 @@ end
 
 function Scrape_genres_list()
 	local url = "https://manhuafast.com/?s=&post_type=wp-manga"
-	local request = http:get(url)
+	local request = http_get(url)
 	local html = request.text
 	if http:has_cloudflare_protection(html, request.status, request.headers) then
 		html = flaresolverr:get(url, get_or_create_flaresolverr_session()).text
@@ -223,7 +241,7 @@ end
 function Get_info()
 	return {
 		id = "manhuafast",
-		version = "0.4.1",
+		version = "0.4.2",
 		name = "Manhuafast",
 		img_url = "https://manhuafast.com/wp-content/uploads/2021/01/cropped-Dark-Star-Emperor-Manga-193x278-1-32x32.jpg",
 		referer_url = "https://manhuafast.com/",
