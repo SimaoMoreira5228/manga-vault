@@ -112,5 +112,8 @@ jobs:
 
           export LUA_PLUGIN_TEST_DIR="$(pwd)/scrapers/"
 
+          export LUA_PLUGIN_TEST_FLARESOLVERR_URL=""
+          export LUA_PLUGIN_TEST_HEADLESS_URL="http://localhost:4444"
+
           INSTA_FORCE_PASS=1 cargo test --workspace --all-features -- --nocapture
         shell: bash

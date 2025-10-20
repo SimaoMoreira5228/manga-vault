@@ -10,26 +10,9 @@ const _FLARE_SOLVERR_MANAGER: LazyLock<Arc<FlareSolverrManager>> =
 	LazyLock::new(|| Arc::new(FlareSolverrManager::new(&CONFIG)));
 
 impl bindings::scraper::types::flare_solverr::Host for States {
-	async fn create_session(&mut self) -> Result<Result<String, String>, anyhow::Error> {
-		let session = _FLARE_SOLVERR_MANAGER.create_session().await;
-		let inner_result = match session {
-			Ok(s) => Ok(s.to_string()),
-			Err(e) => Err(e.to_string()),
-		};
-		Ok(inner_result)
-	}
-
-	async fn get(&mut self, url: String, session_id: Option<String>) -> Result<Option<Response>, anyhow::Error> {
-		let session_uuid = match session_id {
-			Some(id) => match uuid::Uuid::parse_str(&id) {
-				Ok(uuid) => Some(uuid),
-				Err(_) => None,
-			},
-			None => None,
-		};
-
+	async fn get(&mut self, url: String, _session_id: Option<String>) -> Result<Option<Response>, anyhow::Error> {
 		let manager = _FLARE_SOLVERR_MANAGER.clone();
-		let result = manager.get(url, session_uuid).await;
+		let result = manager.get(url).await;
 
 		match result {
 			Ok(res) => Ok(Some(Response {

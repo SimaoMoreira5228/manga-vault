@@ -1,24 +1,12 @@
-use mlua::{Lua, LuaSerdeExt, UserData, UserDataMethods};
-use uuid::Uuid;
-
 use crate::Config;
 use crate::plugins::common::flaresolverr::FlareSolverrManager;
 use crate::plugins::globals::utils::create_response_table;
+use mlua::{Lua, UserData, UserDataMethods};
 
 impl UserData for FlareSolverrManager {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-		methods.add_async_method("create_session", |lua, this, _: ()| async move {
-			let id = this.create_session().await.map_err(mlua::Error::external)?;
-			lua.to_value(&id.to_string())
-		});
-
-		methods.add_async_method("get", |lua, this, (url, session_id): (String, Option<String>)| async move {
-			let uuid = session_id
-				.map(|sid| Uuid::parse_str(&sid))
-				.transpose()
-				.map_err(mlua::Error::external)?;
-
-			let response = this.get(url, uuid).await.map_err(mlua::Error::external)?;
+		methods.add_async_method("get", |lua, this, url: String| async move {
+			let response = this.get(url).await.map_err(mlua::Error::external)?;
 
 			create_response_table(&lua, response.text, response.status, response.headers)
 		});

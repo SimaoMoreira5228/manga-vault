@@ -73,7 +73,6 @@ interface http {
 interface flare-solverr {
     use http.{response};
 
-    create-session: func() -> result<string, string>;
     get: func(url: string, session-id: option<string>) -> option<response>;
 }
 

@@ -27,7 +27,6 @@
 
 -- FlareSolverr
 ---@class FlareSolverrManager
----@field create_session fun(self: FlareSolverrManager): string
 ---@field get fun(self: FlareSolverrManager, url: string, session_id?: string): HttpResponse
 ---@field using_flaresolverr fun(self: FlareSolverrManager): boolean
 

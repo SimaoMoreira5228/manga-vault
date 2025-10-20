@@ -1,13 +1,3 @@
-FLARESOLVERR_SESSION_ID = nil
-GET_REQUEST_TIMEOUT = 2000
-
-local function get_or_create_flaresolverr_session()
-	if FLARESOLVERR_SESSION_ID == nil then
-		FLARESOLVERR_SESSION_ID = flaresolverr:create_session()
-	end
-	return FLARESOLVERR_SESSION_ID
-end
-
 local function http_get(url, headers)
 	if url == "https://" or string.match(url, "^https?://[^/]+//") then
 		print("[natomanga] Invalid URL provided to http_get: " .. url)
@@ -15,21 +5,15 @@ local function http_get(url, headers)
 	end
 
 	headers = headers or {}
-	local request = http:get(url, headers)
-	local html = request.text
+	local response = http:get(url, headers)
 
-	if flaresolverr:using_flaresolverr() and http:has_cloudflare_protection(html, request.status, request.headers) then
-		local req = flaresolverr:get(url, get_or_create_flaresolverr_session())
-		if req.status == 200 then
-			html = req.text
-		end
-	elseif not flaresolverr:using_flaresolverr() and http:has_cloudflare_protection(html, request.status, request.headers) then
-		utils.sleep(GET_REQUEST_TIMEOUT)
-		request = http:get(url, headers)
-		html = request.text
+	if
+		flaresolverr:using_flaresolverr() and http:has_cloudflare_protection(response.text, response.status, response.headers)
+	then
+		response = flaresolverr:get(url)
 	end
 
-	return html
+	return response.text
 end
 
 function Scrape_chapter(url)
@@ -252,7 +236,7 @@ end
 function Get_info()
 	return {
 		id = "natomanga",
-		version = "0.4.1",
+		version = "0.4.2",
 		name = "NatoManga",
 		img_url = "https://www.natomanga.com/images/favicon-manganato.webp",
 		referer_url = "https://www.natomanga.com/",

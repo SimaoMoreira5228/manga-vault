@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, SystemTime};
 
 use reqwest::Url;
 use serde_json::Value;
@@ -20,17 +20,20 @@ pub enum FlareError {
 }
 
 #[derive(Clone)]
-#[allow(dead_code)]
 struct FlareSession {
 	id: Uuid,
 	created_at: SystemTime,
+	request_count: usize,
 }
+
+const SESSION_TTL_SECS: u64 = 600;
+const SESSION_MAX_REQUESTS: usize = 100;
 
 #[derive(Clone)]
 pub struct FlareSolverrManager {
 	pub url: String,
 	client: reqwest::Client,
-	sessions: Arc<Mutex<HashMap<Uuid, FlareSession>>>,
+	global_session: Arc<RwLock<Option<FlareSession>>>,
 	pub fallback: CommonHttp,
 }
 
@@ -49,7 +52,7 @@ impl FlareSolverrManager {
 		Self {
 			url,
 			client: reqwest::Client::new(),
-			sessions: Arc::new(Mutex::new(HashMap::new())),
+			global_session: Arc::new(RwLock::new(None)),
 			fallback: CommonHttp::new(),
 		}
 	}
@@ -58,11 +61,12 @@ impl FlareSolverrManager {
 		!self.url.is_empty()
 	}
 
-	pub async fn create_session(&self) -> Result<Uuid, FlareError> {
+	async fn create_session_internal(&self) -> Result<FlareSession, FlareError> {
 		let id = Uuid::new_v4();
 		let session = FlareSession {
 			id,
 			created_at: SystemTime::now(),
+			request_count: 0,
 		};
 
 		if !self.url.is_empty() {
@@ -85,6 +89,8 @@ impl FlareSolverrManager {
 								tracing::warn!(
 									"FlareSolverr sessions.create returned no session id. continuing with local id"
 								);
+							} else {
+								tracing::info!("Created new FlareSolverr session: {}", id);
 							}
 						}
 						Err(_) => {
@@ -94,33 +100,107 @@ impl FlareSolverrManager {
 				}
 				Err(e) => {
 					tracing::warn!("Failed to call flaresolverr sessions.create: {}", e);
+					return Err(FlareError::SessionError(format!("Failed to create session: {}", e)));
 				}
 			}
 		}
 
-		self.sessions
-			.lock()
-			.map_err(|e| FlareError::SessionError(e.to_string()))?
-			.insert(id, session);
-
-		Ok(id)
+		Ok(session)
 	}
 
-	pub async fn ensure_session(&self, maybe: Option<Uuid>) -> Result<Uuid, FlareError> {
-		if let Some(id) = maybe {
-			let sessions_guard = self.sessions.lock().map_err(|e| FlareError::SessionError(e.to_string()))?;
-			if sessions_guard.contains_key(&id) {
-				return Ok(id);
+	async fn destroy_session_internal(&self, session_id: Uuid) {
+		if self.url.is_empty() {
+			return;
+		}
+
+		let payload = serde_json::json!({
+			"cmd": "sessions.destroy",
+			"session": session_id.to_string()
+		});
+
+		match self.client.post(&self.url).json(&payload).send().await {
+			Ok(_) => {
+				tracing::info!("Destroyed FlareSolverr session: {}", session_id);
+			}
+			Err(e) => {
+				tracing::warn!("Failed to destroy FlareSolverr session {}: {}", session_id, e);
 			}
 		}
-		self.create_session().await
 	}
 
-	pub async fn get(
-		&self,
-		target_url: String,
-		session_id: Option<Uuid>,
-	) -> Result<crate::plugins::common::http::Response, FlareError> {
+	fn should_refresh_session(&self, session: &FlareSession) -> bool {
+		if let Ok(elapsed) = session.created_at.elapsed() {
+			if elapsed > Duration::from_secs(SESSION_TTL_SECS) {
+				tracing::debug!("Session {} expired (TTL)", session.id);
+				return true;
+			}
+		}
+
+		if session.request_count >= SESSION_MAX_REQUESTS {
+			tracing::debug!("Session {} expired (request count: {})", session.id, session.request_count);
+			return true;
+		}
+
+		false
+	}
+
+	async fn get_or_refresh_session(&self) -> Result<Uuid, FlareError> {
+		{
+			let session_guard = self
+				.global_session
+				.read()
+				.map_err(|e| FlareError::SessionError(e.to_string()))?;
+
+			if let Some(ref session) = *session_guard {
+				if !self.should_refresh_session(session) {
+					return Ok(session.id);
+				}
+			}
+		}
+
+		let old_session_id = {
+			let session_guard = self
+				.global_session
+				.write()
+				.map_err(|e| FlareError::SessionError(e.to_string()))?;
+
+			if let Some(ref session) = *session_guard {
+				if !self.should_refresh_session(session) {
+					return Ok(session.id);
+				}
+				Some(session.id)
+			} else {
+				None
+			}
+		};
+
+		if let Some(old_id) = old_session_id {
+			self.destroy_session_internal(old_id).await;
+		}
+
+		let new_session = self.create_session_internal().await?;
+		let session_id = new_session.id;
+
+		{
+			let mut session_guard = self
+				.global_session
+				.write()
+				.map_err(|e| FlareError::SessionError(e.to_string()))?;
+			*session_guard = Some(new_session);
+		}
+
+		Ok(session_id)
+	}
+
+	fn increment_request_count(&self) {
+		if let Ok(mut session_guard) = self.global_session.write() {
+			if let Some(ref mut session) = *session_guard {
+				session.request_count += 1;
+			}
+		}
+	}
+
+	pub async fn get(&self, target_url: String) -> Result<crate::plugins::common::http::Response, FlareError> {
 		let parsed_target_url =
 			Url::parse(&target_url).map_err(|e| FlareError::InvalidUrl(format!("invalid url '{}': {}", target_url, e)))?;
 
@@ -133,13 +213,15 @@ impl FlareSolverrManager {
 			return Ok(resp);
 		}
 
-		let session = self.ensure_session(session_id).await?;
+		let session_id = self.get_or_refresh_session().await?;
+
+		self.increment_request_count();
 
 		let payload = serde_json::json!({
 			"cmd": "request.get",
 			"url": parsed_target_url,
 			"maxTimeout": 60000,
-			"session": session.to_string()
+			"session": session_id.to_string()
 		});
 
 		let api_res = self.client.post(&self.url).json(&payload).send().await;
