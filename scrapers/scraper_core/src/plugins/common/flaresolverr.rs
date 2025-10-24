@@ -191,9 +191,7 @@ impl FlareSolverrManager {
 		}
 
 		{
-			let session_guard = self
-				.global_session
-				.read().await;
+			let session_guard = self.global_session.read().await;
 
 			if let Some(ref session) = *session_guard {
 				if !self.should_refresh_session(session) {
@@ -203,9 +201,7 @@ impl FlareSolverrManager {
 		}
 
 		let old_session_id = {
-			let session_guard = self
-				.global_session
-				.write().await;
+			let session_guard = self.global_session.write().await;
 
 			if let Some(ref session) = *session_guard {
 				if !self.should_refresh_session(session) {
@@ -225,9 +221,7 @@ impl FlareSolverrManager {
 		let session_id = new_session.id;
 
 		{
-			let mut session_guard = self
-				.global_session
-				.write().await;
+			let mut session_guard = self.global_session.write().await;
 			*session_guard = Some(new_session);
 		}
 
