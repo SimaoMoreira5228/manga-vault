@@ -34,4 +34,26 @@ test *args:
 
     cargo test --workspace --all-features {{args}}
 
+docker-build:
+    docker-compose build
+
+docker-up:
+    docker-compose up -d
+
+docker-down:
+    docker-compose down
+
+docker-logs:
+    docker-compose logs -f
+
+docker-restart:
+    docker-compose restart
+
+docker-update: docker-down docker-build docker-up
+    @echo "Updated and restarted all services"
+
+docker-clean:
+    docker-compose down -v
+    docker system prune -f
+
 

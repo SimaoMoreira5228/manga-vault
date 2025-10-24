@@ -2817,7 +2817,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gql-api"
-version = "0.5.10"
+version = "0.5.11"
 dependencies = [
  "anyhow",
  "argon2",
@@ -4052,7 +4052,7 @@ dependencies = [
 
 [[package]]
 name = "manga-vault"
-version = "1.5.10"
+version = "1.5.11"
 dependencies = [
  "config 0.1.0",
  "database-connection",
@@ -6076,7 +6076,7 @@ dependencies = [
 
 [[package]]
 name = "scheduler"
-version = "0.3.6"
+version = "0.3.7"
 dependencies = [
  "anyhow",
  "chrono",

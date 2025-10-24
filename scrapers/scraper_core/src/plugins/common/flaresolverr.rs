@@ -26,11 +26,18 @@ struct FlareSession {
 	request_count: usize,
 }
 
+#[derive(Clone, Copy)]
+enum ManagerType {
+	Byparr,
+	FlareSolverr,
+}
+
 const SESSION_TTL_SECS: u64 = 600;
 const SESSION_MAX_REQUESTS: usize = 100;
 
 #[derive(Clone)]
 pub struct FlareSolverrManager {
+	r#type: Option<ManagerType>,
 	pub url: String,
 	client: reqwest::Client,
 	global_session: Arc<RwLock<Option<FlareSession>>>,
@@ -39,17 +46,36 @@ pub struct FlareSolverrManager {
 
 impl FlareSolverrManager {
 	pub fn new(config: &Config) -> Self {
-		let url = if let Some(ref base_url) = config.flaresolverr_url {
-			if base_url.ends_with("/v1") {
+		let (url, manager_type) = if let Some(ref base_url) = config.flaresolverr_url {
+			let docs_url = if base_url.ends_with("/v1") {
+				base_url.replace("/v1", "/docs")
+			} else {
+				format!("{}/docs", base_url.trim_end_matches('/'))
+			};
+
+			let url = if base_url.ends_with("/v1") {
 				base_url.clone()
 			} else {
-				format!("{}/v1", base_url)
+				format!("{}/v1", base_url.trim_end_matches('/'))
+			};
+
+			let resp = reqwest::blocking::Client::new().get(&docs_url).send();
+			match resp {
+				Ok(r) => {
+					if r.status().is_success() || r.status().is_redirection() {
+						(url, ManagerType::Byparr)
+					} else {
+						(url, ManagerType::FlareSolverr)
+					}
+				}
+				Err(_) => (url, ManagerType::FlareSolverr),
 			}
 		} else {
-			String::new()
+			(String::new(), ManagerType::FlareSolverr)
 		};
 
 		Self {
+			r#type: if url.is_empty() { None } else { Some(manager_type) },
 			url,
 			client: reqwest::Client::new(),
 			global_session: Arc::new(RwLock::new(None)),
@@ -69,7 +95,7 @@ impl FlareSolverrManager {
 			request_count: 0,
 		};
 
-		if !self.url.is_empty() {
+		if !self.url.is_empty() && matches!(self.r#type, Some(ManagerType::FlareSolverr)) {
 			let payload = serde_json::json!({
 				"cmd": "sessions.create",
 				"session": id.to_string()
@@ -109,7 +135,7 @@ impl FlareSolverrManager {
 	}
 
 	async fn destroy_session_internal(&self, session_id: Uuid) {
-		if self.url.is_empty() {
+		if self.url.is_empty() || !matches!(self.r#type, Some(ManagerType::FlareSolverr)) {
 			return;
 		}
 
@@ -144,7 +170,11 @@ impl FlareSolverrManager {
 		false
 	}
 
-	async fn get_or_refresh_session(&self) -> Result<Uuid, FlareError> {
+	async fn get_or_refresh_session(&self) -> Result<Option<Uuid>, FlareError> {
+		if !matches!(self.r#type, Some(ManagerType::FlareSolverr)) {
+			return Ok(None);
+		}
+
 		{
 			let session_guard = self
 				.global_session
@@ -153,7 +183,7 @@ impl FlareSolverrManager {
 
 			if let Some(ref session) = *session_guard {
 				if !self.should_refresh_session(session) {
-					return Ok(session.id);
+					return Ok(Some(session.id));
 				}
 			}
 		}
@@ -166,7 +196,7 @@ impl FlareSolverrManager {
 
 			if let Some(ref session) = *session_guard {
 				if !self.should_refresh_session(session) {
-					return Ok(session.id);
+					return Ok(Some(session.id));
 				}
 				Some(session.id)
 			} else {
@@ -189,10 +219,14 @@ impl FlareSolverrManager {
 			*session_guard = Some(new_session);
 		}
 
-		Ok(session_id)
+		Ok(Some(session_id))
 	}
 
 	fn increment_request_count(&self) {
+		if !matches!(self.r#type, Some(ManagerType::FlareSolverr)) {
+			return;
+		}
+
 		if let Ok(mut session_guard) = self.global_session.write() {
 			if let Some(ref mut session) = *session_guard {
 				session.request_count += 1;
@@ -213,16 +247,22 @@ impl FlareSolverrManager {
 			return Ok(resp);
 		}
 
-		let session_id = self.get_or_refresh_session().await?;
+		let session_id_opt = self.get_or_refresh_session().await?;
 
 		self.increment_request_count();
 
-		let payload = serde_json::json!({
+		let mut payload = serde_json::json!({
 			"cmd": "request.get",
 			"url": parsed_target_url,
 			"maxTimeout": 60000,
-			"session": session_id.to_string()
 		});
+
+		if let Some(session_id) = session_id_opt {
+			payload
+				.as_object_mut()
+				.unwrap()
+				.insert("session".to_string(), serde_json::Value::String(session_id.to_string()));
+		}
 
 		let api_res = self.client.post(&self.url).json(&payload).send().await;
 		if let Ok(r) = api_res {
