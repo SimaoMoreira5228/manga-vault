@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use reqwest::Url;
 use serde_json::Value;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::Config;
@@ -26,11 +27,18 @@ struct FlareSession {
 	request_count: usize,
 }
 
+#[derive(Clone, Copy)]
+enum ManagerType {
+	Byparr,
+	FlareSolverr,
+}
+
 const SESSION_TTL_SECS: u64 = 600;
 const SESSION_MAX_REQUESTS: usize = 100;
 
 #[derive(Clone)]
 pub struct FlareSolverrManager {
+	r#type: Arc<RwLock<Option<ManagerType>>>,
 	pub url: String,
 	client: reqwest::Client,
 	global_session: Arc<RwLock<Option<FlareSession>>>,
@@ -43,18 +51,51 @@ impl FlareSolverrManager {
 			if base_url.ends_with("/v1") {
 				base_url.clone()
 			} else {
-				format!("{}/v1", base_url)
+				format!("{}/v1", base_url.trim_end_matches('/'))
 			}
 		} else {
 			String::new()
 		};
 
 		Self {
+			r#type: Arc::new(RwLock::new(None)),
 			url,
 			client: reqwest::Client::new(),
 			global_session: Arc::new(RwLock::new(None)),
 			fallback: CommonHttp::new(),
 		}
+	}
+
+	async fn determine_manager_type(&self) -> Result<(), FlareError> {
+		if self.r#type.read().await.is_some() {
+			return Ok(());
+		}
+
+		if self.url.is_empty() {
+			self.r#type.write().await.take();
+			return Ok(());
+		}
+
+		let docs_url = if self.url.ends_with("/v1") {
+			self.url.replace("/v1", "/docs")
+		} else {
+			format!("{}/docs", self.url.trim_end_matches('/'))
+		};
+
+		match self.client.get(&docs_url).send().await {
+			Ok(r) => {
+				if r.status().is_success() || r.status().is_redirection() {
+					self.r#type.write().await.replace(ManagerType::Byparr);
+				} else {
+					self.r#type.write().await.replace(ManagerType::FlareSolverr);
+				}
+			}
+			Err(_) => {
+				self.r#type.write().await.replace(ManagerType::FlareSolverr);
+			}
+		}
+
+		Ok(())
 	}
 
 	pub fn using_flaresolverr(&self) -> bool {
@@ -69,7 +110,7 @@ impl FlareSolverrManager {
 			request_count: 0,
 		};
 
-		if !self.url.is_empty() {
+		if !self.url.is_empty() && matches!(*self.r#type.read().await, Some(ManagerType::FlareSolverr)) {
 			let payload = serde_json::json!({
 				"cmd": "sessions.create",
 				"session": id.to_string()
@@ -109,7 +150,7 @@ impl FlareSolverrManager {
 	}
 
 	async fn destroy_session_internal(&self, session_id: Uuid) {
-		if self.url.is_empty() {
+		if self.url.is_empty() || !matches!(*self.r#type.read().await, Some(ManagerType::FlareSolverr)) {
 			return;
 		}
 
@@ -144,29 +185,27 @@ impl FlareSolverrManager {
 		false
 	}
 
-	async fn get_or_refresh_session(&self) -> Result<Uuid, FlareError> {
+	async fn get_or_refresh_session(&self) -> Result<Option<Uuid>, FlareError> {
+		if !matches!(*self.r#type.read().await, Some(ManagerType::FlareSolverr)) {
+			return Ok(None);
+		}
+
 		{
-			let session_guard = self
-				.global_session
-				.read()
-				.map_err(|e| FlareError::SessionError(e.to_string()))?;
+			let session_guard = self.global_session.read().await;
 
 			if let Some(ref session) = *session_guard {
 				if !self.should_refresh_session(session) {
-					return Ok(session.id);
+					return Ok(Some(session.id));
 				}
 			}
 		}
 
 		let old_session_id = {
-			let session_guard = self
-				.global_session
-				.write()
-				.map_err(|e| FlareError::SessionError(e.to_string()))?;
+			let session_guard = self.global_session.write().await;
 
 			if let Some(ref session) = *session_guard {
 				if !self.should_refresh_session(session) {
-					return Ok(session.id);
+					return Ok(Some(session.id));
 				}
 				Some(session.id)
 			} else {
@@ -182,21 +221,21 @@ impl FlareSolverrManager {
 		let session_id = new_session.id;
 
 		{
-			let mut session_guard = self
-				.global_session
-				.write()
-				.map_err(|e| FlareError::SessionError(e.to_string()))?;
+			let mut session_guard = self.global_session.write().await;
 			*session_guard = Some(new_session);
 		}
 
-		Ok(session_id)
+		Ok(Some(session_id))
 	}
 
-	fn increment_request_count(&self) {
-		if let Ok(mut session_guard) = self.global_session.write() {
-			if let Some(ref mut session) = *session_guard {
-				session.request_count += 1;
-			}
+	async fn increment_request_count(&self) {
+		if !matches!(*self.r#type.read().await, Some(ManagerType::FlareSolverr)) {
+			return;
+		}
+
+		let mut session_guard = self.global_session.write().await;
+		if let Some(ref mut session) = *session_guard {
+			session.request_count += 1;
 		}
 	}
 
@@ -213,16 +252,24 @@ impl FlareSolverrManager {
 			return Ok(resp);
 		}
 
-		let session_id = self.get_or_refresh_session().await?;
+		self.determine_manager_type().await?;
 
-		self.increment_request_count();
+		let session_id_opt = self.get_or_refresh_session().await?;
 
-		let payload = serde_json::json!({
+		self.increment_request_count().await;
+
+		let mut payload = serde_json::json!({
 			"cmd": "request.get",
 			"url": parsed_target_url,
 			"maxTimeout": 60000,
-			"session": session_id.to_string()
 		});
+
+		if let Some(session_id) = session_id_opt {
+			payload
+				.as_object_mut()
+				.unwrap()
+				.insert("session".to_string(), serde_json::Value::String(session_id.to_string()));
+		}
 
 		let api_res = self.client.post(&self.url).json(&payload).send().await;
 		if let Ok(r) = api_res {

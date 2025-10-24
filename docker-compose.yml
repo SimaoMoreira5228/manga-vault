@@ -1,0 +1,105 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: manga-vault-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-manga_vault_root}
+      MYSQL_DATABASE: manga_vault
+      MYSQL_USER: ${MYSQL_USER:-manga_vault}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-manga_vault_pass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backups:/backups
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  flaresolverr:
+    image: ghcr.io/thephaseless/byparr:latest
+    container_name: manga-vault-flaresolverr
+    environment:
+      LOG_LEVEL: info
+    ports:
+      - "${FLARESOLVERR_PORT:-8191}:8191"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  gql-api:
+    build:
+      context: .
+      dockerfile: docker/gql-api.Dockerfile
+    container_name: manga-vault-gql-api
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - MVAULT_CONFIG_DIR=/app/config
+      - MVAULT_DATABASE__DATABASE_URL=mysql://manga_vault:manga_vault_pass@mysql:3306/manga_vault
+      - MVAULT_API__API_PORT=5228
+      - MVAULT_API__CORS_ALLOW_ORIGINS=["http://localhost:5227", "http://website:5227"]
+      - MVAULT_PLUGINS__FLARESOLVERR_URL=http://flaresolverr:8191/v1
+      - MVAULT_PLUGINS__PLUGINS_FOLDER=/app/plugins
+    volumes:
+      - config_data:/app/config
+      - plugins_data:/app/plugins
+      - uploads_data:/app/uploads
+    ports:
+      - "${GQL_API_PORT:-5228}:5228"
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/scheduler.Dockerfile
+    container_name: manga-vault-scheduler
+    depends_on:
+      mysql:
+        condition: service_healthy
+      gql-api:
+        condition: service_healthy
+    environment:
+      - MVAULT_CONFIG_DIR=/app/config
+      - MVAULT_DATABASE__DATABASE_URL=mysql://manga_vault:manga_vault_pass@mysql:3306/manga_vault
+      - MVAULT_PLUGINS__FLARESOLVERR_URL=http://flaresolverr:8191/v1
+      - MVAULT_PLUGINS__PLUGINS_FOLDER=/app/plugins
+    volumes:
+      - config_data:/app/config
+      - plugins_data:/app/plugins
+      - uploads_data:/app/uploads
+    restart: unless-stopped
+
+  website-server:
+    build:
+      context: .
+      dockerfile: docker/website-server.Dockerfile
+    container_name: manga-vault-website
+    depends_on:
+      gql-api:
+        condition: service_healthy
+    environment:
+      - MVAULT_CONFIG_DIR=/app/config
+      - MVAULT_WEBSITE__API_ENDPOINT=http://gql-api:5228
+      - MVAULT_WEBSITE__PORT=5227
+      - MVAULT_WEBSITE__FOLDER=/app/website
+    volumes:
+      - config_data:/app/config
+      - website_data:/app/website
+    ports:
+      - "${WEBSITE_PORT:-5227}:5227"
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  config_data:
+  plugins_data:
+  uploads_data:
+  website_data:

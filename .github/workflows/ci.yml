@@ -69,6 +69,16 @@ jobs:
   test:
     name: "Rust: tests"
     runs-on: ubuntu-latest
+    services:
+      byparr:
+        image: ghcr.io/thephaseless/byparr:latest
+        ports:
+          - 8191:8191
+        options: >-
+          --health-cmd "curl -sS http://localhost:8191/health | grep -q \"Byparr\" || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -112,7 +122,7 @@ jobs:
 
           export LUA_PLUGIN_TEST_DIR="$(pwd)/scrapers/"
 
-          export LUA_PLUGIN_TEST_FLARESOLVERR_URL=""
+          export LUA_PLUGIN_TEST_FLARESOLVERR_URL="http://localhost:8191"
           export LUA_PLUGIN_TEST_HEADLESS_URL="http://localhost:4444"
 
           INSTA_FORCE_PASS=1 cargo test --workspace --all-features -- --nocapture
