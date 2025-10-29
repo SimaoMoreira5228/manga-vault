@@ -64,8 +64,6 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      gql-api:
-        condition: service_healthy
     environment:
       - MVAULT_CONFIG_DIR=/app/config
       - MVAULT_DATABASE__DATABASE_URL=mysql://manga_vault:manga_vault_pass@mysql:3306/manga_vault
@@ -82,9 +80,6 @@ services:
       context: .
       dockerfile: docker/website-server.Dockerfile
     container_name: manga-vault-website
-    depends_on:
-      gql-api:
-        condition: service_healthy
     environment:
       - MVAULT_CONFIG_DIR=/app/config
       - MVAULT_WEBSITE__API_ENDPOINT=http://gql-api:5228
