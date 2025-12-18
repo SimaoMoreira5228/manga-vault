@@ -23,18 +23,32 @@ function Scrape_chapter(url)
 	local html = request.text
 	local imgs = {}
 
-	local main_server = string.match(html, "var mainServer = \"([^\"]+)\"")
-	local chap_images_str = string.match(html, "var chapImages = '([^']+)'")
+	local main_server = string.match(html, "var%s+mainServer%s*=%s*\"([^\"]+)\"")
+	local chap_images_str = string.match(html, "var%s+chapImages%s*=%s*'([^']+)'")
+		or string.match(html, "var%s+chapImages%s*=%s*\"([^\"]+)\"")
 
-	if main_server and chap_images_str then
-		local scheme_prefix = string.match(main_server, "^//") and "https:" or ""
-		for img_path in string.gmatch(chap_images_str, "([^,]+)") do
-			table.insert(imgs, scheme_prefix .. main_server .. img_path)
+	if chap_images_str then
+		local scheme_prefix = (main_server and string.match(main_server, "^//")) and "https:" or ""
+		local main_prefix = main_server and (scheme_prefix .. main_server) or ""
+
+		for raw in string.gmatch(chap_images_str, "([^,]+)") do
+			local img = string.trim(raw)
+
+			if img ~= "" then
+				if string.match(img, "^https?://") then
+					table.insert(imgs, img)
+				elseif main_prefix ~= "" then
+					table.insert(imgs, main_prefix .. img)
+				end
+			end
 		end
-		return imgs
+
+		if #imgs > 0 then
+			return imgs
+		end
 	end
 
-	local image_elements = scraping:select_elements(html, "#chapter-images .chapter-image img, .chapter-image[data-src]")
+	local image_elements = scraping:select_elements(html, "#chapter-images .chapter-image img")
 	for _, img_html in ipairs(image_elements) do
 		local img_url = scraping:get_image_url(img_html)
 		if img_url then
@@ -200,7 +214,7 @@ end
 function Get_info()
 	return {
 		id = "mangabuddy",
-		version = "0.3.6",
+		version = "0.3.7",
 		name = "MangaBuddy",
 		img_url = "https://mangabuddy.com/favicon.ico",
 		referer_url = "https://mangabuddy.com/",
