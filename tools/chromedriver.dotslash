@@ -10,7 +10,7 @@
       "path": "chromedriver-linux64/chromedriver",
       "providers": [
         {
-          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/linux64/chromedriver-linux64.zip"
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/143.0.7499.146/linux64/chromedriver-linux64.zip"
         }
       ]
     },
@@ -22,7 +22,7 @@
       "path": "chromedriver-mac-arm64/chromedriver",
       "providers": [
         {
-          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/mac-arm64/chromedriver-mac-arm64.zip"
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/143.0.7499.146/mac-arm64/chromedriver-mac-arm64.zip"
         }
       ]
     },
@@ -34,7 +34,7 @@
       "path": "chromedriver-mac-x64/chromedriver",
       "providers": [
         {
-          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/mac-x64/chromedriver-mac-x64.zip"
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/143.0.7499.146/mac-x64/chromedriver-mac-x64.zip"
         }
       ]
     },
@@ -46,7 +46,7 @@
       "path": "chromedriver-win64/chromedriver.exe",
       "providers": [
         {
-          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/win64/chromedriver-win64.zip"
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/143.0.7499.146/win64/chromedriver-win64.zip"
         }
       ]
     }
