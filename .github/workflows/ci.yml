@@ -75,7 +75,7 @@ jobs:
         ports:
           - 8191:8191
         options: >-
-          --health-cmd "curl -sS http://localhost:8191/health | grep -q \"Byparr\" || exit 1"
+          --health-cmd "curl -fsS http://localhost:8191/health >/dev/null || exit 1"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

@@ -4,49 +4,49 @@
   "platforms": {
     "linux-x86_64": {
       "hash": "sha256",
-      "digest": "f5eaf884a5dc2c59f47332f7465cc0df18fa4644a6d16990b3aae52d88abaddb",
-      "size": 9949774,
+      "digest": "1c6bf134deb8fa19ba54b9704db160409ce3bac0e87c6a39d85ee16af54cf72e",
+      "size": 9626405,
       "format": "zip",
       "path": "chromedriver-linux64/chromedriver",
       "providers": [
         {
-          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/linux64/chromedriver-linux64.zip"
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/143.0.7499.146/linux64/chromedriver-linux64.zip"
         }
       ]
     },
     "macos-aarch64": {
       "hash": "sha256",
-      "digest": "de20bbbb71a2a902fb38d92c08ecd43a8dd896b896b8ab69af79b7489cbb5464",
-      "size": 8779935,
+      "digest": "a797a6eba2534320f6d50b5c6b9ffcb9ec5df45b77b1befcfaab23c0e00b41ff",
+      "size": 8386464,
       "format": "zip",
       "path": "chromedriver-mac-arm64/chromedriver",
       "providers": [
         {
-          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/mac-arm64/chromedriver-mac-arm64.zip"
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/143.0.7499.146/mac-arm64/chromedriver-mac-arm64.zip"
         }
       ]
     },
     "macos-x86_64": {
       "hash": "sha256",
-      "digest": "36ac36651eb0c0afe45854e626dd78c259b539d54c12d48f4f9c47692c4639b8",
-      "size": 9161047,
+      "digest": "5fbac6bee59ae9fa4bb58431c4f91d8f9cd186c228610bb670bc273622421121",
+      "size": 9339036,
       "format": "zip",
       "path": "chromedriver-mac-x64/chromedriver",
       "providers": [
         {
-          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/mac-x64/chromedriver-mac-x64.zip"
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/143.0.7499.146/mac-x64/chromedriver-mac-x64.zip"
         }
       ]
     },
     "windows-x86_64": {
       "hash": "sha256",
-      "digest": "71435de3bec5bc8d23446167255579daa893c8517e4e7a1498b10cc98d92df77",
-      "size": 9911630,
+      "digest": "aec28322d934ba0365d935604f4cf701e9c5ffc53ad9a6055869bff81c3e26ac",
+      "size": 9683430,
       "format": "zip",
       "path": "chromedriver-win64/chromedriver.exe",
       "providers": [
         {
-          "url": "https://storage.googleapis.com/chrome-for-testing-public/140.0.7339.185/win64/chromedriver-win64.zip"
+          "url": "https://storage.googleapis.com/chrome-for-testing-public/143.0.7499.146/win64/chromedriver-win64.zip"
         }
       ]
     }
