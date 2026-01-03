@@ -1,6 +1,6 @@
 [package]
 name = "manga-vault"
-version = "1.5.11"
+version = "1.6.0"
 edition = "2024"
 
 [[bin]]
@@ -10,6 +10,7 @@ path = "src/main.rs"
 [workspace]
 members = [
 	"apps/http/*",
+	"apps/manga_sync",
 	"apps/scheduler",
 	"apps/scheduler/queue",
 	"apps/website/server",
@@ -30,10 +31,11 @@ database-connection = { path = "database/connection" }
 database-entities = { path = "database/entities" }
 database-migration = { path = "database/migration" }
 gql-api = { path = "apps/http/gql" }
+manga-sync = { path = "apps/manga_sync" }
 queue = { path = "apps/scheduler/queue" }
 rand = "0.9"
 regex = "1.12"
-reqwest = { version = "0.12", features = ["stream", "blocking", "json"] }
+reqwest = { version = "0.13", features = ["stream", "blocking", "json"] }
 rustls = "0.23"
 rustls-pemfile = "2.2"
 scheduler = { path = "apps/scheduler" }
@@ -43,6 +45,7 @@ scuffle-http = { version = "0.3.2", features = ["http3", "http3-tls-rustls", "tl
 sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-postgres", "sqlx-mysql", "runtime-tokio-native-tls", "macros", "with-chrono", "with-json", "with-uuid"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
+thiserror = "2"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"

@@ -2,9 +2,10 @@
 import { resolve } from "$app/paths";
 import { getAuthState } from "$lib/auth.svelte";
 import { client } from "$lib/graphql/client";
+import { getManga } from "$lib/utils/getManga";
 import { proxyImage } from "$lib/utils/image";
 import { toaster } from "$lib/utils/toaster-svelte";
-import { BookmarkMinus, BookmarkPlus, Eye, EyeOff, SquareArrowOutUpRight } from "@lucide/svelte";
+import { BookmarkMinus, BookmarkPlus, Eye, EyeOff, RefreshCw, SquareArrowOutUpRight } from "@lucide/svelte";
 import { Modal } from "@skeletonlabs/skeleton-svelte";
 import { gql } from "@urql/svelte";
 import type { PageData } from "./$types";
@@ -199,6 +200,40 @@ async function unreadAllChapters() {
 	loadingStates = { ...loadingStates, unreadAll: false };
 }
 
+async function syncManga() {
+	if (authState.status !== "authenticated") return;
+	if (!manga) throw new Error("Manga not found");
+
+	loadingStates = { ...loadingStates, syncManga: true };
+
+	const { error } = await client
+		.mutation(
+			gql`
+				mutation syncManga($mangaId: Int!) {
+					manga {
+						syncManga(mangaId: $mangaId)
+					}
+				}
+			`,
+			{ mangaId: manga.id },
+		)
+		.toPromise();
+
+	if (error) {
+		console.error("syncManga failed", error);
+		toaster.error({ title: "Error", description: "Failed to sync manga" });
+		loadingStates = { ...loadingStates, syncManga: false };
+		return;
+	}
+
+	const refreshed = await getManga(manga.id);
+	if (refreshed) {
+		manga = refreshed;
+	}
+
+	loadingStates = { ...loadingStates, syncManga: false };
+}
+
 function getResumeChapter(): number | null {
 	const chapters = [...(manga?.chapters ?? [])];
 	for (const chapter of chapters.reverse() ?? []) {
@@ -279,6 +314,17 @@ function areAllChaptersRead(): boolean {
 			<div class="flex w-full flex-row items-center justify-between gap-2">
 				<div class="flex w-full flex-row items-center justify-start gap-2">
 					{#if authState.status === "authenticated"}
+						<button
+							class="btn preset-tonal-primary"
+							disabled={!!loadingStates.syncManga}
+							onclick={syncManga}
+						>
+							<RefreshCw />
+							<span class="hidden md:block">
+								{loadingStates.syncManga ? "Syncing..." : "Sync Now"}
+							</span>
+						</button>
+
 						{#if manga?.isFavorite}
 							<button class="btn preset-tonal-primary" onclick={toggleFavorite}>
 								<BookmarkMinus />

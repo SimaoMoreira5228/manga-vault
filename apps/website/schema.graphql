@@ -168,11 +168,16 @@ type MangaQuery {
 	mangasByIds(ids: [Int!]!): [Manga!]!
 }
 
+type MangaMutation {
+	syncManga(mangaId: Int!): Boolean!
+}
+
 type MutationRoot {
 	auth: AuthMutation!
 	profile: ProfileMutation!
 	favoriteManga: FavoriteMangaMutation!
 	category: CategoryMutation!
+	manga: MangaMutation!
 	mangaPack: MangaPackMutation!
 	chapter: ChapterMutation!
 	files: FileMutation!

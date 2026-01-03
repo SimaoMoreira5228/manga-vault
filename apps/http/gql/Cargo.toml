@@ -1,6 +1,6 @@
 [package]
 name = "gql-api"
-version = "0.5.11"
+version = "0.6.0"
 edition = "2024"
 
 [lib]
@@ -26,7 +26,8 @@ database-entities = { workspace = true }
 futures-util = "0.3"
 httpdate = "1.0.3"
 image = "0.25"
-jsonwebtoken = "9.3"
+jsonwebtoken = { version = "10", features = ["aws_lc_rs"] }
+manga-sync = { workspace = true }
 rand = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true }
