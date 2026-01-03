@@ -3,16 +3,14 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::Context;
 use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
 use database_connection::Database;
 use database_entities::{favorite_mangas, mangas};
 use queue::queue_item::QueueItem;
 use queue::{EnqueueStrategy, TaskQueue};
 use scraper_core::ScraperManager;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set, TransactionTrait};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 use tokio::sync::Mutex;
-use url::Url;
 
 #[allow(dead_code)]
 pub struct MangaUpdateScheduler {
@@ -104,168 +102,27 @@ impl MangaUpdateScheduler {
 					tracker.mark_used(&item.payload.scraper_name);
 					drop(tracker);
 
-					let result = (async {
-						let mut manga = database_entities::mangas::Entity::find_by_id(item.payload.manga_id)
-							.one(&db.conn)
-							.await
-							.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?
-							.ok_or_else(|| anyhow::anyhow!("Manga {} not found", item.payload.manga_id))?;
-
-						let plugin = scraper_manager.get_plugin(&item.payload.scraper_name).await;
-
-						if plugin.is_none() {
-							tracing::warn!("Scraper plugin '{}' not found, skipping update", item.payload.scraper_name);
-							ignored_scrapers.lock().await.insert(item.payload.scraper_name.clone());
-							return Ok(());
-						}
-
-						let plugin = plugin.unwrap();
-
-						let plugin_info = plugin.get_info().await?;
-						if let Some(legacy_urls) = plugin_info.legacy_urls {
-							if let Some(base_url) = plugin_info.base_url {
-								let canonical_host = host_from_base(&base_url)
-									.ok_or_else(|| anyhow::anyhow!("Invalid base URL: {}", base_url))?
-									.to_lowercase()
-									.to_string();
-
-								let legacy_hosts: Vec<String> = legacy_urls
-									.iter()
-									.filter_map(|d| {
-										Url::parse(d)
-											.ok()
-											.and_then(|u| u.host_str().map(|s| s.to_lowercase().to_string()))
-									})
-									.collect();
-
-								let parsed_manga_url = Url::parse(&manga.url)?;
-								let manga_host = parsed_manga_url
-									.host_str()
-									.ok_or_else(|| anyhow::anyhow!("Invalid manga URL: {}", manga.url))?
-									.to_lowercase()
-									.to_string();
-
-								if legacy_hosts.iter().any(|h| h == &manga_host) {
-									tracing::info!(
-										"Rewriting manga {} url host {} -> {}",
-										manga.id,
-										manga_host,
-										canonical_host
-									);
-									let txn = db.conn.begin().await?;
-									{
-										use database_entities::mangas;
-										let mut am: mangas::ActiveModel = manga.clone().into();
-										let new_url = replace_host_preserve_path(&manga.url, &canonical_host)?;
-										am.url = Set(new_url.clone());
-										am.updated_at = Set(Utc::now().naive_utc());
-										am.update(&txn).await?;
-										manga.url = new_url;
-									}
-
-									{
-										use database_entities::chapters;
-										let chapter_models = chapters::Entity::find()
-											.filter(chapters::Column::MangaId.eq(manga.id))
-											.all(&txn)
-											.await?;
-										for ch in chapter_models {
-											if let Ok(cu) = Url::parse(&ch.url) {
-												if let Some(ch_host) = cu.host_str() {
-													let ch_host_norm = ch_host.to_lowercase().to_string();
-													if legacy_hosts.iter().any(|h| h == &ch_host_norm) {
-														let new_ch_url =
-															replace_host_preserve_path(&ch.url, &canonical_host)?;
-														let mut cham: chapters::ActiveModel = ch.into();
-														cham.url = Set(new_ch_url);
-														cham.updated_at = Set(Utc::now().naive_utc());
-														cham.update(&txn).await?;
-													}
-												}
-											}
-										}
-									}
-
-									txn.commit().await?;
-								}
-							} else {
-								tracing::warn!(
-									"Scraper plugin '{}' has legacy URLs but no base URL, skipping update",
-									item.payload.scraper_name
-								);
-								ignored_scrapers.lock().await.insert(item.payload.scraper_name.clone());
-								return Ok(());
-							}
-						}
-
-						let scraped_manga = plugin.scrape_manga(manga.url.clone()).await?;
-
-						let manga_created_at = manga.created_at.clone();
-						let mut manga: database_entities::mangas::ActiveModel = manga.into();
-						let parsed_date = scraped_manga.parse_release_date();
-
-						manga.title = Set(scraped_manga.title);
-						manga.img_url = Set(scraped_manga.img_url);
-						manga.description = Set(Some(scraped_manga.description));
-						manga.alternative_names = Set(Some(scraped_manga.alternative_names.join(", ")));
-						manga.authors = Set(Some(scraped_manga.authors.join(", ")));
-						manga.artists = Set(scraped_manga.artists.map(|artists| artists.join(", ")));
-						manga.status = Set(Some(scraped_manga.status));
-						manga.manga_type = Set(scraped_manga.manga_type);
-						manga.release_date = Set(parsed_date);
-						manga.genres = Set(Some(scraped_manga.genres.join(", ")));
-						manga.updated_at = Set(Utc::now().naive_utc());
-
-						if manga_created_at.is_none() {
-							manga.created_at = Set(Some(Utc::now().naive_utc()));
-						}
-
-						let manga = manga
-							.update(&db.conn)
-							.await
-							.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
-
-						let mut active_models: Vec<database_entities::chapters::ActiveModel> = Vec::new();
-						let chapter_urls: Vec<String> = scraped_manga.chapters.iter().map(|c| c.url.clone()).collect();
-
-						let existing_chapters: Vec<database_entities::chapters::Model> =
-							database_entities::chapters::Entity::find()
-								.filter(database_entities::chapters::Column::MangaId.eq(manga.id.clone()))
-								.filter(database_entities::chapters::Column::Url.is_in(chapter_urls.clone()))
-								.all(&db.conn)
-								.await
-								.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
-
-						let existing_urls: std::collections::HashSet<String> =
-							existing_chapters.into_iter().map(|c| c.url).collect();
-
-						for chapter in scraped_manga.chapters {
-							if !existing_urls.contains(&chapter.url) {
-								let new_chapter = database_entities::chapters::ActiveModel {
-									manga_id: Set(manga.id),
-									title: Set(chapter.title),
-									url: Set(chapter.url),
-									created_at: Set(Utc::now().naive_utc()),
-									updated_at: Set(Utc::now().naive_utc()),
-									..Default::default()
-								};
-
-								active_models.push(new_chapter);
-							}
-						}
-
-						if !active_models.is_empty() {
-							database_entities::chapters::Entity::insert_many(active_models)
-								.exec(&db.conn)
-								.await
-								.map_err(|e: sea_orm::DbErr| anyhow::Error::from(e))?;
-						}
-
-						Ok(())
-					})
+					let result = manga_sync::sync_manga_with_scraper(
+						db.as_ref(),
+						scraper_manager.as_ref(),
+						item.payload.manga_id,
+						&item.payload.scraper_name,
+					)
 					.await;
 
-					result
+					match result {
+						Ok(()) => Ok(()),
+						Err(err) => {
+							if matches!(err, manga_sync::SyncError::ScraperNotFound { .. }) {
+								tracing::warn!("Scraper plugin '{}' not found, skipping update", item.payload.scraper_name);
+								ignored_scrapers.lock().await.insert(item.payload.scraper_name.clone());
+								Ok(())
+							} else {
+								let boxed: Box<dyn std::error::Error + Send + Sync> = Box::new(err);
+								Err(boxed)
+							}
+						}
+					}
 				})
 					as Pin<
 						Box<dyn std::future::Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>,
@@ -398,26 +255,4 @@ impl MangaUpdateScheduler {
 
 		base.saturating_add(hours_stale.min(10))
 	}
-}
-
-fn host_from_base(base_url: &str) -> Option<String> {
-	Url::parse(base_url).ok().and_then(|u| u.host_str().map(|s| s.to_string()))
-}
-
-fn replace_host_preserve_path(old_url: &str, new_host: &str) -> anyhow::Result<String> {
-	let mut u = Url::parse(old_url).with_context(|| format!("parse failed for {}", old_url))?;
-
-	if let Some(idx) = new_host.find(':') {
-		let host = &new_host[..idx];
-		let port = &new_host[idx + 1..];
-		u.set_host(Some(host)).with_context(|| format!("set_host failed {}", host))?;
-		let port_num: u16 = port.parse().with_context(|| format!("invalid port {}", port))?;
-		u.set_port(Some(port_num)).ok();
-	} else {
-		u.set_host(Some(new_host))
-			.with_context(|| format!("set_host failed {}", new_host))?;
-		u.set_port(None).ok();
-	}
-
-	Ok(u.into())
 }
