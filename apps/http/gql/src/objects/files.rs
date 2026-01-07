@@ -12,7 +12,7 @@ use crate::objects::users::User;
 pub struct File {
 	pub id: i32,
 	pub name: String,
-	pub owner_id: i32,
+	pub owner_id: Option<i32>,
 	pub created_at: NaiveDateTime,
 }
 
@@ -31,7 +31,11 @@ impl From<database_entities::files::Model> for File {
 impl File {
 	async fn owner(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<User> {
 		let db = ctx.data::<Arc<Database>>()?;
-		let user = database_entities::users::Entity::find_by_id(self.owner_id)
+		if self.owner_id.is_none() {
+			return Err(async_graphql::Error::new("File has no owner"));
+		}
+
+		let user = database_entities::users::Entity::find_by_id(self.owner_id.unwrap())
 			.one(&db.conn)
 			.await?
 			.ok_or_else(|| async_graphql::Error::new("User not found"))?;

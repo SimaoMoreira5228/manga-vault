@@ -46,7 +46,7 @@ pub struct TaskQueue<J> {
 
 impl<J> TaskQueue<J>
 where
-	J: Clone + Send + Sync + 'static,
+	J: Clone + Send + Sync + std::fmt::Debug + 'static,
 {
 	/// Create a new TaskQueue
 	#[allow(clippy::too_many_arguments)]
@@ -137,7 +137,15 @@ where
 										debug!(key = %item.key, "Job succeeded");
 									}
 									Err(e) => {
-										error!(key = %item.key, "Job failed: {:#}", e);
+										error!(
+											key = %item.key,
+											fail_count = item.fail_count,
+											priority = item.priority,
+											retry_at_ms = item.retry_at.elapsed().as_millis(),
+											payload = ?item.payload,
+											"Job failed: {:#}",
+											e
+										);
 										let mut new_item = item;
 										new_item.fail_count += 1;
 

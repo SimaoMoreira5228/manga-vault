@@ -260,7 +260,7 @@ impl FlareSolverrManager {
 
 		let mut payload = serde_json::json!({
 			"cmd": "request.get",
-			"url": parsed_target_url,
+			"url": parsed_target_url.to_string(),
 			"maxTimeout": 60000,
 		});
 

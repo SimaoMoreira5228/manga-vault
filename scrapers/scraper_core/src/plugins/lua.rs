@@ -27,7 +27,11 @@ impl LuaPlugin {
 		let mut script_content = String::new();
 		lua_file.read_to_string(&mut script_content)?;
 
-		runtime.load(&script_content).exec()?;
+		runtime
+			.load(&script_content)
+			.set_name(&format!("@{}", file.display()))
+			.exec()
+			.with_context(|| format!("Failed to load Lua plugin: {}", file.display()))?;
 
 		let globals = runtime.globals();
 		let info: mlua::Function = globals.get("Get_info").context("Missing PLUGIN_NAME in Lua plugin")?;

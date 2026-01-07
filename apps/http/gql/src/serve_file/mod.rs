@@ -52,7 +52,7 @@ pub async fn serve_file(
 		None => return Err(StatusCode::NOT_FOUND),
 	};
 
-	if file_model.owner_id != user_id {
+	if file_model.owner_id != Some(user_id) {
 		return Err(StatusCode::FORBIDDEN);
 	}
 
