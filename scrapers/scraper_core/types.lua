@@ -1,6 +1,18 @@
 -- @ignore
 ---@meta
 
+-- Error Handling
+---@class ScraperError
+---@field kind "network" | "cloudflare" | "rate_limit" | "not_found" | "parse" | "validation" | "internal"
+---@field message string
+---@field retryable boolean
+---@field status_code integer?
+
+---@class ScraperResult<T>
+---@field ok boolean
+---@field value T?
+---@field error ScraperError?
+
 -- HTTP and response types
 ---@class CommonHttp
 ---@field get fun(self: CommonHttp, url: string, headers?: table<string, string>): HttpResponse
@@ -9,10 +21,12 @@
 ---@field url_encode fun(self: CommonHttp, s: string): string
 
 ---@class HttpResponse
+---@field ok boolean
+---@field error ScraperError?
 ---@field text string
 ---@field status integer
 ---@field headers table<string, string>
----@field json fun(self: HttpResponse): table
+---@field json fun(): any
 
 -- Headless client and element
 ---@class HeadlessClient
@@ -27,7 +41,7 @@
 
 -- FlareSolverr
 ---@class FlareSolverrManager
----@field get fun(self: FlareSolverrManager, url: string, session_id?: string): HttpResponse
+---@field get fun(self: FlareSolverrManager, url: string): HttpResponse
 ---@field using_flaresolverr fun(self: FlareSolverrManager): boolean
 
 -- Custom scraper helpers
@@ -37,10 +51,19 @@
 ---@field get_url fun(self: CustomScraper, html: string): string
 ---@field select_elements fun(self: CustomScraper, html: string, selector: string): string[]
 ---@field select_element fun(self: CustomScraper, html: string, selector: string): string?
+---@field try_select_elements fun(self: CustomScraper, html: string, selector: string): ScraperResult<string[]>
+---@field try_select_element fun(self: CustomScraper, html: string, selector: string): ScraperResult<string>
 
 -- Utility functions
 ---@class Utils
 ---@field sleep fun(ms: number)
+
+-- Logging
+---@class Log
+---@field debug fun(...: any)
+---@field info fun(...: any)
+---@field warn fun(...: any)
+---@field error fun(...: any)
 
 -- Declare the runtime globals (so the server knows they exist)
 ---@type CommonHttp
@@ -57,6 +80,9 @@ scraping = nil
 
 ---@type Utils
 utils = nil
+
+---@type Log
+log = nil
 
 -- Extend the builtin string/table libraries so the language server won't mark our runtime-added helpers as undefined.
 ---@class stringlib

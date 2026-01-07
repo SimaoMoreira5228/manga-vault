@@ -1,42 +1,37 @@
-use std::collections::HashMap;
+use mlua::{IntoLua, Lua, LuaSerdeExt, Table};
 
-use mlua::{Lua, LuaSerdeExt, Table};
+use crate::plugins::common::http::Response;
 
-pub fn create_response_table(lua: &Lua, text: String, status: u16, headers: HashMap<String, String>) -> mlua::Result<Table> {
+pub fn create_response_table(lua: &Lua, response: Response) -> mlua::Result<Table> {
 	let response_table = lua.create_table()?;
-	response_table
-		.set("text", text.clone())
-		.map_err(|e| mlua::Error::external(format!("Failed to set text field: {}", e)))?;
-	response_table
-		.set("status", status)
-		.map_err(|e| mlua::Error::external(format!("Failed to set status field: {}", e)))?;
 
-	let headers_table = lua
-		.create_table()
-		.map_err(|e| mlua::Error::external(format!("Failed to create headers table: {}", e)))?;
-	for (key, value) in headers {
-		headers_table
-			.set(key.clone(), value)
-			.map_err(|e| mlua::Error::external(format!("Failed to set header {}: {}", key, e)))?;
+	let text = response.text.clone();
+	response_table.set("text", response.text)?;
+	response_table.set("status", response.status)?;
+	response_table.set("ok", response.ok)?;
+
+	let headers_table = lua.create_table()?;
+	for (key, value) in response.headers {
+		headers_table.set(key, value)?;
 	}
-	response_table
-		.set("headers", headers_table)
-		.map_err(|e| mlua::Error::external(format!("Failed to set headers field: {}", e)))?;
+	response_table.set("headers", headers_table)?;
 
-	response_table
-		.set(
-			"json",
-			lua.create_function(move |lua, ()| {
-				let json: serde_json::Value = match serde_json::from_str(&text) {
-					Ok(value) => value,
-					Err(_) => serde_json::Value::Null,
-				};
+	if let Some(error) = response.error {
+		response_table.set("error", error.into_lua(lua)?)?;
+	} else {
+		response_table.set("error", mlua::Value::Nil)?;
+	}
 
-				lua.to_value(&json)
-			})
-			.map_err(|e| mlua::Error::external(format!("Failed to create json function: {}", e)))?,
-		)
-		.map_err(|e| mlua::Error::external(format!("Failed to set json field: {}", e)))?;
+	response_table.set(
+		"json",
+		lua.create_function(move |lua, ()| {
+			let json: serde_json::Value = match serde_json::from_str(&text) {
+				Ok(value) => value,
+				Err(_) => serde_json::Value::Null,
+			};
+			lua.to_value(&json)
+		})?,
+	)?;
 
 	Ok(response_table)
 }
@@ -59,8 +54,13 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 #[cfg(test)]
 #[cfg_attr(all(coverage_nightly, test), coverage(off))]
 mod tests {
-	use mlua::Lua;
+	use std::collections::HashMap;
 	use std::time::Instant;
+
+	use mlua::Lua;
+	use scraper_types::ScraperError;
+
+	use crate::plugins::common::http::Response;
 
 	#[tokio::test]
 	async fn test_utils_sleep() {
@@ -75,5 +75,35 @@ mod tests {
 		let elapsed = start.elapsed();
 		assert!(result);
 		assert!(elapsed.as_secs_f64() >= 2.0, "Sleep was less than 2 seconds: {:?}", elapsed);
+	}
+
+	#[test]
+	fn test_response_table_success() {
+		let lua = Lua::new();
+		let response = Response::success("Hello".to_string(), 200, HashMap::new());
+
+		let table = super::create_response_table(&lua, response).unwrap();
+
+		assert_eq!(table.get::<String>("text").unwrap(), "Hello");
+		assert_eq!(table.get::<u16>("status").unwrap(), 200);
+		assert!(table.get::<bool>("ok").unwrap());
+		assert!(table.get::<mlua::Value>("error").unwrap().is_nil());
+	}
+
+	#[test]
+	fn test_response_table_error() {
+		let lua = Lua::new();
+		let error = ScraperError::network("Connection failed");
+		let response = Response::from_error(error);
+
+		let table = super::create_response_table(&lua, response).unwrap();
+
+		assert_eq!(table.get::<String>("text").unwrap(), "");
+		assert_eq!(table.get::<u16>("status").unwrap(), 0);
+		assert!(!table.get::<bool>("ok").unwrap());
+
+		let error_table: mlua::Table = table.get("error").unwrap();
+		assert_eq!(error_table.get::<String>("kind").unwrap(), "network");
+		assert!(error_table.get::<bool>("retryable").unwrap());
 	}
 }

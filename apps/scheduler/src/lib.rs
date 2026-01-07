@@ -117,6 +117,27 @@ impl MangaUpdateScheduler {
 								tracing::warn!("Scraper plugin '{}' not found, skipping update", item.payload.scraper_name);
 								ignored_scrapers.lock().await.insert(item.payload.scraper_name.clone());
 								Ok(())
+							} else if let manga_sync::SyncError::ScraperError(ref se) = err {
+								if se.retryable {
+									tracing::warn!(
+										key = %item.key,
+										scraper = %item.payload.scraper_name,
+										"Retryable scraper error: {}. Attempt {}/{}",
+										se,
+										item.fail_count + 1,
+										3
+									);
+									let boxed: Box<dyn std::error::Error + Send + Sync> = Box::new(err);
+									Err(boxed)
+								} else {
+									tracing::error!(
+										key = %item.key,
+										scraper = %item.payload.scraper_name,
+										"Permanent scraper error: {}. Skipping update.",
+										se
+									);
+									Ok(())
+								}
 							} else {
 								tracing::error!(
 									key = %item.key,

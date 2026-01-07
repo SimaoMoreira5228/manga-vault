@@ -49,11 +49,13 @@ impl FallbackBackend {
 #[async_trait]
 impl HeadlessBackend for FallbackBackend {
 	async fn goto(&self, url: String) -> Result<(), HeadlessError> {
-		let resp = self
-			.http
-			.get(url, None)
-			.await
-			.map_err(|e| HeadlessError::BrowserError(e.to_string()))?;
+		let resp = self.http.get(url, None).await;
+
+		if !resp.ok {
+			let msg = resp.error.map(|e| e.message).unwrap_or_else(|| "Unknown error".to_string());
+			return Err(HeadlessError::BrowserError(msg));
+		}
+
 		*self.last_html.lock().await = Some(resp.text);
 		Ok(())
 	}

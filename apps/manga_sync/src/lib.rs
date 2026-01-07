@@ -1,5 +1,6 @@
 use chrono::Utc;
 use database_connection::Database;
+use scraper_types::{ScraperError, ScraperErrorKind};
 use sea_orm::sea_query::OnConflict;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait};
 use thiserror::Error;
@@ -52,10 +53,15 @@ pub enum SyncError {
 		source: std::num::ParseIntError,
 	},
 
-	#[error("Scraper error: {message}")]
-	ScraperError {
-		message: String,
-	},
+	#[error(transparent)]
+	ScraperError(#[from] ScraperError),
+}
+
+fn map_plugin_error(e: anyhow::Error) -> SyncError {
+	match e.downcast::<ScraperError>() {
+		Ok(se) => SyncError::ScraperError(se),
+		Err(e) => SyncError::ScraperError(ScraperError::new(ScraperErrorKind::Internal, e.to_string())),
+	}
 }
 
 pub async fn sync_manga_by_id(
@@ -89,10 +95,7 @@ pub async fn sync_manga_with_scraper(
 			scraper_name: scraper_name.to_string(),
 		})?;
 
-	let plugin_info = plugin
-		.get_info()
-		.await
-		.map_err(|e| SyncError::ScraperError { message: e.to_string() })?;
+	let plugin_info = plugin.get_info().await.map_err(map_plugin_error)?;
 
 	if let Some(legacy_urls) = plugin_info.legacy_urls {
 		let base_url = plugin_info.base_url.ok_or_else(|| SyncError::ScraperMissingBaseUrl {
@@ -156,10 +159,7 @@ pub async fn sync_manga_with_scraper(
 		}
 	}
 
-	let scraped_manga = plugin
-		.scrape_manga(manga.url.clone())
-		.await
-		.map_err(|e| SyncError::ScraperError { message: e.to_string() })?;
+	let scraped_manga = plugin.scrape_manga(manga.url.clone()).await.map_err(map_plugin_error)?;
 
 	let manga_created_at = manga.created_at.clone();
 	let mut manga: database_entities::mangas::ActiveModel = manga.into();

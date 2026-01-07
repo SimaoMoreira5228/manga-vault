@@ -19,6 +19,7 @@ manga-sync = { workspace = true }
 queue = { workspace = true }
 rand = { workspace = true }
 scraper_core = { workspace = true }
+scraper_types = { workspace = true }
 sea-orm = { workspace = true }
 tokio = { version = "1", features = ["full"] }
 tracing = { workspace = true }
