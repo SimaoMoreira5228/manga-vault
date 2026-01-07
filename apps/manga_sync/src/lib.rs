@@ -1,5 +1,6 @@
 use chrono::Utc;
 use database_connection::Database;
+use sea_orm::sea_query::OnConflict;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait};
 use thiserror::Error;
 use url::Url;
@@ -186,7 +187,6 @@ pub async fn sync_manga_with_scraper(
 	let chapter_urls: Vec<String> = scraped_manga.chapters.iter().map(|c| c.url.clone()).collect();
 
 	let existing_chapters: Vec<database_entities::chapters::Model> = database_entities::chapters::Entity::find()
-		.filter(database_entities::chapters::Column::MangaId.eq(manga.id.clone()))
 		.filter(database_entities::chapters::Column::Url.is_in(chapter_urls.clone()))
 		.all(&db.conn)
 		.await?;
@@ -211,6 +211,11 @@ pub async fn sync_manga_with_scraper(
 
 	if !active_models.is_empty() {
 		database_entities::chapters::Entity::insert_many(active_models)
+			.on_conflict(
+				OnConflict::column(database_entities::chapters::Column::Url)
+					.do_nothing()
+					.to_owned(),
+			)
 			.exec(&db.conn)
 			.await?;
 	}

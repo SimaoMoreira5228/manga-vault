@@ -10,6 +10,7 @@ mod m20250620_173359_mangas_table_changes;
 mod m20250624_225246_scanlation_groups;
 mod m20250624_230849_create_manga_packs;
 mod m20250825_035028_data_time_on_temp_table;
+mod m20260107_124950_unique_urls;
 
 pub struct Migrator;
 
@@ -27,6 +28,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20250624_225246_scanlation_groups::Migration),
 			Box::new(m20250624_230849_create_manga_packs::Migration),
 			Box::new(m20250825_035028_data_time_on_temp_table::Migration),
+			Box::new(m20260107_124950_unique_urls::Migration),
 		]
 	}
 }

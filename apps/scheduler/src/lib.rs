@@ -21,7 +21,7 @@ pub struct MangaUpdateScheduler {
 	scraper_cooldown: Arc<Mutex<ScraperCooldownTracker>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[allow(dead_code)]
 struct MangaUpdateJob {
 	manga_id: i32,
@@ -118,6 +118,14 @@ impl MangaUpdateScheduler {
 								ignored_scrapers.lock().await.insert(item.payload.scraper_name.clone());
 								Ok(())
 							} else {
+								tracing::error!(
+									key = %item.key,
+									manga_id = item.payload.manga_id,
+									scraper = %item.payload.scraper_name,
+									attempt = item.fail_count + 1,
+									"Manga sync job failed: {:#}",
+									err
+								);
 								let boxed: Box<dyn std::error::Error + Send + Sync> = Box::new(err);
 								Err(boxed)
 							}
@@ -227,7 +235,7 @@ impl MangaUpdateScheduler {
 						last_attempt: None,
 					};
 
-					let key = format!("manga-update-{}", manga.id);
+					let key = format!("manga-update-{}-{}", scraper, manga.id);
 					if self.queue.insert(key, job, priority).await {
 						scheduled += 1;
 					}
