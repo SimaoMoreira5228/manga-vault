@@ -3,7 +3,7 @@
 
 -- Error Handling
 ---@class ScraperError
----@field kind "network" | "cloudflare" | "rate_limit" | "not_found" | "parse" | "validation" | "internal"
+---@field kind "network" | "cloudflare" | "rate_limit" | "not_found" | "parse" | "validation" | "internal" | string
 ---@field message string
 ---@field retryable boolean
 ---@field status_code integer?
@@ -57,6 +57,7 @@
 -- Utility functions
 ---@class Utils
 ---@field sleep fun(ms: number)
+---@field raise_error fun(kind: string, message: string, retryable: boolean?)
 
 -- Logging
 ---@class Log
@@ -91,6 +92,11 @@ log = nil
 ---@field trim_start fun(s: string): string
 ---@field trim_end fun(s: string): string
 ---@field replace fun(s: string, pattern: string, replacement: string): string
+---@field contains fun(s: string, needle: string): boolean
+---@field starts_with fun(s: string, prefix: string): boolean
+---@field ends_with fun(s: string, suffix: string): boolean
+---@field substring_after fun(s: string, delimiter: string): string
+---@field substring_before fun(s: string, delimiter: string): string
 
 ---@type stringlib
 string = string or {}

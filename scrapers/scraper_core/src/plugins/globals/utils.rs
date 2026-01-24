@@ -1,4 +1,5 @@
 use mlua::{IntoLua, Lua, LuaSerdeExt, Table};
+use scraper_types::{ScraperError, ScraperErrorKind};
 
 use crate::plugins::common::http::Response;
 
@@ -47,6 +48,18 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 		})?,
 	)?;
 
+	utils_table.set(
+		"raise_error",
+		lua.create_function(|_, (kind_str, message, retryable): (String, String, Option<bool>)| -> mlua::Result<()> {
+			let kind = ScraperErrorKind::from_str(&kind_str);
+			let mut error = ScraperError::new(kind, message);
+			if let Some(r) = retryable {
+				error.retryable = r;
+			}
+			Err(mlua::Error::external(error))
+		})?,
+	)?;
+
 	lua.globals().set("utils", utils_table)?;
 	Ok(())
 }
@@ -58,7 +71,7 @@ mod tests {
 	use std::time::Instant;
 
 	use mlua::Lua;
-	use scraper_types::ScraperError;
+	use scraper_types::{ScraperError, ScraperErrorKind};
 
 	use crate::plugins::common::http::Response;
 
@@ -105,5 +118,32 @@ mod tests {
 		let error_table: mlua::Table = table.get("error").unwrap();
 		assert_eq!(error_table.get::<String>("kind").unwrap(), "network");
 		assert!(error_table.get::<bool>("retryable").unwrap());
+	}
+
+	#[test]
+	fn test_raise_error() {
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+
+		let script = r#"
+            utils.raise_error("network", "Failed manually", true)
+        "#;
+
+		let result = lua.load(script).exec();
+		match result {
+			Err(mlua::Error::CallbackError { cause, .. }) => {
+				let err = cause.downcast_ref::<ScraperError>().unwrap();
+				assert_eq!(err.kind, ScraperErrorKind::Network);
+				assert_eq!(err.message, "Failed manually");
+				assert!(err.retryable);
+			}
+			Err(mlua::Error::ExternalError(cause)) => {
+				let err = cause.downcast_ref::<ScraperError>().unwrap();
+				assert_eq!(err.kind, ScraperErrorKind::Network);
+				assert_eq!(err.message, "Failed manually");
+				assert!(err.retryable);
+			}
+			_ => panic!("Expected callback ScraperError, got {:?}", result),
+		}
 	}
 }

@@ -1,9 +1,8 @@
 use mlua::{FromLua, IntoLua, Lua, Value};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScraperErrorKind {
 	Network,
 	Cloudflare,
@@ -12,10 +11,11 @@ pub enum ScraperErrorKind {
 	Parse,
 	Validation,
 	Internal,
+	Custom(String),
 }
 
 impl ScraperErrorKind {
-	pub fn as_str(&self) -> &'static str {
+	pub fn as_str(&self) -> &str {
 		match self {
 			ScraperErrorKind::Network => "network",
 			ScraperErrorKind::Cloudflare => "cloudflare",
@@ -24,19 +24,20 @@ impl ScraperErrorKind {
 			ScraperErrorKind::Parse => "parse",
 			ScraperErrorKind::Validation => "validation",
 			ScraperErrorKind::Internal => "internal",
+			ScraperErrorKind::Custom(s) => s.as_str(),
 		}
 	}
 
-	pub fn from_str(s: &str) -> Option<Self> {
+	pub fn from_str(s: &str) -> Self {
 		match s {
-			"network" => Some(ScraperErrorKind::Network),
-			"cloudflare" => Some(ScraperErrorKind::Cloudflare),
-			"rate_limit" => Some(ScraperErrorKind::RateLimit),
-			"not_found" => Some(ScraperErrorKind::NotFound),
-			"parse" => Some(ScraperErrorKind::Parse),
-			"validation" => Some(ScraperErrorKind::Validation),
-			"internal" => Some(ScraperErrorKind::Internal),
-			_ => None,
+			"network" => ScraperErrorKind::Network,
+			"cloudflare" => ScraperErrorKind::Cloudflare,
+			"rate_limit" => ScraperErrorKind::RateLimit,
+			"not_found" => ScraperErrorKind::NotFound,
+			"parse" => ScraperErrorKind::Parse,
+			"validation" => ScraperErrorKind::Validation,
+			"internal" => ScraperErrorKind::Internal,
+			other => ScraperErrorKind::Custom(other.to_string()),
 		}
 	}
 
@@ -51,6 +52,25 @@ impl ScraperErrorKind {
 impl fmt::Display for ScraperErrorKind {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(f, "{}", self.as_str())
+	}
+}
+
+impl Serialize for ScraperErrorKind {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		serializer.serialize_str(self.as_str())
+	}
+}
+
+impl<'de> Deserialize<'de> for ScraperErrorKind {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let s = String::deserialize(deserializer)?;
+		Ok(Self::from_str(&s))
 	}
 }
 
@@ -153,11 +173,10 @@ impl FromLua for ScraperError {
 	fn from_lua(value: Value, lua: &Lua) -> mlua::Result<Self> {
 		let table: mlua::Table = FromLua::from_lua(value, lua)?;
 		let kind_str: String = table.get("kind")?;
-		let kind = ScraperErrorKind::from_str(&kind_str)
-			.ok_or_else(|| mlua::Error::external(format!("Invalid error kind: {}", kind_str)))?;
+		let kind = ScraperErrorKind::from_str(&kind_str);
 
 		Ok(ScraperError {
-			kind,
+			kind: kind.clone(),
 			message: table.get("message")?,
 			retryable: table.get("retryable").unwrap_or(kind.default_retryable()),
 			status_code: table.get("status_code").ok(),
@@ -181,12 +200,23 @@ mod tests {
 			ScraperErrorKind::Parse,
 			ScraperErrorKind::Validation,
 			ScraperErrorKind::Internal,
+			ScraperErrorKind::Custom("weird_error".to_string()),
 		];
 
 		for kind in kinds {
 			let s = kind.as_str();
-			let parsed = ScraperErrorKind::from_str(s).expect("Should parse");
+			let parsed = ScraperErrorKind::from_str(s);
 			assert_eq!(kind, parsed);
+		}
+	}
+
+	#[test]
+	fn test_custom_error() {
+		let kind = ScraperErrorKind::from_str("my_custom_code");
+		if let ScraperErrorKind::Custom(s) = kind {
+			assert_eq!(s, "my_custom_code");
+		} else {
+			panic!("Expected Custom error kind");
 		}
 	}
 
@@ -229,5 +259,6 @@ mod tests {
 		assert!(!ScraperErrorKind::Parse.default_retryable());
 		assert!(!ScraperErrorKind::Validation.default_retryable());
 		assert!(!ScraperErrorKind::Internal.default_retryable());
+		assert!(!ScraperErrorKind::Custom("foo".to_string()).default_retryable());
 	}
 }
