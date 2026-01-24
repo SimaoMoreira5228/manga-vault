@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use mlua::Lua;
-use scraper_types::{Genre, MangaItem, MangaPage, ScraperInfo};
+use scraper_types::{Genre, MangaItem, MangaPage, ScraperError, ScraperErrorKind, ScraperInfo};
 
 use super::globals;
 use crate::Config;
@@ -16,6 +16,20 @@ pub struct LuaPlugin {
 	pub version: String,
 	pub file: std::path::PathBuf,
 	pub(crate) runtime: Lua,
+}
+
+fn classify_lua_error(e: mlua::Error) -> anyhow::Error {
+	if let mlua::Error::CallbackError { cause, .. } = &e {
+		if let Some(scraper_error) = cause.downcast_ref::<ScraperError>() {
+			return scraper_error.clone().into();
+		}
+	} else if let mlua::Error::ExternalError(cause) = &e {
+		if let Some(scraper_error) = cause.downcast_ref::<ScraperError>() {
+			return scraper_error.clone().into();
+		}
+	}
+
+	ScraperError::new(ScraperErrorKind::Internal, e.to_string()).into()
 }
 
 impl LuaPlugin {
@@ -50,43 +64,43 @@ impl LuaPlugin {
 
 	pub async fn scrape_chapter(&self, url: String) -> anyhow::Result<Vec<String>> {
 		let scrape_chapter: mlua::Function = self.runtime.globals().get("Scrape_chapter")?;
-		let pages: Vec<String> = scrape_chapter.call_async(url).await?;
+		let pages: Vec<String> = scrape_chapter.call_async(url).await.map_err(classify_lua_error)?;
 		Ok(pages)
 	}
 
 	pub async fn scrape_latest(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		let scrape_latest: mlua::Function = self.runtime.globals().get("Scrape_latest")?;
-		let mangas: Vec<MangaItem> = scrape_latest.call_async(page).await?;
+		let mangas: Vec<MangaItem> = scrape_latest.call_async(page).await.map_err(classify_lua_error)?;
 		Ok(mangas)
 	}
 
 	pub async fn scrape_trending(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		let scrape_trending: mlua::Function = self.runtime.globals().get("Scrape_trending")?;
-		let mangas: Vec<MangaItem> = scrape_trending.call_async(page).await?;
+		let mangas: Vec<MangaItem> = scrape_trending.call_async(page).await.map_err(classify_lua_error)?;
 		Ok(mangas)
 	}
 
 	pub async fn scrape_search(&self, query: String, page: u32) -> anyhow::Result<Vec<MangaItem>> {
 		let scrape_search: mlua::Function = self.runtime.globals().get("Scrape_search")?;
-		let mangas: Vec<MangaItem> = scrape_search.call_async((query, page)).await?;
+		let mangas: Vec<MangaItem> = scrape_search.call_async((query, page)).await.map_err(classify_lua_error)?;
 		Ok(mangas)
 	}
 
 	pub async fn scrape_manga(&self, url: String) -> anyhow::Result<MangaPage> {
 		let scrape_manga: mlua::Function = self.runtime.globals().get("Scrape_manga")?;
-		let manga: MangaPage = scrape_manga.call_async(url).await?;
+		let manga: MangaPage = scrape_manga.call_async(url).await.map_err(classify_lua_error)?;
 		Ok(manga)
 	}
 
 	pub async fn scrape_genres_list(&self) -> anyhow::Result<Vec<Genre>> {
 		let scrape_genres_list: mlua::Function = self.runtime.globals().get("Scrape_genres_list")?;
-		let genres: Vec<Genre> = scrape_genres_list.call_async(()).await?;
+		let genres: Vec<Genre> = scrape_genres_list.call_async(()).await.map_err(classify_lua_error)?;
 		Ok(genres)
 	}
 
 	pub async fn get_info(&self) -> anyhow::Result<ScraperInfo> {
 		let get_info: mlua::Function = self.runtime.globals().get("Get_info")?;
-		let info: ScraperInfo = get_info.call_async(()).await?;
+		let info: ScraperInfo = get_info.call_async(()).await.map_err(classify_lua_error)?;
 		Ok(info)
 	}
 }

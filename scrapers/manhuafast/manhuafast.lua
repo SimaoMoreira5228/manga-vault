@@ -1,16 +1,33 @@
 local function http_get(url, headers)
 	if url == "https://" or string.match(url, "^https?://[^/]+//") then
-		print("[manhuafast] Invalid URL provided to http_get: " .. url)
-		return { text = "", status = 0, headers = {} }
+		log.warn("[manhuafast] Invalid URL provided to http_get: " .. url)
+		return { text = "", status = 0, headers = {}, ok = false }
 	end
 
 	headers = headers or {}
 	local response = http:get(url, headers)
 
+	if not response.ok then
+		if response.status == 404 then
+			log.warn("[manhuafast] URL not found: " .. url)
+			utils.raise_error("not_found", "Page not found: " .. url, false)
+		else
+			log.error("[manhuafast] HTTP request failed: " .. (response.error and response.error.message or "Unknown error"))
+			error(response.error)
+		end
+	end
+
 	if
 		flaresolverr:using_flaresolverr() and http:has_cloudflare_protection(response.text, response.status, response.headers)
 	then
+		log.info("[manhuafast] Cloudflare protection detected, using Flaresolverr")
 		response = flaresolverr:get(url)
+		if not response.ok then
+			log.error(
+				"[manhuafast] Flaresolverr request failed: " .. (response.error and response.error.message or "Unknown error")
+			)
+			error(response.error)
+		end
 	end
 
 	return response
@@ -78,6 +95,11 @@ function Scrape_chapter(url)
 		end
 	end
 
+	if #imgs == 0 then
+		log.warn("[manhuafast] No images found for chapter: " .. url)
+		utils.raise_error("parse", "No images found in chapter", false)
+	end
+
 	return imgs
 end
 
@@ -139,12 +161,19 @@ local function scrape_manga_chapters(url)
 	local chapters = {}
 	local chapters_url = (string.sub(url, -1) == "/" and url or url .. "/") .. "ajax/chapters/"
 
-	local chapters_html = http:post(chapters_url, "", {
+	local response = http:post(chapters_url, "", {
 		["Referer"] = "https://manhuafast.com/",
 		["X-Requested-With"] = "XMLHttpRequest",
-	}).text
+	})
 
+	if not response.ok then
+		log.error("[manhuafast] Failed to fetch chapters via AJAX: " .. (response.error and response.error.message or ""))
+		error(response.error)
+	end
+
+	local chapters_html = response.text
 	local chapter_elements = scraping:select_elements(chapters_html, "div.listing-chapters_wrap ul li")
+
 	for _, chapter in ipairs(chapter_elements) do
 		local link_element = scraping:select_elements(chapter, "a")[1]
 		local date_element = scraping:select_elements(chapter, "span i")[1]
@@ -157,6 +186,10 @@ local function scrape_manga_chapters(url)
 		end
 	end
 
+	if #chapters == 0 then
+		log.warn("[manhuafast] No chapters found for manga: " .. url)
+	end
+
 	return table.reverse(chapters)
 end
 
@@ -166,6 +199,11 @@ function Scrape_manga(url)
 
 	local title_element = scraping:select_elements(html, "div.post-title h1")[1]
 	local title = title_element and scraping:get_text(title_element) or ""
+
+	if title == "" then
+		log.error("[manhuafast] Failed to parse title for: " .. url)
+		utils.raise_error("parse", "Failed to parse title", false)
+	end
 
 	local img_element = scraping:select_elements(html, "div.summary_image img")[1]
 	local img_url = img_element and scraping:get_image_url(img_element) or ""
@@ -220,7 +258,7 @@ end
 function Get_info()
 	return {
 		id = "manhuafast",
-		version = "0.4.3",
+		version = "0.5.0",
 		name = "Manhuafast",
 		img_url = "https://manhuafast.com/wp-content/uploads/2021/01/cropped-Dark-Star-Emperor-Manga-193x278-1-32x32.jpg",
 		referer_url = "https://manhuafast.com/",

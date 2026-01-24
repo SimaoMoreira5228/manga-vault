@@ -10,16 +10,16 @@ impl UserData for CommonHttp {
 		methods.add_async_method(
 			"get",
 			|lua, this, (url, headers_map): (String, Option<HashMap<String, String>>)| async move {
-				let resp = this.get(url, headers_map).await.map_err(mlua::Error::external)?;
-				create_response_table(&lua, resp.text, resp.status, resp.headers)
+				let response = this.get(url, headers_map).await;
+				create_response_table(&lua, response)
 			},
 		);
 
 		methods.add_async_method(
 			"post",
 			|lua, this, (url, body, headers_map): (String, String, Option<HashMap<String, String>>)| async move {
-				let resp = this.post(url, body, headers_map).await.map_err(mlua::Error::external)?;
-				create_response_table(&lua, resp.text, resp.status, resp.headers)
+				let response = this.post(url, body, headers_map).await;
+				create_response_table(&lua, response)
 			},
 		);
 
@@ -100,19 +100,50 @@ mod tests {
 		let script = format!(
 			r#"
                 local response = http:get("{}/posts/1", nil)
-                return response.text, response.json()
+                return response.text, response.json(), response.ok
             "#,
 			server.url()
 		);
 
-		let result: (String, Table) = lua.load(&script).eval_async().await.unwrap();
+		let result: (String, Table, bool) = lua.load(&script).eval_async().await.unwrap();
 		let json: serde_json::Value = lua.from_value(mlua::Value::Table(result.1)).unwrap();
 
 		mock_server.assert_async().await;
+		assert!(result.2, "response.ok should be true");
 		assert_eq!(json["userId"], 1);
 		assert_eq!(json["id"], 1);
 		assert_eq!(json["title"], "test title");
 		assert_eq!(json["body"], "test body");
+	}
+
+	#[tokio::test]
+	async fn test_get_error() {
+		let mut server = Server::new_async().await;
+		let mock_server = server
+			.mock("GET", "/not-found")
+			.with_status(404)
+			.with_body("Not found")
+			.create_async()
+			.await;
+
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+
+		let script = format!(
+			r#"
+                local response = http:get("{}/not-found", nil)
+                return response.ok, response.error.kind, response.error.retryable, response.status
+            "#,
+			server.url()
+		);
+
+		let result: (bool, String, bool, u16) = lua.load(&script).eval_async().await.unwrap();
+
+		mock_server.assert_async().await;
+		assert!(!result.0, "response.ok should be false");
+		assert_eq!(result.1, "not_found");
+		assert!(!result.2, "not_found should not be retryable");
+		assert_eq!(result.3, 404);
 	}
 
 	#[tokio::test]
@@ -144,15 +175,16 @@ mod tests {
                     '{{"title": "foo", "body": "bar", "userId": 1}}',
                     {{["content-type"] = "application/json"}}
                 )
-                return response.text, response.json()
+                return response.text, response.json(), response.ok
             "#,
 			server.url()
 		);
 
-		let result: (String, Table) = lua.load(&script).eval_async().await.unwrap();
+		let result: (String, Table, bool) = lua.load(&script).eval_async().await.unwrap();
 		let json: serde_json::Value = lua.from_value(mlua::Value::Table(result.1)).unwrap();
 
 		mock_server.assert_async().await;
+		assert!(result.2, "response.ok should be true");
 		assert_eq!(json["title"], "foo");
 		assert_eq!(json["body"], "bar");
 		assert_eq!(json["userId"], 1);

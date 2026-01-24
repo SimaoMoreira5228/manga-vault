@@ -3,22 +3,13 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use reqwest::Url;
+use scraper_types::{ScraperError, ScraperErrorKind};
 use serde_json::Value;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::Config;
-use crate::plugins::common::http::CommonHttp;
-
-#[derive(thiserror::Error, Debug)]
-pub enum FlareError {
-	#[error("Request failed: {0}")]
-	RequestFailed(String),
-	#[error("Session error: {0}")]
-	SessionError(String),
-	#[error("Invalid URL: {0}")]
-	InvalidUrl(String),
-}
+use crate::plugins::common::http::{CommonHttp, Response};
 
 #[derive(Clone)]
 struct FlareSession {
@@ -66,7 +57,7 @@ impl FlareSolverrManager {
 		}
 	}
 
-	async fn determine_manager_type(&self) -> Result<(), FlareError> {
+	async fn determine_manager_type(&self) -> Result<(), ScraperError> {
 		if self.r#type.read().await.is_some() {
 			return Ok(());
 		}
@@ -102,7 +93,7 @@ impl FlareSolverrManager {
 		!self.url.is_empty()
 	}
 
-	async fn create_session_internal(&self) -> Result<FlareSession, FlareError> {
+	async fn create_session_internal(&self) -> Result<FlareSession, ScraperError> {
 		let id = Uuid::new_v4();
 		let session = FlareSession {
 			id,
@@ -141,7 +132,10 @@ impl FlareSolverrManager {
 				}
 				Err(e) => {
 					tracing::warn!("Failed to call flaresolverr sessions.create: {}", e);
-					return Err(FlareError::SessionError(format!("Failed to create session: {}", e)));
+					return Err(ScraperError::new(
+						ScraperErrorKind::Network,
+						format!("Failed to create FlareSolverr session: {}", e),
+					));
 				}
 			}
 		}
@@ -185,7 +179,7 @@ impl FlareSolverrManager {
 		false
 	}
 
-	async fn get_or_refresh_session(&self) -> Result<Option<Uuid>, FlareError> {
+	async fn get_or_refresh_session(&self) -> Result<Option<Uuid>, ScraperError> {
 		if !matches!(*self.r#type.read().await, Some(ManagerType::FlareSolverr)) {
 			return Ok(None);
 		}
@@ -239,17 +233,24 @@ impl FlareSolverrManager {
 		}
 	}
 
-	pub async fn get(&self, target_url: String) -> Result<crate::plugins::common::http::Response, FlareError> {
-		let parsed_target_url =
-			Url::parse(&target_url).map_err(|e| FlareError::InvalidUrl(format!("invalid url '{}': {}", target_url, e)))?;
+	pub async fn get(&self, target_url: String) -> Response {
+		match self.get_internal(target_url).await {
+			Ok(response) => response,
+			Err(error) => Response::from_error(error),
+		}
+	}
+
+	async fn get_internal(&self, target_url: String) -> Result<Response, ScraperError> {
+		let parsed_target_url = Url::parse(&target_url).map_err(|e| {
+			ScraperError::with_retryable(
+				ScraperErrorKind::Validation,
+				format!("invalid url '{}': {}", target_url, e),
+				false,
+			)
+		})?;
 
 		if self.url.is_empty() {
-			let resp = self
-				.fallback
-				.get(parsed_target_url.to_string(), None)
-				.await
-				.map_err(|e| FlareError::RequestFailed(e.to_string()))?;
-			return Ok(resp);
+			return Ok(self.fallback.get(parsed_target_url.to_string(), None).await);
 		}
 
 		self.determine_manager_type().await?;
@@ -282,11 +283,11 @@ impl FlareSolverrManager {
 				} else {
 					tracing::error!("Failed to read FlareSolverr error response body.");
 				}
-				return Ok(crate::plugins::common::http::Response {
-					text: String::from("FlareSolverr request failed."),
-					status: status_from_http,
-					headers: HashMap::new(),
-				});
+				return Ok(Response::from_error(ScraperError::with_status(
+					ScraperErrorKind::Network,
+					"FlareSolverr request failed",
+					status_from_http,
+				)));
 			}
 
 			if let Ok(text) = r.text().await {
@@ -326,25 +327,13 @@ impl FlareSolverrManager {
 					}
 
 					if let Some(body) = body_opt {
-						return Ok(crate::plugins::common::http::Response {
-							text: body,
-							status,
-							headers: headers_map,
-						});
+						return Ok(Response::from_parts(body, status, headers_map));
 					}
 
-					return Ok(crate::plugins::common::http::Response {
-						text,
-						status,
-						headers: headers_map,
-					});
+					return Ok(Response::from_parts(text, status, headers_map));
 				}
 
-				return Ok(crate::plugins::common::http::Response {
-					text,
-					status: status_from_http,
-					headers: HashMap::new(),
-				});
+				return Ok(Response::from_parts(text, status_from_http, HashMap::new()));
 			} else {
 				tracing::error!("FlareSolverr request: failed to read response body");
 			}
@@ -352,11 +341,6 @@ impl FlareSolverrManager {
 			tracing::error!("FlareSolverr request error: {}", e);
 		}
 
-		let resp = self
-			.fallback
-			.get(parsed_target_url.to_string(), None)
-			.await
-			.map_err(|e| FlareError::RequestFailed(e.to_string()))?;
-		Ok(resp)
+		Ok(self.fallback.get(parsed_target_url.to_string(), None).await)
 	}
 }

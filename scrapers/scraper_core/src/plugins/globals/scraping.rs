@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use mlua::{IntoLua, Lua, UserData, UserDataMethods};
 use scraper::{Html, Selector};
+use scraper_types::{ScraperError, ScraperErrorKind};
 
 use crate::plugins::common::html;
 
@@ -9,23 +10,32 @@ struct CustomScraper;
 impl UserData for CustomScraper {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method("get_image_url", |_, _, html: String| async move {
-			let html = Html::parse_fragment(&html);
-			let img_element = html.select(&Selector::parse("img").unwrap()).next().unwrap();
+			let html_parsed = Html::parse_fragment(&html);
+			let selector = Selector::parse("img").map_err(|e| {
+				mlua::Error::external(ScraperError::new(
+					ScraperErrorKind::Validation,
+					format!("Invalid internal selector: {}", e),
+				))
+			})?;
+
+			let img_element = match html_parsed.select(&selector).next() {
+				Some(el) => el,
+				None => return Ok("".to_string()),
+			};
 
 			let attrs = img_element.value().attrs().collect::<HashMap<&str, &str>>();
 
-			let url;
-			if attrs.contains_key("data-src") {
-				url = attrs.get("data-src").unwrap_or(&"").trim().to_string()
-			} else if attrs.contains_key("src") {
-				url = attrs.get("src").unwrap_or(&"").trim().to_string()
-			} else if attrs.contains_key("data-cfsrc") {
-				url = attrs.get("data-cfsrc").unwrap_or(&"").trim().to_string()
-			} else if attrs.contains_key("data-lazy-src") {
-				url = attrs.get("data-lazy-src").unwrap_or(&"").trim().to_string()
+			let url = if let Some(val) = attrs.get("data-src") {
+				val.trim().to_string()
+			} else if let Some(val) = attrs.get("src") {
+				val.trim().to_string()
+			} else if let Some(val) = attrs.get("data-cfsrc") {
+				val.trim().to_string()
+			} else if let Some(val) = attrs.get("data-lazy-src") {
+				val.trim().to_string()
 			} else {
-				url = "".to_string()
-			}
+				"".to_string()
+			};
 
 			Ok(url)
 		});
@@ -57,6 +67,61 @@ impl UserData for CustomScraper {
 				None => Ok(mlua::Value::Nil),
 			}
 		});
+
+		methods.add_async_method(
+			"try_select_elements",
+			|lua, _, (html, selector): (String, String)| async move {
+				let html = html::HtmlDocument::new(html);
+				match html.find(selector) {
+					Ok(elements) => {
+						let elements_html: Vec<String> = elements.into_iter().map(|e| e.html()).collect();
+						let table = lua.create_table()?;
+						table.set("ok", true)?;
+						table.set("value", elements_html)?;
+						Ok(table)
+					}
+					Err(e) => {
+						let table = lua.create_table()?;
+						table.set("ok", false)?;
+						table.set(
+							"error",
+							ScraperError::new(ScraperErrorKind::Parse, e.to_string()).into_lua(&lua)?,
+						)?;
+						Ok(table)
+					}
+				}
+			},
+		);
+
+		methods.add_async_method(
+			"try_select_element",
+			|lua, _, (html, selector): (String, String)| async move {
+				let html = html::HtmlDocument::new(html);
+				match html.find_one(selector) {
+					Ok(Some(element)) => {
+						let table = lua.create_table()?;
+						table.set("ok", true)?;
+						table.set("value", element.html())?;
+						Ok(table)
+					}
+					Ok(None) => {
+						let table = lua.create_table()?;
+						table.set("ok", true)?;
+						table.set("value", mlua::Value::Nil)?;
+						Ok(table)
+					}
+					Err(e) => {
+						let table = lua.create_table()?;
+						table.set("ok", false)?;
+						table.set(
+							"error",
+							ScraperError::new(ScraperErrorKind::Parse, e.to_string()).into_lua(&lua)?,
+						)?;
+						Ok(table)
+					}
+				}
+			},
+		);
 	}
 }
 
@@ -129,5 +194,54 @@ mod tests {
 		let result: Vec<String> = lua.load(script).eval().unwrap();
 
 		assert_eq!(result, vec!["<p>Hello</p>", "<p>World</p>"]);
+	}
+
+	#[test]
+	fn test_try_select_element_found() {
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+
+		let script = r#"
+			local html = '<div><p class="target">Hello</p></div>'
+			local res = scraping:try_select_element(html, ".target")
+			return res.ok, res.value
+		"#;
+		let (ok, value): (bool, String) = lua.load(script).eval().unwrap();
+
+		assert!(ok);
+		assert_eq!(value, "<p class=\"target\">Hello</p>");
+	}
+
+	#[test]
+	fn test_try_select_element_not_found() {
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+
+		let script = r#"
+			local html = '<div><p>Hello</p></div>'
+			local res = scraping:try_select_element(html, ".nonexistent")
+			return res.ok, res.value
+		"#;
+		let (ok, value): (bool, Option<String>) = lua.load(script).eval().unwrap();
+
+		assert!(ok);
+		assert_eq!(value, None);
+	}
+
+	#[test]
+	fn test_try_select_element_invalid() {
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+
+		let script = r#"
+			local html = '<div>Hello</div>'
+			-- Invalid CSS selector
+			local res = scraping:try_select_element(html, "div[")
+			return res.ok, res.error.kind
+		"#;
+		let (ok, error_kind): (bool, String) = lua.load(script).eval().unwrap();
+
+		assert!(!ok);
+		assert_eq!(error_kind, "parse");
 	}
 }

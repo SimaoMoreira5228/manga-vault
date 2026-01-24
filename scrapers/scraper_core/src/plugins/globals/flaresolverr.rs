@@ -1,14 +1,14 @@
+use mlua::{Lua, UserData, UserDataMethods};
+
 use crate::Config;
 use crate::plugins::common::flaresolverr::FlareSolverrManager;
 use crate::plugins::globals::utils::create_response_table;
-use mlua::{Lua, UserData, UserDataMethods};
 
 impl UserData for FlareSolverrManager {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method("get", |lua, this, url: String| async move {
-			let response = this.get(url).await.map_err(mlua::Error::external)?;
-
-			create_response_table(&lua, response.text, response.status, response.headers)
+			let response = this.get(url).await;
+			create_response_table(&lua, response)
 		});
 
 		methods.add_method("using_flaresolverr", |_, this, _: ()| Ok(this.using_flaresolverr()));
@@ -64,11 +64,12 @@ mod tests {
 		super::load(&config, &lua).unwrap();
 		let script = r#"
 	  local response = flaresolverr:get("https://jsonplaceholder.typicode.com/posts/1", nil)
-	  return response.text, response.json()"#;
+	  return response.text, response.json(), response.ok"#;
 
-		let result: (String, Table) = lua.load(script).eval_async().await.unwrap();
+		let result: (String, Table, bool) = lua.load(script).eval_async().await.unwrap();
 		let json: serde_json::Value = lua.from_value(mlua::Value::Table(result.1)).unwrap();
 		mock_server.assert_async().await;
+		assert!(result.2, "response.ok should be true");
 		assert_eq!(json["userId"], 1);
 		assert_eq!(json["id"], 1);
 		assert_eq!(json["title"], "test title");

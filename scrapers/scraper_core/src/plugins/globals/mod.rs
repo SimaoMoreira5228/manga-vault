@@ -5,6 +5,7 @@ use crate::Config;
 mod flaresolverr;
 mod headless;
 mod http;
+mod log;
 mod scraping;
 mod string;
 mod table;
@@ -19,6 +20,7 @@ pub async fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
 	string::load(lua)?;
 	table::load(lua)?;
 	utils::load(lua)?;
+	log::load(lua)?;
 
 	Ok(())
 }

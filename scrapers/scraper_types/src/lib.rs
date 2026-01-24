@@ -4,6 +4,9 @@ use mlua::{FromLua, IntoLua, Lua, Value};
 use regex::Regex;
 use serde::Serialize;
 
+mod error;
+pub use error::{ScraperError, ScraperErrorKind, ScraperResult};
+
 const CHAP_NUMBER_REGEX: LazyLock<Regex> =
 	LazyLock::new(|| Regex::new(r"(\d+)").expect("Failed to compile chapter number regex"));
 
