@@ -50,14 +50,16 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 
 	utils_table.set(
 		"raise_error",
-		lua.create_function(|_, (kind_str, message, retryable): (String, String, Option<bool>)| -> mlua::Result<()> {
-			let kind = ScraperErrorKind::from_str(&kind_str);
-			let mut error = ScraperError::new(kind, message);
-			if let Some(r) = retryable {
-				error.retryable = r;
-			}
-			Err(mlua::Error::external(error))
-		})?,
+		lua.create_function(
+			|_, (kind_str, message, retryable): (String, String, Option<bool>)| -> mlua::Result<()> {
+				let kind = ScraperErrorKind::from_str(&kind_str);
+				let mut error = ScraperError::new(kind, message);
+				if let Some(r) = retryable {
+					error.retryable = r;
+				}
+				Err(mlua::Error::external(error))
+			},
+		)?,
 	)?;
 
 	lua.globals().set("utils", utils_table)?;
