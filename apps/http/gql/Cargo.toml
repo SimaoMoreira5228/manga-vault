@@ -17,7 +17,7 @@ async-graphql = { version = "7.0", features = ["tracing", "chrono", "unblock", "
 async-graphql-axum = "7.0"
 async-trait = "0.1"
 axum = { workspace = true }
-bcrypt = "0.17"
+bcrypt = "0.18"
 chrono = { workspace = true }
 config = { workspace = true }
 config-derive = { workspace = true }

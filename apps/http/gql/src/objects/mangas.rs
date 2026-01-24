@@ -30,6 +30,7 @@ pub struct Manga {
 	pub release_date: Option<NaiveDateTime>,
 	pub description: Option<String>,
 	pub genres: Option<String>,
+	pub scrape_scheduled: bool,
 }
 
 impl From<database_entities::mangas::Model> for Manga {
@@ -58,6 +59,7 @@ impl From<database_entities::mangas::Model> for Manga {
 			release_date: manga.release_date,
 			description: manga.description,
 			genres: manga.genres,
+			scrape_scheduled: false,
 		}
 	}
 }
