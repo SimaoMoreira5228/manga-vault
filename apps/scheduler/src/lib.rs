@@ -9,8 +9,11 @@ use database_entities::{favorite_mangas, mangas};
 use queue::queue_item::QueueItem;
 use queue::{EnqueueStrategy, TaskQueue};
 use scraper_core::ScraperManager;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
-use tokio::sync::Mutex;
+use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{DbBackend, Statement, TransactionTrait};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
 #[allow(dead_code)]
 pub struct MangaUpdateScheduler {
@@ -18,7 +21,7 @@ pub struct MangaUpdateScheduler {
 	db: Arc<Database>,
 	interval: Duration,
 	scraper_manager: Arc<ScraperManager>,
-	scraper_cooldown: Arc<Mutex<ScraperCooldownTracker>>,
+	scraper_limiter: Arc<Mutex<PerScraperLimiter>>,
 }
 
 #[derive(Clone, Debug)]
@@ -29,28 +32,90 @@ struct MangaUpdateJob {
 	last_attempt: Option<Instant>,
 }
 
-struct ScraperCooldownTracker {
+struct PerScraperLimiter {
+	semaphores: HashMap<String, Arc<Semaphore>>,
 	last_used: HashMap<String, Instant>,
 	cooldown: Duration,
+	per_scraper_concurrency: usize,
+	overrides: HashMap<String, usize>,
 }
 
-impl ScraperCooldownTracker {
-	fn new(cooldown: Duration) -> Self {
+impl PerScraperLimiter {
+	pub fn new(per_scraper_concurrency: usize, cooldown: Duration, overrides: HashMap<String, usize>) -> Self {
 		Self {
+			semaphores: HashMap::new(),
 			last_used: HashMap::new(),
 			cooldown,
+			per_scraper_concurrency,
+			overrides,
 		}
 	}
 
-	fn needs_cooldown(&self, scraper: &str) -> bool {
-		self.last_used
-			.get(scraper)
-			.map(|last| last.elapsed() < self.cooldown)
-			.unwrap_or(false)
+	fn get_semaphore(&mut self, scraper: &str) -> Arc<Semaphore> {
+		let cap = self.overrides.get(scraper).cloned().unwrap_or(self.per_scraper_concurrency);
+		self.semaphores
+			.entry(scraper.to_string())
+			.or_insert_with(|| Arc::new(Semaphore::new(cap)))
+			.clone()
 	}
 
 	fn mark_used(&mut self, scraper: &str) {
 		self.last_used.insert(scraper.to_string(), Instant::now());
+	}
+
+	fn needs_cooldown(&self, scraper: &str) -> Option<Duration> {
+		self.last_used
+			.get(scraper)
+			.map(|last| {
+				if last.elapsed() < self.cooldown {
+					Some(self.cooldown - last.elapsed())
+				} else {
+					None
+				}
+			})
+			.flatten()
+	}
+}
+
+#[derive(Debug, Deserialize, Serialize, config_derive::Config)]
+#[config(name = "scheduler")]
+pub struct Config {
+	#[serde(default)]
+	pub queue_max_size: usize,
+	#[serde(default)]
+	pub channel_capacity: usize,
+	#[serde(default)]
+	pub max_concurrency: usize,
+	#[serde(default)]
+	pub default_per_scraper_concurrency: usize,
+	#[serde(default)]
+	pub per_scraper_limits: BTreeMap<String, usize>,
+	#[serde(default)]
+	pub queue_aging_interval_secs: Option<u64>,
+	#[serde(default)]
+	pub cooldown_seconds: u64,
+	#[serde(default)]
+	pub search_interval_seconds: u64,
+	#[serde(default)]
+	pub claim_limit: u64,
+	#[serde(default)]
+	pub enqueue_strategy: String,
+}
+
+impl Default for Config {
+	fn default() -> Self {
+		Self {
+			queue_max_size: 100,
+			channel_capacity: 100,
+			max_concurrency: 5,
+			default_per_scraper_concurrency: 2,
+			per_scraper_limits: BTreeMap::new(),
+			queue_aging_interval_secs: Some(300),
+			cooldown_seconds: 10,
+			search_interval_seconds: 30 * 60,
+			claim_limit: 500,
+			enqueue_strategy: "best_effort".to_string(),
+		}
 	}
 }
 
@@ -69,19 +134,39 @@ impl MangaUpdateScheduler {
 		search_interval: Duration,
 		cooldown_duration: Duration,
 	) -> Self {
-		let cooldown_tracker = Arc::new(Mutex::new(ScraperCooldownTracker::new(cooldown_duration)));
+		let cfg = Config::load();
+
+		let per_scraper_overrides: HashMap<String, usize> = cfg.per_scraper_limits.into_iter().collect();
+
+		let per_scraper_concurrency = if cfg.default_per_scraper_concurrency > 0 {
+			cfg.default_per_scraper_concurrency
+		} else {
+			std::cmp::max(1, max_concurrency / 2)
+		};
+
+		let cooldown = if cfg.cooldown_seconds > 0 {
+			Duration::from_secs(cfg.cooldown_seconds)
+		} else {
+			cooldown_duration
+		};
+
+		let scraper_limiter = Arc::new(Mutex::new(PerScraperLimiter::new(
+			per_scraper_concurrency,
+			cooldown,
+			per_scraper_overrides,
+		)));
 		let ignored_scrapers = Arc::new(Mutex::new(HashSet::new()));
 
 		let process_fn = Arc::new({
 			let db = db.clone();
 			let scraper_manager = Arc::clone(&scraper_manager);
-			let cooldown_tracker = Arc::clone(&cooldown_tracker);
+			let scraper_limiter = Arc::clone(&scraper_limiter);
 			let ignored_scrapers = Arc::clone(&ignored_scrapers);
 
 			move |item: QueueItem<MangaUpdateJob>| {
 				let db = db.clone();
 				let scraper_manager = scraper_manager.clone();
-				let cooldown_tracker = cooldown_tracker.clone();
+				let scraper_limiter = scraper_limiter.clone();
 				let ignored_scrapers = ignored_scrapers.clone();
 
 				Box::pin(async move {
@@ -93,14 +178,27 @@ impl MangaUpdateScheduler {
 						}
 					}
 
-					let mut tracker = cooldown_tracker.lock().await;
-					if tracker.needs_cooldown(&item.payload.scraper_name) {
-						let delay = tracker.cooldown - tracker.last_used[&item.payload.scraper_name].elapsed();
+					if let Some(delay) = {
+						let lim = scraper_limiter.lock().await;
+						lim.needs_cooldown(&item.payload.scraper_name)
+					} {
 						tokio::time::sleep(delay).await;
 					}
 
-					tracker.mark_used(&item.payload.scraper_name);
-					drop(tracker);
+					let sem: Arc<Semaphore> = {
+						let mut lim = scraper_limiter.lock().await;
+						let s = lim.get_semaphore(&item.payload.scraper_name);
+						lim.mark_used(&item.payload.scraper_name);
+						s
+					};
+
+					let _permit: OwnedSemaphorePermit = match sem.clone().acquire_owned().await {
+						Ok(p) => p,
+						Err(_) => {
+							tracing::warn!("Semaphore closed for scraper {}", item.payload.scraper_name);
+							return Ok(());
+						}
+					};
 
 					let result = manga_sync::sync_manga_with_scraper(
 						db.as_ref(),
@@ -159,14 +257,19 @@ impl MangaUpdateScheduler {
 			}
 		});
 
+		let enqueue_strategy = match cfg.enqueue_strategy.as_str() {
+			"block" => EnqueueStrategy::Block,
+			_ => EnqueueStrategy::BestEffort,
+		};
+
 		let queue = Arc::new(TaskQueue::new(
 			process_fn,
-			100,
+			cfg.queue_max_size,
 			3,
-			100,
-			max_concurrency,
-			EnqueueStrategy::BestEffort,
-			Some(300),
+			cfg.channel_capacity,
+			std::cmp::max(cfg.max_concurrency, max_concurrency),
+			enqueue_strategy,
+			cfg.queue_aging_interval_secs,
 		));
 
 		Self {
@@ -174,7 +277,7 @@ impl MangaUpdateScheduler {
 			db,
 			interval: search_interval,
 			scraper_manager,
-			scraper_cooldown: cooldown_tracker,
+			scraper_limiter: scraper_limiter,
 		}
 	}
 
@@ -192,79 +295,132 @@ impl MangaUpdateScheduler {
 		tracing::info!("Scheduling manga updates...");
 		let threshold = Utc::now() - TimeDelta::try_hours(1).unwrap();
 
-		let critical_mangas = self.fetch_critical_mangas(threshold).await?;
+		let claim_limit = 500u64;
+		let claimed = self.claim_mangas(threshold, claim_limit).await?;
 
-		let mut scheduled = self.schedule_manga_batch(critical_mangas).await;
+		let mut scheduled = self.schedule_manga_batch(claimed).await;
 
 		if self.queue.len() < self.queue.max_size() {
-			let remaining_mangas = self.fetch_remaining_mangas(threshold).await?;
-			scheduled += self.schedule_manga_batch(remaining_mangas).await;
+			let available = self.queue.max_size().saturating_sub(self.queue.len());
+			let fetch_limit = (available.saturating_mul(3)).max(10) as u64;
+			let remaining = self.claim_mangas(threshold, fetch_limit).await?;
+			scheduled += self.schedule_manga_batch(remaining).await;
 		}
 
 		tracing::info!("Scheduled {} manga updates", scheduled);
 		Ok(())
 	}
 
-	async fn fetch_critical_mangas(&self, threshold: DateTime<Utc>) -> Result<Vec<(mangas::Model, i64)>, anyhow::Error> {
-		mangas::Entity::find()
+	async fn claim_mangas(&self, threshold: DateTime<Utc>, limit: u64) -> Result<Vec<(mangas::Model, i64)>, anyhow::Error> {
+		if self.db.db_type == "postgresql" {
+			let sql = format!(
+				"WITH c AS (SELECT id FROM mangas WHERE updated_at < $1 ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
+				limit = limit
+			);
+
+			let txn = self.db.conn.begin().await?;
+			let stmt = Statement::from_string(DbBackend::Postgres, sql);
+			let rows = txn.query_all(stmt).await?;
+
+			let mut ids: Vec<i32> = Vec::new();
+			for row in rows {
+				let id: i32 = row.try_get("", "id")?;
+				ids.push(id);
+			}
+
+			if ids.is_empty() {
+				txn.commit().await?;
+				return Ok(vec![]);
+			}
+
+			let models = mangas::Entity::find()
+				.filter(mangas::Column::Id.is_in(ids.clone()))
+				.all(&txn)
+				.await?;
+
+			let fav_rows = favorite_mangas::Entity::find()
+				.filter(favorite_mangas::Column::MangaId.is_in(ids.clone()))
+				.all(&txn)
+				.await?;
+
+			let mut fav_count: HashMap<i32, i64> = HashMap::new();
+			for f in fav_rows {
+				*fav_count.entry(f.manga_id).or_insert(0) += 1;
+			}
+
+			let mut model_map: HashMap<i32, mangas::Model> = HashMap::new();
+			for m in models {
+				model_map.insert(m.id, m);
+			}
+
+			let mut result: Vec<(mangas::Model, i64)> = Vec::new();
+			for id in ids {
+				if let Some(m) = model_map.remove(&id) {
+					let cnt = *fav_count.get(&id).unwrap_or(&0);
+					result.push((m, cnt));
+				}
+			}
+
+			txn.commit().await?;
+			return Ok(result);
+		}
+
+		let models = mangas::Entity::find()
 			.filter(mangas::Column::UpdatedAt.lt(threshold))
 			.order_by_desc(mangas::Column::UpdatedAt)
-			.limit(500)
-			.find_with_related(favorite_mangas::Entity)
+			.limit(limit as u64)
 			.all(&self.db.conn)
-			.await?
-			.into_iter()
-			.map(|(manga, favs)| {
-				let fav_count = favs.len() as i64;
-				Ok((manga, fav_count))
-			})
-			.collect()
-	}
+			.await?;
 
-	async fn fetch_remaining_mangas(&self, threshold: DateTime<Utc>) -> Result<Vec<(mangas::Model, i64)>, anyhow::Error> {
-		mangas::Entity::find()
-			.filter(mangas::Column::UpdatedAt.lt(threshold))
-			.find_with_related(favorite_mangas::Entity)
+		let ids: Vec<i32> = models.iter().map(|m| m.id).collect();
+		if ids.is_empty() {
+			return Ok(vec![]);
+		}
+
+		let fav_rows = favorite_mangas::Entity::find()
+			.filter(favorite_mangas::Column::MangaId.is_in(ids.clone()))
 			.all(&self.db.conn)
-			.await?
-			.into_iter()
-			.map(|(manga, favs)| {
-				let fav_count = favs.len() as i64;
-				Ok((manga, fav_count))
-			})
-			.collect()
+			.await?;
+
+		let mut fav_count: HashMap<i32, i64> = HashMap::new();
+		for f in fav_rows {
+			*fav_count.entry(f.manga_id).or_insert(0) += 1;
+		}
+
+		let mut model_map: HashMap<i32, mangas::Model> = HashMap::new();
+		for m in models {
+			model_map.insert(m.id, m);
+		}
+
+		let mut result: Vec<(mangas::Model, i64)> = Vec::new();
+		for id in ids {
+			if let Some(m) = model_map.remove(&id) {
+				let cnt = *fav_count.get(&id).unwrap_or(&0);
+				result.push((m, cnt));
+			}
+		}
+
+		Ok(result)
 	}
 
 	async fn schedule_manga_batch(&self, mangas: Vec<(mangas::Model, i64)>) -> usize {
 		let mut scheduled = 0;
-		let mut scraper_buckets: HashMap<String, Vec<_>> = HashMap::new();
 
-		for (manga, fav_count) in mangas {
-			scraper_buckets
-				.entry(manga.scraper.clone())
-				.or_default()
-				.push((manga, fav_count));
-		}
+		for (manga, fav_count) in mangas.into_iter() {
+			let scraper = manga.scraper.clone();
+			let priority = self.calculate_priority(fav_count, manga.updated_at);
+			let job = MangaUpdateJob {
+				manga_id: manga.id,
+				scraper_name: scraper.clone(),
+				last_attempt: None,
+			};
 
-		while !scraper_buckets.is_empty() {
-			for (scraper, mangas) in scraper_buckets.iter_mut() {
-				if let Some((manga, fav_count)) = mangas.pop() {
-					let priority = self.calculate_priority(fav_count, manga.updated_at);
-					let job = MangaUpdateJob {
-						manga_id: manga.id,
-						scraper_name: scraper.clone(),
-						last_attempt: None,
-					};
-
-					let key = format!("manga-update-{}-{}", scraper, manga.id);
-					if self.queue.insert(key, job, priority).await {
-						scheduled += 1;
-					}
-				}
+			let key = format!("manga-update-{}-{}", scraper, manga.id);
+			if self.queue.insert(key, job, priority).await {
+				scheduled += 1;
 			}
-
-			scraper_buckets.retain(|_, v| !v.is_empty());
 		}
+
 		scheduled
 	}
 

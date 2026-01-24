@@ -19,13 +19,39 @@ impl MangaQuery {
 
 		match manga {
 			Some(mut manga_model) => {
+				let mut manga_obj = Manga::from(manga_model.clone());
+
+				let stale_threshold = chrono::Utc::now() - chrono::Duration::days(1);
+				let is_stale = manga_model.updated_at < stale_threshold.naive_utc();
+				let is_favorite = database_entities::favorite_mangas::Entity::find()
+					.filter(database_entities::favorite_mangas::Column::MangaId.eq(manga_model.id))
+					.one(&db.conn)
+					.await?
+					.is_some();
+
+				if is_stale && !is_favorite {
+					tracing::debug!("Scheduling on-demand scrape for non-favorite stale manga {}", id);
+
+					let db_clone = db.clone();
+					let sm = ctx.data::<Arc<ScraperManager>>()?.clone();
+					let scraper_name = manga_model.scraper.clone();
+					let manga_id = manga_model.id;
+					tokio::spawn(async move {
+						let _ = manga_sync::sync_manga_with_scraper(db_clone.as_ref(), sm.as_ref(), manga_id, &scraper_name)
+							.await;
+					});
+					manga_obj.scrape_scheduled = true;
+				}
+
 				if manga_model.created_at.is_none() {
 					tracing::debug!("Manga with ID {} has no created_at date, scraping for details", id);
 					if let Ok(updated_manga) = self.scrape_and_update_manga(ctx, manga_model.clone()).await {
 						manga_model = updated_manga;
+						manga_obj = Manga::from(manga_model.clone());
 					}
 				}
-				Ok(Some(Manga::from(manga_model)))
+
+				Ok(Some(manga_obj))
 			}
 			None => Ok(None),
 		}
