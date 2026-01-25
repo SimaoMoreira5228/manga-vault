@@ -1,6 +1,6 @@
 [package]
 name = "gql-api"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2024"
 
 [lib]
@@ -46,3 +46,4 @@ tracing = { workspace = true }
 uuid = { version = "1.18", features = ["v4"] }
 version-check = { workspace = true }
 webp = "0.3"
+zstd = "0.13"

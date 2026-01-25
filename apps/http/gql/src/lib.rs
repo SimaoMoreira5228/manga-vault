@@ -62,6 +62,8 @@ pub struct Config {
 	#[serde(default)]
 	pub uploads_folder: String,
 	#[serde(default)]
+	pub cache: CacheConfig,
+	#[serde(default)]
 	pub cors_allow_origins: Vec<String>,
 	#[serde(default)]
 	pub cert_path: Option<String>,
@@ -77,11 +79,54 @@ impl Default for Config {
 			jwt_duration_days: 30,
 			max_file_size: 10 * 1024 * 1024, // 10 MB
 			uploads_folder: format!("{}/uploads", current_exe_parent_dir().display()),
+			cache: CacheConfig::default(),
 			cors_allow_origins: vec!["http://localhost:5227".into()],
 			cert_path: None,
 			key_path: None,
 		}
 	}
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct CacheConfig {
+	#[serde(default = "default_search_minutes")]
+	pub search_minutes: u64,
+	#[serde(default = "default_latest_minutes")]
+	pub latest_minutes: u64,
+	#[serde(default = "default_trending_minutes")]
+	pub trending_minutes: u64,
+	#[serde(default = "default_images_minutes")]
+	pub images_minutes: u64,
+	#[serde(default = "default_novel_minutes")]
+	pub novel_minutes: u64,
+}
+
+impl Default for CacheConfig {
+	fn default() -> Self {
+		Self {
+			search_minutes: default_search_minutes(),
+			latest_minutes: default_latest_minutes(),
+			trending_minutes: default_trending_minutes(),
+			images_minutes: default_images_minutes(),
+			novel_minutes: default_novel_minutes(),
+		}
+	}
+}
+
+fn default_search_minutes() -> u64 {
+	10
+}
+fn default_latest_minutes() -> u64 {
+	2
+}
+fn default_trending_minutes() -> u64 {
+	20
+}
+fn default_images_minutes() -> u64 {
+	1440
+}
+fn default_novel_minutes() -> u64 {
+	10080
 }
 
 impl Config {
@@ -100,30 +145,36 @@ async fn graphql_handler(
 	let mut request = request.into_inner();
 	request = request.data(headers.clone());
 
-	if let Some(token) = headers.get(header::COOKIE).and_then(|h| h.to_str().ok()) {
-		let token = token.replace("token=", "");
+	if let Some(cookie_header) = headers.get(header::COOKIE).and_then(|h| h.to_str().ok()) {
+		let token = cookie_header
+			.split(';')
+			.map(|s| s.trim())
+			.find(|s| s.starts_with("token="))
+			.map(|s| &s[6..]);
 
-		if let Ok(token_data) = decode::<Claims>(
-			&token,
-			&DecodingKey::from_secret(config.secret_jwt.as_bytes()),
-			&Validation::default(),
-		) {
-			match database_entities::users::Entity::find()
-				.filter(database_entities::users::Column::Id.eq(token_data.claims.sub))
-				.one(&db.conn)
-				.await
-			{
-				Ok(Some(user_model)) => {
-					let sanitized = User::from(user_model);
-					request = request.data(sanitized);
-				}
-				Ok(None) => {
-					// User not found, do nothing
-				}
-				Err(e) => {
-					return GraphQLResponse::from(async_graphql::Response::from_errors(vec![
-						async_graphql::ServerError::new(format!("Database query error: {:?}", e), None),
-					]));
+		if let Some(token) = token {
+			if let Ok(token_data) = decode::<Claims>(
+				token,
+				&DecodingKey::from_secret(config.secret_jwt.as_bytes()),
+				&Validation::default(),
+			) {
+				match database_entities::users::Entity::find()
+					.filter(database_entities::users::Column::Id.eq(token_data.claims.sub))
+					.one(&db.conn)
+					.await
+				{
+					Ok(Some(user_model)) => {
+						let sanitized = User::from(user_model);
+						request = request.data(sanitized);
+					}
+					Ok(None) => {
+						// User not found, do nothing
+					}
+					Err(e) => {
+						return GraphQLResponse::from(async_graphql::Response::from_errors(vec![
+							async_graphql::ServerError::new(format!("Database query error: {:?}", e), None),
+						]));
+					}
 				}
 			}
 		}
@@ -168,7 +219,7 @@ pub async fn run(db: Arc<Database>, scraper_manager: Arc<ScraperManager>) -> any
 		CorsLayer::new().allow_origin(origins).allow_credentials(true)
 	}
 	.allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-	.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT]);
+	.allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::ACCEPT, header::COOKIE]);
 
 	let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
 		.data(db.clone())
@@ -188,9 +239,15 @@ pub async fn run(db: Arc<Database>, scraper_manager: Arc<ScraperManager>) -> any
 		.with_state(schema)
 		.into_make_service();
 
-	tracing::info!("GraphQL API will be available at https://localhost:{}/", config.api_port);
+	let protocol = if config.use_tls() { "https" } else { "http" };
 	tracing::info!(
-		"GraphQL Playground will be available at https://localhost:{}/playground",
+		"GraphQL API will be available at {}://localhost:{}/",
+		protocol,
+		config.api_port
+	);
+	tracing::info!(
+		"GraphQL Playground will be available at {}://localhost:{}/playground",
+		protocol,
 		config.api_port
 	);
 

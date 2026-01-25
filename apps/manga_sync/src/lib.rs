@@ -13,6 +13,11 @@ pub enum SyncError {
 		manga_id: i32,
 	},
 
+	#[error("Novel {novel_id} not found")]
+	NovelNotFound {
+		novel_id: i32,
+	},
+
 	#[error("Scraper {scraper_name} not found")]
 	ScraperNotFound {
 		scraper_name: String,
@@ -159,20 +164,20 @@ pub async fn sync_manga_with_scraper(
 		}
 	}
 
-	let scraped_manga = plugin.scrape_manga(manga.url.clone()).await.map_err(map_plugin_error)?;
+	let scraped_manga = plugin.scrape(manga.url.clone()).await.map_err(map_plugin_error)?;
 
 	let manga_created_at = manga.created_at.clone();
 	let mut manga: database_entities::mangas::ActiveModel = manga.into();
 	let parsed_date = scraped_manga.parse_release_date();
 
 	manga.title = Set(scraped_manga.title);
-	manga.img_url = Set(scraped_manga.img_url);
-	manga.description = Set(Some(scraped_manga.description));
+	manga.img_url = Set(scraped_manga.img_url.unwrap_or_default());
+	manga.description = Set(scraped_manga.description);
 	manga.alternative_names = Set(Some(scraped_manga.alternative_names.join(", ")));
 	manga.authors = Set(Some(scraped_manga.authors.join(", ")));
 	manga.artists = Set(scraped_manga.artists.map(|artists| artists.join(", ")));
-	manga.status = Set(Some(scraped_manga.status));
-	manga.manga_type = Set(scraped_manga.manga_type);
+	manga.status = Set(scraped_manga.status);
+	manga.manga_type = Set(scraped_manga.page_type);
 	manga.release_date = Set(parsed_date);
 	manga.genres = Set(Some(scraped_manga.genres.join(", ")));
 	manga.updated_at = Set(Utc::now().naive_utc());
@@ -186,10 +191,15 @@ pub async fn sync_manga_with_scraper(
 	let mut active_models: Vec<database_entities::chapters::ActiveModel> = Vec::new();
 	let chapter_urls: Vec<String> = scraped_manga.chapters.iter().map(|c| c.url.clone()).collect();
 
-	let existing_chapters: Vec<database_entities::chapters::Model> = database_entities::chapters::Entity::find()
-		.filter(database_entities::chapters::Column::Url.is_in(chapter_urls.clone()))
-		.all(&db.conn)
-		.await?;
+	let mut existing_chapters: Vec<database_entities::chapters::Model> = Vec::new();
+	let chunk_size = 800usize;
+	for chunk in chapter_urls.chunks(chunk_size) {
+		let rows = database_entities::chapters::Entity::find()
+			.filter(database_entities::chapters::Column::Url.is_in(chunk.to_vec()))
+			.all(&db.conn)
+			.await?;
+		existing_chapters.extend(rows);
+	}
 
 	let existing_urls: std::collections::HashSet<String> = existing_chapters.into_iter().map(|c| c.url).collect();
 
@@ -210,14 +220,181 @@ pub async fn sync_manga_with_scraper(
 	}
 
 	if !active_models.is_empty() {
-		database_entities::chapters::Entity::insert_many(active_models)
-			.on_conflict(
-				OnConflict::column(database_entities::chapters::Column::Url)
-					.do_nothing()
-					.to_owned(),
-			)
-			.exec(&db.conn)
+		let model_chunk_size = 100usize;
+		for chunk in active_models.chunks(model_chunk_size) {
+			if db.db_type == "postgresql" || db.db_type == "mysql" {
+				database_entities::chapters::Entity::insert_many(chunk.to_vec())
+					.on_conflict(
+						OnConflict::column(database_entities::chapters::Column::Url)
+							.do_nothing()
+							.to_owned(),
+					)
+					.exec(&db.conn)
+					.await?;
+			} else {
+				database_entities::chapters::Entity::insert_many(chunk.to_vec())
+					.exec(&db.conn)
+					.await?;
+			}
+		}
+	}
+
+	Ok(())
+}
+
+pub async fn sync_novel_with_scraper(
+	db: &Database,
+	scraper_manager: &scraper_core::ScraperManager,
+	novel_id: i32,
+	scraper_name: &str,
+) -> Result<(), SyncError> {
+	let mut novel = database_entities::novels::Entity::find_by_id(novel_id)
+		.one(&db.conn)
+		.await?
+		.ok_or_else(|| SyncError::NovelNotFound { novel_id })?;
+
+	let plugin = scraper_manager
+		.get_plugin(scraper_name)
+		.await
+		.ok_or_else(|| SyncError::ScraperNotFound {
+			scraper_name: scraper_name.to_string(),
+		})?;
+
+	let plugin_info = plugin.get_info().await.map_err(map_plugin_error)?;
+
+	if let Some(legacy_urls) = plugin_info.legacy_urls {
+		let base_url = plugin_info.base_url.ok_or_else(|| SyncError::ScraperMissingBaseUrl {
+			scraper_name: scraper_name.to_string(),
+		})?;
+
+		let canonical_host = host_from_base(&base_url)
+			.ok_or_else(|| SyncError::InvalidBaseUrl {
+				base_url: base_url.clone(),
+			})?
+			.to_lowercase();
+
+		let legacy_hosts: Vec<String> = legacy_urls
+			.iter()
+			.filter_map(|d| Url::parse(d).ok().and_then(|u| u.host_str().map(|s| s.to_lowercase())))
+			.collect();
+
+		let parsed_novel_url = Url::parse(&novel.url)?;
+		let novel_host = parsed_novel_url
+			.host_str()
+			.ok_or_else(|| SyncError::InvalidMangaUrl { url: novel.url.clone() })?
+			.to_lowercase();
+
+		if legacy_hosts.iter().any(|h| h == &novel_host) {
+			let txn = db.conn.begin().await?;
+
+			{
+				use database_entities::novels;
+				let mut am: novels::ActiveModel = novel.clone().into();
+				let new_url = replace_host_preserve_path(&novel.url, &canonical_host)?;
+				am.url = Set(new_url.clone());
+				am.updated_at = Set(Utc::now().naive_utc());
+				am.update(&txn).await?;
+				novel.url = new_url;
+			}
+
+			{
+				use database_entities::novel_chapters;
+				let chapter_models = novel_chapters::Entity::find()
+					.filter(novel_chapters::Column::NovelId.eq(novel.id))
+					.all(&txn)
+					.await?;
+
+				for ch in chapter_models {
+					if let Ok(cu) = Url::parse(&ch.url) {
+						if let Some(ch_host) = cu.host_str() {
+							let ch_host_norm = ch_host.to_lowercase();
+							if legacy_hosts.iter().any(|h| h == &ch_host_norm) {
+								let new_ch_url = replace_host_preserve_path(&ch.url, &canonical_host)?;
+								let mut cham: novel_chapters::ActiveModel = ch.into();
+								cham.url = Set(new_ch_url);
+								cham.updated_at = Set(Utc::now().naive_utc());
+								cham.update(&txn).await?;
+							}
+						}
+					}
+				}
+			}
+
+			txn.commit().await?;
+		}
+	}
+
+	let scraped_novel = plugin.scrape(novel.url.clone()).await.map_err(map_plugin_error)?;
+	let novel_created_at = novel.created_at;
+	let mut novel_active: database_entities::novels::ActiveModel = novel.into();
+	let parsed_date = scraped_novel.parse_release_date();
+
+	novel_active.title = Set(scraped_novel.title);
+	novel_active.img_url = Set(scraped_novel.img_url.unwrap_or_default());
+	novel_active.description = Set(scraped_novel.description);
+	novel_active.alternative_names = Set(Some(scraped_novel.alternative_names.join(", ")));
+	novel_active.authors = Set(Some(scraped_novel.authors.join(", ")));
+	novel_active.artists = Set(scraped_novel.artists.map(|a| a.join(", ")));
+	novel_active.status = Set(scraped_novel.status);
+	novel_active.novel_type = Set(scraped_novel.page_type);
+	novel_active.release_date = Set(parsed_date);
+	novel_active.genres = Set(Some(scraped_novel.genres.join(", ")));
+	novel_active.updated_at = Set(Utc::now().naive_utc());
+
+	if novel_created_at.is_none() {
+		novel_active.created_at = Set(Some(Utc::now().naive_utc()));
+	}
+
+	let novel = novel_active.update(&db.conn).await?;
+
+	let mut active_models: Vec<database_entities::novel_chapters::ActiveModel> = Vec::new();
+	let chapter_urls: Vec<String> = scraped_novel.chapters.iter().map(|c| c.url.clone()).collect();
+
+	let mut existing_chapters: Vec<database_entities::novel_chapters::Model> = Vec::new();
+	let chunk_size = 800usize;
+	for chunk in chapter_urls.chunks(chunk_size) {
+		let rows = database_entities::novel_chapters::Entity::find()
+			.filter(database_entities::novel_chapters::Column::Url.is_in(chunk.to_vec()))
+			.all(&db.conn)
 			.await?;
+		existing_chapters.extend(rows);
+	}
+
+	let existing_urls: std::collections::HashSet<String> = existing_chapters.into_iter().map(|c| c.url).collect();
+
+	for chapter in scraped_novel.chapters {
+		if !existing_urls.contains(&chapter.url) {
+			let new_chapter = database_entities::novel_chapters::ActiveModel {
+				novel_id: Set(novel.id),
+				title: Set(chapter.title),
+				url: Set(chapter.url),
+				created_at: Set(Utc::now().naive_utc()),
+				updated_at: Set(Utc::now().naive_utc()),
+				..Default::default()
+			};
+
+			active_models.push(new_chapter);
+		}
+	}
+
+	if !active_models.is_empty() {
+		let model_chunk_size = 100usize;
+		for chunk in active_models.chunks(model_chunk_size) {
+			if db.db_type == "postgresql" || db.db_type == "mysql" {
+				database_entities::novel_chapters::Entity::insert_many(chunk.to_vec())
+					.on_conflict(
+						OnConflict::column(database_entities::novel_chapters::Column::Url)
+							.do_nothing()
+							.to_owned(),
+					)
+					.exec(&db.conn)
+					.await?;
+			} else {
+				database_entities::novel_chapters::Entity::insert_many(chunk.to_vec())
+					.exec(&db.conn)
+					.await?;
+			}
+		}
 	}
 
 	Ok(())

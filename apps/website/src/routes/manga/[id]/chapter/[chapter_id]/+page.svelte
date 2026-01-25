@@ -4,16 +4,17 @@ import { afterNavigate, goto } from "$app/navigation";
 import { resolve } from "$app/paths";
 import { page } from "$app/state";
 import { getAuthState } from "$lib/auth.svelte";
+import ReaderControls from "$lib/components/ReaderControls.svelte";
 import { client } from "$lib/graphql/client";
 import DotsSpinner from "$lib/icons/DotsSpinner.svelte";
 import { proxyImage } from "$lib/utils/image";
 import { toaster } from "$lib/utils/toaster-svelte";
 import { ArrowBigDown, ArrowBigLeft, ArrowBigRight, ArrowBigUp, ArrowLeft } from "@lucide/svelte";
-import { Slider, Switch } from "@skeletonlabs/skeleton-svelte";
 import { gql } from "@urql/svelte";
 import { onDestroy, onMount } from "svelte";
 
 const chapterIdStr = $derived(page.params.chapter_id);
+const workId = $derived(page.params.id);
 const chapterId = $derived(parseInt(chapterIdStr || ""));
 
 let authState = $derived(getAuthState());
@@ -23,7 +24,7 @@ let autoNext = $state<boolean>(false);
 let areControlsOpen = $state(false);
 let markedRead = false;
 let ticking = false;
-let imageContainer: HTMLElement | null = $state(null);
+let scrollContainer: HTMLElement | null = $state(null);
 let imageUrls: string[] = $state([]);
 let nextChapter: { id: number; title: string } | null = $state(null);
 let previousChapter: number | null = $state(null);
@@ -56,8 +57,8 @@ onDestroy(async () => {
 });
 
 afterNavigate(async () => {
-	if (imageContainer) {
-		imageContainer.scrollTop = 0;
+	if (scrollContainer) {
+		scrollContainer.scrollTop = 0;
 	}
 	markedRead = false;
 	const savedMargin = localStorage.getItem("imageMargin");
@@ -90,17 +91,13 @@ async function loadChapter() {
 					query getChapterInfo($chapterId: Int!) {
 						chapters {
 							chapter(id: $chapterId) {
+								id
+								title
 								images
-								nextChapter {
-									id
-									title
-								}
-								previousChapter {
-									id
-								}
-								scraper {
-									refererUrl
-								}
+								mangaId
+								scraper { refererUrl }
+								nextChapter { id title }
+								previousChapter { id }
 							}
 						}
 					}
@@ -115,34 +112,42 @@ async function loadChapter() {
 		return;
 	}
 
-	const next = response.data.chapters.chapter?.nextChapter;
-	nextChapter = { id: next?.id, title: next?.title };
-	previousChapter = response.data.chapters.chapter?.previousChapter?.id;
-	imageUrls = response.data.chapters.chapter?.images || [];
-	refererUrl = response.data.chapters.chapter?.scraper?.refererUrl;
+	const chap = response.data?.chapters?.chapter;
+
+	if (chap) {
+		imageUrls = chap.images || [];
+		refererUrl = chap.scraper?.refererUrl ?? null;
+		nextChapter = chap.nextChapter ? { id: chap.nextChapter.id, title: chap.nextChapter.title } : null;
+		previousChapter = chap.previousChapter?.id ?? null;
+	}
+}
+
+function getPath(path: string) {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	return path as any;
 }
 
 function handleScroll() {
-	if (!imageContainer || ticking) {
+	if (!scrollContainer || ticking) {
 		return;
 	}
 
 	ticking = true;
 
 	requestAnimationFrame(async () => {
-		if (!imageContainer) return;
+		if (!scrollContainer) return;
 
-		const scrollPercentage = (imageContainer.scrollTop + imageContainer.clientHeight)
-			/ imageContainer.scrollHeight;
+		const scrollPercentage = (scrollContainer.scrollTop + scrollContainer.clientHeight)
+			/ scrollContainer.scrollHeight;
 
 		if (!markedRead && authState.status === "authenticated") {
-			if (scrollPercentage > 0.95) {
+			if (scrollPercentage > 0.90) {
 				markedRead = true;
 				try {
 					await client
 						.mutation(
 							gql`
-									mutation readChapter($chapterId: Int!) {
+									mutation readMangaChapter($chapterId: Int!) {
 										chapter {
 											readChapter(chapterId: $chapterId) {
 												id
@@ -163,7 +168,7 @@ function handleScroll() {
 
 		if (autoNext && nextChapter?.id && scrollPercentage >= 1.0) {
 			try {
-				goto(resolve(`/manga/${page.params.manga_id}/chapter/${nextChapter?.id}`));
+				goto(resolve(getPath(`/manga/${workId}/chapter/${nextChapter?.id}`)));
 			} catch (err) {
 				console.error("Navigation to next chapter failed", err);
 			}
@@ -190,92 +195,89 @@ function handleKeyPress(event: KeyboardEvent) {
 		imageMargin = Math.max(imageMargin - 5, 0);
 	} else if (event.key === "ArrowLeft") {
 		if (!previousChapter) return;
-		goto(resolve(`/manga/${page.params.manga_id}/chapter/${previousChapter}`));
+		goto(resolve(getPath(`/manga/${workId}/chapter/${previousChapter}`)));
 	} else if (event.key === "ArrowRight") {
 		if (!nextChapter?.id) return;
-		goto(resolve(`/manga/${page.params.manga_id}/chapter/${nextChapter?.id}`));
+		goto(resolve(getPath(`/manga/${workId}/chapter/${nextChapter?.id}`)));
 	} else if (event.key === "Escape") {
 		if (areControlsOpen) return (areControlsOpen = false);
-		if (!areControlsOpen) goto(resolve(`/manga/${page.params.manga_id}`));
+		if (!areControlsOpen) goto(resolve(getPath(`/manga/${workId}`)));
 	}
 }
 </script>
 
-<div class="flex h-full w-full flex-col items-center justify-center">
+<div class="flex h-screen w-full flex-col bg-surface-50-950 overflow-hidden relative">
 	{#if isLoading}
-		<DotsSpinner class="text-primary-500 h-18 w-18" />
+		<div class="flex-1 flex items-center justify-center">
+			<DotsSpinner class="text-primary-500 h-18 w-18" />
+		</div>
 	{:else}
-		<div class="flex w-full flex-col items-center overflow-auto p-4">
-			<div
-				class="w-full overflow-auto"
-				bind:this={imageContainer}
-				onscroll={handleScroll}
-			>
-				{#if imageUrls.length > 0}
-					{#each imageUrls as imageUrl, i (i)}
-						<div
-							class="mb-4 flex justify-center transition-all duration-300"
-							style={`margin: 0 ${imageMargin}%`}
-						>
-							<img
-								src={proxyImage(imageUrl, refererUrl ?? undefined)}
-								alt="Chapter page"
-								class="w-full object-contain"
-							/>
-						</div>
-					{/each}
-					{#if nextChapter?.id}
-						<p class="w-full py-24 text-center">
-							Next Chapter: {nextChapter?.title}
-						</p>
-					{/if}
-				{:else}
-					<div class="flex h-full w-full items-center justify-center">
-						<p>No images found.</p>
-					</div>
-				{/if}
-			</div>
+		<div
+			class="flex-1 overflow-y-auto scroll-smooth p-4 md:p-8"
+			bind:this={scrollContainer}
+			onscroll={handleScroll}
+		>
+			<div class="max-w-4xl mx-auto space-y-8">
+				<article class="flex flex-col items-center">
+					{#if imageUrls.length > 0}
+						{#each imageUrls as imageUrl, i (i)}
+							<div
+								class="mb-4 flex justify-center transition-all duration-300"
+								style={`margin: 0 ${imageMargin}%`}
+							>
+								<img
+									src={proxyImage(imageUrl, refererUrl ?? undefined)}
+									alt="Chapter page"
+									class="w-full object-contain"
+								/>
+							</div>
+						{/each}
 
-			{#if areControlsOpen}
-				<div class="card preset-filled-surface-100-900 flex h-auto w-full flex-row items-center justify-between gap-4 p-4">
-					<div class="flex w-full items-center justify-between gap-4">
-						<a
-							class="btn-icon preset-filled"
-							href={resolve(`/manga/${page.params.manga_id}`)}
-							aria-label="Back to Manga"
-						>
+						{#if nextChapter?.id}
+							<div class="flex flex-col items-center py-12 gap-6 border-t border-surface-500/10 w-full">
+								<p class="text-lg opacity-60 uppercase tracking-widest">Next Up</p>
+								<a
+									href={resolve(getPath(`/manga/${workId}/chapter/${nextChapter.id}`))}
+									class="btn preset-filled-primary px-12 py-4 text-xl font-bold"
+								>
+									{nextChapter.title}
+								</a>
+							</div>
+						{/if}
+					{:else}
+						<div class="flex h-full w-full items-center justify-center p-24">
+							<p class="text-xl opacity-60">No images found for this chapter.</p>
+						</div>
+					{/if}
+				</article>
+			</div>
+		</div>
+
+		{#if areControlsOpen}
+			<footer class="fixed bottom-0 left-0 right-0 p-4 bg-surface-100-900/80 backdrop-blur-md border-t border-surface-500/20 z-10">
+				<div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-4">
+					<div class="flex items-center gap-2">
+						<a class="btn-icon preset-filled" href={resolve(getPath(`/manga/${workId}`))} aria-label="Back">
 							<ArrowLeft />
 						</a>
-						<div class="flex w-full items-center gap-4">
-							<label class="label w-9/10 flex items-center gap-2">
-								<span class="label-text">Image Margin: {imageMargin}%</span>
-								<Slider
-									name="image-margin"
-									value={[imageMargin]}
-									onValueChange={(e) => (imageMargin = e.value[0])}
-									min={0}
-									max={45}
-								/>
-							</label>
-
-							<label class="label w-1/10 flex items-center gap-2">
-								<span class="label-text">Auto-next</span>
-								<Switch
-									name="auto-next"
-									checked={autoNext}
-									onCheckedChange={(e) => (autoNext = e.checked)}
-								/>
-							</label>
-						</div>
+						<div class="w-px h-8 bg-surface-500/20 hidden md:block"></div>
 					</div>
-					<div class="flex gap-2">
+
+					<div class="flex-1 w-full">
+						<ReaderControls
+							isNovel={false}
+							imageMargin={imageMargin}
+							autoNext={autoNext}
+							onImageMarginChange={(val) => (imageMargin = val)}
+							onAutoNextChange={(val) => (autoNext = val)}
+						/>
+					</div>
+
+					<div class="flex items-center gap-2">
 						{#if previousChapter}
 							<button
 								class="btn-icon preset-filled"
-								onclick={() =>
-								goto(
-									resolve(`/manga/${page.params.manga_id}/chapter/${previousChapter}`),
-								)}
+								onclick={() => goto(resolve(getPath(`/manga/${workId}/chapter/${previousChapter}`)))}
 								aria-label="Previous Chapter"
 							>
 								<ArrowBigLeft />
@@ -284,34 +286,29 @@ function handleKeyPress(event: KeyboardEvent) {
 						{#if nextChapter?.id}
 							<button
 								class="btn-icon preset-filled"
-								onclick={() =>
-								goto(
-									resolve(`/manga/${page.params.manga_id}/chapter/${nextChapter?.id}`),
-								)}
+								onclick={() => goto(resolve(getPath(`/manga/${workId}/chapter/${nextChapter?.id}`)))}
 								aria-label="Next Chapter"
 							>
 								<ArrowBigRight />
 							</button>
 						{/if}
 						<button
-							class="btn-icon preset-filled"
+							class="btn-icon preset-tonal"
 							onclick={() => (areControlsOpen = false)}
-							aria-label="Hide Controls"
+							aria-label="Hide"
 						>
 							<ArrowBigDown />
 						</button>
 					</div>
 				</div>
-			{/if}
-
-			{#if !areControlsOpen}
-				<button
-					class="btn-icon preset-filled absolute bottom-2 right-[2.5rem]"
-					onclick={() => (areControlsOpen = true)}
-				>
-					<ArrowBigUp />
-				</button>
-			{/if}
-		</div>
+			</footer>
+		{:else}
+			<button
+				class="btn-icon preset-filled fixed bottom-6 right-6 shadow-xl hover:scale-110 transition-transform z-20"
+				onclick={() => (areControlsOpen = true)}
+			>
+				<ArrowBigUp />
+			</button>
+		{/if}
 	{/if}
 </div>

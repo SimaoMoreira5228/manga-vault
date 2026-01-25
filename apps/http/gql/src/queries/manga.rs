@@ -83,7 +83,7 @@ impl MangaQuery {
 	) -> Result<database_entities::mangas::Model> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let scraper = self.get_scraper(ctx, &manga.scraper).await?;
-		let scraped_manga = scraper.scrape_manga(manga.url.clone()).await?;
+		let scraped_manga = scraper.scrape(manga.url.clone()).await?;
 
 		let release_date = scraped_manga.parse_release_date();
 		let alternative_names = scraped_manga.alternative_names.join(", ");
@@ -94,13 +94,13 @@ impl MangaQuery {
 		let mut active_model: database_entities::mangas::ActiveModel = manga.clone().into();
 
 		active_model.title = Set(scraped_manga.title);
-		active_model.img_url = Set(scraped_manga.img_url);
-		active_model.description = Set(Some(scraped_manga.description));
+		active_model.img_url = Set(scraped_manga.img_url.unwrap_or_default());
+		active_model.description = Set(scraped_manga.description);
 		active_model.alternative_names = Set(Some(alternative_names));
 		active_model.authors = Set(Some(authors));
 		active_model.artists = Set(artists);
-		active_model.status = Set(Some(scraped_manga.status));
-		active_model.manga_type = Set(scraped_manga.manga_type);
+		active_model.status = Set(scraped_manga.status);
+		active_model.manga_type = Set(scraped_manga.page_type);
 		active_model.release_date = Set(release_date);
 		active_model.genres = Set(Some(genres));
 		active_model.updated_at = Set(chrono::Utc::now().naive_utc());

@@ -185,8 +185,8 @@ jobs:
           python ./.github/scripts/build_and_upload.py --platform windows
 
   macos-x86:
-    name: macos-x86 (macos-14)
-    runs-on: macos-14-large
+    name: macos-x86
+    runs-on: macos-15-intel
     needs: prepare
     steps:
       - name: Checkout

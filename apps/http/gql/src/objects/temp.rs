@@ -15,7 +15,7 @@ impl From<database_entities::temp::Model> for Temp {
 		Self {
 			id: temp.id,
 			key: temp.key,
-			value: temp.value,
+			value: String::from_utf8(temp.value).unwrap_or_default(),
 			expires_at: temp.expires_at,
 		}
 	}

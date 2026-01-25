@@ -287,7 +287,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			.collect()
 	}
 
-	fn scrape_latest(page: u32) -> Vec<MangaItem> {
+	fn scrape_latest(page: u32) -> Vec<Item> {
 		let offset = (page - 1) * 10;
 		let url = format!(
 			"https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&order%5BlatestUploadedChapter%5D=desc&includes%5B%5D=cover_art",
@@ -296,7 +296,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		fetch_manga_items(&url)
 	}
 
-	fn scrape_trending(page: u32) -> Vec<MangaItem> {
+	fn scrape_trending(page: u32) -> Vec<Item> {
 		let offset = (page - 1) * 10;
 		let url = format!(
 			"https://api.mangadex.org/manga?limit=10&offset={}&status%5B%5D=ongoing&status%5B%5D=completed&status%5B%5D=hiatus&status%5B%5D=cancelled&order%5BfollowedCount%5D=desc&includes%5B%5D=cover_art",
@@ -305,7 +305,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		fetch_manga_items(&url)
 	}
 
-	fn scrape_search(query: String, page: u32) -> Vec<MangaItem> {
+	fn scrape_search(query: String, page: u32) -> Vec<Item> {
 		let offset = (page - 1) * 10;
 		let encoded_query = query.split_whitespace().collect::<Vec<_>>().join("%20");
 		let url = format!(
@@ -315,10 +315,10 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		fetch_manga_items(&url)
 	}
 
-	fn scrape_manga(url: String) -> MangaPage {
+	fn scrape(url: String) -> Page {
 		let manga_id = url.split('/').last().unwrap_or("");
 		if manga_id.is_empty() {
-			return default_manga_page();
+			return default_page();
 		}
 
 		let manga_url = format!(
@@ -328,17 +328,17 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		let response = match http_get(&manga_url) {
 			Some(res) => res,
-			None => return default_manga_page(),
+			None => return default_page(),
 		};
 
 		let json = match parse_json_response(&response) {
 			Some(data) => data,
-			None => return default_manga_page(),
+			None => return default_page(),
 		};
 
 		let data = match json.get("data") {
 			Some(d) => d,
-			None => return default_manga_page(),
+			None => return default_page(),
 		};
 
 		let attributes = data.get("attributes").unwrap();
@@ -412,7 +412,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		let chapters = fetch_chapters(manga_id);
 
-		MangaPage {
+		Page {
 			title,
 			url: url.clone(),
 			img_url,
@@ -420,11 +420,12 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			authors,
 			artists: if artists.is_empty() { None } else { Some(artists) },
 			status,
-			manga_type: None,
+			page_type: None,
 			release_date,
 			description,
 			genres,
 			chapters,
+			content_html: None,
 		}
 	}
 
@@ -438,6 +439,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			id: "manga_dex".to_string(),
 			name: "MangaDex".to_string(),
 			version: env!("CARGO_PKG_VERSION").to_string(),
+			scraper_type: ScraperType::Manga,
 			img_url: "https://mangadex.org/pwa/icons/icon-180.png".to_string(),
 			referer_url: None,
 			base_url: None,
@@ -446,7 +448,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 }
 
-fn fetch_manga_items(url: &str) -> Vec<MangaItem> {
+fn fetch_manga_items(url: &str) -> Vec<Item> {
 	let response = match http_get(url) {
 		Some(res) => res,
 		None => return Vec::new(),
@@ -466,8 +468,6 @@ fn fetch_manga_items(url: &str) -> Vec<MangaItem> {
 		.filter_map(|item| {
 			let manga_id = item["id"].as_str()?;
 			let title = item["attributes"]["title"].as_object()?.values().next()?.as_str()?;
-
-			// Find cover art
 			let cover_file = item["relationships"]
 				.as_array()?
 				.iter()
@@ -476,7 +476,7 @@ fn fetch_manga_items(url: &str) -> Vec<MangaItem> {
 
 			let cover_url = format!("https://mangadex.org/covers/{}/{}.512.jpg", manga_id, cover_file);
 
-			Some(MangaItem {
+			Some(Item {
 				title: title.to_string(),
 				url: format!("https://mangadex.org/title/{}", manga_id),
 				img_url: cover_url,
@@ -563,8 +563,8 @@ fn fetch_chapters(manga_id: &str) -> Vec<Chapter> {
 	chapters
 }
 
-fn default_manga_page() -> MangaPage {
-	MangaPage {
+fn default_page() -> Page {
+	Page {
 		title: String::new(),
 		url: String::new(),
 		img_url: String::new(),
@@ -572,11 +572,12 @@ fn default_manga_page() -> MangaPage {
 		authors: Vec::new(),
 		artists: None,
 		status: String::new(),
-		manga_type: None,
+		page_type: None,
 		release_date: None,
 		description: String::new(),
 		genres: Vec::new(),
 		chapters: Vec::new(),
+		content_html: None,
 	}
 }
 
@@ -593,8 +594,7 @@ mod tests {
 
 	#[test]
 	fn test_scrape_manga() {
-		let manga_page =
-			ScraperImpl::scrape_manga("https://mangadex.org/title/aa070232-a668-4c73-8305-a68825db32e4".to_string());
+		let manga_page = ScraperImpl::scrape("https://mangadex.org/title/aa070232-a668-4c73-8305-a68825db32e4".to_string());
 		assert_eq!(manga_page.title, "Hatsukoi wa Marude Yaiba no You ni");
 		assert_eq!(
 			manga_page.url,

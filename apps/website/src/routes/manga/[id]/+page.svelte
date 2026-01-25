@@ -2,19 +2,21 @@
 import { resolve } from "$app/paths";
 import { getAuthState } from "$lib/auth.svelte";
 import { client } from "$lib/graphql/client";
-import { getManga } from "$lib/utils/getManga";
+import DotsSpinner from "$lib/icons/DotsSpinner.svelte";
+import { getWork } from "$lib/utils/getWork";
 import { proxyImage } from "$lib/utils/image";
 import { toaster } from "$lib/utils/toaster-svelte";
 import { BookmarkMinus, BookmarkPlus, Eye, EyeOff, RefreshCw, SquareArrowOutUpRight } from "@lucide/svelte";
 import { Modal } from "@skeletonlabs/skeleton-svelte";
 import { gql } from "@urql/svelte";
+import { onMount } from "svelte";
 import type { PageData } from "./$types";
 
 let authState = $derived(getAuthState());
 
-let { data }: { data: PageData } = $props();
-let manga = $state(data.manga);
-const categories = data.categories;
+let props: { data: PageData } = $props();
+let manga = $state(props.data.manga);
+const categories = props.data.categories;
 let loadingStates: Record<string, boolean> = $state({});
 
 let isFavoriting = $state<{ open: boolean; categoryId: number | null }>({ open: false, categoryId: null });
@@ -139,7 +141,7 @@ async function unreadChapter(chapterId: number) {
 	}
 
 	// eslint-disable-next-line  @typescript-eslint/no-explicit-any
-	manga = { ...(manga as any), userReadChapters: manga?.userReadChapters.filter((c) => c.chapterId !== chapterId) };
+	manga = { ...(manga as any), userReadChapters: manga?.userReadChapters?.filter((c) => c.chapterId !== chapterId) };
 }
 
 async function readAllChapters() {
@@ -166,7 +168,7 @@ async function readAllChapters() {
 	}
 
 	// eslint-disable-next-line  @typescript-eslint/no-explicit-any
-	manga = { ...(manga as any), userReadChapters: manga?.chapters.map((c) => ({ id: -1, chapterId: c.id })) ?? [] };
+	manga = { ...(manga as any), userReadChapters: manga?.chapters?.map((c) => ({ id: -1, chapterId: c.id })) ?? [] };
 
 	loadingStates = { ...loadingStates, readAll: false };
 }
@@ -226,13 +228,31 @@ async function syncManga() {
 		return;
 	}
 
-	const refreshed = await getManga(manga.id);
+	const refreshed = await getWork(manga.id, "MANGA", { includeChapters: true, includeFavorite: true, includeRead: true });
 	if (refreshed) {
 		manga = refreshed;
 	}
 
 	loadingStates = { ...loadingStates, syncManga: false };
 }
+
+onMount(async () => {
+	if (!manga || !manga.id) return;
+	const needsChapters = !(manga.chapters && manga.chapters.length > 0);
+	const needsFavorite = manga.isFavorite === undefined;
+	const needsRead = manga.userReadChaptersAmount === undefined;
+
+	if (needsChapters || needsFavorite || needsRead) {
+		loadingStates = { ...loadingStates, loadingExtra: true };
+		const refreshed = await getWork(manga.id, "MANGA", {
+			includeChapters: needsChapters,
+			includeFavorite: needsFavorite,
+			includeRead: needsRead,
+		});
+		if (refreshed) manga = refreshed;
+		loadingStates = { ...loadingStates, loadingExtra: false };
+	}
+});
 
 function getResumeChapter(): number | null {
 	const chapters = [...(manga?.chapters ?? [])];
@@ -370,7 +390,11 @@ function areAllChaptersRead(): boolean {
 			</div>
 		</div>
 	</div>
-	{#if manga?.chapters && manga?.chapters?.length > 0}
+	{#if loadingStates.loadingExtra && (!(manga?.chapters) || manga?.chapters?.length === 0)}
+		<div class="flex w-full items-center justify-center md:w-1/2">
+			<DotsSpinner />
+		</div>
+	{:else if manga?.chapters && manga?.chapters?.length > 0}
 		<span class="vr hidden min-w-2 md:block"></span>
 		<div class="flex w-full flex-col items-start justify-start md:w-1/2">
 			<h3 class="h3">Chapters:</h3>
