@@ -58,6 +58,9 @@
 ---@class Utils
 ---@field sleep fun(ms: number)
 ---@field raise_error fun(kind: string, message: string, retryable: boolean?)
+---@field base64_encode fun(s: string): string
+---@field base64_decode fun(s: string): string
+---@field aes_decrypt fun(ct_base64: string, password: string): string
 
 -- Logging
 ---@class Log

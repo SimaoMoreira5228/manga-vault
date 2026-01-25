@@ -4202,6 +4202,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "md5"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae960838283323069879657ca3de837e9f7bbb4c7bf6ea7f1b290d5e9476d2e0"
+
+[[package]]
 name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6317,14 +6323,17 @@ version = "0.5.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base64 0.22.1",
  "config 0.1.0",
  "config-derive",
  "fantoccini",
  "futures",
  "html-to-markdown-rs",
+ "md5",
  "mlua",
  "mockito",
  "notify",
+ "openssl",
  "regex",
  "reqwest 0.13.1",
  "scraper",
@@ -8119,9 +8128,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.19.0"
+version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2e054861b4bd027cd373e18e8d8d8e6548085000e41290d95ce0c373a654b4a"
+checksum = "ee48d38b119b0cd71fe4141b30f5ba9c7c5d9f4e7a3a8b4a674e4b6ef789976f"
 dependencies = [
  "getrandom 0.3.4",
  "js-sys",

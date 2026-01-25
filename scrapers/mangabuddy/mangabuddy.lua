@@ -126,6 +126,83 @@ function Scrape_chapter(url)
 		end
 	end
 
+	local main_server = extract_js_string_var(html, "mainServer")
+	local chap_images_str = extract_js_string_var(html, "chapImages")
+
+	local chapter_images_from_html =
+		select_many(html, "#chapter-images img, .chapter-image[data-src], #chapter-images source", "chapter images")
+
+	local function get_srcset_image(el)
+		if not el then
+			return nil
+		end
+		local s = tostring(el)
+		local srcset = s:match("srcset%s*=%s*\"([^\"]+)\"") or s:match("srcset%s*=%s*'([^']+)'")
+		if not srcset then
+			srcset = s:match("data%-srcset%s*=%s*\"([^\"]+)\"") or s:match("data%-srcset%s*=%s*'([^']+)'")
+		end
+		if srcset then
+			for item in srcset:gmatch("([^,]+)") do
+				local url = item:match("(%S+)")
+				if url and url ~= "" then
+					return url
+				end
+			end
+		end
+		return nil
+	end
+
+	local function image_from_element(el)
+		if not el then
+			return nil
+		end
+		if scraping.get_image_url then
+			local u = scraping:get_image_url(el)
+			if u and u ~= "" then
+				return u
+			end
+		end
+		local maybe = get_srcset_image(el)
+		if maybe and maybe ~= "" then
+			return maybe
+		end
+		local s = tostring(el)
+		local data_src = s:match("data%-src%s*=%s*\"([^\"]+)\"") or s:match("data%-src%s*=%s*'([^']+)'")
+		if data_src and data_src ~= "" then
+			return data_src
+		end
+		local src = s:match("src%s*=%s*\"([^\"]+)\"") or s:match("src%s*=%s*'([^']+)'")
+		if src and src ~= "" then
+			return src
+		end
+		return nil
+	end
+
+	if main_server ~= "" and chap_images_str ~= "" then
+		local scheme_prefix = main_server:match("^//") and "https:" or ""
+		local main_prefix = scheme_prefix .. main_server
+		local chap_images = string.split(chap_images_str, ",")
+
+		for _, raw in ipairs(chap_images) do
+			local img = string.trim(raw)
+			if img ~= "" then
+				local full = img
+				if not full:match("^https?://") then
+					if string.sub(main_prefix, -1) == "/" and string.sub(img, 1, 1) == "/" then
+						full = string.sub(main_prefix, 1, -2) .. img
+					else
+						full = main_prefix .. img
+					end
+				end
+				table.insert(imgs, full)
+			end
+		end
+
+		if #imgs > 0 then
+			return imgs
+		end
+	end
+
 	if chap_images_str ~= "" then
 		local chapter_images_from_js = string.split(chap_images_str, ",")
 		local all_absolute = true
@@ -133,11 +210,10 @@ function Scrape_chapter(url)
 		for _, raw in ipairs(chapter_images_from_js) do
 			local img = string.trim(raw)
 			if img ~= "" then
-				if string.starts_with(img, "http://") or string.starts_with(img, "https://") then
+				if img:match("^https?://") then
 					table.insert(cleaned, img)
 				else
 					all_absolute = false
-					break
 				end
 			end
 		end
@@ -148,14 +224,14 @@ function Scrape_chapter(url)
 	end
 
 	for _, img_html in ipairs(chapter_images_from_html) do
-		local img_url = scraping:get_image_url(img_html)
+		local img_url = image_from_element(img_html) or scraping:get_image_url(img_html)
 		if img_url and img_url ~= "" then
 			table.insert(imgs, img_url)
 		end
 	end
 
 	if #imgs == 0 then
-		log.warn("[mangabuddy] No images found for chapter: " .. url)
+		log.warn("[mangabuddy] No images found for chapter: " .. tostring(url))
 		utils.raise_error("parse", "No images found in chapter", false)
 	end
 
