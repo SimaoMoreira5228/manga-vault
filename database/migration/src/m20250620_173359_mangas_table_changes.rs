@@ -1,4 +1,5 @@
 use sea_orm_migration::prelude::*;
+use sea_orm_migration::sea_orm::DbBackend;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -84,16 +85,32 @@ impl MigrationTrait for Migration {
 			)
 			.await?;
 
-		manager
-			.get_connection()
-			.execute_unprepared(
-				r#"
-                UPDATE mangas
-                   SET updated_at = substr(replace(updated_at, ' UTC', ''), 1, 26)
-                 WHERE updated_at LIKE '% UTC'
-                "#,
-			)
-			.await?;
+		match manager.get_database_backend() {
+			DbBackend::Postgres => {
+				manager
+					.get_connection()
+					.execute_unprepared(
+						r#"
+					UPDATE mangas
+					   SET updated_at = substring(replace(updated_at::text, ' UTC', ''), 1, 26)::timestamp
+					 WHERE updated_at::text LIKE '% UTC'
+					"#,
+					)
+					.await?;
+			}
+			_ => {
+				manager
+					.get_connection()
+					.execute_unprepared(
+						r#"
+					UPDATE mangas
+					   SET updated_at = substr(replace(updated_at, ' UTC', ''), 1, 26)
+					 WHERE updated_at LIKE '% UTC'
+					"#,
+					)
+					.await?;
+			}
+		}
 
 		Ok(())
 	}

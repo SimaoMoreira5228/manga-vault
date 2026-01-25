@@ -343,8 +343,10 @@ impl MangaUpdateScheduler {
 
 	async fn claim_novels(&self, threshold: DateTime<Utc>, limit: u64) -> Result<Vec<(novels::Model, i64)>, anyhow::Error> {
 		if self.db.db_type == "postgresql" {
+			let ts = threshold.format("%Y-%m-%d %H:%M:%S").to_string();
 			let sql = format!(
-				"WITH c AS (SELECT id FROM novels WHERE updated_at < $1 ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
+				"WITH c AS (SELECT id FROM novels WHERE updated_at < '{}' ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
+				ts,
 				limit = limit
 			);
 
@@ -435,8 +437,10 @@ impl MangaUpdateScheduler {
 
 	async fn claim_mangas(&self, threshold: DateTime<Utc>, limit: u64) -> Result<Vec<(mangas::Model, i64)>, anyhow::Error> {
 		if self.db.db_type == "postgresql" {
+			let ts = threshold.format("%Y-%m-%d %H:%M:%S").to_string();
 			let sql = format!(
-				"WITH c AS (SELECT id FROM mangas WHERE updated_at < $1 ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
+				"WITH c AS (SELECT id FROM mangas WHERE updated_at < '{}' ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
+				ts,
 				limit = limit
 			);
 

@@ -96,6 +96,7 @@ impl LuaPlugin {
 	pub async fn scrape(&self, url: String) -> anyhow::Result<Page> {
 		let scrape_manga: mlua::Function = self.runtime.globals().get("Scrape")?;
 		let raw_value: mlua::Value = scrape_manga.call_async(url).await.map_err(classify_lua_error)?;
+
 		let json: JsonValue = scraper_types::conversion::mlua_value_to_json(raw_value)?;
 		let page = scraper_types::conversion::value_to_page(&json)?;
 		Ok(page)

@@ -432,6 +432,11 @@ pub mod conversion {
 					};
 					map.insert(key_str, mlua_value_to_json(v)?);
 				}
+
+				if map.is_empty() {
+					return Ok(JsonValue::Array(vec![]));
+				}
+
 				Ok(JsonValue::Object(map))
 			}
 			_ => Err(ScraperError::internal("Unsupported Lua value for conversion")),
