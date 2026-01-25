@@ -21,10 +21,12 @@ pub async fn serve_file(
 	Extension(db): Extension<Arc<Database>>,
 	Extension(config): Extension<Arc<Config>>,
 ) -> Result<Response, StatusCode> {
-	let token_opt = headers
-		.get(header::COOKIE)
-		.and_then(|h| h.to_str().ok())
-		.map(|s| s.replace("token=", ""));
+	let token_opt = headers.get(header::COOKIE).and_then(|h| h.to_str().ok()).and_then(|s| {
+		s.split(';')
+			.map(|p| p.trim())
+			.find(|p| p.starts_with("token="))
+			.map(|p| &p[6..])
+	});
 
 	let user_id_opt = if let Some(token) = token_opt {
 		if let Ok(token_data) = jsonwebtoken::decode::<Claims>(

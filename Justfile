@@ -7,7 +7,7 @@ fmt *args:
 
 lint *args:
     cargo clippy --fix --allow-dirty --allow-staged --all-features --all-targets {{args}}
-    cd apps/website && bun run lint
+    cd apps/website && pnpm run lint && pnpm run check
 
 alias coverage := test
 test *args:
@@ -32,27 +32,33 @@ test *args:
     export LUA_PLUGIN_TEST_FLARESOLVERR_URL="http://localhost:8191/v1"
     export LUA_PLUGIN_TEST_HEADLESS_URL="http://localhost:4444"
 
-    cargo test --workspace --all-features {{args}}
+    cargo test --workspace --all-features --all-targets {{args}}
 
 docker-build:
+    cd docker
     docker-compose build
 
 docker-up:
+    cd docker
     docker-compose up -d
 
 docker-down:
+    cd docker
     docker-compose down
 
 docker-logs:
+    cd docker
     docker-compose logs -f
 
 docker-restart:
+    cd docker
     docker-compose restart
 
 docker-update: docker-down docker-build docker-up
     @echo "Updated and restarted all services"
 
 docker-clean:
+    cd docker
     docker-compose down -v
     docker system prune -f
 

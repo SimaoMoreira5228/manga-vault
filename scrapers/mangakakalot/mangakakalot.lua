@@ -114,7 +114,7 @@ function Scrape_search(query, page)
 	return manga_items
 end
 
-function Scrape_manga(url)
+function Scrape(url)
 	local html = http_get(url)
 
 	local main_info_element = scraping:select_elements(html, "div.manga-info-top, div.panel-story-info")[1]
@@ -216,7 +216,7 @@ end
 function Get_info()
 	return {
 		id = "mangakakalotgg",
-		version = "0.4.2",
+		version = "0.4.3",
 		name = "MangaKakalot",
 		img_url = BASE_URL .. "/images/favicon.ico",
 		referer_url = BASE_URL .. "/",
@@ -225,7 +225,7 @@ end
 
 Tests = {
 	Test_Scrape_manga = function()
-		local manga = Scrape_manga("https://www.mangakakalot.gg/manga/solo-leveling")
+		local manga = Scrape("https://www.mangakakalot.gg/manga/solo-leveling")
 		assert(manga.title == "Solo Leveling", "Manga title mismatch")
 		assert(manga.url == "https://www.mangakakalot.gg/manga/solo-leveling", "Manga URL mismatch")
 		assert(manga.img_url ~= "", "Manga image URL is empty")

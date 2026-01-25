@@ -1,0 +1,17 @@
+[package]
+name = "novelfire"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
+
+[dependencies]
+scraper = "0.25"
+wit-bindgen = { workspace = true }
+
+[dev-dependencies]
+reqwest = { workspace = true }

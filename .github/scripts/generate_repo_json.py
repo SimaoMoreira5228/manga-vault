@@ -31,7 +31,7 @@ HEADERS = {
 
 ROOT = Path(os.getenv("GITHUB_WORKSPACE", os.getcwd()))
 
-RUST_SCRAPERS = ["mangaread_org", "manga_dex", "hari_manga"]
+RUST_SCRAPERS = ["mangaread_org", "manga_dex", "hari_manga", "readernovel", "novelfire"]
 LUA_SCRAPERS = ["manhuafast", "natomanga", "mangabuddy", "mangakakalot"]
 
 ALL = [{"id": s, "type": "scraper-rust-wasm"} for s in RUST_SCRAPERS] + [{"id": s, "type": "lua-plugin"} for s in LUA_SCRAPERS]

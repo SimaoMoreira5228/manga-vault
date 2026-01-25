@@ -3,10 +3,14 @@
 pub use super::categories::Entity as Categories;
 pub use super::chapters::Entity as Chapters;
 pub use super::favorite_mangas::Entity as FavoriteMangas;
+pub use super::favorite_novels::Entity as FavoriteNovels;
 pub use super::files::Entity as Files;
 pub use super::manga_pack_members::Entity as MangaPackMembers;
 pub use super::manga_packs::Entity as MangaPacks;
 pub use super::mangas::Entity as Mangas;
+pub use super::novel_chapters::Entity as NovelChapters;
+pub use super::novels::Entity as Novels;
 pub use super::read_chapters::Entity as ReadChapters;
+pub use super::read_novel_chapters::Entity as ReadNovelChapters;
 pub use super::temp::Entity as Temp;
 pub use super::users::Entity as Users;

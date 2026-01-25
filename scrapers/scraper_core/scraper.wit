@@ -1,7 +1,7 @@
 package scraper:types;
 
 interface scraper {
-    record manga-item {
+    record item {
         title: string,
         url: string,
         img-url: string,
@@ -14,7 +14,7 @@ interface scraper {
         scanlation-group: option<string>,
     }
 
-    record manga-page {
+    record page {
         title: string,
         url: string,
         img-url: string,
@@ -22,11 +22,12 @@ interface scraper {
         authors: list<string>,
         artists: option<list<string>>,
         status: string,
-        manga-type: option<string>,
+        page-type: option<string>,
         release-date: option<string>,
         description: string,
         genres: list<string>,
         chapters: list<chapter>,
+        content-html: option<string>,
     }
 
     record genre {
@@ -34,10 +35,16 @@ interface scraper {
         url: string,
     }
 
+    enum scraper-type {
+        manga,
+        novel,
+    }
+
     record scraper-info {
         id: string,
         name: string,
         version: string,
+        scraper-type: scraper-type,
         img-url: string,
         referer-url: option<string>,
         base-url: option<string>,
@@ -45,10 +52,10 @@ interface scraper {
     }
 
     scrape-chapter: func(url: string) -> list<string>;
-    scrape-latest: func(page: u32) -> list<manga-item>;
-    scrape-trending: func(page: u32) -> list<manga-item>;
-    scrape-search: func(query: string, page: u32) -> list<manga-item>;
-    scrape-manga: func(url: string) -> manga-page;
+    scrape-latest: func(page: u32) -> list<item>;
+    scrape-trending: func(page: u32) -> list<item>;
+    scrape-search: func(query: string, page: u32) -> list<item>;
+    scrape: func(url: string) -> page;
     scrape-genres-list: func() -> list<genre>;
     get-info: func() -> scraper-info;
 }

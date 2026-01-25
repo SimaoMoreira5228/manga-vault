@@ -8,4 +8,5 @@ chrono = { workspace = true }
 mlua = { version = "0.11", features = ["lua54", "serialize", "send", "vendored"] }
 regex = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 thiserror = { workspace = true }

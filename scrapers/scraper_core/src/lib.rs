@@ -23,6 +23,11 @@ fn current_exe_parent_dir() -> PathBuf {
 		.to_path_buf()
 }
 
+#[cfg(debug_assertions)]
+fn debug_plugins_dir() -> PathBuf {
+	current_exe_parent_dir().join("debug-scrapers")
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RepositoryConfig {
 	pub url: String,
@@ -116,6 +121,17 @@ impl ScraperManager {
 			std::fs::create_dir_all(&plugins_dir)
 				.with_context(|| format!("Failed to create plugins directory: {}", plugins_dir.display()))?;
 		}
+
+		#[cfg(debug_assertions)]
+		{
+			let dbg = debug_plugins_dir();
+			if !dbg.exists() {
+				tracing::debug!("Creating debug plugins folder: {}", dbg.display());
+				std::fs::create_dir_all(&dbg)
+					.with_context(|| format!("Failed to create debug plugins directory: {}", dbg.display()))?;
+			}
+		}
+
 		Ok(())
 	}
 
@@ -145,6 +161,34 @@ impl ScraperManager {
 		.await
 		.context("Failed to read plugins directory")?;
 
+		#[cfg(debug_assertions)]
+		{
+			let plugins = self.plugins.clone();
+			let config = CONFIG.clone();
+			let dbg_folder = debug_plugins_dir();
+
+			files::read_directory(&dbg_folder, 1, move |path| {
+				let plugins = plugins.clone();
+				let config = config.clone();
+				async move {
+					let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+						return;
+					};
+
+					if PLUGIN_FILE_EXTENSIONS.contains(&ext) {
+						let plugin_type = if ext == "lua" { PluginType::Lua } else { PluginType::Wasm };
+
+						match files::load_plugin_file(config.clone(), plugins.clone(), path.clone(), plugin_type).await {
+							Ok(_) => tracing::info!("Successfully loaded debug plugin: {}", path.display()),
+							Err(e) => tracing::error!("Failed to load debug plugin {}: {:#}", path.display(), e),
+						}
+					}
+				}
+			})
+			.await
+			.context("Failed to read debug plugins directory")?;
+		}
+
 		Ok(())
 	}
 
@@ -165,6 +209,14 @@ impl ScraperManager {
 				watcher
 					.watch(Path::new(&config.plugins_folder), notify::RecursiveMode::Recursive)
 					.expect("Failed to watch directory");
+
+				#[cfg(debug_assertions)]
+				{
+					let dbg = debug_plugins_dir();
+					if let Err(e) = watcher.watch(&dbg, notify::RecursiveMode::Recursive) {
+						tracing::error!("Failed to watch debug plugins directory {}: {:?}", dbg.display(), e);
+					}
+				}
 
 				for event in event_receiver {
 					tx.send(event).expect("Failed to send event");

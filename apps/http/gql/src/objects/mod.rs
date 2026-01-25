@@ -1,10 +1,15 @@
 pub mod categories;
+pub mod chapter_number;
 pub mod chapters;
 pub mod favorite_mangas;
+pub mod favorite_novels;
 pub mod files;
 pub mod manga_packs;
 pub mod mangas;
+pub mod novel_chapters;
+pub mod novels;
 pub mod read_chapters;
+pub mod read_novel_chapters;
 pub mod scraper;
 pub mod temp;
 pub mod users;

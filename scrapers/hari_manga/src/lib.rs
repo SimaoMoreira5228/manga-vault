@@ -63,27 +63,27 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			.collect()
 	}
 
-	fn scrape_latest(page: u32) -> Vec<MangaItem> {
+	fn scrape_latest(page: u32) -> Vec<Item> {
 		let url = format!("https://harimanga.me/?s&post_type=wp-manga&m_orderby=latest&paged={page}");
 		scrape_manga_list(&url)
 	}
 
-	fn scrape_trending(page: u32) -> Vec<MangaItem> {
+	fn scrape_trending(page: u32) -> Vec<Item> {
 		let url = format!("https://harimanga.me/?s&post_type=wp-manga&m_orderby=trending&paged={page}");
 		scrape_manga_list(&url)
 	}
 
-	fn scrape_search(query: String, page: u32) -> Vec<MangaItem> {
+	fn scrape_search(query: String, page: u32) -> Vec<Item> {
 		let url = format!("https://harimanga.me/page/{page}/?s={query}&post_type=wp-manga&op&author&artist&release&adult");
 		scrape_manga_list(&url)
 	}
 
-	fn scrape_manga(url: String) -> MangaPage {
+	fn scrape(url: String) -> Page {
 		let mut response = match http::get(&url, None) {
 			Some(res) => res,
 			None => {
 				println!("Error: Failed to get manga list");
-				return default_manga_page();
+				return default_page();
 			}
 		};
 
@@ -92,20 +92,20 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 				response = new_response;
 			} else {
 				println!("Error: Failed to bypass Cloudflare");
-				return default_manga_page();
+				return default_page();
 			}
 		}
 
 		if response.status != 200 {
 			println!("Error: Non-200 status for manga page");
-			return default_manga_page();
+			return default_page();
 		}
 
 		let html = ::scraper::Html::parse_document(&response.body);
 
 		let title_selector = match ::scraper::Selector::parse("div.post-title h1") {
 			Ok(sel) => sel,
-			Err(_) => return default_manga_page(),
+			Err(_) => return default_page(),
 		};
 		let title = html
 			.select(&title_selector)
@@ -115,7 +115,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		let img_selector = match ::scraper::Selector::parse("div.summary_image img") {
 			Ok(sel) => sel,
-			Err(_) => return default_manga_page(),
+			Err(_) => return default_page(),
 		};
 		let img_url = html
 			.select(&img_selector)
@@ -125,16 +125,16 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		let summary_selector = match ::scraper::Selector::parse("div.summary_content_wrap div.summary_content") {
 			Ok(sel) => sel,
-			Err(_) => return default_manga_page(),
+			Err(_) => return default_page(),
 		};
 		let summary_content = match html.select(&summary_selector).next() {
 			Some(content) => content,
-			None => return default_manga_page(),
+			None => return default_page(),
 		};
 
 		let item_selector = match ::scraper::Selector::parse("div.post-content div.post-content_item") {
 			Ok(sel) => sel,
-			Err(_) => return default_manga_page(),
+			Err(_) => return default_page(),
 		};
 
 		let mut genres = Vec::new();
@@ -195,7 +195,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		let mut release_date = None;
 		let status_selector = match ::scraper::Selector::parse("div.post-status div.post-content_item") {
 			Ok(sel) => sel,
-			Err(_) => return default_manga_page(),
+			Err(_) => return default_page(),
 		};
 
 		for div in html.select(&status_selector) {
@@ -223,7 +223,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		let desc_selector = match ::scraper::Selector::parse("div.summary__content") {
 			Ok(sel) => sel,
-			Err(_) => return default_manga_page(),
+			Err(_) => return default_page(),
 		};
 		let description = html
 			.select(&desc_selector)
@@ -233,7 +233,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		let chapters_selector = match ::scraper::Selector::parse("li.wp-manga-chapter") {
 			Ok(sel) => sel,
-			Err(_) => return default_manga_page(),
+			Err(_) => return default_page(),
 		};
 		let mut chapters = Vec::new();
 
@@ -275,18 +275,19 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		chapters.reverse();
 
-		MangaPage {
+		Page {
 			title,
 			img_url,
 			alternative_names,
 			authors,
 			artists,
 			status,
-			manga_type,
+			page_type: manga_type,
 			release_date,
 			description,
 			genres,
 			chapters,
+			content_html: None,
 			url: url.clone(),
 		}
 	}
@@ -334,6 +335,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		ScraperInfo {
 			id: "hari_manga".to_string(),
 			name: "Hari Manga".to_string(),
+			scraper_type: ScraperType::Manga,
 			version: env!("CARGO_PKG_VERSION").to_string(),
 			img_url: "https://harimanga.me/wp-content/uploads/2021/08/cropped-android-chrome-512x512-1-32x32.png"
 				.to_string(),
@@ -344,7 +346,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 }
 
-fn scrape_manga_list(url: &str) -> Vec<MangaItem> {
+fn scrape_manga_list(url: &str) -> Vec<Item> {
 	let mut response = match http::get(url, None) {
 		Some(res) => res,
 		None => {
@@ -415,7 +417,7 @@ fn scrape_manga_list(url: &str) -> Vec<MangaItem> {
 				None => continue,
 			};
 
-			manga_items.push(MangaItem {
+			manga_items.push(Item {
 				title,
 				img_url,
 				url: url.to_string(),
@@ -426,19 +428,20 @@ fn scrape_manga_list(url: &str) -> Vec<MangaItem> {
 	manga_items
 }
 
-fn default_manga_page() -> MangaPage {
-	MangaPage {
+fn default_page() -> Page {
+	Page {
 		title: String::new(),
 		img_url: String::new(),
 		alternative_names: Vec::new(),
 		authors: Vec::new(),
 		artists: None,
 		status: String::new(),
-		manga_type: None,
+		page_type: None,
 		release_date: None,
 		description: String::new(),
 		genres: Vec::new(),
 		chapters: Vec::new(),
 		url: String::new(),
+		content_html: None,
 	}
 }

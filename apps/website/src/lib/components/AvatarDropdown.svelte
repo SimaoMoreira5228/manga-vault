@@ -16,37 +16,41 @@ let {
 	size?: "lg" | "md";
 } = $props();
 
-size = size ?? "lg";
-
 const avatarSizes = {
 	lg: { root: "h-20 w-20", img: "h-20 w-20", fallback: "h-20 w-20", fallbackIconSize: 96 },
 	md: { root: "h-16 w-16", img: "h-16 w-16", fallback: "h-12 w-12", fallbackIconSize: 64 },
 };
 
-const classes = $derived(avatarSizes[size]);
+$effect(() => {
+	size = size ?? "lg";
+});
 </script>
 
 {#if authState?.status === "authenticated"}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
 			{#if authState.user?.imageId}
-				<Avatar.Root delayMs={200} class={classes.root + " rounded-full"}>
+				<Avatar.Root delayMs={200} class={avatarSizes[size ?? "lg"].root + " rounded-full"}>
 					<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-transparent">
 						<Avatar.Image
 							src={getImage(authState.user.imageId ?? 0)}
 							alt=""
-							class={classes.img + " rounded-full object-cover"}
+							class={avatarSizes[size ?? "lg"].img + " rounded-full object-cover"}
 						/>
-						<Avatar.Fallback class={"flex " + classes.fallback + " items-center justify-center rounded-full"}>
-							<UserRound size={classes.fallbackIconSize} />
+						<Avatar.Fallback
+							class={"flex " + avatarSizes[size ?? "lg"].fallback + " items-center justify-center rounded-full"}
+						>
+							<UserRound size={avatarSizes[size ?? "lg"].fallbackIconSize} />
 						</Avatar.Fallback>
 					</div>
 				</Avatar.Root>
 			{:else}
-				<Avatar.Root delayMs={200} class={classes.root + " rounded-full border"}>
+				<Avatar.Root delayMs={200} class={avatarSizes[size ?? "lg"].root + " rounded-full border"}>
 					<div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
-						<Avatar.Fallback class={"flex " + classes.fallback + " items-center justify-center rounded-full"}>
-							<UserRound size={classes.fallbackIconSize} />
+						<Avatar.Fallback
+							class={"flex " + avatarSizes[size ?? "lg"].fallback + " items-center justify-center rounded-full"}
+						>
+							<UserRound size={avatarSizes[size ?? "lg"].fallbackIconSize} />
 						</Avatar.Fallback>
 					</div>
 				</Avatar.Root>

@@ -100,15 +100,16 @@ jobs:
           cache-on-failure: true
           shared-key: "rust-ci-${{ runner.os }}"
 
-      - name: Install cargo-binstall
-        run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-
-      - name: Install cargo-component
-        run: cargo binstall -y cargo-component
-
       - name: Build wasm plugin and run tests
         run: |
           set -euo pipefail
+          curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+
+          echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+          cargo binstall -y cargo-component --force || cargo install --locked cargo-component
+
           cargo component build --target wasm32-wasip1 --release --package mangaread_org
 
           export VAULT_TEST_WASM_PLUGIN="$(pwd)/target/wasm32-wasip1/release/mangaread_org.wasm"

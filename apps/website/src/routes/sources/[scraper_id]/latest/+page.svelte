@@ -1,9 +1,10 @@
 <script lang="ts">
 import { afterNavigate, goto } from "$app/navigation";
 import { resolve } from "$app/paths";
+import MangaCard from "$lib/components/MangaCard.svelte";
 import { client } from "$lib/graphql/client";
+import type { ScrapeItem } from "$lib/graphql/types";
 import DotsSpinner from "$lib/icons/DotsSpinner.svelte";
-import { proxyImage } from "$lib/utils/image";
 import { toaster } from "$lib/utils/toaster-svelte";
 import { Search } from "@lucide/svelte";
 import { gql } from "@urql/svelte";
@@ -13,11 +14,11 @@ import type { PageData } from "./$types";
 let isLoading = $state(false);
 let isLoadingMore = $state(false);
 let searchQuery = $state("");
-let items = $state<{ id: string; title: string; imgUrl: string }[]>([]);
+let items = $state<ScrapeItem[]>([]);
 let listContainer: HTMLElement | null = $state(null);
 let currentPage = $state(1);
-let { data }: { data: PageData } = $props();
-const scraper = data.scraper;
+let props: { data: PageData } = $props();
+const scraper = props.data.scraper;
 let lastLoadFailed = $state(false);
 
 let _rAF = 0;
@@ -113,11 +114,13 @@ async function loadLatest() {
 	const query = gql`
 		query GetLatest($scraperId: String!, $page: Int!) {
 			scraping {
-				scrapeLatest(scraperId: $scraperId, page: $page) {
-					id
-					title
-					imgUrl
-				}
+						scrapeLatest(scraperId: $scraperId, page: $page) {
+							title
+							url
+							imgUrl
+							mangaId
+							novelId
+						}
 			}
 		}
 	`;
@@ -226,20 +229,15 @@ async function fillIfNeeded() {
 			style="grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); height: calc(100vh - 8rem);"
 		>
 			{#each items as item, i (i)}
-				<a
-					class="card relative flex h-80 w-full max-w-[12rem] flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat shadow-lg"
-					style="background-image: url({proxyImage(item.imgUrl, scraper?.refererUrl)});"
-					href={resolve(`/manga/${item.id}`)}
-				>
-					<div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/75"></div>
-
-					<div
-						class="relative z-10 w-full truncate p-4 text-center text-base text-white"
-						title={item.title}
-					>
-						{item.title}
-					</div>
-				</a>
+				{#if item.mangaId || item.novelId}
+					<MangaCard
+						work={item}
+						href={resolve(`/${scraper?.type?.toLowerCase() === "novel" ? "novel" : "manga"}/${item.mangaId || item.novelId}`)}
+						refererUrl={scraper?.refererUrl}
+					/>
+				{:else}
+					<MangaCard work={item} href={item.url} refererUrl={scraper?.refererUrl} />
+				{/if}
 			{/each}
 			{#if isLoadingMore}
 				<div class="flex h-full w-full items-center justify-center">

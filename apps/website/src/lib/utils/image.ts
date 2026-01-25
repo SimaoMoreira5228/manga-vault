@@ -10,7 +10,7 @@ if (!apiUrl.endsWith("/")) {
 	apiUrl += "/";
 }
 
-export function proxyImage(url: string, referer?: string): string {
+export function proxyImage(url: string, referer?: string | null): string {
 	if (referer) {
 		return `${proxyUrl}?url=${encodeURIComponent(url)}&referer=${encodeURIComponent(referer)}`;
 	} else {

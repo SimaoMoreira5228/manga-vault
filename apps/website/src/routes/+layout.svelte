@@ -63,7 +63,7 @@ function toggleExpanded() {
 <Toaster {toaster} />
 
 <div class="h-screen w-screen">
-	<div class="card border-surface-100-900 hidden h-full w-full grid-cols-[auto_1fr] border-[1px] md:grid">
+	<div class="card border-surface-100-900 hidden h-full w-full grid-cols-[auto_1fr] border md:grid">
 		<Navigation.Rail value={currentPage} expanded={isExpanded}>
 			{#snippet header()}
 				<Navigation.Tile
@@ -99,7 +99,7 @@ function toggleExpanded() {
 		</div>
 	</div>
 
-	<div class="card border-surface-100-900 grid h-full w-full grid-rows-[1fr_auto] border-[1px] md:hidden">
+	<div class="card border-surface-100-900 grid h-full w-full grid-rows-[1fr_auto] border md:hidden">
 		<div class="h-full min-h-0 w-full overflow-auto">
 			{@render children?.()}
 		</div>

@@ -1,4 +1,7 @@
+use base64::{Engine as _, engine::general_purpose};
+use md5;
 use mlua::{IntoLua, Lua, LuaSerdeExt, Table};
+use openssl::symm::{Cipher, decrypt};
 use scraper_types::{ScraperError, ScraperErrorKind};
 
 use crate::plugins::common::http::Response;
@@ -60,6 +63,59 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 				Err(mlua::Error::external(error))
 			},
 		)?,
+	)?;
+
+	utils_table.set(
+		"base64_decode",
+		lua.create_function(|lua, s: String| {
+			let decoded = general_purpose::STANDARD.decode(s).map_err(mlua::Error::external)?;
+			let s = String::from_utf8(decoded).map_err(mlua::Error::external)?;
+			lua.to_value(&s)
+		})?,
+	)?;
+
+	utils_table.set(
+		"base64_encode",
+		lua.create_function(|lua, s: String| {
+			let encoded = general_purpose::STANDARD.encode(s.as_bytes());
+			lua.to_value(&encoded)
+		})?,
+	)?;
+
+	utils_table.set(
+		"aes_decrypt",
+		lua.create_function(|lua, (ct_b64, password): (String, String)| {
+			let data = general_purpose::STANDARD.decode(ct_b64).map_err(mlua::Error::external)?;
+			let (salt_opt, ciphertext) = if data.len() > 16 && &data[0..8] == b"Salted__" {
+				(Some(&data[8..16]), &data[16..])
+			} else {
+				(None, &data[..])
+			};
+
+			let key_len = 32;
+			let iv_len = 16;
+			let mut m = Vec::new();
+			let mut prev: Vec<u8> = Vec::new();
+			while m.len() < (key_len + iv_len) {
+				let mut input = Vec::new();
+				if !prev.is_empty() {
+					input.extend_from_slice(&prev);
+				}
+				input.extend_from_slice(password.as_bytes());
+				if let Some(salt) = salt_opt {
+					input.extend_from_slice(salt);
+				}
+				let digest = md5::compute(&input);
+				prev = digest.0.to_vec();
+				m.extend_from_slice(&prev);
+			}
+			let key = &m[0..key_len];
+			let iv = &m[key_len..key_len + iv_len];
+
+			let plain = decrypt(Cipher::aes_256_cbc(), key, Some(iv), ciphertext).map_err(mlua::Error::external)?;
+			let s = String::from_utf8(plain).map_err(mlua::Error::external)?;
+			lua.to_value(&s)
+		})?,
 	)?;
 
 	lua.globals().set("utils", utils_table)?;

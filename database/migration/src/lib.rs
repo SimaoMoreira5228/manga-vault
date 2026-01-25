@@ -12,6 +12,10 @@ mod m20250624_230849_create_manga_packs;
 mod m20250825_035028_data_time_on_temp_table;
 mod m20260107_124950_unique_urls;
 mod m20260124_010000_add_scheduler_indexes;
+mod m20260124_020000_change_temp_value_to_binary;
+mod m20260124_030000_add_novels_and_tracking;
+mod m20260125_000000_add_missing_novel_fields;
+mod m20260125_010000_make_novel_created_at_nullable;
 
 pub struct Migrator;
 
@@ -31,6 +35,10 @@ impl MigratorTrait for Migrator {
 			Box::new(m20250825_035028_data_time_on_temp_table::Migration),
 			Box::new(m20260107_124950_unique_urls::Migration),
 			Box::new(m20260124_010000_add_scheduler_indexes::Migration),
+			Box::new(m20260124_020000_change_temp_value_to_binary::Migration),
+			Box::new(m20260124_030000_add_novels_and_tracking::Migration),
+			Box::new(m20260125_000000_add_missing_novel_fields::Migration),
+			Box::new(m20260125_010000_make_novel_created_at_nullable::Migration),
 		]
 	}
 }

@@ -28,7 +28,8 @@ pub struct Manga {
 	pub status: Option<String>,
 	pub manga_type: Option<String>,
 	pub release_date: Option<NaiveDateTime>,
-	pub description: Option<String>,
+	#[graphql(skip)]
+	pub description_raw: Option<String>,
 	pub genres: Option<String>,
 	pub scrape_scheduled: bool,
 }
@@ -57,7 +58,7 @@ impl From<database_entities::mangas::Model> for Manga {
 			status: manga.status,
 			manga_type: manga.manga_type,
 			release_date: manga.release_date,
-			description: manga.description,
+			description_raw: manga.description,
 			genres: manga.genres,
 			scrape_scheduled: false,
 		}
@@ -66,6 +67,13 @@ impl From<database_entities::mangas::Model> for Manga {
 
 #[async_graphql::ComplexObject]
 impl Manga {
+	async fn description(&self, _ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Option<String>> {
+		if let Some(ref raw) = self.description_raw {
+			return Ok(Some(raw.clone()));
+		}
+
+		Ok(None)
+	}
 	async fn chapters(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Vec<Chapter>> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let chapters = database_entities::chapters::Entity::find()

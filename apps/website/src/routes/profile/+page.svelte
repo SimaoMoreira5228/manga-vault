@@ -23,7 +23,13 @@ type isUpdatingCategoryType = {
 let { data }: { data: PageData } = $props();
 
 let authState = $derived(getAuthState());
-let fileIds = $state<number[]>(data.fileIds || []);
+let fileIds = $derived.by(() => {
+	if (data.fileIds) {
+		return data.fileIds;
+	}
+
+	return [];
+});
 let fileInput: HTMLInputElement;
 let isUploadingFile = $state(false);
 let isUpdatingCategory = $state<isUpdatingCategoryType>({ open: false, input: { username: null, imageId: null } });
