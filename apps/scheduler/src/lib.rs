@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
 use database_connection::Database;
-use database_entities::{favorite_mangas, mangas};
+use database_entities::{favorite_mangas, favorite_novels, mangas, novels};
 use queue::queue_item::QueueItem;
 use queue::{EnqueueStrategy, TaskQueue};
 use scraper_core::ScraperManager;
@@ -17,7 +17,7 @@ use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
 #[allow(dead_code)]
 pub struct MangaUpdateScheduler {
-	queue: Arc<TaskQueue<MangaUpdateJob>>,
+	queue: Arc<TaskQueue<UpdateJob>>,
 	db: Arc<Database>,
 	interval: Duration,
 	scraper_manager: Arc<ScraperManager>,
@@ -26,9 +26,17 @@ pub struct MangaUpdateScheduler {
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
-struct MangaUpdateJob {
-	manga_id: i32,
+enum ItemType {
+	Manga,
+	Novel,
+}
+
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
+struct UpdateJob {
+	item_id: i32,
 	scraper_name: String,
+	item_type: ItemType,
 	last_attempt: Option<Instant>,
 }
 
@@ -163,7 +171,7 @@ impl MangaUpdateScheduler {
 			let scraper_limiter = Arc::clone(&scraper_limiter);
 			let ignored_scrapers = Arc::clone(&ignored_scrapers);
 
-			move |item: QueueItem<MangaUpdateJob>| {
+			move |item: QueueItem<UpdateJob>| {
 				let db = db.clone();
 				let scraper_manager = scraper_manager.clone();
 				let scraper_limiter = scraper_limiter.clone();
@@ -200,13 +208,26 @@ impl MangaUpdateScheduler {
 						}
 					};
 
-					let result = manga_sync::sync_manga_with_scraper(
-						db.as_ref(),
-						scraper_manager.as_ref(),
-						item.payload.manga_id,
-						&item.payload.scraper_name,
-					)
-					.await;
+					let result = match item.payload.item_type {
+						ItemType::Manga => {
+							manga_sync::sync_manga_with_scraper(
+								db.as_ref(),
+								scraper_manager.as_ref(),
+								item.payload.item_id,
+								&item.payload.scraper_name,
+							)
+							.await
+						}
+						ItemType::Novel => {
+							manga_sync::sync_novel_with_scraper(
+								db.as_ref(),
+								scraper_manager.as_ref(),
+								item.payload.item_id,
+								&item.payload.scraper_name,
+							)
+							.await
+						}
+					};
 
 					match result {
 						Ok(()) => Ok(()),
@@ -239,7 +260,7 @@ impl MangaUpdateScheduler {
 							} else {
 								tracing::error!(
 									key = %item.key,
-									manga_id = item.payload.manga_id,
+									item_id = item.payload.item_id,
 									scraper = %item.payload.scraper_name,
 									attempt = item.fail_count + 1,
 									"Manga sync job failed: {:#}",
@@ -296,9 +317,8 @@ impl MangaUpdateScheduler {
 		let threshold = Utc::now() - TimeDelta::try_hours(1).unwrap();
 
 		let claim_limit = 500u64;
-		let claimed = self.claim_mangas(threshold, claim_limit).await?;
-
-		let mut scheduled = self.schedule_manga_batch(claimed).await;
+		let claimed_mangas = self.claim_mangas(threshold, claim_limit).await?;
+		let mut scheduled = self.schedule_manga_batch(claimed_mangas).await;
 
 		if self.queue.len() < self.queue.max_size() {
 			let available = self.queue.max_size().saturating_sub(self.queue.len());
@@ -307,8 +327,110 @@ impl MangaUpdateScheduler {
 			scheduled += self.schedule_manga_batch(remaining).await;
 		}
 
-		tracing::info!("Scheduled {} manga updates", scheduled);
+		let claimed_novels = self.claim_novels(threshold, claim_limit).await?;
+		scheduled += self.schedule_novel_batch(claimed_novels).await;
+
+		if self.queue.len() < self.queue.max_size() {
+			let available = self.queue.max_size().saturating_sub(self.queue.len());
+			let fetch_limit = (available.saturating_mul(3)).max(10) as u64;
+			let remaining = self.claim_novels(threshold, fetch_limit).await?;
+			scheduled += self.schedule_novel_batch(remaining).await;
+		}
+
+		tracing::info!("Scheduled {} updates", scheduled);
 		Ok(())
+	}
+
+	async fn claim_novels(&self, threshold: DateTime<Utc>, limit: u64) -> Result<Vec<(novels::Model, i64)>, anyhow::Error> {
+		if self.db.db_type == "postgresql" {
+			let sql = format!(
+				"WITH c AS (SELECT id FROM novels WHERE updated_at < $1 ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
+				limit = limit
+			);
+
+			let txn = self.db.conn.begin().await?;
+			let stmt = Statement::from_string(DbBackend::Postgres, sql);
+			let rows = txn.query_all(stmt).await?;
+
+			let mut ids: Vec<i32> = Vec::new();
+			for row in rows {
+				let id: i32 = row.try_get("", "id")?;
+				ids.push(id);
+			}
+
+			if ids.is_empty() {
+				txn.commit().await?;
+				return Ok(vec![]);
+			}
+
+			let models = novels::Entity::find()
+				.filter(novels::Column::Id.is_in(ids.clone()))
+				.all(&txn)
+				.await?;
+
+			let fav_rows = favorite_novels::Entity::find()
+				.filter(favorite_novels::Column::NovelId.is_in(ids.clone()))
+				.all(&txn)
+				.await?;
+
+			let mut fav_count: HashMap<i32, i64> = HashMap::new();
+			for f in fav_rows {
+				*fav_count.entry(f.novel_id).or_insert(0) += 1;
+			}
+
+			let mut model_map: HashMap<i32, novels::Model> = HashMap::new();
+			for m in models {
+				model_map.insert(m.id, m);
+			}
+
+			let mut result: Vec<(novels::Model, i64)> = Vec::new();
+			for id in ids {
+				if let Some(m) = model_map.remove(&id) {
+					let cnt = *fav_count.get(&id).unwrap_or(&0);
+					result.push((m, cnt));
+				}
+			}
+
+			txn.commit().await?;
+			return Ok(result);
+		}
+
+		let models = novels::Entity::find()
+			.filter(novels::Column::UpdatedAt.lt(threshold))
+			.order_by_desc(novels::Column::UpdatedAt)
+			.limit(limit as u64)
+			.all(&self.db.conn)
+			.await?;
+
+		let ids: Vec<i32> = models.iter().map(|m| m.id).collect();
+		if ids.is_empty() {
+			return Ok(vec![]);
+		}
+
+		let fav_rows = favorite_novels::Entity::find()
+			.filter(favorite_novels::Column::NovelId.is_in(ids.clone()))
+			.all(&self.db.conn)
+			.await?;
+
+		let mut fav_count: HashMap<i32, i64> = HashMap::new();
+		for f in fav_rows {
+			*fav_count.entry(f.novel_id).or_insert(0) += 1;
+		}
+
+		let mut model_map: HashMap<i32, novels::Model> = HashMap::new();
+		for m in models {
+			model_map.insert(m.id, m);
+		}
+
+		let mut result: Vec<(novels::Model, i64)> = Vec::new();
+		for id in ids {
+			if let Some(m) = model_map.remove(&id) {
+				let cnt = *fav_count.get(&id).unwrap_or(&0);
+				result.push((m, cnt));
+			}
+		}
+
+		Ok(result)
 	}
 
 	async fn claim_mangas(&self, threshold: DateTime<Utc>, limit: u64) -> Result<Vec<(mangas::Model, i64)>, anyhow::Error> {
@@ -409,13 +531,36 @@ impl MangaUpdateScheduler {
 		for (manga, fav_count) in mangas.into_iter() {
 			let scraper = manga.scraper.clone();
 			let priority = self.calculate_priority(fav_count, manga.updated_at);
-			let job = MangaUpdateJob {
-				manga_id: manga.id,
+			let job = UpdateJob {
+				item_id: manga.id,
 				scraper_name: scraper.clone(),
+				item_type: ItemType::Manga,
 				last_attempt: None,
 			};
 
 			let key = format!("manga-update-{}-{}", scraper, manga.id);
+			if self.queue.insert(key, job, priority).await {
+				scheduled += 1;
+			}
+		}
+
+		scheduled
+	}
+
+	async fn schedule_novel_batch(&self, novels_vec: Vec<(novels::Model, i64)>) -> usize {
+		let mut scheduled = 0;
+
+		for (novel, fav_count) in novels_vec.into_iter() {
+			let scraper = novel.scraper.clone();
+			let priority = self.calculate_priority(fav_count, novel.updated_at);
+			let job = UpdateJob {
+				item_id: novel.id,
+				scraper_name: scraper.clone(),
+				item_type: ItemType::Novel,
+				last_attempt: None,
+			};
+
+			let key = format!("novel-update-{}-{}", scraper, novel.id);
 			if self.queue.insert(key, job, priority).await {
 				scheduled += 1;
 			}

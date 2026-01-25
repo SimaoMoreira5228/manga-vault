@@ -61,7 +61,14 @@ pub async fn run() -> anyhow::Result<()> {
 			.context("Failed to read website version file")?;
 		serde_json::from_str::<WebsiteVersionFile>(&content).context("Failed to parse website version file")?
 	} else {
+		#[cfg(not(debug_assertions))]
 		anyhow::bail!("Website version file not found: {}", website_version_file.display());
+
+		#[cfg(debug_assertions)]
+		WebsiteVersionFile {
+			version: "debug".into(),
+			tag_name: "debug".into(),
+		}
 	};
 
 	let latest_release = version_check::get_latest_release("website").await?;

@@ -9,9 +9,9 @@ pub struct Model {
 	pub id: i32,
 	#[sea_orm(column_type = "Text")]
 	pub key: String,
-	#[sea_orm(column_type = "Text")]
-	pub value: String,
 	pub expires_at: DateTime,
+	#[sea_orm(column_type = "Binary(1)")]
+	pub value: Vec<u8>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

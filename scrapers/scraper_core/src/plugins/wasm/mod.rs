@@ -75,7 +75,7 @@ impl WasmPlugin {
 			.map(|pages| pages.into_iter().map(Into::into).collect())
 	}
 
-	pub async fn scrape_latest(&self, page: u32) -> Result<Vec<scraper_types::MangaItem>> {
+	pub async fn scrape_latest(&self, page: u32) -> Result<Vec<scraper_types::Item>> {
 		let mut store = Store::new(&self.engine, States::new());
 		store.set_fuel(u64::MAX)?;
 		store.fuel_async_yield_interval(Some(10000))?;
@@ -92,7 +92,7 @@ impl WasmPlugin {
 			.map(|items| items.into_iter().map(Into::into).collect())
 	}
 
-	pub async fn scrape_trending(&self, page: u32) -> Result<Vec<scraper_types::MangaItem>> {
+	pub async fn scrape_trending(&self, page: u32) -> Result<Vec<scraper_types::Item>> {
 		let mut store = Store::new(&self.engine, States::new());
 		store.set_fuel(u64::MAX)?;
 		store.fuel_async_yield_interval(Some(10000))?;
@@ -109,7 +109,7 @@ impl WasmPlugin {
 			.map(|items| items.into_iter().map(Into::into).collect())
 	}
 
-	pub async fn scrape_search(&self, query: String, page: u32) -> Result<Vec<scraper_types::MangaItem>> {
+	pub async fn scrape_search(&self, query: String, page: u32) -> Result<Vec<scraper_types::Item>> {
 		let mut store = Store::new(&self.engine, States::new());
 		store.set_fuel(u64::MAX)?;
 		store.fuel_async_yield_interval(Some(10000))?;
@@ -126,7 +126,7 @@ impl WasmPlugin {
 			.map(|items| items.into_iter().map(Into::into).collect())
 	}
 
-	pub async fn scrape_manga(&self, url: String) -> Result<scraper_types::MangaPage> {
+	pub async fn scrape(&self, url: String) -> Result<scraper_types::Page> {
 		let mut store = Store::new(&self.engine, States::new());
 		store.set_fuel(u64::MAX)?;
 		store.fuel_async_yield_interval(Some(10000))?;
@@ -137,9 +137,9 @@ impl WasmPlugin {
 
 		instance
 			.scraper_types_scraper()
-			.call_scrape_manga(&mut store, &url)
+			.call_scrape(&mut store, &url)
 			.await
-			.with_context(|| format!("Failed to scrape manga for plugin: {}", name))
+			.with_context(|| format!("Failed to scrape {} for plugin: {}", url, name))
 			.map(|page| page.into())
 	}
 
@@ -336,10 +336,13 @@ mod tests {
 			None => return,
 		};
 
-		let page = scraper.scrape_manga(manga_url).await.expect("scrape_manga failed");
+		let page = scraper.scrape(manga_url).await.expect("scrape_manga failed");
 		assert!(!page.title.is_empty(), "page.title should not be empty");
 		assert!(!page.url.is_empty(), "page.url should not be empty");
-		assert!(!page.img_url.is_empty(), "page.img_url should not be empty");
+		assert!(
+			page.img_url.as_deref().map(|s| !s.is_empty()).unwrap_or(false),
+			"page.img_url should not be empty"
+		);
 		assert!(!page.chapters.is_empty(), "page.chapters should not be empty");
 	}
 }

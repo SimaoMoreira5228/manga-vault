@@ -90,6 +90,20 @@ PACKAGES = [
     "tag_prefix": "mangaread_org",
   },
   {
+    "id": "readernovel",
+    "path": "scrapers/readernovel",
+    "type": "scraper-rust-wasm",
+    "crate": "readernovel",
+    "tag_prefix": "readernovel",
+  },
+  {
+    "id": "novelfire",
+    "path": "scrapers/novelfire",
+    "type": "scraper-rust-wasm",
+    "crate": "novelfire",
+    "tag_prefix": "novelfire",
+  },
+  {
     "id": "manhuafast",
     "path": "scrapers/manhuafast",
     "type": "lua-plugin",

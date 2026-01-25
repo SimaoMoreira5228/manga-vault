@@ -193,7 +193,7 @@ local function scrape_manga_chapters(url)
 	return table.reverse(chapters)
 end
 
-function Scrape_manga(url)
+function Scrape(url)
 	local request = http_get(url)
 	local html = request.text
 
@@ -258,7 +258,7 @@ end
 function Get_info()
 	return {
 		id = "manhuafast",
-		version = "0.5.0",
+		version = "0.5.1",
 		name = "Manhuafast",
 		img_url = "https://manhuafast.com/wp-content/uploads/2021/01/cropped-Dark-Star-Emperor-Manga-193x278-1-32x32.jpg",
 		referer_url = "https://manhuafast.com/",
@@ -267,7 +267,7 @@ end
 
 Tests = {
 	Test_Scrape_manga = function()
-		local manga = Scrape_manga("https://manhuafast.com/manga/nano-machine-all-chapters/")
+		local manga = Scrape("https://manhuafast.com/manga/nano-machine-all-chapters/")
 		assert(manga.title == "Nano Machine", "Title does not match")
 		assert(#manga.chapters > 0, "No chapters found")
 		assert(manga.img_url ~= "", "Image URL is empty")

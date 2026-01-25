@@ -19,12 +19,16 @@ pub enum Relation {
 	Categories,
 	#[sea_orm(has_many = "super::favorite_mangas::Entity")]
 	FavoriteMangas,
+	#[sea_orm(has_many = "super::favorite_novels::Entity")]
+	FavoriteNovels,
 	#[sea_orm(has_many = "super::files::Entity")]
 	Files,
 	#[sea_orm(has_many = "super::manga_packs::Entity")]
 	MangaPacks,
 	#[sea_orm(has_many = "super::read_chapters::Entity")]
 	ReadChapters,
+	#[sea_orm(has_many = "super::read_novel_chapters::Entity")]
+	ReadNovelChapters,
 }
 
 impl Related<super::categories::Entity> for Entity {
@@ -36,6 +40,12 @@ impl Related<super::categories::Entity> for Entity {
 impl Related<super::favorite_mangas::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::FavoriteMangas.def()
+	}
+}
+
+impl Related<super::favorite_novels::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::FavoriteNovels.def()
 	}
 }
 
@@ -54,6 +64,12 @@ impl Related<super::manga_packs::Entity> for Entity {
 impl Related<super::read_chapters::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::ReadChapters.def()
+	}
+}
+
+impl Related<super::read_novel_chapters::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::ReadNovelChapters.def()
 	}
 }
 

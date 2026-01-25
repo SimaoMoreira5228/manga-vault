@@ -4,31 +4,36 @@ wasmtime::component::bindgen!({
 	exports: { default: async },
 });
 
-impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::MangaItem> for scraper_types::MangaItem {
-	fn from(item: crate::plugins::wasm::bindings::exports::scraper::types::scraper::MangaItem) -> Self {
+impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::Item> for scraper_types::Item {
+	fn from(item: crate::plugins::wasm::bindings::exports::scraper::types::scraper::Item) -> Self {
 		Self {
 			title: item.title,
 			url: item.url,
-			img_url: item.img_url,
+			img_url: Some(item.img_url),
 		}
 	}
 }
 
-impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::MangaPage> for scraper_types::MangaPage {
-	fn from(page: crate::plugins::wasm::bindings::exports::scraper::types::scraper::MangaPage) -> Self {
+impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::Page> for scraper_types::Page {
+	fn from(page: crate::plugins::wasm::bindings::exports::scraper::types::scraper::Page) -> Self {
 		Self {
 			title: page.title,
 			url: page.url,
-			img_url: page.img_url,
+			img_url: if page.img_url.is_empty() { None } else { Some(page.img_url) },
 			alternative_names: page.alternative_names,
 			authors: page.authors,
 			artists: page.artists,
-			status: page.status,
-			manga_type: page.manga_type,
+			status: if page.status.is_empty() { None } else { Some(page.status) },
+			page_type: page.page_type,
 			release_date: page.release_date,
-			description: page.description,
+			description: if page.description.is_empty() {
+				None
+			} else {
+				Some(page.description)
+			},
 			genres: page.genres,
 			chapters: page.chapters.into_iter().map(Into::into).collect(),
+			content_html: None,
 		}
 	}
 }
@@ -53,11 +58,25 @@ impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::Chap
 	}
 }
 
+impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::ScraperType> for scraper_types::ScraperType {
+	fn from(scraper_type: crate::plugins::wasm::bindings::exports::scraper::types::scraper::ScraperType) -> Self {
+		match scraper_type {
+			crate::plugins::wasm::bindings::exports::scraper::types::scraper::ScraperType::Manga => {
+				scraper_types::ScraperType::Manga
+			}
+			crate::plugins::wasm::bindings::exports::scraper::types::scraper::ScraperType::Novel => {
+				scraper_types::ScraperType::Novel
+			}
+		}
+	}
+}
+
 impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::ScraperInfo> for scraper_types::ScraperInfo {
 	fn from(info: crate::plugins::wasm::bindings::exports::scraper::types::scraper::ScraperInfo) -> Self {
 		Self {
 			id: info.id,
 			name: info.name,
+			r#type: info.scraper_type.into(),
 			img_url: info.img_url,
 			referer_url: info.referer_url,
 			base_url: info.base_url,

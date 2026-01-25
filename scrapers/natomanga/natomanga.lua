@@ -141,7 +141,7 @@ function Scrape_search(query, page)
 	return manga_items
 end
 
-function Scrape_manga(url)
+function Scrape(url)
 	local html = http_get(url, { referer = "https://www.natomanga.com/" })
 
 	local title = scraping:get_text(scraping:select_elements(html, ".manga-info-content h1, .panel-story-info-right h1")[1])
@@ -236,7 +236,7 @@ end
 function Get_info()
 	return {
 		id = "natomanga",
-		version = "0.4.2",
+		version = "0.4.3",
 		name = "NatoManga",
 		img_url = "https://www.natomanga.com/images/favicon-manganato.webp",
 		referer_url = "https://www.natomanga.com/",
@@ -245,7 +245,7 @@ end
 
 Tests = {
 	Test_Scrape_manga = function()
-		local manga = Scrape_manga("https://www.natomanga.com/manga/solo-leveling")
+		local manga = Scrape("https://www.natomanga.com/manga/solo-leveling")
 		assert(manga.title == "Solo Leveling", "Title should be 'Solo Leveling'")
 		assert(manga.url == "https://www.natomanga.com/manga/solo-leveling", "URL should match")
 		assert(manga.img_url ~= "", "Image URL should not be empty")

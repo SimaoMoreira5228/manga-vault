@@ -225,7 +225,7 @@ function Scrape_search(query, page)
 	return Scrape_manga_list(url)
 end
 
-function Scrape_manga(url)
+function Scrape(url)
 	local request = http_get(url)
 	local html = request.text
 
@@ -388,7 +388,7 @@ end
 function Get_info()
 	return {
 		id = "mangabuddy",
-		version = "0.4.0",
+		version = "0.4.1",
 		name = "MangaBuddy",
 		img_url = "https://mangabuddy.com/favicon.ico",
 		referer_url = "https://mangabuddy.com/",
@@ -397,7 +397,7 @@ end
 
 Tests = {
 	Test_Scrape_manga = function()
-		local manga = Scrape_manga("https://mangabuddy.com/solo-leveling")
+		local manga = Scrape("https://mangabuddy.com/solo-leveling")
 		assert(manga.title == "Solo Leveling", "Manga title mismatch")
 		assert(manga.url == "https://mangabuddy.com/solo-leveling", "Manga URL mismatch")
 		assert(manga.img_url ~= "", "Manga image URL is empty")

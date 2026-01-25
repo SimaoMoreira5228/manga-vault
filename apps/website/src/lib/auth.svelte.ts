@@ -1,4 +1,4 @@
-import type { User } from "$gql/graphql";
+import type { User } from "$lib/graphql/types";
 import { gql } from "@urql/svelte";
 import { client } from "./graphql/client";
 

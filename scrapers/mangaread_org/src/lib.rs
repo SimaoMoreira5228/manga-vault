@@ -60,7 +60,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		imgs
 	}
 
-	fn scrape_latest(page: u32) -> Vec<exports::scraper::types::scraper::MangaItem> {
+	fn scrape_latest(page: u32) -> Vec<exports::scraper::types::scraper::Item> {
 		let url = format!(
 			"https://www.mangaread.org/?s&post_type=wp-manga&m_orderby=latest&paged={}",
 			page
@@ -91,7 +91,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		let html = ::scraper::Html::parse_document(&body);
 		let mangas_div_selector = ::scraper::Selector::parse("div.c-tabs-item").unwrap();
-		let mut manga_items: Vec<exports::scraper::types::scraper::MangaItem> = Vec::new();
+		let mut manga_items: Vec<exports::scraper::types::scraper::Item> = Vec::new();
 
 		for mangas_div in html.select(&mangas_div_selector) {
 			let content_divs_selector = ::scraper::Selector::parse("div.c-tabs-item__content").unwrap();
@@ -120,7 +120,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 				let url = url.value().attr("href").unwrap();
 
-				let manga_item = exports::scraper::types::scraper::MangaItem {
+				let manga_item = exports::scraper::types::scraper::Item {
 					title: title.to_string(),
 					img_url: img_url.to_string(),
 					url: url.to_string(),
@@ -133,7 +133,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		manga_items
 	}
 
-	fn scrape_trending(page: u32) -> Vec<exports::scraper::types::scraper::MangaItem> {
+	fn scrape_trending(page: u32) -> Vec<exports::scraper::types::scraper::Item> {
 		let url = format!("https://www.mangaread.org/?s=&post_type=wp-manga&paged={}", page);
 
 		let mut res = match scraper::types::http::get(&url, None) {
@@ -161,7 +161,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		let html = ::scraper::Html::parse_document(&body);
 		let mangas_div_selector = ::scraper::Selector::parse("div.c-tabs-item").unwrap();
-		let mut manga_items: Vec<exports::scraper::types::scraper::MangaItem> = Vec::new();
+		let mut manga_items: Vec<exports::scraper::types::scraper::Item> = Vec::new();
 
 		for mangas_div in html.select(&mangas_div_selector) {
 			let content_divs_selector = ::scraper::Selector::parse("div.c-tabs-item__content").unwrap();
@@ -189,7 +189,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 				let url = url.value().attr("href").unwrap();
 
-				let manga_item = exports::scraper::types::scraper::MangaItem {
+				let manga_item = exports::scraper::types::scraper::Item {
 					title: title.to_string(),
 					img_url: img_url.to_string(),
 					url: url.to_string(),
@@ -202,7 +202,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		manga_items
 	}
 
-	fn scrape_search(query: String, page: u32) -> Vec<exports::scraper::types::scraper::MangaItem> {
+	fn scrape_search(query: String, page: u32) -> Vec<exports::scraper::types::scraper::Item> {
 		let url = format!(
 			"https://www.mangaread.org/?s={}&post_type=wp-manga&op=&author=&artist=&release=&adult=&paged={}",
 			query, page
@@ -233,7 +233,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 		let html = ::scraper::Html::parse_document(&body);
 		let mangas_div_selector = ::scraper::Selector::parse("div.c-tabs-item").unwrap();
-		let mut manga_items: Vec<exports::scraper::types::scraper::MangaItem> = Vec::new();
+		let mut manga_items: Vec<exports::scraper::types::scraper::Item> = Vec::new();
 
 		for mangas_div in html.select(&mangas_div_selector) {
 			let content_divs_selector = ::scraper::Selector::parse("div.c-tabs-item__content").unwrap();
@@ -261,7 +261,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 				let url = url.value().attr("href").unwrap();
 
-				let manga_item = exports::scraper::types::scraper::MangaItem {
+				let manga_item = exports::scraper::types::scraper::Item {
 					title: title.to_string(),
 					img_url: img_url.to_string(),
 					url: url.to_string(),
@@ -274,12 +274,12 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		manga_items
 	}
 
-	fn scrape_manga(url: String) -> exports::scraper::types::scraper::MangaPage {
+	fn scrape(url: String) -> exports::scraper::types::scraper::Page {
 		let mut res = match scraper::types::http::get(&url, None) {
 			Some(res) => res,
 			None => {
 				println!("Error: Failed to get manga list");
-				return default_manga_page(url);
+				return default_page(url);
 			}
 		};
 
@@ -288,24 +288,25 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 				res = new_response;
 			} else {
 				println!("Error: Failed to bypass Cloudflare");
-				return default_manga_page(url);
+				return default_page(url);
 			}
 		}
 
 		if res.status != 200 {
 			println!("Error while getting response on scrape_manga: {}", res.status);
-			return exports::scraper::types::scraper::MangaPage {
+			return exports::scraper::types::scraper::Page {
 				title: String::new(),
 				img_url: String::new(),
 				alternative_names: Vec::new(),
 				authors: Vec::new(),
 				artists: None,
 				status: String::new(),
-				manga_type: None,
+				page_type: None,
 				release_date: None,
 				description: String::new(),
 				genres: Vec::new(),
 				chapters: Vec::new(),
+				content_html: None,
 				url,
 			};
 		}
@@ -487,18 +488,19 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			});
 		}
 
-		exports::scraper::types::scraper::MangaPage {
+		exports::scraper::types::scraper::Page {
 			title,
 			img_url,
 			alternative_names,
 			authors,
 			artists,
 			status,
-			manga_type: r#type,
+			page_type: r#type,
 			release_date,
 			description,
 			genres,
 			chapters: chapters.into_iter().rev().collect(),
+			content_html: None,
 			url: url.to_string(),
 		}
 	}
@@ -550,6 +552,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			id: env!("CARGO_PKG_NAME").to_string(),
 			name: "Mangaread.org".to_string(),
 			version: env!("CARGO_PKG_VERSION").to_string(),
+			scraper_type: exports::scraper::types::scraper::ScraperType::Manga,
 			img_url: "https://www.mangaread.org/wp-content/uploads/2017/10/cropped-unnamed-32x32.png".to_string(),
 			referer_url: Some("https://www.mangaread.org/".to_string()),
 			base_url: Some("https://www.mangaread.org/".to_string()),
@@ -558,19 +561,20 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 }
 
-fn default_manga_page(url: String) -> exports::scraper::types::scraper::MangaPage {
-	return exports::scraper::types::scraper::MangaPage {
+fn default_page(url: String) -> exports::scraper::types::scraper::Page {
+	return exports::scraper::types::scraper::Page {
 		title: String::new(),
 		img_url: String::new(),
 		alternative_names: Vec::new(),
 		authors: Vec::new(),
 		artists: None,
 		status: String::new(),
-		manga_type: None,
+		page_type: None,
 		release_date: None,
 		description: String::new(),
 		genres: Vec::new(),
 		chapters: Vec::new(),
+		content_html: None,
 		url,
 	};
 }

@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use anyhow::Result;
-use scraper_types::{Genre, MangaItem, MangaPage, ScraperInfo};
+use scraper_types::{Genre, Item, Page, ScraperInfo};
 
 mod common;
 mod globals;
@@ -21,7 +21,7 @@ pub enum Plugin {
 }
 
 impl Plugin {
-	pub fn scrape_latest(&self, page: u32) -> Pin<Box<dyn Future<Output = Result<Vec<MangaItem>>> + Send + '_>> {
+	pub fn scrape_latest(&self, page: u32) -> Pin<Box<dyn Future<Output = Result<Vec<Item>>> + Send + '_>> {
 		match self {
 			Plugin::Lua(lua_plugin) => Box::pin(lua_plugin.scrape_latest(page)),
 			Plugin::Wasm(wasm_plugin) => Box::pin(wasm_plugin.scrape_latest(page)),
@@ -35,28 +35,24 @@ impl Plugin {
 		}
 	}
 
-	pub fn scrape_trending(&self, page: u32) -> Pin<Box<dyn Future<Output = Result<Vec<MangaItem>>> + Send + '_>> {
+	pub fn scrape_trending(&self, page: u32) -> Pin<Box<dyn Future<Output = Result<Vec<Item>>> + Send + '_>> {
 		match self {
 			Plugin::Lua(lua_plugin) => Box::pin(lua_plugin.scrape_trending(page)),
 			Plugin::Wasm(wasm_plugin) => Box::pin(wasm_plugin.scrape_trending(page)),
 		}
 	}
 
-	pub fn scrape_search(
-		&self,
-		query: String,
-		page: u32,
-	) -> Pin<Box<dyn Future<Output = Result<Vec<MangaItem>>> + Send + '_>> {
+	pub fn scrape_search(&self, query: String, page: u32) -> Pin<Box<dyn Future<Output = Result<Vec<Item>>> + Send + '_>> {
 		match self {
 			Plugin::Lua(lua_plugin) => Box::pin(lua_plugin.scrape_search(query, page)),
 			Plugin::Wasm(wasm_plugin) => Box::pin(wasm_plugin.scrape_search(query, page)),
 		}
 	}
 
-	pub fn scrape_manga(&self, url: String) -> Pin<Box<dyn Future<Output = Result<MangaPage>> + Send + '_>> {
+	pub fn scrape(&self, url: String) -> Pin<Box<dyn Future<Output = Result<Page>> + Send + '_>> {
 		match self {
-			Plugin::Lua(lua_plugin) => Box::pin(lua_plugin.scrape_manga(url)),
-			Plugin::Wasm(wasm_plugin) => Box::pin(wasm_plugin.scrape_manga(url)),
+			Plugin::Lua(lua_plugin) => Box::pin(lua_plugin.scrape(url)),
+			Plugin::Wasm(wasm_plugin) => Box::pin(wasm_plugin.scrape(url)),
 		}
 	}
 

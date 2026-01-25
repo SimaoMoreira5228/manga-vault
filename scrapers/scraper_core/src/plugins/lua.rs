@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use mlua::Lua;
-use scraper_types::{Genre, MangaItem, MangaPage, ScraperError, ScraperErrorKind, ScraperInfo};
+use scraper_types::{Genre, Item, Page, ScraperError, ScraperErrorKind, ScraperInfo};
+use serde_json::Value as JsonValue;
 
 use super::globals;
 use crate::Config;
@@ -68,28 +69,36 @@ impl LuaPlugin {
 		Ok(pages)
 	}
 
-	pub async fn scrape_latest(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
+	pub async fn scrape_latest(&self, page: u32) -> anyhow::Result<Vec<Item>> {
 		let scrape_latest: mlua::Function = self.runtime.globals().get("Scrape_latest")?;
-		let mangas: Vec<MangaItem> = scrape_latest.call_async(page).await.map_err(classify_lua_error)?;
-		Ok(mangas)
+		let raw_value: mlua::Value = scrape_latest.call_async(page).await.map_err(classify_lua_error)?;
+		let json: JsonValue = scraper_types::conversion::mlua_value_to_json(raw_value)?;
+		let items = scraper_types::conversion::value_to_items(&json)?;
+		Ok(items)
 	}
 
-	pub async fn scrape_trending(&self, page: u32) -> anyhow::Result<Vec<MangaItem>> {
+	pub async fn scrape_trending(&self, page: u32) -> anyhow::Result<Vec<Item>> {
 		let scrape_trending: mlua::Function = self.runtime.globals().get("Scrape_trending")?;
-		let mangas: Vec<MangaItem> = scrape_trending.call_async(page).await.map_err(classify_lua_error)?;
-		Ok(mangas)
+		let raw_value: mlua::Value = scrape_trending.call_async(page).await.map_err(classify_lua_error)?;
+		let json: JsonValue = scraper_types::conversion::mlua_value_to_json(raw_value)?;
+		let items = scraper_types::conversion::value_to_items(&json)?;
+		Ok(items)
 	}
 
-	pub async fn scrape_search(&self, query: String, page: u32) -> anyhow::Result<Vec<MangaItem>> {
+	pub async fn scrape_search(&self, query: String, page: u32) -> anyhow::Result<Vec<Item>> {
 		let scrape_search: mlua::Function = self.runtime.globals().get("Scrape_search")?;
-		let mangas: Vec<MangaItem> = scrape_search.call_async((query, page)).await.map_err(classify_lua_error)?;
-		Ok(mangas)
+		let raw_value: mlua::Value = scrape_search.call_async((query, page)).await.map_err(classify_lua_error)?;
+		let json: JsonValue = scraper_types::conversion::mlua_value_to_json(raw_value)?;
+		let items = scraper_types::conversion::value_to_items(&json)?;
+		Ok(items)
 	}
 
-	pub async fn scrape_manga(&self, url: String) -> anyhow::Result<MangaPage> {
-		let scrape_manga: mlua::Function = self.runtime.globals().get("Scrape_manga")?;
-		let manga: MangaPage = scrape_manga.call_async(url).await.map_err(classify_lua_error)?;
-		Ok(manga)
+	pub async fn scrape(&self, url: String) -> anyhow::Result<Page> {
+		let scrape_manga: mlua::Function = self.runtime.globals().get("Scrape")?;
+		let raw_value: mlua::Value = scrape_manga.call_async(url).await.map_err(classify_lua_error)?;
+		let json: JsonValue = scraper_types::conversion::mlua_value_to_json(raw_value)?;
+		let page = scraper_types::conversion::value_to_page(&json)?;
+		Ok(page)
 	}
 
 	pub async fn scrape_genres_list(&self) -> anyhow::Result<Vec<Genre>> {

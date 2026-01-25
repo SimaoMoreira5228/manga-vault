@@ -5,7 +5,6 @@ import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 const config = {
 	preprocess: vitePreprocess(),
 	kit: {
-		alias: { $gql: "src/gql" },
 		adapter: adapter({
 			pages: "build/pages",
 			assets: "build/assets",

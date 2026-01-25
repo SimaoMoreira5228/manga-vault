@@ -2,7 +2,7 @@ use std::sync::LazyLock;
 
 use mlua::{FromLua, IntoLua, Lua, Value};
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 mod error;
 pub use error::{ScraperError, ScraperErrorKind, ScraperResult};
@@ -10,14 +10,15 @@ pub use error::{ScraperError, ScraperErrorKind, ScraperResult};
 const CHAP_NUMBER_REGEX: LazyLock<Regex> =
 	LazyLock::new(|| Regex::new(r"(\d+)").expect("Failed to compile chapter number regex"));
 
-#[derive(Debug, Serialize)]
-pub struct MangaItem {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Item {
 	pub title: String,
 	pub url: String,
-	pub img_url: String,
+	#[serde(default)]
+	pub img_url: Option<String>,
 }
 
-impl IntoLua for MangaItem {
+impl IntoLua for Item {
 	fn into_lua(self, lua: &Lua) -> mlua::Result<Value> {
 		let table = lua.create_table()?;
 		table.set("title", self.title)?;
@@ -27,34 +28,41 @@ impl IntoLua for MangaItem {
 	}
 }
 
-impl FromLua for MangaItem {
+impl FromLua for Item {
 	fn from_lua(value: Value, lua: &Lua) -> mlua::Result<Self> {
 		let table: mlua::Table = FromLua::from_lua(value, lua)?;
-		Ok(MangaItem {
+		Ok(Item {
 			title: table.get("title")?,
 			url: table.get("url")?,
-			img_url: table.get("img_url")?,
+			img_url: table.get("img_url").ok(),
 		})
 	}
 }
 
-#[derive(Debug, Serialize)]
-pub struct MangaPage {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Page {
 	pub title: String,
 	pub url: String,
-	pub img_url: String,
+	#[serde(default)]
+	pub img_url: Option<String>,
+	#[serde(default)]
 	pub alternative_names: Vec<String>,
+	#[serde(default)]
 	pub authors: Vec<String>,
 	pub artists: Option<Vec<String>>,
-	pub status: String,
-	pub manga_type: Option<String>,
+	pub status: Option<String>,
+	pub page_type: Option<String>,
 	pub release_date: Option<String>,
-	pub description: String,
+	pub description: Option<String>,
+	#[serde(default)]
 	pub genres: Vec<String>,
+	#[serde(default)]
 	pub chapters: Vec<Chapter>,
+	#[serde(default)]
+	pub content_html: Option<String>,
 }
 
-impl MangaPage {
+impl Page {
 	pub fn parse_release_date(&self) -> Option<chrono::NaiveDateTime> {
 		if let Some(ref date) = self.release_date {
 			let formats = [
@@ -89,7 +97,7 @@ impl MangaPage {
 	}
 }
 
-impl IntoLua for MangaPage {
+impl IntoLua for Page {
 	fn into_lua(self, lua: &Lua) -> mlua::Result<Value> {
 		let table = lua.create_table()?;
 		table.set("title", self.title)?;
@@ -99,36 +107,38 @@ impl IntoLua for MangaPage {
 		table.set("authors", self.authors)?;
 		table.set("artists", self.artists)?;
 		table.set("status", self.status)?;
-		table.set("manga_type", self.manga_type)?;
+		table.set("page_type", self.page_type)?;
 		table.set("release_date", self.release_date)?;
 		table.set("description", self.description)?;
 		table.set("genres", self.genres)?;
 		table.set("chapters", self.chapters)?;
+		table.set("content_html", self.content_html)?;
 		Ok(Value::Table(table))
 	}
 }
 
-impl FromLua for MangaPage {
+impl FromLua for Page {
 	fn from_lua(value: Value, lua: &Lua) -> mlua::Result<Self> {
 		let table: mlua::Table = FromLua::from_lua(value, lua)?;
-		Ok(MangaPage {
+		Ok(Page {
 			title: table.get("title")?,
 			url: table.get("url")?,
-			img_url: table.get("img_url")?,
-			alternative_names: table.get("alternative_names")?,
-			authors: table.get("authors")?,
-			artists: table.get("artists")?,
-			status: table.get("status")?,
-			manga_type: table.get("manga_type")?,
-			release_date: table.get("release_date")?,
-			description: table.get("description")?,
-			genres: table.get("genres")?,
-			chapters: table.get("chapters")?,
+			img_url: table.get("img_url").ok(),
+			alternative_names: table.get("alternative_names").ok().unwrap_or_default(),
+			authors: table.get("authors").ok().unwrap_or_default(),
+			artists: table.get("artists").ok(),
+			status: table.get("status").ok(),
+			page_type: table.get("page_type").ok(),
+			release_date: table.get("release_date").ok(),
+			description: table.get("description").ok(),
+			genres: table.get("genres").ok().unwrap_or_default(),
+			chapters: table.get("chapters").ok().unwrap_or_default(),
+			content_html: table.get("content_html").ok(),
 		})
 	}
 }
 
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Chapter {
 	pub title: String,
 	pub url: String,
@@ -179,7 +189,7 @@ impl FromLua for Chapter {
 	}
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Genre {
 	pub name: String,
 	pub url: String,
@@ -204,7 +214,7 @@ impl FromLua for Genre {
 	}
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ScraperInfo {
 	pub id: String,
 	pub name: String,
@@ -212,6 +222,90 @@ pub struct ScraperInfo {
 	pub referer_url: Option<String>,
 	pub base_url: Option<String>,
 	pub legacy_urls: Option<Vec<String>>,
+	pub r#type: ScraperType,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NovelItem {
+	pub title: String,
+	pub url: String,
+	pub img_url: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NovelPage {
+	pub title: String,
+	pub url: String,
+	pub img_url: Option<String>,
+	pub alternative_names: Vec<String>,
+	pub authors: Vec<String>,
+	pub status: String,
+	pub release_date: Option<String>,
+	pub description: String,
+	pub genres: Vec<String>,
+	pub chapters: Vec<Chapter>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub enum ScraperType {
+	Manga,
+	Novel,
+}
+
+impl std::fmt::Display for ScraperType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			ScraperType::Manga => write!(f, "manga"),
+			ScraperType::Novel => write!(f, "novel"),
+		}
+	}
+}
+
+impl IntoLua for ScraperType {
+	fn into_lua(self, lua: &Lua) -> mlua::Result<Value> {
+		let s = self.to_string();
+		Ok(Value::String(lua.create_string(&s)?.into()))
+	}
+}
+
+impl FromLua for ScraperType {
+	fn from_lua(value: Value, _: &Lua) -> mlua::Result<Self> {
+		match value {
+			Value::String(s) => {
+				let s = s.to_str()?;
+				if s == "manga" {
+					Ok(ScraperType::Manga)
+				} else if s == "novel" {
+					Ok(ScraperType::Novel)
+				} else {
+					Err(mlua::Error::FromLuaConversionError {
+						from: "String",
+						to: "ScraperType".into(),
+						message: Some(format!("unknown scraper type: {}", s)),
+					})
+				}
+			}
+			Value::Table(t) => {
+				let s: String = t.get(1)?;
+				if s.as_str() == "manga" {
+					Ok(ScraperType::Manga)
+				} else if s.as_str() == "novel" {
+					Ok(ScraperType::Novel)
+				} else {
+					Err(mlua::Error::FromLuaConversionError {
+						from: "Table",
+						to: "ScraperType".into(),
+						message: Some(format!("unknown scraper type: {}", s)),
+					})
+				}
+			}
+			_ => Err(mlua::Error::FromLuaConversionError {
+				from: "Value",
+				to: "ScraperType".into(),
+				message: Some("expected string or table".to_string()),
+			}),
+		}
+	}
 }
 
 impl IntoLua for ScraperInfo {
@@ -223,6 +317,7 @@ impl IntoLua for ScraperInfo {
 		table.set("referer_url", self.referer_url)?;
 		table.set("base_url", self.base_url)?;
 		table.set("legacy_urls", self.legacy_urls)?;
+		table.set("type", self.r#type)?;
 		Ok(Value::Table(table))
 	}
 }
@@ -237,7 +332,110 @@ impl FromLua for ScraperInfo {
 			referer_url: table.get("referer_url").ok(),
 			base_url: table.get("base_url").ok(),
 			legacy_urls: table.get("legacy_urls").ok(),
+			r#type: table.get("type").ok().unwrap_or(ScraperType::Manga),
 		})
+	}
+}
+
+pub mod conversion {
+	use super::*;
+	use serde_json::Value as JsonValue;
+	pub fn value_to_items(v: &JsonValue) -> Result<Vec<Item>, ScraperError> {
+		if let Ok(items) = serde_json::from_value::<Vec<Item>>(v.clone()) {
+			return Ok(items);
+		}
+
+		if let Ok(nitems) = serde_json::from_value::<Vec<NovelItem>>(v.clone()) {
+			let mapped = nitems
+				.into_iter()
+				.map(|ni| Item {
+					title: ni.title,
+					url: ni.url,
+					img_url: ni.img_url,
+				})
+				.collect();
+			return Ok(mapped);
+		}
+
+		Err(ScraperError::new(
+			ScraperErrorKind::Internal,
+			"Failed to convert plugin return to items",
+		))
+	}
+
+	pub fn value_to_page(v: &JsonValue) -> Result<Page, ScraperError> {
+		if let Ok(page) = serde_json::from_value::<Page>(v.clone()) {
+			return Ok(page);
+		}
+
+		if let Ok(npage) = serde_json::from_value::<NovelPage>(v.clone()) {
+			let mapped = Page {
+				title: npage.title,
+				url: npage.url,
+				img_url: npage.img_url,
+				alternative_names: npage.alternative_names,
+				authors: npage.authors,
+				artists: None,
+				status: Some(npage.status),
+				page_type: None,
+				release_date: npage.release_date,
+				description: Some(npage.description),
+				genres: npage.genres,
+				chapters: npage.chapters,
+				content_html: None,
+			};
+			return Ok(mapped);
+		}
+
+		Err(ScraperError::new(
+			ScraperErrorKind::Internal,
+			"Failed to convert plugin return to page",
+		))
+	}
+
+	pub fn mlua_value_to_json(val: mlua::Value) -> Result<JsonValue, ScraperError> {
+		use mlua::Value as LuaValue;
+
+		match val {
+			LuaValue::Nil => Ok(JsonValue::Null),
+			LuaValue::Boolean(b) => Ok(JsonValue::Bool(b)),
+			LuaValue::Integer(i) => Ok(JsonValue::Number(serde_json::Number::from(i))),
+			LuaValue::Number(n) => serde_json::Number::from_f64(n)
+				.map(JsonValue::Number)
+				.ok_or_else(|| ScraperError::internal("Invalid number")),
+			LuaValue::String(s) => s
+				.to_str()
+				.map(|s| JsonValue::String(s.to_string()))
+				.map_err(|e| ScraperError::internal(e.to_string())),
+			LuaValue::Table(t) => {
+				let len = t.raw_len();
+				if len > 0 {
+					let mut arr = Vec::with_capacity(len);
+					for i in 1..=len {
+						let v = t.raw_get(i).map_err(|e| ScraperError::internal(e.to_string()))?;
+						arr.push(mlua_value_to_json(v)?);
+					}
+					return Ok(JsonValue::Array(arr));
+				}
+
+				let mut map = serde_json::Map::new();
+				for pair in t.pairs::<mlua::Value, mlua::Value>() {
+					let (k, v) = pair.map_err(|e| ScraperError::internal(e.to_string()))?;
+					let key_str = match k {
+						mlua::Value::String(s) => s
+							.to_str()
+							.map(|s| s.to_string())
+							.map_err(|e| ScraperError::internal(e.to_string()))?,
+						mlua::Value::Integer(i) => i.to_string(),
+						mlua::Value::Number(n) => n.to_string(),
+						_ => continue,
+					};
+					map.insert(key_str, mlua_value_to_json(v)?);
+				}
+				Ok(JsonValue::Object(map))
+			}
+			_ => Err(ScraperError::internal("Unsupported Lua value for conversion")),
+		}
 	}
 }
 
@@ -316,5 +514,25 @@ mod tests {
 			..Default::default()
 		};
 		assert!(!Chapter::all_same_chapter(&[&c1, &c2, &c5]));
+	}
+}
+
+#[cfg(test)]
+mod conversion_tests {
+	use super::*;
+	use serde_json::json;
+
+	#[test]
+	fn novel_items_convert_to_manga_items() {
+		let v = json!([
+			{ "title": "Novel One", "url": "https://example.com/n1", "img_url": "https://img" },
+			{ "title": "Novel Two", "url": "https://example.com/n2", "img_url": null }
+		]);
+
+		let items = conversion::value_to_items(&v).expect("conversion failed");
+		assert_eq!(items.len(), 2);
+		assert_eq!(items[0].title, "Novel One");
+		assert_eq!(items[0].img_url.as_deref(), Some("https://img"));
+		assert!(items[1].img_url.is_none());
 	}
 }

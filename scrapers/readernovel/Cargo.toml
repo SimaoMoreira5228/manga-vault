@@ -1,0 +1,16 @@
+[package]
+name = "readernovel"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
+
+[dependencies]
+reqwest = { workspace = true }
+scraper = "0.25"
+serde_json = "1.0"
+wit-bindgen = { workspace = true }

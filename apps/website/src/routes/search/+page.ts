@@ -1,4 +1,5 @@
 import { client } from "$lib/graphql/client";
+import type { Scraper } from "$lib/graphql/types";
 import { gql } from "@urql/svelte";
 
 export async function load() {
@@ -9,6 +10,8 @@ export async function load() {
 					id
 					name
 					refererUrl
+					imageUrl
+					type
 				}
 			}
 		}
@@ -19,5 +22,5 @@ export async function load() {
 		console.error(`Failed to load scrapers: ${result.error.message}`);
 	}
 
-	return { scrapers: result.data.scraping.scrapers as { id: string; name: string; refererUrl: string }[] };
+	return { scrapers: (result.data.scraping.scrapers || []) as Scraper[] };
 }
