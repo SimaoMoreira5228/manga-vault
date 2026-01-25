@@ -7,18 +7,19 @@ edition = "2024"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [dependencies]
+aes = "0.8"
 anyhow = { workspace = true }
 async-trait = "0.1"
 base64 = "0.22"
+cbc = "0.1"
+cipher = "0.4.4"
 config = { workspace = true }
 config-derive = { workspace = true }
 fantoccini = "0.22"
 futures = "0.3"
-html-to-markdown-rs = "2"
 md5 = "0.8"
 mlua = { version = "0.11", features = ["lua54", "serde", "anyhow", "async", "userdata-wrappers", "vendored", "send", "error-send"] }
 notify = "8"
-openssl = "0.10"
 regex = { workspace = true }
 reqwest = { workspace = true }
 scraper = { version = "0.25", features = ["serde", "atomic"] }

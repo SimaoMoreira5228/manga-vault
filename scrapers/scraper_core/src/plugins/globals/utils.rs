@@ -1,10 +1,14 @@
+use aes::Aes256;
 use base64::{Engine as _, engine::general_purpose};
+use cbc::cipher::{BlockDecryptMut, KeyIvInit};
+use cipher::block_padding::Pkcs7;
 use md5;
 use mlua::{IntoLua, Lua, LuaSerdeExt, Table};
-use openssl::symm::{Cipher, decrypt};
 use scraper_types::{ScraperError, ScraperErrorKind};
 
 use crate::plugins::common::http::Response;
+
+type Aes256CbcDec = cbc::Decryptor<Aes256>;
 
 pub fn create_response_table(lua: &Lua, response: Response) -> mlua::Result<Table> {
 	let response_table = lua.create_table()?;
@@ -82,10 +86,13 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 		})?,
 	)?;
 
+	// Implements OpenSSL-compatible AES-256-CBC decryption with MD5 key derivation.
+	// This matches the logic used by CryptoJS.
 	utils_table.set(
 		"aes_decrypt",
 		lua.create_function(|lua, (ct_b64, password): (String, String)| {
 			let data = general_purpose::STANDARD.decode(ct_b64).map_err(mlua::Error::external)?;
+
 			let (salt_opt, ciphertext) = if data.len() > 16 && &data[0..8] == b"Salted__" {
 				(Some(&data[8..16]), &data[16..])
 			} else {
@@ -96,6 +103,7 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 			let iv_len = 16;
 			let mut m = Vec::new();
 			let mut prev: Vec<u8> = Vec::new();
+
 			while m.len() < (key_len + iv_len) {
 				let mut input = Vec::new();
 				if !prev.is_empty() {
@@ -109,11 +117,18 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 				prev = digest.0.to_vec();
 				m.extend_from_slice(&prev);
 			}
+
 			let key = &m[0..key_len];
 			let iv = &m[key_len..key_len + iv_len];
 
-			let plain = decrypt(Cipher::aes_256_cbc(), key, Some(iv), ciphertext).map_err(mlua::Error::external)?;
-			let s = String::from_utf8(plain).map_err(mlua::Error::external)?;
+			let mut buf = ciphertext.to_vec();
+			let decryptor = Aes256CbcDec::new_from_slices(key, iv).map_err(mlua::Error::external)?;
+
+			let decrypted_slice = decryptor
+				.decrypt_padded_mut::<Pkcs7>(&mut buf)
+				.map_err(|e| mlua::Error::external(format!("Decryption failed: {}", e)))?;
+
+			let s = String::from_utf8(decrypted_slice.to_vec()).map_err(mlua::Error::external)?;
 			lua.to_value(&s)
 		})?,
 	)?;
