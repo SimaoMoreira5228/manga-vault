@@ -49,10 +49,15 @@ pub struct Page {
 	pub alternative_names: Vec<String>,
 	#[serde(default)]
 	pub authors: Vec<String>,
+	#[serde(default)]
 	pub artists: Option<Vec<String>>,
+	#[serde(default)]
 	pub status: Option<String>,
+	#[serde(default)]
 	pub page_type: Option<String>,
+	#[serde(default)]
 	pub release_date: Option<String>,
+	#[serde(default)]
 	pub description: Option<String>,
 	#[serde(default)]
 	pub genres: Vec<String>,
@@ -143,6 +148,7 @@ pub struct Chapter {
 	pub title: String,
 	pub url: String,
 	pub date: String,
+	#[serde(default)]
 	pub scanlation_group: Option<String>,
 }
 
@@ -364,33 +370,36 @@ pub mod conversion {
 	}
 
 	pub fn value_to_page(v: &JsonValue) -> Result<Page, ScraperError> {
-		if let Ok(page) = serde_json::from_value::<Page>(v.clone()) {
-			return Ok(page);
+		match serde_json::from_value::<Page>(v.clone()) {
+			Ok(page) => Ok(page),
+			Err(page_err) => match serde_json::from_value::<NovelPage>(v.clone()) {
+				Ok(npage) => {
+					let mapped = Page {
+						title: npage.title,
+						url: npage.url,
+						img_url: npage.img_url,
+						alternative_names: npage.alternative_names,
+						authors: npage.authors,
+						artists: None,
+						status: Some(npage.status),
+						page_type: None,
+						release_date: npage.release_date,
+						description: Some(npage.description),
+						genres: npage.genres,
+						chapters: npage.chapters,
+						content_html: None,
+					};
+					Ok(mapped)
+				}
+				Err(novel_err) => Err(ScraperError::new(
+					ScraperErrorKind::Internal,
+					format!(
+						"Failed to convert plugin return to page. Page error: {}. Novel error: {}",
+						page_err, novel_err
+					),
+				)),
+			},
 		}
-
-		if let Ok(npage) = serde_json::from_value::<NovelPage>(v.clone()) {
-			let mapped = Page {
-				title: npage.title,
-				url: npage.url,
-				img_url: npage.img_url,
-				alternative_names: npage.alternative_names,
-				authors: npage.authors,
-				artists: None,
-				status: Some(npage.status),
-				page_type: None,
-				release_date: npage.release_date,
-				description: Some(npage.description),
-				genres: npage.genres,
-				chapters: npage.chapters,
-				content_html: None,
-			};
-			return Ok(mapped);
-		}
-
-		Err(ScraperError::new(
-			ScraperErrorKind::Internal,
-			"Failed to convert plugin return to page",
-		))
 	}
 
 	pub fn mlua_value_to_json(val: mlua::Value) -> Result<JsonValue, ScraperError> {
@@ -432,6 +441,11 @@ pub mod conversion {
 					};
 					map.insert(key_str, mlua_value_to_json(v)?);
 				}
+
+				if map.is_empty() {
+					return Ok(JsonValue::Array(vec![]));
+				}
+
 				Ok(JsonValue::Object(map))
 			}
 			_ => Err(ScraperError::internal("Unsupported Lua value for conversion")),

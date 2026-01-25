@@ -1,25 +1,36 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use mlua::{Lua, LuaSerdeExt, UserData, UserDataMethods};
 
 use crate::plugins::common::http::CommonHttp;
 use crate::plugins::globals::utils::create_response_table;
 
-impl UserData for CommonHttp {
+pub struct SharedHttp(pub Arc<CommonHttp>);
+
+impl UserData for SharedHttp {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
 		methods.add_async_method(
 			"get",
-			|lua, this, (url, headers_map): (String, Option<HashMap<String, String>>)| async move {
-				let response = this.get(url, headers_map).await;
-				create_response_table(&lua, response)
+			|lua, this, (url, headers_map): (String, Option<HashMap<String, String>>)| {
+				let http_client = this.0.clone();
+
+				async move {
+					let response = http_client.get(url, headers_map).await;
+					create_response_table(&lua, response)
+				}
 			},
 		);
 
 		methods.add_async_method(
 			"post",
-			|lua, this, (url, body, headers_map): (String, String, Option<HashMap<String, String>>)| async move {
-				let response = this.post(url, body, headers_map).await;
-				create_response_table(&lua, response)
+			|lua, this, (url, body, headers_map): (String, String, Option<HashMap<String, String>>)| {
+				let http_client = this.0.clone();
+
+				async move {
+					let response = http_client.post(url, body, headers_map).await;
+					create_response_table(&lua, response)
+				}
 			},
 		);
 
@@ -64,7 +75,7 @@ impl UserData for CommonHttp {
 
 #[cfg_attr(all(coverage_nightly, test), coverage(off))]
 pub(crate) fn load(lua: &Lua) -> anyhow::Result<()> {
-	lua.globals().set("http", CommonHttp::new())?;
+	lua.globals().set("http", SharedHttp(Arc::new(CommonHttp::new())))?;
 	Ok(())
 }
 

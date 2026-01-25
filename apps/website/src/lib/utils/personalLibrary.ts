@@ -10,6 +10,9 @@ export type FavoriteMangaShell = {
 		url: string;
 		imgUrl: string;
 		scraper: string;
+		scraperInfo?: {
+			refererUrl?: string | null;
+		};
 		userReadChaptersAmount: number;
 		chaptersAmount: number;
 	};
@@ -23,6 +26,9 @@ export type FavoriteNovelShell = {
 		url: string;
 		imgUrl: string;
 		scraper: string;
+		scraperInfo?: {
+			refererUrl?: string | null;
+		};
 		userReadChaptersAmount: number;
 		chaptersAmount: number;
 	};
@@ -35,6 +41,7 @@ export type LibraryItem = {
 	url: string;
 	imgUrl: string;
 	scraper: string;
+	refererUrl?: string | null;
 	userReadChaptersAmount: number;
 	chaptersAmount: number;
 	workType: WorkType;
@@ -76,6 +83,7 @@ export async function load() {
 								title
 								url
 								imgUrl
+								scraperInfo { refererUrl }
 								scraper
 								userReadChaptersAmount
 								chaptersAmount
@@ -90,6 +98,7 @@ export async function load() {
 								title
 								url
 								imgUrl
+								scraperInfo { refererUrl }
 								scraper
 								userReadChaptersAmount
 								chaptersAmount
@@ -111,6 +120,7 @@ export async function load() {
 					title: m.manga.title,
 					url: m.manga.url,
 					imgUrl: m.manga.imgUrl,
+					refererUrl: m.manga.scraperInfo?.refererUrl ?? null,
 					scraper: m.manga.scraper,
 					userReadChaptersAmount: m.manga.userReadChaptersAmount,
 					chaptersAmount: m.manga.chaptersAmount,
@@ -122,6 +132,7 @@ export async function load() {
 					title: n.novel.title,
 					url: n.novel.url,
 					imgUrl: n.novel.imgUrl,
+					refererUrl: n.novel.scraperInfo?.refererUrl ?? null,
 					scraper: n.novel.scraper,
 					userReadChaptersAmount: n.novel.userReadChaptersAmount,
 					chaptersAmount: n.novel.chaptersAmount,

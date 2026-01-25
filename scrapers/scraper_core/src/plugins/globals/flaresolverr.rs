@@ -1,22 +1,30 @@
+use std::sync::Arc;
+
 use mlua::{Lua, UserData, UserDataMethods};
 
 use crate::Config;
 use crate::plugins::common::flaresolverr::FlareSolverrManager;
 use crate::plugins::globals::utils::create_response_table;
 
-impl UserData for FlareSolverrManager {
+pub struct SharedFlareSolverrManager(pub Arc<FlareSolverrManager>);
+
+impl UserData for SharedFlareSolverrManager {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-		methods.add_async_method("get", |lua, this, url: String| async move {
-			let response = this.get(url).await;
-			create_response_table(&lua, response)
+		methods.add_async_method("get", |lua, this, url: String| {
+			let client = this.0.clone();
+
+			async move {
+				let response = client.get(url).await;
+				create_response_table(&lua, response)
+			}
 		});
 
-		methods.add_method("using_flaresolverr", |_, this, _: ()| Ok(this.using_flaresolverr()));
+		methods.add_method("using_flaresolverr", |_, this, _: ()| Ok(this.0.using_flaresolverr()));
 	}
 }
 
 pub fn load(config: &Config, lua: &Lua) -> anyhow::Result<()> {
-	let mgr = FlareSolverrManager::new(config);
+	let mgr = SharedFlareSolverrManager(Arc::new(FlareSolverrManager::new(config)));
 	lua.globals().set("flaresolverr", mgr)?;
 	Ok(())
 }

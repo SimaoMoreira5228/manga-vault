@@ -9,7 +9,7 @@ use crate::plugins::common::html;
 struct CustomScraper;
 impl UserData for CustomScraper {
 	fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-		methods.add_async_method("get_image_url", |_, _, html: String| async move {
+		methods.add_method("get_image_url", |_, _, html: String| {
 			let html_parsed = Html::parse_fragment(&html);
 			let selector = Selector::parse("img").map_err(|e| {
 				mlua::Error::external(ScraperError::new(
@@ -40,26 +40,26 @@ impl UserData for CustomScraper {
 			Ok(url)
 		});
 
-		methods.add_async_method("get_text", |_, _, html: String| async move {
+		methods.add_method("get_text", |_, _, html: String| {
 			let html = html::HtmlElement::new(html, "".to_string());
 			let text = html.text();
 			Ok(text.trim().to_string())
 		});
 
-		methods.add_async_method("get_url", |_, _, html: String| async move {
+		methods.add_method("get_url", |_, _, html: String| {
 			let html = html::HtmlElement::new(html, "a".to_string());
 			let url = html.attr("href".to_string());
 			Ok(url.unwrap_or_default().trim().to_string())
 		});
 
-		methods.add_async_method("select_elements", |lua, _, (html, selector): (String, String)| async move {
+		methods.add_method("select_elements", |lua, _, (html, selector): (String, String)| {
 			let html = html::HtmlDocument::new(html);
 			let elements = html.find(selector).map_err(mlua::Error::external)?;
 			let elements_html: Vec<String> = elements.into_iter().map(|e| e.html()).collect();
 			Ok(elements_html.into_lua(&lua))
 		});
 
-		methods.add_async_method("select_element", |lua, _, (html, selector): (String, String)| async move {
+		methods.add_method("select_element", |lua, _, (html, selector): (String, String)| {
 			let html = html::HtmlDocument::new(html);
 			let elements = html.find_one(selector).map_err(mlua::Error::external)?;
 			match elements {
@@ -68,30 +68,27 @@ impl UserData for CustomScraper {
 			}
 		});
 
-		methods.add_async_method(
-			"try_select_elements",
-			|lua, _, (html, selector): (String, String)| async move {
-				let html = html::HtmlDocument::new(html);
-				match html.find(selector) {
-					Ok(elements) => {
-						let elements_html: Vec<String> = elements.into_iter().map(|e| e.html()).collect();
-						let table = lua.create_table()?;
-						table.set("ok", true)?;
-						table.set("value", elements_html)?;
-						Ok(table)
-					}
-					Err(e) => {
-						let table = lua.create_table()?;
-						table.set("ok", false)?;
-						table.set(
-							"error",
-							ScraperError::new(ScraperErrorKind::Parse, e.to_string()).into_lua(&lua)?,
-						)?;
-						Ok(table)
-					}
+		methods.add_method("try_select_elements", |lua, _, (html, selector): (String, String)| {
+			let html = html::HtmlDocument::new(html);
+			match html.find(selector) {
+				Ok(elements) => {
+					let elements_html: Vec<String> = elements.into_iter().map(|e| e.html()).collect();
+					let table = lua.create_table()?;
+					table.set("ok", true)?;
+					table.set("value", elements_html)?;
+					Ok(table)
 				}
-			},
-		);
+				Err(e) => {
+					let table = lua.create_table()?;
+					table.set("ok", false)?;
+					table.set(
+						"error",
+						ScraperError::new(ScraperErrorKind::Parse, e.to_string()).into_lua(&lua)?,
+					)?;
+					Ok(table)
+				}
+			}
+		});
 
 		methods.add_async_method(
 			"try_select_element",

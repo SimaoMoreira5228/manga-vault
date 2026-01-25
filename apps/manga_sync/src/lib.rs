@@ -222,7 +222,7 @@ pub async fn sync_manga_with_scraper(
 	if !active_models.is_empty() {
 		let model_chunk_size = 100usize;
 		for chunk in active_models.chunks(model_chunk_size) {
-			if db.db_type == "postgresql" || db.db_type == "mysql" {
+			if db.db_type == "postgresql" {
 				database_entities::chapters::Entity::insert_many(chunk.to_vec())
 					.on_conflict(
 						OnConflict::column(database_entities::chapters::Column::Url)
@@ -380,7 +380,7 @@ pub async fn sync_novel_with_scraper(
 	if !active_models.is_empty() {
 		let model_chunk_size = 100usize;
 		for chunk in active_models.chunks(model_chunk_size) {
-			if db.db_type == "postgresql" || db.db_type == "mysql" {
+			if db.db_type == "postgresql" {
 				database_entities::novel_chapters::Entity::insert_many(chunk.to_vec())
 					.on_conflict(
 						OnConflict::column(database_entities::novel_chapters::Column::Url)

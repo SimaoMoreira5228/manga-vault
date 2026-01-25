@@ -74,6 +74,7 @@ async function getAllFavorites(categoryId: number) {
 									title
 									url
 									imgUrl
+									scraperInfo { refererUrl }
 									scraper
 									userReadChaptersAmount
 									chaptersAmount
@@ -88,6 +89,7 @@ async function getAllFavorites(categoryId: number) {
 									title
 									url
 									imgUrl
+									scraperInfo { refererUrl }
 									scraper
 									userReadChaptersAmount
 									chaptersAmount
@@ -110,6 +112,7 @@ async function getAllFavorites(categoryId: number) {
 				title: string;
 				url: string;
 				imgUrl: string;
+				scraperInfo?: { refererUrl?: string | null };
 				scraper: string;
 				userReadChaptersAmount: number;
 				chaptersAmount: number;
@@ -122,6 +125,7 @@ async function getAllFavorites(categoryId: number) {
 				title: string;
 				url: string;
 				imgUrl: string;
+				scraperInfo?: { refererUrl?: string | null };
 				scraper: string;
 				userReadChaptersAmount: number;
 				chaptersAmount: number;
@@ -135,6 +139,7 @@ async function getAllFavorites(categoryId: number) {
 				title: m.manga.title,
 				url: m.manga.url,
 				imgUrl: m.manga.imgUrl,
+				refererUrl: m.manga.scraperInfo?.refererUrl ?? null,
 				scraper: m.manga.scraper,
 				userReadChaptersAmount: m.manga.userReadChaptersAmount,
 				chaptersAmount: m.manga.chaptersAmount,
@@ -146,6 +151,7 @@ async function getAllFavorites(categoryId: number) {
 				title: n.novel.title,
 				url: n.novel.url,
 				imgUrl: n.novel.imgUrl,
+				refererUrl: n.novel.scraperInfo?.refererUrl ?? null,
 				scraper: n.novel.scraper,
 				userReadChaptersAmount: n.novel.userReadChaptersAmount,
 				chaptersAmount: n.novel.chaptersAmount,
@@ -164,6 +170,7 @@ async function getAllFavorites(categoryId: number) {
 						imgUrl: basic.imgUrl,
 						userReadChaptersAmount: basic.userReadChaptersAmount ?? item.userReadChaptersAmount,
 						chaptersAmount: basic.chaptersAmount ?? item.chaptersAmount,
+						refererUrl: basic.scraperInfo?.refererUrl ?? item.refererUrl,
 					};
 				}
 			}
@@ -331,6 +338,7 @@ function getWorkPath(item: LibraryItem) {
 												<MangaCard
 													work={item}
 													href={resolve(getWorkPath(item))}
+													refererUrl={item.refererUrl}
 												/>
 											{/each}
 										</div>
