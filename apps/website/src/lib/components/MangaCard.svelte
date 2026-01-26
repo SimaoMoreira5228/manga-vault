@@ -7,6 +7,7 @@ interface Props {
 		imgUrl?: string | null;
 		chaptersAmount?: number | null;
 		userReadChaptersAmount?: number | null;
+		url?: string | null;
 	};
 	href?: string | null;
 	refererUrl?: string | null;
@@ -26,12 +27,32 @@ function badgeCount() {
 	const v = a - b;
 	return v > 0 ? v : 0;
 }
+
+function getEffectiveReferer(): string | undefined {
+	if (refererUrl) return refererUrl;
+	try {
+		const u = work?.url;
+		if (!u) return undefined;
+
+		const parsed = new URL(u);
+		return parsed.origin.endsWith("/") ? parsed.origin : parsed.origin + "/";
+	} catch (e) {
+		try {
+			const parts = (work?.url || "").split("/");
+			if (parts.length >= 3) return parts.slice(0, 3).join("/") + "/";
+		} catch (err) {
+			// ignore
+		}
+	}
+
+	return undefined;
+}
 </script>
 
 {#if href}
 	<a
 		class="card relative flex h-80 w-full max-w-48 flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat shadow-lg"
-		style="background-image: url({proxyImage(work?.imgUrl ?? '', refererUrl ?? undefined)});"
+		style="background-image: url({proxyImage(work?.imgUrl ?? '', getEffectiveReferer() ?? undefined)});"
 		href={href}
 		rel="external"
 	>
@@ -48,7 +69,7 @@ function badgeCount() {
 {:else}
 	<div
 		class="card relative flex h-80 w-full max-w-48 flex-col items-start justify-end overflow-hidden rounded-lg bg-cover bg-center bg-no-repeat shadow-lg"
-		style="background-image: url({proxyImage(work?.imgUrl ?? '', refererUrl ?? undefined)});"
+		style="background-image: url({proxyImage(work?.imgUrl ?? '', getEffectiveReferer() ?? undefined)});"
 	>
 		<div class="absolute inset-0 bg-linear-to-b from-transparent to-black/75"></div>
 

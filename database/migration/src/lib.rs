@@ -15,6 +15,7 @@ mod m20260124_010000_add_scheduler_indexes;
 mod m20260124_020000_change_temp_value_to_binary;
 mod m20260124_030000_add_novels_and_tracking;
 mod m20260125_000000_add_missing_novel_fields;
+mod m20260125_000000_increase_temp_value_size;
 mod m20260125_010000_make_novel_created_at_nullable;
 
 pub struct Migrator;
@@ -39,6 +40,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20260124_030000_add_novels_and_tracking::Migration),
 			Box::new(m20260125_000000_add_missing_novel_fields::Migration),
 			Box::new(m20260125_010000_make_novel_created_at_nullable::Migration),
+			Box::new(m20260125_000000_increase_temp_value_size::Migration),
 		]
 	}
 }

@@ -10,7 +10,7 @@ pub struct Model {
 	#[sea_orm(column_type = "Text")]
 	pub key: String,
 	pub expires_at: DateTime,
-	#[sea_orm(column_type = "Binary(1)")]
+	#[sea_orm(column_type = "Binary(16777215)")]
 	pub value: Vec<u8>,
 }
 

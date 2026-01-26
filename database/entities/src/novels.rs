@@ -13,7 +13,6 @@ pub struct Model {
 	pub scraper: String,
 	pub url: String,
 	pub status: Option<String>,
-	pub created_at: Option<DateTime>,
 	pub updated_at: DateTime,
 	pub img_url: String,
 	#[sea_orm(column_type = "Text", nullable)]
@@ -26,6 +25,7 @@ pub struct Model {
 	pub release_date: Option<DateTime>,
 	#[sea_orm(column_type = "Text", nullable)]
 	pub genres: Option<String>,
+	pub created_at: Option<DateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -1,4 +1,5 @@
 <script lang="ts">
+import { invalidate } from "$app/navigation";
 import { resolve } from "$app/paths";
 import { getAuthState } from "$lib/auth.svelte";
 import { client } from "$lib/graphql/client";
@@ -238,6 +239,7 @@ async function syncNovel() {
 	const refreshed = await getWork(novel.id, "NOVEL", { includeChapters: true, includeFavorite: true, includeRead: true });
 	if (refreshed) {
 		novel = refreshed;
+		window.location.reload();
 	}
 
 	loadingStates = { ...loadingStates, syncNovel: false };
@@ -246,7 +248,7 @@ async function syncNovel() {
 onMount(async () => {
 	if (!novel || !novel.id) return;
 	const needsChapters = !(novel.chapters && novel.chapters.length > 0);
-	const needsFavorite = novel.isFavorite === undefined;
+	const needsFavorite = novel.isFavorite === undefined || novel.favoriteId === undefined;
 	const needsRead = novel.userReadChaptersAmount === undefined;
 
 	if (needsChapters || needsFavorite || needsRead) {
