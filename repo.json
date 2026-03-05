@@ -40,7 +40,16 @@
 		{
 			"name": "novelfire",
 			"urls": {
-				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/novelfire%40v0.1.0/novelfire.wasm"
+				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/novelfire%40v0.2.0/novelfire.wasm"
+			},
+			"version": "0.2.0",
+			"state": "updated",
+			"build_state": "beta"
+		},
+		{
+			"name": "freewebnovel",
+			"urls": {
+				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/freewebnovel%40v0.1.0/freewebnovel.wasm"
 			},
 			"version": "0.1.0",
 			"state": "updated",
