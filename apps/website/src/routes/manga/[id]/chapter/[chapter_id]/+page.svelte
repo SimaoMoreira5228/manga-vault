@@ -29,6 +29,7 @@ let imageUrls: string[] = $state([]);
 let nextChapter: { id: number; title: string } | null = $state(null);
 let previousChapter: number | null = $state(null);
 let refererUrl: string | null = $state(null);
+let isAutoNavigating = $state(false);
 
 onMount(async () => {
 	if (!browser) return;
@@ -139,6 +140,8 @@ function handleScroll() {
 
 		const scrollPercentage = (scrollContainer.scrollTop + scrollContainer.clientHeight)
 			/ scrollContainer.scrollHeight;
+		const reachedBottom = scrollContainer.scrollTop + scrollContainer.clientHeight
+			>= scrollContainer.scrollHeight - 4;
 
 		if (!markedRead && authState.status === "authenticated") {
 			if (scrollPercentage > 0.90) {
@@ -166,11 +169,14 @@ function handleScroll() {
 			}
 		}
 
-		if (autoNext && nextChapter?.id && scrollPercentage >= 1.0) {
+		if (autoNext && nextChapter?.id && reachedBottom && !isAutoNavigating) {
 			try {
-				goto(resolve(getPath(`/manga/${workId}/chapter/${nextChapter?.id}`)));
+				isAutoNavigating = true;
+				await goto(resolve(getPath(`/manga/${workId}/chapter/${nextChapter?.id}`)));
 			} catch (err) {
 				console.error("Navigation to next chapter failed", err);
+			} finally {
+				isAutoNavigating = false;
 			}
 		}
 

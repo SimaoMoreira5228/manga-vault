@@ -2571,6 +2571,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "freewebnovel"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.13.1",
+ "scraper",
+ "urlencoding",
+ "wit-bindgen 0.50.0",
+]
+
+[[package]]
 name = "fs-set-times"
 version = "0.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2827,7 +2837,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gql-api"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "argon2",
@@ -4046,7 +4056,7 @@ dependencies = [
 
 [[package]]
 name = "manga-vault"
-version = "1.7.0"
+version = "1.8.0"
 dependencies = [
  "config 0.1.0",
  "database-connection",
@@ -4419,7 +4429,7 @@ dependencies = [
 
 [[package]]
 name = "novelfire"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "reqwest 0.13.1",
  "scraper",
@@ -6183,7 +6193,7 @@ dependencies = [
 
 [[package]]
 name = "scheduler"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "chrono",

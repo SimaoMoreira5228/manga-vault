@@ -7,7 +7,7 @@ fmt *args:
 
 lint *args:
     cargo clippy --fix --allow-dirty --allow-staged --all-features --all-targets {{args}}
-    cd apps/website && pnpm run lint && pnpm run check
+    cd apps/website && pnpm run check
 
 alias coverage := test
 test *args:

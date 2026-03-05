@@ -13,12 +13,14 @@ let {
 	authState: AuthState;
 	getImage: (id: number) => string;
 	logout: () => void;
-	size?: "lg" | "md";
+	size?: "lg" | "md" | "sm" | "xs";
 } = $props();
 
 const avatarSizes = {
 	lg: { root: "h-20 w-20", img: "h-20 w-20", fallback: "h-20 w-20", fallbackIconSize: 96 },
 	md: { root: "h-16 w-16", img: "h-16 w-16", fallback: "h-12 w-12", fallbackIconSize: 64 },
+	sm: { root: "h-10 w-10", img: "h-10 w-10", fallback: "h-8 w-8", fallbackIconSize: 32 },
+	xs: { root: "h-6 w-6", img: "h-6 w-6", fallback: "h-4 w-4", fallbackIconSize: 16 },
 };
 
 $effect(() => {

@@ -9,7 +9,7 @@ import { client } from "$lib/graphql/client";
 import DotsSpinner from "$lib/icons/DotsSpinner.svelte";
 import { toaster } from "$lib/utils/toaster-svelte";
 import { ArrowBigDown, ArrowBigLeft, ArrowBigRight, ArrowBigUp, ArrowLeft, Settings } from "@lucide/svelte";
-import { Modal } from "@skeletonlabs/skeleton-svelte";
+import { Dialog, Portal } from "@skeletonlabs/skeleton-svelte";
 import { gql } from "@urql/svelte";
 import createDOMPurify from "dompurify";
 import { onDestroy, onMount } from "svelte";
@@ -33,6 +33,7 @@ let novelTitle: string | null = $state(null);
 let DOMPurify: ReturnType<typeof createDOMPurify> | null = null;
 let sanitizedHtml: string | null = $state(null);
 let brSpacing = $state<number>(8);
+let isAutoNavigating = $state(false);
 
 let settingsOpen = $state(false);
 let fontFamily = $state(localStorage.getItem("reader_fontFamily") || "system");
@@ -185,6 +186,8 @@ function handleScroll() {
 
 		const scrollPercentage = (scrollContainer.scrollTop + scrollContainer.clientHeight)
 			/ scrollContainer.scrollHeight;
+		const reachedBottom = scrollContainer.scrollTop + scrollContainer.clientHeight
+			>= scrollContainer.scrollHeight - 4;
 
 		if (!markedRead && authState.status === "authenticated") {
 			if (scrollPercentage > 0.90) {
@@ -212,12 +215,15 @@ function handleScroll() {
 			}
 		}
 
-		if (autoNext && nextChapter?.id && scrollPercentage >= 1.0) {
+		if (autoNext && nextChapter?.id && reachedBottom && !isAutoNavigating) {
 			try {
+				isAutoNavigating = true;
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				goto(resolve(`/novel/${workId}/chapter/${nextChapter?.id}` as any));
+				await goto(resolve(`/novel/${workId}/chapter/${nextChapter?.id}` as any));
 			} catch (err) {
 				console.error("Navigation to next chapter failed", err);
+			} finally {
+				isAutoNavigating = false;
 			}
 		}
 
@@ -366,95 +372,94 @@ function handleKeyPress(event: KeyboardEvent) {
 	{/if}
 </div>
 
-<Modal
-	open={settingsOpen}
-	onOpenChange={(e) => (settingsOpen = e.open)}
-	triggerBase="btn preset-tonal"
-	contentBase="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm"
-	backdropClasses="backdrop-blur-sm"
->
-	{#snippet content()}
-		<header>
-			<h4 class="h4">Reader Settings</h4>
-		</header>
-		<article>
-			<div class="space-y-4">
-				<label class="label">
-					<span class="label-text">Font Family</span>
-					<select
-						class="select"
-						bind:value={fontFamily}
-						onchange={() => localStorage.setItem("reader_fontFamily", fontFamily)}
-					>
-						{#each fonts as f (`font-option-${f.id}`)}
-							<option value={f.id}>{f.id}</option>
-						{/each}
-					</select>
-				</label>
+<Dialog open={settingsOpen} onOpenChange={(e) => (settingsOpen = e.open)}>
+	<Portal>
+		<Dialog.Backdrop class="fixed inset-0 backdrop-blur-sm" />
+		<Dialog.Positioner class="fixed inset-0 flex items-center justify-center p-4">
+			<Dialog.Content class="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm w-full">
+				<header>
+					<h4 class="h4">Reader Settings</h4>
+				</header>
+				<article>
+					<div class="space-y-4">
+						<label class="label">
+							<span class="label-text">Font Family</span>
+							<select
+								class="select"
+								bind:value={fontFamily}
+								onchange={() => localStorage.setItem("reader_fontFamily", fontFamily)}
+							>
+								{#each fonts as f (`font-option-${f.id}`)}
+									<option value={f.id}>{f.id}</option>
+								{/each}
+							</select>
+						</label>
 
-				<label class="label">
-					<span class="label-text">Font Size: {fontSize}px</span>
-					<input
-						type="range"
-						min="12"
-						max="36"
-						bind:value={fontSize}
-						class="range"
-						oninput={() => localStorage.setItem("reader_fontSize", String(fontSize))}
-					/>
-				</label>
+						<label class="label">
+							<span class="label-text">Font Size: {fontSize}px</span>
+							<input
+								type="range"
+								min="12"
+								max="36"
+								bind:value={fontSize}
+								class="range"
+								oninput={() => localStorage.setItem("reader_fontSize", String(fontSize))}
+							/>
+						</label>
 
-				<div>
-					<div class="label-text mb-2">Text Align</div>
-					<div class="flex gap-2">
-						<button
-							class={textAlign === "left" ? "btn preset-filled" : "btn preset-tonal"}
-							onclick={() => {
-								textAlign = "left";
-								localStorage.setItem("reader_textAlign", "left");
-							}}
-						>
-							Left
-						</button>
-						<button
-							class={textAlign === "justify" ? "btn preset-filled" : "btn preset-tonal"}
-							onclick={() => {
-								textAlign = "justify";
-								localStorage.setItem("reader_textAlign", "justify");
-							}}
-						>
-							Justify
-						</button>
-						<button
-							class={textAlign === "center" ? "btn preset-filled" : "btn preset-tonal"}
-							onclick={() => {
-								textAlign = "center";
-								localStorage.setItem("reader_textAlign", "center");
-							}}
-						>
-							Center
-						</button>
+						<div>
+							<div class="label-text mb-2">Text Align</div>
+							<div class="flex gap-2">
+								<button
+									class={textAlign === "left" ? "btn preset-filled" : "btn preset-tonal"}
+									onclick={() => {
+										textAlign = "left";
+										localStorage.setItem("reader_textAlign", "left");
+									}}
+								>
+									Left
+								</button>
+								<button
+									class={textAlign === "justify" ? "btn preset-filled" : "btn preset-tonal"}
+									onclick={() => {
+										textAlign = "justify";
+										localStorage.setItem("reader_textAlign", "justify");
+									}}
+								>
+									Justify
+								</button>
+								<button
+									class={textAlign === "center" ? "btn preset-filled" : "btn preset-tonal"}
+									onclick={() => {
+										textAlign = "center";
+										localStorage.setItem("reader_textAlign", "center");
+									}}
+								>
+									Center
+								</button>
+							</div>
+						</div>
+
+						<div class="flex w-full flex-row items-center justify-between">
+							<button class="btn preset-tonal" onclick={() => (settingsOpen = false)}>Cancel</button>
+							<button
+								class="btn preset-filled"
+								onclick={() => {
+									localStorage.setItem("reader_fontFamily", fontFamily);
+									localStorage.setItem("reader_fontSize", String(fontSize));
+									localStorage.setItem("reader_textAlign", textAlign);
+									settingsOpen = false;
+								}}
+							>
+								Done
+							</button>
+						</div>
 					</div>
-				</div>
-
-				<div class="flex w-full flex-row items-center justify-between">
-					<button class="btn preset-tonal" onclick={() => (settingsOpen = false)}>Cancel</button>
-					<button
-						class="btn preset-filled"
-						onclick={() => {
-							localStorage.setItem("reader_fontFamily", fontFamily);
-							localStorage.setItem("reader_fontSize", String(fontSize));
-							localStorage.setItem("reader_textAlign", textAlign);
-							settingsOpen = false;
-						}}
-					>
-						Done
-					</button>
-				</div>
-			</div>
-		</article>
-	{/snippet}
-</Modal>
+				</article>
+			</Dialog.Content>
+		</Dialog.Positioner>
+	</Portal>
+</Dialog>
 
 <style>
 :global(.novel-content br) {

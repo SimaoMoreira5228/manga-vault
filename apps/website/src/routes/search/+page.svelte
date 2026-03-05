@@ -120,118 +120,128 @@ function getPath(path: string) {
 		</form>
 
 		<div class="flex-1 w-full max-w-5xl flex flex-col overflow-auto">
-			<Tabs
-				value={currentTab}
-				onValueChange={(e) => (currentTab = e.value)}
-				classes="flex flex-col h-full overflow-auto"
-				base="flex flex-col h-full overflow-auto"
-			>
-				{#snippet list()}
-					<Tabs.Control value="manga" classes="flex-1">Mangas</Tabs.Control>
-					<Tabs.Control value="novel" classes="flex-1">Novels</Tabs.Control>
-				{/snippet}
-
-				{#snippet content()}
-					<div class="flex flex-col overflow-auto justify-center items-center w-full h-full">
-						<div class="flex-1 overflow-y-auto p-4 custom-scrollbar w-full h-full">
-							<Tabs.Panel value="manga" classes="space-y-4 h-full">
-								<Accordion
-									classes="h-full overflow-y-auto"
-									value={mangaOpenScrapers}
-									onValueChange={(e) => {
-										const next = e.value as string[];
-										const added = next.find((id) => !mangaOpenScrapers.includes(id));
-										mangaOpenScrapers = next;
-										if (added) search(added);
-									}}
-									multiple
-								>
-									{#each mangaScrapers as scraper, index (scraper.id)}
-										{#if index > 0}<hr class="hr opacity-10" />{/if}
-										<Accordion.Item value={scraper.id}>
-											{#snippet control()}<span class="h4">{scraper.name}</span>{/snippet}
-											{#snippet panel()}
-												<div class="pt-4 overflow-visible">
-													{#if scrapersState[scraper.id]?.loading}
-														<div class="flex items-center justify-center py-6">
-															<DotsSpinner class="text-primary-500 h-10 w-10" />
-														</div>
-													{:else if !scrapersState[scraper.id] || scrapersState[scraper.id]?.items.length === 0}
-														<p class="text-center text-sm opacity-65 py-6 italic">No results found in {scraper.name}</p>
-													{:else}
-														<div class="flex flex-row overflow-x-auto gap-4 pb-4 snap-x">
-															{#each scrapersState[scraper.id]?.items as item (item.mangaId ?? item.url)}
-																<div class="shrink-0 w-36 md:w-44 snap-start">
-																	{#if item.mangaId}
-																		<MangaCard
-																			work={item}
-																			href={resolve(getPath(`/manga/${item.mangaId}`))}
-																			refererUrl={scraper?.refererUrl}
-																		/>
-																	{:else}
-																		<MangaCard work={item} href={item.url} refererUrl={scraper?.refererUrl} />
-																	{/if}
-																</div>
-															{/each}
-														</div>
-													{/if}
+			<Tabs value={currentTab} onValueChange={(e) => (currentTab = e.value)} class="flex flex-col h-full overflow-auto">
+				<Tabs.List class="flex gap-2">
+					<Tabs.Trigger
+						value="manga"
+						class={`btn flex flex-1 items-center justify-between border-b-2 ${
+							currentTab === "manga"
+								? "border-primary-500"
+								: "border-transparent"
+						}`}
+					>Mangas</Tabs.Trigger>
+					<Tabs.Trigger
+						value="novel"
+						class={`btn flex flex-1 items-center justify-between border-b-2 ${
+							currentTab === "novel"
+								? "border-primary-500"
+								: "border-transparent"
+						}`}
+					>Novels</Tabs.Trigger>
+				</Tabs.List>
+				<div class="flex flex-col overflow-auto justify-center items-center w-full h-full">
+					<div class="flex-1 overflow-y-auto p-4 custom-scrollbar w-full h-full">
+						<Tabs.Content value="manga" class="space-y-4 h-full">
+							<Accordion
+								class="h-full overflow-y-auto"
+								value={mangaOpenScrapers}
+								onValueChange={(e) => {
+									const next = e.value as string[];
+									const added = next.find((id) => !mangaOpenScrapers.includes(id));
+									mangaOpenScrapers = next;
+									if (added) search(added);
+								}}
+								multiple
+							>
+								{#each mangaScrapers as scraper, index (scraper.id)}
+									{#if index > 0}<hr class="hr opacity-10" />{/if}
+									<Accordion.Item value={scraper.id}>
+										<h4>
+											<Accordion.ItemTrigger class="h4 flex w-full items-center justify-between">
+												{scraper.name}
+											</Accordion.ItemTrigger>
+										</h4>
+										<Accordion.ItemContent class="pt-4 overflow-visible">
+											{#if scrapersState[scraper.id]?.loading}
+												<div class="flex items-center justify-center py-6">
+													<DotsSpinner class="text-primary-500 h-10 w-10" />
 												</div>
-											{/snippet}
-										</Accordion.Item>
-									{/each}
-								</Accordion>
-							</Tabs.Panel>
-
-							<Tabs.Panel value="novel" classes="space-y-4 h-full">
-								<Accordion
-									classes="h-full overflow-y-auto"
-									value={novelOpenScrapers}
-									onValueChange={(e) => {
-										const next = e.value as string[];
-										const added = next.find((id) => !novelOpenScrapers.includes(id));
-										novelOpenScrapers = next;
-										if (added) search(added);
-									}}
-									multiple
-								>
-									{#each novelScrapers as scraper, index (scraper.id)}
-										{#if index > 0}<hr class="hr opacity-10" />{/if}
-										<Accordion.Item value={scraper.id}>
-											{#snippet control()}<span class="h4">{scraper.name}</span>{/snippet}
-											{#snippet panel()}
-												<div class="pt-4 overflow-visible">
-													{#if scrapersState[scraper.id]?.loading}
-														<div class="flex items-center justify-center py-6">
-															<DotsSpinner class="text-primary-500 h-10 w-10" />
+											{:else if !scrapersState[scraper.id] || scrapersState[scraper.id]?.items.length === 0}
+												<p class="text-center text-sm opacity-65 py-6 italic">No results found in {scraper.name}</p>
+											{:else}
+												<div class="flex flex-row overflow-x-auto gap-4 pb-4 snap-x">
+													{#each scrapersState[scraper.id]?.items as item (item.mangaId ?? item.url)}
+														<div class="shrink-0 w-36 md:w-44 snap-start">
+															{#if item.mangaId}
+																<MangaCard
+																	work={item}
+																	href={resolve(getPath(`/manga/${item.mangaId}`))}
+																	refererUrl={scraper?.refererUrl}
+																/>
+															{:else}
+																<MangaCard work={item} href={item.url} refererUrl={scraper?.refererUrl} />
+															{/if}
 														</div>
-													{:else if !scrapersState[scraper.id] || scrapersState[scraper.id]?.items.length === 0}
-														<p class="text-center text-sm opacity-65 py-6 italic">No results found in {scraper.name}</p>
-													{:else}
-														<div class="flex flex-row overflow-x-auto gap-4 pb-4 snap-x">
-															{#each scrapersState[scraper.id]?.items as item (item.novelId ?? item.url)}
-																<div class="shrink-0 w-36 md:w-44 snap-start">
-																	{#if item.novelId}
-																		<MangaCard
-																			work={item}
-																			href={resolve(getPath(`/novel/${item.novelId}`))}
-																			refererUrl={scraper?.refererUrl}
-																		/>
-																	{:else}
-																		<MangaCard work={item} href={item.url} refererUrl={scraper?.refererUrl} />
-																	{/if}
-																</div>
-															{/each}
-														</div>
-													{/if}
+													{/each}
 												</div>
-											{/snippet}
-										</Accordion.Item>
-									{/each}
-								</Accordion>
-							</Tabs.Panel>
-						</div>
+											{/if}
+										</Accordion.ItemContent>
+									</Accordion.Item>
+								{/each}
+							</Accordion>
+						</Tabs.Content>
+
+						<Tabs.Content value="novel" class="space-y-4 h-full">
+							<Accordion
+								class="h-full overflow-y-auto"
+								value={novelOpenScrapers}
+								onValueChange={(e) => {
+									const next = e.value as string[];
+									const added = next.find((id) => !novelOpenScrapers.includes(id));
+									novelOpenScrapers = next;
+									if (added) search(added);
+								}}
+								multiple
+							>
+								{#each novelScrapers as scraper, index (scraper.id)}
+									{#if index > 0}<hr class="hr opacity-10" />{/if}
+									<Accordion.Item value={scraper.id}>
+										<h4>
+											<Accordion.ItemTrigger class="h4 flex w-full items-center justify-between">
+												{scraper.name}
+											</Accordion.ItemTrigger>
+										</h4>
+										<Accordion.ItemContent class="pt-4 overflow-visible">
+											{#if scrapersState[scraper.id]?.loading}
+												<div class="flex items-center justify-center py-6">
+													<DotsSpinner class="text-primary-500 h-10 w-10" />
+												</div>
+											{:else if !scrapersState[scraper.id] || scrapersState[scraper.id]?.items.length === 0}
+												<p class="text-center text-sm opacity-65 py-6 italic">No results found in {scraper.name}</p>
+											{:else}
+												<div class="flex flex-row overflow-x-auto gap-4 pb-4 snap-x">
+													{#each scrapersState[scraper.id]?.items as item (item.novelId ?? item.url)}
+														<div class="shrink-0 w-36 md:w-44 snap-start">
+															{#if item.novelId}
+																<MangaCard
+																	work={item}
+																	href={resolve(getPath(`/novel/${item.novelId}`))}
+																	refererUrl={scraper?.refererUrl}
+																/>
+															{:else}
+																<MangaCard work={item} href={item.url} refererUrl={scraper?.refererUrl} />
+															{/if}
+														</div>
+													{/each}
+												</div>
+											{/if}
+										</Accordion.ItemContent>
+									</Accordion.Item>
+								{/each}
+							</Accordion>
+						</Tabs.Content>
 					</div>
-				{/snippet}
+				</div>
 			</Tabs>
 		</div>
 	{/if}

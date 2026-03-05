@@ -36,11 +36,11 @@ function getEffectiveReferer(): string | undefined {
 
 		const parsed = new URL(u);
 		return parsed.origin.endsWith("/") ? parsed.origin : parsed.origin + "/";
-	} catch (e) {
+	} catch {
 		try {
 			const parts = (work?.url || "").split("/");
 			if (parts.length >= 3) return parts.slice(0, 3).join("/") + "/";
-		} catch (err) {
+		} catch {
 			// ignore
 		}
 	}

@@ -9,7 +9,7 @@ import { getWork } from "$lib/utils/getWork";
 import { type LibraryItem, load } from "$lib/utils/personalLibrary";
 import { toaster } from "$lib/utils/toaster-svelte";
 import { ArrowDown10, ArrowDownAZ, PenLine, Plus } from "@lucide/svelte";
-import { Modal, Tabs } from "@skeletonlabs/skeleton-svelte";
+import { Dialog, Portal, Tabs } from "@skeletonlabs/skeleton-svelte";
 import { gql } from "@urql/svelte";
 import { onMount } from "svelte";
 
@@ -287,20 +287,26 @@ function getWorkPath(item: LibraryItem) {
 		</div>
 	{:else if authState.status === "authenticated"}
 		<div class="flex h-full w-full flex-col overflow-auto">
-			<Tabs
-				value={currentCategory}
-				onValueChange={(e) => (currentCategory = e.value)}
-				fluid
-				classes="flex flex-col h-full"
-				listClasses={`overflow-x-auto p-4 overflow-auto ${categories.length === 0 ? "overflow-hidden !justify-end" : ""}`}
-				contentClasses="flex flex-col w-full h-full overflow-auto"
-			>
-				{#snippet list()}
+			<Tabs value={currentCategory} onValueChange={(e) => (currentCategory = e.value)} class="flex flex-col h-full">
+				<Tabs.List
+					class={`flex items-center gap-2 overflow-x-auto p-4 overflow-y-hidden ${
+						categories.length === 0 ? "overflow-hidden justify-end!" : ""
+					}`}
+				>
 					{#each categories as category (category.id)}
-						<Tabs.Control value={category.id.toString()}>
-							<div class="flex w-full flex-row items-center justify-between gap-2">
+						<div class="flex flex-1 items-center gap-2">
+							<Tabs.Trigger
+								value={category.id.toString()}
+								class={`btn flex flex-1 items-center justify-between border-b-2 ${
+									currentCategory === category.id.toString()
+										? "border-primary-500"
+										: "border-transparent"
+								}`}
+							>
 								{category.name}
 								<button
+									type="button"
+									class="btn-icon"
 									onclick={(e) => {
 										e.preventDefault();
 										openUpdateCategory(category.id.toString());
@@ -308,8 +314,8 @@ function getWorkPath(item: LibraryItem) {
 								>
 									<PenLine size={16} />
 								</button>
-							</div>
-						</Tabs.Control>
+							</Tabs.Trigger>
+						</div>
 					{/each}
 					<button type="button" class="btn-icon preset-filled" onclick={openCreateCategory}><Plus /></button>
 					<button
@@ -319,11 +325,11 @@ function getWorkPath(item: LibraryItem) {
 					>
 						{#if orderType === "unread"}<ArrowDown10 />{:else}<ArrowDownAZ />{/if}
 					</button>
-				{/snippet}
-				{#snippet content()}
+				</Tabs.List>
+				<div class="flex flex-col w-full h-full overflow-auto">
 					{#if categories.length !== 0}
 						{#each categories as category (category.id)}
-							<Tabs.Panel value={category.id.toString()} base="h-full w-full">
+							<Tabs.Content value={category.id.toString()} class="h-full w-full">
 								<div class="p-4 overflow-auto h-full">
 									{#if isDataLoading}
 										<div class="flex h-full w-full items-center justify-center"><DotsSpinner /></div>
@@ -344,48 +350,46 @@ function getWorkPath(item: LibraryItem) {
 										</div>
 									{/if}
 								</div>
-							</Tabs.Panel>
+							</Tabs.Content>
 						{/each}
 					{/if}
-				{/snippet}
+				</div>
 			</Tabs>
 		</div>
 	{/if}
 </div>
 
-<Modal
-	open={isEditingCategory.open}
-	onOpenChange={(e) => (isEditingCategory.open = e.open)}
-	triggerBase="btn preset-tonal"
-	contentBase="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm"
-	backdropClasses="backdrop-blur-sm"
->
-	{#snippet content()}
-		<header class="flex justify-between">
-			<h4 class="h4">Edit Category ({categories.find((c) => c.id.toString() === isEditingCategory.id)?.name})</h4>
-		</header>
-		<article><input type="text" bind:value={isEditingCategory.name} class="input" /></article>
-		<footer class="flex justify-end gap-4">
-			<button type="button" class="btn preset-tonal-error" onclick={deleteCategory}>Delete</button>
-			<button type="button" class="btn preset-tonal" onclick={() => (isEditingCategory.open = false)}>Cancel</button>
-			<button type="button" class="btn preset-filled" onclick={updateCategory}>Confirm</button>
-		</footer>
-	{/snippet}
-</Modal>
+<Dialog open={isEditingCategory.open} onOpenChange={(e) => (isEditingCategory.open = e.open)}>
+	<Portal>
+		<Dialog.Backdrop class="fixed inset-0 backdrop-blur-sm" />
+		<Dialog.Positioner class="fixed inset-0 flex items-center justify-center p-4">
+			<Dialog.Content class="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm w-full">
+				<header class="flex justify-between">
+					<h4 class="h4">Edit Category ({categories.find((c) => c.id.toString() === isEditingCategory.id)?.name})</h4>
+				</header>
+				<article><input type="text" bind:value={isEditingCategory.name} class="input" /></article>
+				<footer class="flex justify-end gap-4">
+					<button type="button" class="btn preset-tonal-error" onclick={deleteCategory}>Delete</button>
+					<button type="button" class="btn preset-tonal" onclick={() => (isEditingCategory.open = false)}>Cancel</button>
+					<button type="button" class="btn preset-filled" onclick={updateCategory}>Confirm</button>
+				</footer>
+			</Dialog.Content>
+		</Dialog.Positioner>
+	</Portal>
+</Dialog>
 
-<Modal
-	open={isCreatingCategory.open}
-	onOpenChange={(e) => (isCreatingCategory.open = e.open)}
-	triggerBase="btn preset-tonal"
-	contentBase="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm"
-	backdropClasses="backdrop-blur-sm"
->
-	{#snippet content()}
-		<header class="flex justify-between"><h4 class="h4">Create Category</h4></header>
-		<article><input type="text" bind:value={isCreatingCategory.name} class="input" /></article>
-		<footer class="flex justify-end gap-4">
-			<button type="button" class="btn preset-tonal" onclick={() => (isCreatingCategory.open = false)}>Cancel</button>
-			<button type="button" class="btn preset-filled" onclick={createCategory}>Confirm</button>
-		</footer>
-	{/snippet}
-</Modal>
+<Dialog open={isCreatingCategory.open} onOpenChange={(e) => (isCreatingCategory.open = e.open)}>
+	<Portal>
+		<Dialog.Backdrop class="fixed inset-0 backdrop-blur-sm" />
+		<Dialog.Positioner class="fixed inset-0 flex items-center justify-center p-4">
+			<Dialog.Content class="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm w-full">
+				<header class="flex justify-between"><h4 class="h4">Create Category</h4></header>
+				<article><input type="text" bind:value={isCreatingCategory.name} class="input" /></article>
+				<footer class="flex justify-end gap-4">
+					<button type="button" class="btn preset-tonal" onclick={() => (isCreatingCategory.open = false)}>Cancel</button>
+					<button type="button" class="btn preset-filled" onclick={createCategory}>Confirm</button>
+				</footer>
+			</Dialog.Content>
+		</Dialog.Positioner>
+	</Portal>
+</Dialog>

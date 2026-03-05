@@ -1,5 +1,4 @@
 <script lang="ts">
-import { invalidate } from "$app/navigation";
 import { resolve } from "$app/paths";
 import { getAuthState } from "$lib/auth.svelte";
 import { client } from "$lib/graphql/client";
@@ -7,10 +6,19 @@ import DotsSpinner from "$lib/icons/DotsSpinner.svelte";
 import { getWork } from "$lib/utils/getWork";
 import { proxyImage } from "$lib/utils/image";
 import { toaster } from "$lib/utils/toaster-svelte";
-import { BookmarkMinus, BookmarkPlus, Eye, EyeOff, RefreshCw, SquareArrowOutUpRight } from "@lucide/svelte";
-import { Modal } from "@skeletonlabs/skeleton-svelte";
+import {
+	ArrowUpDown,
+	BookmarkMinus,
+	BookmarkPlus,
+	EllipsisVertical,
+	Eye,
+	EyeOff,
+	RefreshCw,
+	SquareArrowOutUpRight,
+} from "@lucide/svelte";
+import { Dialog, Menu, Portal } from "@skeletonlabs/skeleton-svelte";
 import { gql } from "@urql/svelte";
-import { onMount } from "svelte";
+import { onDestroy, onMount } from "svelte";
 import type { PageData } from "./$types";
 
 let authState = $derived(getAuthState());
@@ -19,6 +27,17 @@ let props: { data: PageData } = $props();
 let novel = $state(props.data.novel);
 const categories = props.data.categories;
 let loadingStates: Record<string, boolean> = $state({});
+const chapters = $derived(novel?.chapters ?? []);
+const chunkSize = 150;
+const initialChunk = 150;
+let displayedCount = $state(initialChunk);
+let lastChapterCount = $state(0);
+let listSentinel: HTMLDivElement | null = $state(null);
+let chapterObserver: IntersectionObserver | null = null;
+const hasMoreChapters = $derived(displayedCount < chapters.length);
+let isInverted = $state(false);
+const orderedChapters = $derived(isInverted ? [...chapters].reverse() : chapters);
+const visibleOrderedChapters = $derived(orderedChapters.slice(0, displayedCount));
 
 let isFavoriting = $state<{ open: boolean; categoryId: number | null }>({ open: false, categoryId: null });
 
@@ -150,6 +169,77 @@ async function unreadChapter(chapterId: number) {
 	}
 }
 
+function getChapterIdsBelow(chapterId: number): number[] {
+	const index = orderedChapters.findIndex((chapter) => chapter.id === chapterId);
+	if (index < 0) return [];
+	return orderedChapters.slice(index + 1).map((chapter) => chapter.id);
+}
+
+function getChapterIdsAbove(chapterId: number): number[] {
+	const index = orderedChapters.findIndex((chapter) => chapter.id === chapterId);
+	if (index <= 0) return [];
+	return orderedChapters.slice(0, index).map((chapter) => chapter.id);
+}
+
+async function readChaptersBulk(chapterIds: number[]) {
+	if (authState.status !== "authenticated") return;
+	if (!chapterIds.length) return;
+
+	const { error } = await client
+		.mutation(
+			gql`
+					mutation readNovelChaptersBulk($chapterIds: [Int!]!) {
+						novelChapter {
+							readNovelChaptersBulk(chapterIds: $chapterIds)
+						}
+					}
+				`,
+			{ chapterIds },
+		)
+		.toPromise();
+
+	if (error) {
+		console.error("readNovelChaptersBulk failed", error);
+		toaster.error({ title: "Error", description: "Failed to read chapters" });
+		return;
+	}
+
+	const existingIds = new Set((novel?.userReadChapters ?? []).map((c) => c.chapterId));
+	const added = chapterIds.filter((id) => !existingIds.has(id)).map((id) => ({ id: -1, chapterId: id }));
+	if (novel) {
+		novel = { ...novel, userReadChapters: [...(novel.userReadChapters ?? []), ...added] };
+	}
+}
+
+async function unreadChaptersBulk(chapterIds: number[]) {
+	if (authState.status !== "authenticated") return;
+	if (!chapterIds.length) return;
+
+	const { error } = await client
+		.mutation(
+			gql`
+					mutation unreadNovelChaptersBulk($chapterIds: [Int!]!) {
+						novelChapter {
+							unreadNovelChaptersBulk(chapterIds: $chapterIds)
+						}
+					}
+				`,
+			{ chapterIds },
+		)
+		.toPromise();
+
+	if (error) {
+		console.error("unreadNovelChaptersBulk failed", error);
+		toaster.error({ title: "Error", description: "Failed to unread chapters" });
+		return;
+	}
+
+	const toRemove = new Set(chapterIds);
+	if (novel) {
+		novel = { ...novel, userReadChapters: (novel.userReadChapters ?? []).filter((c) => !toRemove.has(c.chapterId)) };
+	}
+}
+
 async function readAllChapters() {
 	if (authState.status !== "authenticated") return;
 	loadingStates = { ...loadingStates, readAll: true };
@@ -170,6 +260,7 @@ async function readAllChapters() {
 	if (error) {
 		console.error("readAllNovelChapters failed", error);
 		toaster.error({ title: "Error", description: "Failed to mark all chapters as read" });
+		loadingStates = { ...loadingStates, readAll: false };
 		return;
 	}
 
@@ -200,6 +291,7 @@ async function unreadAllChapters() {
 	if (error) {
 		console.error("unreadAllNovelChapters failed", error);
 		toaster.error({ title: "Error", description: "Failed to mark all chapters as unread" });
+		loadingStates = { ...loadingStates, unreadAll: false };
 		return;
 	}
 
@@ -261,6 +353,32 @@ onMount(async () => {
 		if (refreshed) novel = refreshed;
 		loadingStates = { ...loadingStates, loadingExtra: false };
 	}
+});
+
+$effect(() => {
+	if (chapters.length !== lastChapterCount) {
+		lastChapterCount = chapters.length;
+		displayedCount = Math.min(initialChunk, chapters.length);
+	}
+});
+
+$effect(() => {
+	if (!listSentinel) return;
+	chapterObserver?.disconnect();
+	chapterObserver = new IntersectionObserver(
+		(entries) => {
+			if (entries[0]?.isIntersecting && displayedCount < chapters.length) {
+				displayedCount = Math.min(displayedCount + chunkSize, chapters.length);
+			}
+		},
+		{ rootMargin: "800px 0px" },
+	);
+	chapterObserver.observe(listSentinel);
+	return () => chapterObserver?.disconnect();
+});
+
+onDestroy(() => {
+	chapterObserver?.disconnect();
 });
 
 function getResumeChapter(): number | null {
@@ -403,22 +521,35 @@ function areAllChaptersRead(): boolean {
 		<div class="flex w-full items-center justify-center md:w-1/2">
 			<DotsSpinner />
 		</div>
-	{:else if novel?.chapters && novel?.chapters?.length > 0}
+	{:else if chapters.length > 0}
 		<span class="vr hidden min-w-2 md:block"></span>
 		<div class="flex w-full flex-col items-start justify-start md:w-1/2">
-			<h3 class="h3">Chapters:</h3>
+			<div class="flex w-full items-center justify-between gap-2">
+				<h3 class="h3">Chapters:</h3>
+				<button
+					class="btn-icon preset-tonal-primary"
+					aria-pressed={isInverted}
+					aria-label="Toggle chapter order"
+					onclick={() => (isInverted = !isInverted)}
+				>
+					<ArrowUpDown />
+				</button>
+			</div>
 			<div class="flex w-full flex-col gap-2 overflow-auto pr-2">
-				{#each novel?.chapters ?? [] as chapter (chapter.id)}
-					<a
-						class="card preset-filled-surface-100-900 flex w-full flex-row items-center justify-between p-2"
-						href={resolve(`/novel/${novel?.id}/chapter/${chapter.id}`)}
-					>
-						<div>
+				{#each visibleOrderedChapters as chapter (chapter.id)}
+					{@const belowIds = getChapterIdsBelow(chapter.id)}
+					{@const aboveIds = getChapterIdsAbove(chapter.id)}
+					{@const bulkTargetIds = isInverted ? aboveIds : belowIds}
+					<div class="card preset-filled-surface-100-900 flex w-full flex-row items-center justify-between p-2">
+						<a
+							class="flex flex-1 flex-col"
+							href={resolve(`/novel/${novel?.id}/chapter/${chapter.id}`)}
+						>
 							<p class={wasChapterRead(chapter.id) ? "opacity-60" : ""}>
 								{chapter.title}
 							</p>
 							<p class="opacity-60">{chapter.scanlationGroup || ""}</p>
-						</div>
+						</a>
 						<div class="flex flex-row items-center justify-center gap-2">
 							{#if authState.status === "authenticated"}
 								{#if wasChapterRead(chapter.id)}
@@ -451,11 +582,65 @@ function areAllChaptersRead(): boolean {
 							>
 								<SquareArrowOutUpRight />
 							</button>
+							{#if authState.status === "authenticated"}
+								<Menu
+									onSelect={(details) => {
+										if (details.value === "read-below") {
+											readChaptersBulk(bulkTargetIds);
+										}
+										if (details.value === "unread-below") {
+											unreadChaptersBulk(bulkTargetIds);
+										}
+									}}
+								>
+									<Menu.Trigger
+										class="btn-icon hover:preset-tonal"
+										aria-label="Chapter options"
+									>
+										<EllipsisVertical class="size-4" />
+									</Menu.Trigger>
+									<Portal>
+										<Menu.Positioner class="z-50">
+											<Menu.Content
+												class="card preset-filled-surface-100-900 p-2 shadow-xl flex flex-col gap-1 outline-none ring-0"
+											>
+												<Menu.Item
+													value="read-below"
+													disabled={bulkTargetIds.length === 0}
+													class="btn justify-start preset-tonal w-full cursor-pointer outline-none focus-visible:outline-none ring-0 focus-visible:ring-0"
+												>
+													<Menu.ItemText>
+														{isInverted ? "Mark above as read" : "Mark below as read"}
+													</Menu.ItemText>
+												</Menu.Item>
+												<Menu.Item
+													value="unread-below"
+													disabled={bulkTargetIds.length === 0}
+													class="btn justify-start preset-tonal w-full cursor-pointer outline-none focus-visible:outline-none ring-0 focus-visible:ring-0"
+												>
+													<Menu.ItemText>
+														{isInverted ? "Mark above as unread" : "Mark below as unread"}
+													</Menu.ItemText>
+												</Menu.Item>
+											</Menu.Content>
+										</Menu.Positioner>
+									</Portal>
+								</Menu>
+							{/if}
 						</div>
-					</a>
+					</div>
 				{/each}
+				{#if hasMoreChapters}
+					<div class="flex w-full items-center justify-center py-4 text-sm opacity-60" bind:this={listSentinel}>
+						Loading more chapters...
+					</div>
+				{:else}
+					<div class="flex w-full items-center justify-center py-4 text-sm opacity-50" bind:this={listSentinel}>
+						All chapters loaded.
+					</div>
+				{/if}
 			</div>
-			{#if novel?.chapters && novel?.chapters?.length > 0
+			{#if chapters.length > 0
 				&& authState.status === "authenticated"}
 				<div class="my-4 flex w-full flex-row gap-2">
 					{#if getResumeChapter() !== null}
@@ -489,45 +674,44 @@ function areAllChaptersRead(): boolean {
 	{/if}
 </div>
 
-<Modal
-	open={isFavoriting.open}
-	onOpenChange={(e) => (isFavoriting.open = e.open)}
-	triggerBase="btn preset-tonal"
-	contentBase="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm"
-	backdropClasses="backdrop-blur-sm"
->
-	{#snippet content()}
-		<header>
-			<h4 class="h4">Add to Favorites</h4>
-		</header>
-		<article>
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					toggleFavorite();
-				}}
-				class="flex flex-col items-center justify-center space-y-4"
-			>
-				<label class="label">
-					<span class="label-text">Category</span>
-					<select class="select" bind:value={isFavoriting.categoryId}>
-						{#if categories.length > 0}
-							{#each categories as category (category.id)}
-								<option value={category.id}>{category.name}</option>
-							{/each}
-						{/if}
-					</select>
-				</label>
-				<div class="flex w-full flex-row items-center justify-between">
-					<button
-						class="btn preset-tonal"
-						onclick={() => (isFavoriting.open = false)}
+<Dialog open={isFavoriting.open} onOpenChange={(e) => (isFavoriting.open = e.open)}>
+	<Portal>
+		<Dialog.Backdrop class="fixed inset-0 backdrop-blur-sm" />
+		<Dialog.Positioner class="fixed inset-0 flex items-center justify-center p-4">
+			<Dialog.Content class="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm w-full">
+				<header>
+					<h4 class="h4">Add to Favorites</h4>
+				</header>
+				<article>
+					<form
+						onsubmit={(e) => {
+							e.preventDefault();
+							toggleFavorite();
+						}}
+						class="flex flex-col items-center justify-center space-y-4"
 					>
-						Cancel
-					</button>
-					<button class="btn preset-filled" type="submit">Confirm</button>
-				</div>
-			</form>
-		</article>
-	{/snippet}
-</Modal>
+						<label class="label">
+							<span class="label-text">Category</span>
+							<select class="select" bind:value={isFavoriting.categoryId}>
+								{#if categories.length > 0}
+									{#each categories as category (category.id)}
+										<option value={category.id}>{category.name}</option>
+									{/each}
+								{/if}
+							</select>
+						</label>
+						<div class="flex w-full flex-row items-center justify-between">
+							<button
+								class="btn preset-tonal"
+								onclick={() => (isFavoriting.open = false)}
+							>
+								Cancel
+							</button>
+							<button class="btn preset-filled" type="submit">Confirm</button>
+						</div>
+					</form>
+				</article>
+			</Dialog.Content>
+		</Dialog.Positioner>
+	</Portal>
+</Dialog>

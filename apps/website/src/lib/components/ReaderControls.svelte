@@ -32,7 +32,17 @@ let {
 				onValueChange={(e) => onImageMarginChange?.(e.value[0])}
 				min={0}
 				max={45}
-			/>
+				class="w-full"
+			>
+				<Slider.Control>
+					<Slider.Track>
+						<Slider.Range />
+					</Slider.Track>
+					<Slider.Thumb index={0}>
+						<Slider.HiddenInput />
+					</Slider.Thumb>
+				</Slider.Control>
+			</Slider>
 		</label>
 	{/if}
 
@@ -51,11 +61,12 @@ let {
 	{/if}
 
 	<label class="label w-1/10 flex items-center gap-2">
-		<span class="label-text">Auto-next</span>
-		<Switch
-			name="auto-next"
-			checked={autoNext}
-			onCheckedChange={(e) => onAutoNextChange?.(e.checked)}
-		/>
+		<Switch checked={autoNext} onCheckedChange={(e) => onAutoNextChange?.(e.checked)}>
+			<Switch.Label>Auto-next</Switch.Label>
+			<Switch.Control>
+				<Switch.Thumb />
+			</Switch.Control>
+			<Switch.HiddenInput name="auto-next" />
+		</Switch>
 	</label>
 </div>

@@ -104,6 +104,13 @@ PACKAGES = [
     "tag_prefix": "novelfire",
   },
   {
+    "id": "freewebnovel",
+    "path": "scrapers/freewebnovel",
+    "type": "scraper-rust-wasm",
+    "crate": "freewebnovel",
+    "tag_prefix": "freewebnovel",
+  },
+  {
     "id": "manhuafast",
     "path": "scrapers/manhuafast",
     "type": "lua-plugin",

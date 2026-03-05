@@ -7,7 +7,7 @@ import DotsSpinner from "$lib/icons/DotsSpinner.svelte";
 import { getImage } from "$lib/utils/image";
 import { toaster } from "$lib/utils/toaster-svelte";
 import { PenLine, Plus, UserRound } from "@lucide/svelte";
-import { Modal } from "@skeletonlabs/skeleton-svelte";
+import { Dialog, Portal } from "@skeletonlabs/skeleton-svelte";
 import { gql } from "@urql/svelte";
 import { Avatar } from "bits-ui";
 import type { PageData } from "./$types";
@@ -213,34 +213,34 @@ function openUpdateProfileModal() {
 	accept=".jpg,.jpeg,.png,.gif,.bmp,.webp"
 />
 
-<Modal
-	open={isUpdatingCategory.open}
-	triggerBase="btn preset-tonal"
-	contentBase="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm"
-	backdropClasses="backdrop-blur-sm"
->
-	{#snippet content()}
-		<header class="flex justify-between">
-			<h4 class="h4">Update Profile</h4>
-		</header>
-		<article>
-			<input
-				type="text"
-				bind:value={isUpdatingCategory.input.username}
-				class="input"
-			/>
-		</article>
-		<footer class="flex justify-end gap-4">
-			<button
-				type="button"
-				class="btn preset-tonal"
-				onclick={() => (isUpdatingCategory.open = false)}
-			>
-				Cancel
-			</button>
-			<button type="button" class="btn preset-filled" onclick={updateProfile}>
-				Confirm
-			</button>
-		</footer>
-	{/snippet}
-</Modal>
+<Dialog open={isUpdatingCategory.open} onOpenChange={(e) => (isUpdatingCategory.open = e.open)}>
+	<Portal>
+		<Dialog.Backdrop class="fixed inset-0 backdrop-blur-sm" />
+		<Dialog.Positioner class="fixed inset-0 flex items-center justify-center p-4">
+			<Dialog.Content class="card bg-surface-100-900 p-4 space-y-4 shadow-xl max-w-screen-sm w-full">
+				<header class="flex justify-between">
+					<h4 class="h4">Update Profile</h4>
+				</header>
+				<article>
+					<input
+						type="text"
+						bind:value={isUpdatingCategory.input.username}
+						class="input"
+					/>
+				</article>
+				<footer class="flex justify-end gap-4">
+					<button
+						type="button"
+						class="btn preset-tonal"
+						onclick={() => (isUpdatingCategory.open = false)}
+					>
+						Cancel
+					</button>
+					<button type="button" class="btn preset-filled" onclick={updateProfile}>
+						Confirm
+					</button>
+				</footer>
+			</Dialog.Content>
+		</Dialog.Positioner>
+	</Portal>
+</Dialog>

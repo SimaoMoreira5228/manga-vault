@@ -22,6 +22,7 @@ pub struct MangaUpdateScheduler {
 	interval: Duration,
 	scraper_manager: Arc<ScraperManager>,
 	scraper_limiter: Arc<Mutex<PerScraperLimiter>>,
+	favorites_only: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -108,6 +109,8 @@ pub struct Config {
 	pub claim_limit: u64,
 	#[serde(default)]
 	pub enqueue_strategy: String,
+	#[serde(default)]
+	pub favorites_only: bool,
 }
 
 impl Default for Config {
@@ -123,6 +126,7 @@ impl Default for Config {
 			search_interval_seconds: 30 * 60,
 			claim_limit: 500,
 			enqueue_strategy: "best_effort".to_string(),
+			favorites_only: false,
 		}
 	}
 }
@@ -299,6 +303,7 @@ impl MangaUpdateScheduler {
 			interval: search_interval,
 			scraper_manager,
 			scraper_limiter: scraper_limiter,
+			favorites_only: cfg.favorites_only,
 		}
 	}
 
@@ -317,23 +322,23 @@ impl MangaUpdateScheduler {
 		let threshold = Utc::now() - TimeDelta::try_hours(1).unwrap();
 
 		let claim_limit = 500u64;
-		let claimed_mangas = self.claim_mangas(threshold, claim_limit).await?;
+		let claimed_mangas = self.claim_mangas(threshold, claim_limit, self.favorites_only).await?;
 		let mut scheduled = self.schedule_manga_batch(claimed_mangas).await;
 
 		if self.queue.len() < self.queue.max_size() {
 			let available = self.queue.max_size().saturating_sub(self.queue.len());
 			let fetch_limit = (available.saturating_mul(3)).max(10) as u64;
-			let remaining = self.claim_mangas(threshold, fetch_limit).await?;
+			let remaining = self.claim_mangas(threshold, fetch_limit, self.favorites_only).await?;
 			scheduled += self.schedule_manga_batch(remaining).await;
 		}
 
-		let claimed_novels = self.claim_novels(threshold, claim_limit).await?;
+		let claimed_novels = self.claim_novels(threshold, claim_limit, self.favorites_only).await?;
 		scheduled += self.schedule_novel_batch(claimed_novels).await;
 
 		if self.queue.len() < self.queue.max_size() {
 			let available = self.queue.max_size().saturating_sub(self.queue.len());
 			let fetch_limit = (available.saturating_mul(3)).max(10) as u64;
-			let remaining = self.claim_novels(threshold, fetch_limit).await?;
+			let remaining = self.claim_novels(threshold, fetch_limit, self.favorites_only).await?;
 			scheduled += self.schedule_novel_batch(remaining).await;
 		}
 
@@ -341,12 +346,23 @@ impl MangaUpdateScheduler {
 		Ok(())
 	}
 
-	async fn claim_novels(&self, threshold: DateTime<Utc>, limit: u64) -> Result<Vec<(novels::Model, i64)>, anyhow::Error> {
+	async fn claim_novels(
+		&self,
+		threshold: DateTime<Utc>,
+		limit: u64,
+		favorites_only: bool,
+	) -> Result<Vec<(novels::Model, i64)>, anyhow::Error> {
 		if self.db.db_type == "postgresql" {
 			let ts = threshold.format("%Y-%m-%d %H:%M:%S").to_string();
+			let favorites_filter = if favorites_only {
+				" AND EXISTS (SELECT 1 FROM favorite_novels f WHERE f.novel_id = novels.id)"
+			} else {
+				""
+			};
 			let sql = format!(
-				"WITH c AS (SELECT id FROM novels WHERE updated_at < '{}' ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
+				"WITH c AS (SELECT id FROM novels WHERE updated_at < '{}' AND created_at IS NOT NULL{} ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
 				ts,
+				favorites_filter,
 				limit = limit
 			);
 
@@ -397,12 +413,39 @@ impl MangaUpdateScheduler {
 			return Ok(result);
 		}
 
-		let models = novels::Entity::find()
-			.filter(novels::Column::UpdatedAt.lt(threshold))
-			.order_by_desc(novels::Column::UpdatedAt)
-			.limit(limit as u64)
-			.all(&self.db.conn)
-			.await?;
+		let models = if favorites_only {
+			let ts = threshold.format("%Y-%m-%d %H:%M:%S").to_string();
+			let sql = format!(
+				"SELECT id FROM novels WHERE updated_at < '{}' AND created_at IS NOT NULL AND EXISTS (SELECT 1 FROM favorite_novels f WHERE f.novel_id = novels.id) ORDER BY updated_at DESC LIMIT {limit}",
+				ts,
+				limit = limit
+			);
+			let stmt = Statement::from_string(self.db.conn.get_database_backend(), sql);
+			let rows = self.db.conn.query_all(stmt).await?;
+
+			let mut ids: Vec<i32> = Vec::new();
+			for row in rows {
+				let id: i32 = row.try_get("", "id")?;
+				ids.push(id);
+			}
+
+			if ids.is_empty() {
+				return Ok(vec![]);
+			}
+
+			novels::Entity::find()
+				.filter(novels::Column::Id.is_in(ids.clone()))
+				.all(&self.db.conn)
+				.await?
+		} else {
+			novels::Entity::find()
+				.filter(novels::Column::UpdatedAt.lt(threshold))
+				.filter(novels::Column::CreatedAt.is_not_null())
+				.order_by_desc(novels::Column::UpdatedAt)
+				.limit(limit as u64)
+				.all(&self.db.conn)
+				.await?
+		};
 
 		let ids: Vec<i32> = models.iter().map(|m| m.id).collect();
 		if ids.is_empty() {
@@ -435,12 +478,23 @@ impl MangaUpdateScheduler {
 		Ok(result)
 	}
 
-	async fn claim_mangas(&self, threshold: DateTime<Utc>, limit: u64) -> Result<Vec<(mangas::Model, i64)>, anyhow::Error> {
+	async fn claim_mangas(
+		&self,
+		threshold: DateTime<Utc>,
+		limit: u64,
+		favorites_only: bool,
+	) -> Result<Vec<(mangas::Model, i64)>, anyhow::Error> {
 		if self.db.db_type == "postgresql" {
 			let ts = threshold.format("%Y-%m-%d %H:%M:%S").to_string();
+			let favorites_filter = if favorites_only {
+				" AND EXISTS (SELECT 1 FROM favorite_mangas f WHERE f.manga_id = mangas.id)"
+			} else {
+				""
+			};
 			let sql = format!(
-				"WITH c AS (SELECT id FROM mangas WHERE updated_at < '{}' ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
+				"WITH c AS (SELECT id FROM mangas WHERE updated_at < '{}' AND created_at IS NOT NULL{} ORDER BY updated_at DESC LIMIT {limit} FOR UPDATE SKIP LOCKED) SELECT id FROM c",
 				ts,
+				favorites_filter,
 				limit = limit
 			);
 
@@ -491,12 +545,39 @@ impl MangaUpdateScheduler {
 			return Ok(result);
 		}
 
-		let models = mangas::Entity::find()
-			.filter(mangas::Column::UpdatedAt.lt(threshold))
-			.order_by_desc(mangas::Column::UpdatedAt)
-			.limit(limit as u64)
-			.all(&self.db.conn)
-			.await?;
+		let models = if favorites_only {
+			let ts = threshold.format("%Y-%m-%d %H:%M:%S").to_string();
+			let sql = format!(
+				"SELECT id FROM mangas WHERE updated_at < '{}' AND created_at IS NOT NULL AND EXISTS (SELECT 1 FROM favorite_mangas f WHERE f.manga_id = mangas.id) ORDER BY updated_at DESC LIMIT {limit}",
+				ts,
+				limit = limit
+			);
+			let stmt = Statement::from_string(self.db.conn.get_database_backend(), sql);
+			let rows = self.db.conn.query_all(stmt).await?;
+
+			let mut ids: Vec<i32> = Vec::new();
+			for row in rows {
+				let id: i32 = row.try_get("", "id")?;
+				ids.push(id);
+			}
+
+			if ids.is_empty() {
+				return Ok(vec![]);
+			}
+
+			mangas::Entity::find()
+				.filter(mangas::Column::Id.is_in(ids.clone()))
+				.all(&self.db.conn)
+				.await?
+		} else {
+			mangas::Entity::find()
+				.filter(mangas::Column::UpdatedAt.lt(threshold))
+				.filter(mangas::Column::CreatedAt.is_not_null())
+				.order_by_desc(mangas::Column::UpdatedAt)
+				.limit(limit as u64)
+				.all(&self.db.conn)
+				.await?
+		};
 
 		let ids: Vec<i32> = models.iter().map(|m| m.id).collect();
 		if ids.is_empty() {
