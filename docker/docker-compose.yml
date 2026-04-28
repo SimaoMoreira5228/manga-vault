@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   mysql:
     image: mysql:8.0
@@ -34,18 +32,16 @@ services:
           memory: 2G
 
   gql-api:
-    build:
-      context: .
-      dockerfile: docker/gql-api.Dockerfile
+    image: ghcr.io/simaomoreira5228/manga-vault-gql-api:latest
     container_name: manga-vault-gql-api
     depends_on:
       mysql:
         condition: service_healthy
     environment:
       - MVAULT_CONFIG_DIR=/app/config
-      - MVAULT_DATABASE__DATABASE_URL=mysql://manga_vault:manga_vault_pass@mysql:3306/manga_vault
+      - MVAULT_DATABASE__DATABASE_URL=mysql://${MYSQL_USER:-manga_vault}:${MYSQL_PASSWORD:-manga_vault_pass}@mysql:3306/manga_vault
       - MVAULT_API__API_PORT=5228
-      - MVAULT_API__CORS_ALLOW_ORIGINS=["http://localhost:5227", "http://website:5227"]
+      - MVAULT_API__CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-["http://localhost:5227"]}
       - MVAULT_PLUGINS__FLARESOLVERR_URL=http://flaresolverr:8191/v1
       - MVAULT_PLUGINS__PLUGINS_FOLDER=/app/plugins
     volumes:
@@ -57,16 +53,14 @@ services:
     restart: unless-stopped
 
   scheduler:
-    build:
-      context: .
-      dockerfile: docker/scheduler.Dockerfile
+    image: ghcr.io/simaomoreira5228/manga-vault-scheduler:latest
     container_name: manga-vault-scheduler
     depends_on:
       mysql:
         condition: service_healthy
     environment:
       - MVAULT_CONFIG_DIR=/app/config
-      - MVAULT_DATABASE__DATABASE_URL=mysql://manga_vault:manga_vault_pass@mysql:3306/manga_vault
+      - MVAULT_DATABASE__DATABASE_URL=mysql://${MYSQL_USER:-manga_vault}:${MYSQL_PASSWORD:-manga_vault_pass}@mysql:3306/manga_vault
       - MVAULT_PLUGINS__FLARESOLVERR_URL=http://flaresolverr:8191/v1
       - MVAULT_PLUGINS__PLUGINS_FOLDER=/app/plugins
     volumes:
@@ -76,10 +70,10 @@ services:
     restart: unless-stopped
 
   website-server:
-    build:
-      context: .
-      dockerfile: docker/website-server.Dockerfile
+    image: ghcr.io/simaomoreira5228/manga-vault-website-server:latest
     container_name: manga-vault-website
+    depends_on:
+      - gql-api
     environment:
       - MVAULT_CONFIG_DIR=/app/config
       - MVAULT_WEBSITE__API_ENDPOINT=http://gql-api:5228
@@ -87,7 +81,6 @@ services:
       - MVAULT_WEBSITE__FOLDER=/app/website
     volumes:
       - config_data:/app/config
-      - website_data:/app/website
     ports:
       - "${WEBSITE_PORT:-5227}:5227"
     restart: unless-stopped
@@ -97,4 +90,3 @@ volumes:
   config_data:
   plugins_data:
   uploads_data:
-  website_data:
