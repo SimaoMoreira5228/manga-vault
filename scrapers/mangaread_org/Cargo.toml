@@ -1,13 +1,13 @@
 [package]
 name = "mangaread_org"
-version = "0.5.2"
+version = "0.6.0"
 edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-scraper = "0.25"
+scraper = "0.26"
 wit-bindgen = { workspace = true }
 
 [build-dependencies]

@@ -4,8 +4,7 @@ import { resolve } from "$app/paths";
 import { Tabs } from "@skeletonlabs/skeleton-svelte";
 import type { PageData } from "./$types";
 
-let props = $props();
-let data: PageData = props.data;
+let { data }: { data: PageData } = $props();
 
 let scrapers = $derived.by(() => (data.scrapers || []).sort((a, b) => a.name.localeCompare(b.name)));
 let group = $state("manga");

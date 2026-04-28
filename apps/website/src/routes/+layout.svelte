@@ -14,8 +14,7 @@ import AvatarDropdown from "$lib/components/AvatarDropdown.svelte";
 import ThemeSelector from "$lib/components/ThemeSelector.svelte";
 import { loadTheme } from "$lib/theme.svelte";
 
-const props = $props();
-const { children } = props;
+const { children } = $props();
 
 let currentPage = $state("library");
 let isExpanded = $state(false);

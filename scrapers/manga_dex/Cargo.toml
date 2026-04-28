@@ -1,6 +1,6 @@
 [package]
 name = "manga_dex"
-version = "0.5.3"
+version = "0.6.0"
 edition = "2024"
 
 [lib]
@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [dependencies]
-once_cell = "1.21.3"
+once_cell = "1.21.4"
 serde = { workspace = true }
 serde_json = { workspace = true }
 wit-bindgen = { workspace = true }

@@ -17,8 +17,8 @@ let searchQuery = $state("");
 let items = $state<ScrapeItem[]>([]);
 let listContainer: HTMLElement | null = $state(null);
 let currentPage = $state(1);
-let props: { data: PageData } = $props();
-const scraper = props.data.scraper;
+let { data }: { data: PageData } = $props();
+const scraper = $derived(data.scraper);
 let lastLoadFailed = $state(false);
 
 let _rAF = 0;

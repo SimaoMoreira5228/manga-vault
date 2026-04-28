@@ -6,7 +6,7 @@ impl bindings::scraper::types::http::Host for States {
 		&mut self,
 		url: String,
 		headers: Option<Vec<bindings::scraper::types::http::Header>>,
-	) -> Result<Option<bindings::scraper::types::http::Response>, anyhow::Error> {
+	) -> Result<Option<bindings::scraper::types::http::Response>, wasmtime::Error> {
 		let headers = headers.unwrap_or_default();
 		let client = reqwest::Client::new();
 		let mut request = client.get(&url);
@@ -40,7 +40,7 @@ impl bindings::scraper::types::http::Host for States {
 		url: String,
 		body: String,
 		headers: Option<Vec<bindings::scraper::types::http::Header>>,
-	) -> Result<Option<bindings::scraper::types::http::Response>, anyhow::Error> {
+	) -> Result<Option<bindings::scraper::types::http::Response>, wasmtime::Error> {
 		let headers = headers.unwrap_or_default();
 		let client = reqwest::Client::new();
 		let mut request = client.post(&url).body(body);
@@ -74,7 +74,7 @@ impl bindings::scraper::types::http::Host for States {
 		text: String,
 		status_code: Option<u16>,
 		headers: Option<Vec<bindings::scraper::types::http::Header>>,
-	) -> Result<bool, anyhow::Error> {
+	) -> Result<bool, wasmtime::Error> {
 		let is_protected = text.contains("Attention Required! | Cloudflare")
 			|| text.contains("Just a moment...")
 			|| text.contains("cf-browser-verification")

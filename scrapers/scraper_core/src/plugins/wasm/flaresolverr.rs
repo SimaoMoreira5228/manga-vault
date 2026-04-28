@@ -10,7 +10,7 @@ const _FLARE_SOLVERR_MANAGER: LazyLock<Arc<FlareSolverrManager>> =
 	LazyLock::new(|| Arc::new(FlareSolverrManager::new(&CONFIG)));
 
 impl bindings::scraper::types::flare_solverr::Host for States {
-	async fn get(&mut self, url: String, _session_id: Option<String>) -> Result<Option<Response>, anyhow::Error> {
+	async fn get(&mut self, url: String, _session_id: Option<String>) -> Result<Option<Response>, wasmtime::Error> {
 		let manager = _FLARE_SOLVERR_MANAGER.clone();
 		let response = manager.get(url).await;
 

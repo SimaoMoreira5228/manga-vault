@@ -22,7 +22,7 @@ impl Into<html::HtmlElement> for Element {
 }
 
 impl bindings::scraper::types::html::Host for States {
-	async fn find(&mut self, html: String, selector: String) -> Result<Vec<Element>, anyhow::Error> {
+	async fn find(&mut self, html: String, selector: String) -> Result<Vec<Element>, wasmtime::Error> {
 		let doc = html::HtmlDocument::new(html);
 
 		let elements = doc
@@ -34,20 +34,20 @@ impl bindings::scraper::types::html::Host for States {
 		Ok(elements)
 	}
 
-	async fn find_one(&mut self, html: String, selector: String) -> Result<Option<Element>, anyhow::Error> {
+	async fn find_one(&mut self, html: String, selector: String) -> Result<Option<Element>, wasmtime::Error> {
 		let doc = html::HtmlDocument::new(html);
 		match doc.find_one(selector) {
 			Ok(opt) => Ok(opt.map(Element::from)),
-			Err(e) => Err(anyhow::Error::from(e)),
+			Err(e) => Err(wasmtime::Error::msg(e.to_string())),
 		}
 	}
 
-	async fn text(&mut self, elem: Element) -> Result<String, anyhow::Error> {
+	async fn text(&mut self, elem: Element) -> Result<String, wasmtime::Error> {
 		let elem: html::HtmlElement = elem.into();
 		Ok(elem.text())
 	}
 
-	async fn attr(&mut self, elem: Element, name: String) -> Result<Option<String>, anyhow::Error> {
+	async fn attr(&mut self, elem: Element, name: String) -> Result<Option<String>, wasmtime::Error> {
 		let elem: html::HtmlElement = elem.into();
 		Ok(elem.attr(name))
 	}

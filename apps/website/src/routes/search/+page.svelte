@@ -13,8 +13,8 @@ import type { PageData } from "./$types";
 
 type MangaShell = ScrapeItem;
 
-let props: { data: PageData } = $props();
-let { scrapers } = props.data as { scrapers: Scraper[] };
+let { data }: { data: PageData } = $props();
+let scrapers = $derived((data as { scrapers: Scraper[] }).scrapers);
 
 let isLoading = $state(false);
 let searchQuery = $state("");

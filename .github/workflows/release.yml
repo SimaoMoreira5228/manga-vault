@@ -50,7 +50,7 @@ jobs:
 
   linux-build:
     name: linux (build binaries + website, upload to releases)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: prepare
     steps:
       - name: Checkout
@@ -62,9 +62,9 @@ jobs:
       - name: Cache Cargo registry & git index
         uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "v0-rust-release"
+          prefix-key: "v1-rust-release-ubuntu22"
           cache-on-failure: true
-          shared-key: "rust-release-build-${{ runner.os }}"
+          shared-key: "rust-release-build-ubuntu22-${{ runner.os }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -98,7 +98,7 @@ jobs:
 
   linux-scrapers:
     name: linux-scrapers (build wasm scrapers + lua files)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: prepare
     steps:
       - name: Checkout
@@ -110,9 +110,9 @@ jobs:
       - name: Cache Cargo registry & git index
         uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "v0-rust-release"
+          prefix-key: "v1-rust-release-ubuntu22"
           cache-on-failure: true
-          shared-key: "rust-release-build-scrapers-${{ runner.os }}"
+          shared-key: "rust-release-build-scrapers-ubuntu22-${{ runner.os }}"
 
       - name: Install cargo-binstall
         run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash

@@ -23,9 +23,9 @@ import type { PageData } from "./$types";
 
 let authState = $derived(getAuthState());
 
-let props: { data: PageData } = $props();
-let novel = $state(props.data.novel);
-const categories = props.data.categories;
+let { data }: { data: PageData } = $props();
+let novel = $derived(data.novel);
+const categories = $derived(data.categories);
 let loadingStates: Record<string, boolean> = $state({});
 const chapters = $derived(novel?.chapters ?? []);
 const chunkSize = 150;

@@ -12,7 +12,7 @@ permissions:
 jobs:
   docker-publish:
     name: build & push ghcr.io images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -23,14 +23,14 @@ jobs:
       - name: Cache Cargo registry & git index
         uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "v0-rust-docker"
+          prefix-key: "v1-rust-docker-ubuntu22"
           cache-on-failure: true
-          shared-key: "rust-docker-build-${{ runner.os }}"
+          shared-key: "rust-docker-build-ubuntu22-${{ runner.os }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Enable pnpm via corepack
         run: corepack enable pnpm
@@ -55,10 +55,19 @@ jobs:
             cp apps/website/.env.example apps/website/.env
           fi
 
-          pnpm install --frozen-lockfile --dir apps/website
-          pnpm run build --dir apps/website
+          cd apps/website
+          pnpm install --frozen-lockfile
+          pnpm run build
+          cd -
+
+          WEBSITE_VERSION=$(node -p "require('./apps/website/package.json').version")
+          printf '{"version":"%s","tag_name":"website@v%s"}\n' "$WEBSITE_VERSION" "$WEBSITE_VERSION" > apps/website/build/version.json
 
           cp -a apps/website/build/. docker/bin/website/
+
+      - name: Normalize owner to lowercase
+        id: owner
+        run: echo "name=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -76,7 +85,7 @@ jobs:
           context: docker/bin
           file: docker/gql-api.Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/manga-vault-gql-api:latest
+          tags: ghcr.io/${{ steps.owner.outputs.name }}/manga-vault-gql-api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -86,7 +95,7 @@ jobs:
           context: docker/bin
           file: docker/scheduler.Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/manga-vault-scheduler:latest
+          tags: ghcr.io/${{ steps.owner.outputs.name }}/manga-vault-scheduler:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -96,6 +105,6 @@ jobs:
           context: docker/bin
           file: docker/website-server.Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/manga-vault-website-server:latest
+          tags: ghcr.io/${{ steps.owner.outputs.name }}/manga-vault-website-server:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

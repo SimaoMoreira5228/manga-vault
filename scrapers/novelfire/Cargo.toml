@@ -1,6 +1,6 @@
 [package]
 name = "novelfire"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 
 [lib]
@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [dependencies]
-scraper = "0.25"
+scraper = "0.26"
 wit-bindgen = { workspace = true }
 
 [dev-dependencies]

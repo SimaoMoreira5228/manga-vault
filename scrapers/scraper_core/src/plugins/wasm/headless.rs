@@ -27,15 +27,15 @@ async fn _get_headless() -> Arc<dyn HeadlessBackend> {
 
 async fn _convert_to_binding(
 	elem: Box<dyn HeadlessElement>,
-) -> Result<bindings::scraper::types::headless::Element, anyhow::Error> {
+) -> Result<bindings::scraper::types::headless::Element, wasmtime::Error> {
 	Ok(bindings::scraper::types::headless::Element {
-		html: elem._html().await?,
+		html: elem._html().await.map_err(|e| wasmtime::Error::msg(e.to_string()))?,
 		selector: elem._selector().unwrap_or_default(),
 	})
 }
 
 impl bindings::scraper::types::headless::Host for States {
-	async fn goto(&mut self, url: String) -> Result<Result<(), String>, anyhow::Error> {
+	async fn goto(&mut self, url: String) -> Result<Result<(), String>, wasmtime::Error> {
 		let headless = _get_headless().await;
 		let result = headless.goto(url).await;
 		let inner_result = match result {
@@ -48,7 +48,7 @@ impl bindings::scraper::types::headless::Host for States {
 		Ok(inner_result)
 	}
 
-	async fn find_one(&mut self, selector: String) -> Result<Option<Element>, anyhow::Error> {
+	async fn find_one(&mut self, selector: String) -> Result<Option<Element>, wasmtime::Error> {
 		let headless = _get_headless().await;
 		let result = headless.find(selector).await;
 		match result {
@@ -62,12 +62,12 @@ impl bindings::scraper::types::headless::Host for States {
 			}
 			Err(e) => {
 				tracing::error!("Headless find_one error: {}", e);
-				Err(anyhow::Error::new(e))
+				Err(wasmtime::Error::msg(e.to_string()))
 			}
 		}
 	}
 
-	async fn find_all(&mut self, selector: String) -> Result<Vec<Element>, anyhow::Error> {
+	async fn find_all(&mut self, selector: String) -> Result<Vec<Element>, wasmtime::Error> {
 		let headless = _get_headless().await;
 		let result = headless.find_all(selector).await;
 		match result {
@@ -81,12 +81,12 @@ impl bindings::scraper::types::headless::Host for States {
 			}
 			Err(e) => {
 				tracing::error!("Headless find_all error: {}", e);
-				Err(anyhow::Error::new(e))
+				Err(wasmtime::Error::msg(e.to_string()))
 			}
 		}
 	}
 
-	async fn close(&mut self) -> Result<bool, anyhow::Error> {
+	async fn close(&mut self) -> Result<bool, wasmtime::Error> {
 		let headless = _get_headless().await;
 		let result = headless.close().await;
 		match result {

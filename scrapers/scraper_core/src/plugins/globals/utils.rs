@@ -1,7 +1,7 @@
 use aes::Aes256;
 use base64::{Engine as _, engine::general_purpose};
-use cbc::cipher::{BlockDecryptMut, KeyIvInit};
-use cipher::block_padding::Pkcs7;
+use cbc::cipher::KeyIvInit;
+use cipher::{BlockModeDecrypt, block_padding::Pkcs7};
 use md5;
 use mlua::{IntoLua, Lua, LuaSerdeExt, Table};
 use scraper_types::{ScraperError, ScraperErrorKind};
@@ -124,11 +124,11 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 			let mut buf = ciphertext.to_vec();
 			let decryptor = Aes256CbcDec::new_from_slices(key, iv).map_err(mlua::Error::external)?;
 
-			let decrypted_slice = decryptor
-				.decrypt_padded_mut::<Pkcs7>(&mut buf)
+			let decrypted = decryptor
+				.decrypt_padded::<Pkcs7>(&mut buf)
 				.map_err(|e| mlua::Error::external(format!("Decryption failed: {}", e)))?;
 
-			let s = String::from_utf8(decrypted_slice.to_vec()).map_err(mlua::Error::external)?;
+			let s = String::from_utf8(decrypted.to_vec()).map_err(mlua::Error::external)?;
 			lua.to_value(&s)
 		})?,
 	)?;

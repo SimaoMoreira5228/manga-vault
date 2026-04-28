@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{Result, anyhow};
 use wasmtime::component::{Component, HasSelf, Linker};
 use wasmtime::{Engine, Store};
 
@@ -25,13 +25,12 @@ pub struct WasmPlugin {
 impl WasmPlugin {
 	pub async fn new(file: &Path) -> Result<Self> {
 		let mut config = wasmtime::Config::new();
-		config.async_support(true);
 		config.consume_fuel(true);
 
 		let engine = Engine::new(&config)?;
 
 		let component = Component::from_file(&engine, &file)
-			.with_context(|| format!("Failed to load WASM component: {}", file.display()))?;
+			.map_err(|e| anyhow!("Failed to load WASM component {}: {}", file.display(), e))?;
 
 		let mut store = Store::new(&engine, States::new());
 		store.set_fuel(u64::MAX)?;
@@ -64,15 +63,16 @@ impl WasmPlugin {
 		store.fuel_async_yield_interval(Some(10000))?;
 		let instance = bindings::Root::instantiate_async(&mut store, &self.component, &self.linker)
 			.await
-			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
+			.map_err(|e| anyhow!("Failed to instantiate WASM component {}: {}", self.file.display(), e))?;
 		let name = self.name.clone();
 
-		instance
+		let pages = instance
 			.scraper_types_scraper()
 			.call_scrape_chapter(&mut store, &url)
 			.await
-			.with_context(|| format!("Failed to scrape chapter for plugin: {}", name))
-			.map(|pages| pages.into_iter().map(Into::into).collect())
+			.map_err(|e| anyhow!("Failed to scrape chapter for plugin {}: {}", name, e))?;
+
+		Ok(pages.into_iter().map(Into::into).collect())
 	}
 
 	pub async fn scrape_latest(&self, page: u32) -> Result<Vec<scraper_types::Item>> {
@@ -81,15 +81,16 @@ impl WasmPlugin {
 		store.fuel_async_yield_interval(Some(10000))?;
 		let instance = bindings::Root::instantiate_async(&mut store, &self.component, &self.linker)
 			.await
-			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
+			.map_err(|e| anyhow!("Failed to instantiate WASM component {}: {}", self.file.display(), e))?;
 		let name = self.name.clone();
 
-		instance
+		let items = instance
 			.scraper_types_scraper()
 			.call_scrape_latest(&mut store, page)
 			.await
-			.with_context(|| format!("Failed to scrape latest for plugin: {}", name))
-			.map(|items| items.into_iter().map(Into::into).collect())
+			.map_err(|e| anyhow!("Failed to scrape latest for plugin {}: {}", name, e))?;
+
+		Ok(items.into_iter().map(Into::into).collect())
 	}
 
 	pub async fn scrape_trending(&self, page: u32) -> Result<Vec<scraper_types::Item>> {
@@ -98,15 +99,16 @@ impl WasmPlugin {
 		store.fuel_async_yield_interval(Some(10000))?;
 		let instance = bindings::Root::instantiate_async(&mut store, &self.component, &self.linker)
 			.await
-			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
+			.map_err(|e| anyhow!("Failed to instantiate WASM component {}: {}", self.file.display(), e))?;
 		let name = self.name.clone();
 
-		instance
+		let items = instance
 			.scraper_types_scraper()
 			.call_scrape_trending(&mut store, page)
 			.await
-			.with_context(|| format!("Failed to scrape trending for plugin: {}", name))
-			.map(|items| items.into_iter().map(Into::into).collect())
+			.map_err(|e| anyhow!("Failed to scrape trending for plugin {}: {}", name, e))?;
+
+		Ok(items.into_iter().map(Into::into).collect())
 	}
 
 	pub async fn scrape_search(&self, query: String, page: u32) -> Result<Vec<scraper_types::Item>> {
@@ -115,15 +117,16 @@ impl WasmPlugin {
 		store.fuel_async_yield_interval(Some(10000))?;
 		let instance = bindings::Root::instantiate_async(&mut store, &self.component, &self.linker)
 			.await
-			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
+			.map_err(|e| anyhow!("Failed to instantiate WASM component {}: {}", self.file.display(), e))?;
 		let name = self.name.clone();
 
-		instance
+		let items = instance
 			.scraper_types_scraper()
 			.call_scrape_search(&mut store, &query, page)
 			.await
-			.with_context(|| format!("Failed to scrape search for plugin: {}", name))
-			.map(|items| items.into_iter().map(Into::into).collect())
+			.map_err(|e| anyhow!("Failed to scrape search for plugin {}: {}", name, e))?;
+
+		Ok(items.into_iter().map(Into::into).collect())
 	}
 
 	pub async fn scrape(&self, url: String) -> Result<scraper_types::Page> {
@@ -132,15 +135,16 @@ impl WasmPlugin {
 		store.fuel_async_yield_interval(Some(10000))?;
 		let instance = bindings::Root::instantiate_async(&mut store, &self.component, &self.linker)
 			.await
-			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
+			.map_err(|e| anyhow!("Failed to instantiate WASM component {}: {}", self.file.display(), e))?;
 		let name = self.name.clone();
 
-		instance
+		let page = instance
 			.scraper_types_scraper()
 			.call_scrape(&mut store, &url)
 			.await
-			.with_context(|| format!("Failed to scrape {} for plugin: {}", url, name))
-			.map(|page| page.into())
+			.map_err(|e| anyhow!("Failed to scrape {} for plugin {}: {}", url, name, e))?;
+
+		Ok(page.into())
 	}
 
 	pub async fn scrape_genres_list(&self) -> Result<Vec<scraper_types::Genre>> {
@@ -149,15 +153,16 @@ impl WasmPlugin {
 		store.fuel_async_yield_interval(Some(10000))?;
 		let instance = bindings::Root::instantiate_async(&mut store, &self.component, &self.linker)
 			.await
-			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
+			.map_err(|e| anyhow!("Failed to instantiate WASM component {}: {}", self.file.display(), e))?;
 		let name = self.name.clone();
 
-		instance
+		let genres = instance
 			.scraper_types_scraper()
 			.call_scrape_genres_list(&mut store)
 			.await
-			.with_context(|| format!("Failed to scrape genres list for plugin: {}", name))
-			.map(|genres| genres.into_iter().map(Into::into).collect())
+			.map_err(|e| anyhow!("Failed to scrape genres list for plugin {}: {}", name, e))?;
+
+		Ok(genres.into_iter().map(Into::into).collect())
 	}
 
 	pub async fn get_info(&self) -> Result<scraper_types::ScraperInfo> {
@@ -166,15 +171,16 @@ impl WasmPlugin {
 		store.fuel_async_yield_interval(Some(10000))?;
 		let instance = bindings::Root::instantiate_async(&mut store, &self.component, &self.linker)
 			.await
-			.with_context(|| format!("Failed to instantiate WASM component: {}", self.file.display()))?;
+			.map_err(|e| anyhow!("Failed to instantiate WASM component {}: {}", self.file.display(), e))?;
 		let name = self.name.clone();
 
-		instance
+		let info = instance
 			.scraper_types_scraper()
 			.call_get_info(&mut store)
 			.await
-			.with_context(|| format!("Failed to get info for plugin: {}", name))
-			.map(Into::into)
+			.map_err(|e| anyhow!("Failed to get info for plugin {}: {}", name, e))?;
+
+		Ok(info.into())
 	}
 }
 
