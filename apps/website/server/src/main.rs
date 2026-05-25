@@ -8,10 +8,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let subscriber = FmtSubscriber::builder().with_max_level(tracing::Level::INFO).finish();
 	let _ = tracing::subscriber::set_global_default(subscriber);
 
-	let latest_release = version_check::get_latest_release(PACKAGE_NAME).await?;
+	let latest_release = version_check::get_latest_release(PACKAGE_NAME).await;
 
 	match latest_release {
-		Some(release) => match version_check::is_update_available(PACKAGE_VERSION, &release.version) {
+		Ok(Some(release)) => match version_check::is_update_available(PACKAGE_VERSION, &release.version) {
 			Ok(needs_update) => {
 				if needs_update {
 					tracing::warn!(
@@ -24,20 +24,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 						"Download at: https://github.com/SimaoMoreira5228/manga-vault/releases/tag/{}",
 						release.tag_name
 					);
-					true
 				} else {
 					tracing::info!("Application is up to date");
-					false
 				}
 			}
 			Err(e) => {
 				tracing::warn!("Failed to compare versions: {}", e);
-				false
 			}
 		},
-		None => {
+		Ok(None) => {
 			tracing::warn!("Failed to check for updates");
-			false
+		}
+		Err(e) => {
+			tracing::warn!("Failed to check for updates: {}", e);
 		}
 	};
 

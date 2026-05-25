@@ -626,7 +626,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			scraper_type: ScraperType::Manga,
 			version: env!("CARGO_PKG_VERSION").to_string(),
 			img_url: "https://harimanga.co.uk/image/icon/hari-logo.webp".to_string(),
-			referer_url: Some("https://harimanga.co.uk/home".to_string()),
+			referer_url: Some("https://www.harimanga.co.uk/".to_string()),
 			base_url: Some("https://harimanga.co.uk/home".to_string()),
 			legacy_urls: Some(vec![
 				"https://harimanga.com/".to_string(),

@@ -71,10 +71,10 @@ pub async fn run() -> anyhow::Result<()> {
 		}
 	};
 
-	let latest_release = version_check::get_latest_release("website").await?;
+	let latest_release = version_check::get_latest_release("website").await;
 
 	match latest_release {
-		Some(release) => match version_check::is_update_available(&website_version.version, &release.version) {
+		Ok(Some(release)) => match version_check::is_update_available(&website_version.version, &release.version) {
 			Ok(needs_update) => {
 				if needs_update {
 					tracing::warn!(
@@ -87,20 +87,19 @@ pub async fn run() -> anyhow::Result<()> {
 						"Download at: https://github.com/SimaoMoreira5228/manga-vault/releases/tag/{}",
 						release.tag_name
 					);
-					true
 				} else {
 					tracing::info!("Website is up to date");
-					false
 				}
 			}
 			Err(e) => {
 				tracing::warn!("Failed to compare versions: {}", e);
-				false
 			}
 		},
-		None => {
+		Ok(None) => {
 			tracing::warn!("Failed to check for updates");
-			false
+		}
+		Err(e) => {
+			tracing::warn!("Failed to check for updates: {}", e);
 		}
 	};
 

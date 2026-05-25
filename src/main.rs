@@ -14,10 +14,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let subscriber = FmtSubscriber::builder().with_max_level(tracing::Level::INFO).finish();
 	tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-	let latest_release = version_check::get_latest_release(PACKAGE_NAME).await?;
+	let latest_release = version_check::get_latest_release(PACKAGE_NAME).await;
 
-	let update = match latest_release {
-		Some(release) => match version_check::is_update_available(MANGA_VAULT_VERSION, &release.version) {
+	let mut update = true;
+	match latest_release {
+		Ok(Some(release)) => match version_check::is_update_available(MANGA_VAULT_VERSION, &release.version) {
 			Ok(needs_update) => {
 				if needs_update {
 					tracing::warn!(
@@ -30,22 +31,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 						"Download at: https://github.com/SimaoMoreira5228/manga-vault/releases/tag/{}",
 						release.tag_name
 					);
-					true
+					update = false;
 				} else {
 					tracing::info!("Application is up to date");
-					false
 				}
 			}
 			Err(e) => {
 				tracing::warn!("Failed to compare versions: {}", e);
-				false
 			}
 		},
-		None => {
+		Ok(None) => {
 			tracing::warn!("Failed to check for updates");
-			false
 		}
-	};
+		Err(e) => {
+			tracing::warn!("Failed to check for updates: {}", e);
+		}
+	}
 
 	let db = Database::new().await?;
 	let scraper_manager = ScraperManager::new(update).await?;
