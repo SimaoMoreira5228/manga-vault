@@ -2996,9 +2996,11 @@ dependencies = [
 
 [[package]]
 name = "hari_manga"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
+ "reqwest 0.13.3",
  "scraper 0.27.0",
+ "serde_json",
  "wit-bindgen 0.57.1",
 ]
 

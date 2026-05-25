@@ -2,12 +2,20 @@
 
 [package]
 name = "hari_manga"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
+
 [dependencies]
 scraper = "0.27"
+serde_json = { workspace = true }
 wit-bindgen = { workspace = true }
+
+[dev-dependencies]
+reqwest = { workspace = true }
+serde_json = { workspace = true }
