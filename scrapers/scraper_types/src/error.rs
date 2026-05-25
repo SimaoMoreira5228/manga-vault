@@ -1,6 +1,7 @@
+use std::fmt;
+
 use mlua::{FromLua, IntoLua, Lua, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScraperErrorKind {
@@ -132,6 +133,7 @@ impl ScraperError {
 	pub fn network(message: impl Into<String>) -> Self {
 		Self::new(ScraperErrorKind::Network, message)
 	}
+
 	pub fn parse(message: impl Into<String>) -> Self {
 		Self::new(ScraperErrorKind::Parse, message)
 	}
@@ -139,6 +141,7 @@ impl ScraperError {
 	pub fn validation(message: impl Into<String>) -> Self {
 		Self::new(ScraperErrorKind::Validation, message)
 	}
+
 	pub fn internal(message: impl Into<String>) -> Self {
 		Self::new(ScraperErrorKind::Internal, message)
 	}

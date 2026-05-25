@@ -1,13 +1,14 @@
+use std::sync::Arc;
+
 use async_graphql::SimpleObject;
 use chrono::NaiveDateTime;
+use scraper_core::ScraperManager;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
-use std::sync::Arc;
 use zstd::stream::{decode_all, encode_all};
 
 use crate::objects::chapter_number::sort_by_chapter_title;
 use crate::objects::novels::Novel;
 use crate::objects::scraper::Scraper;
-use scraper_core::ScraperManager;
 
 #[derive(SimpleObject, Clone)]
 #[graphql(complex)]

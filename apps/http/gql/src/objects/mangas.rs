@@ -74,6 +74,7 @@ impl Manga {
 
 		Ok(None)
 	}
+
 	async fn chapters(&self, ctx: &async_graphql::Context<'_>) -> async_graphql::Result<Vec<Chapter>> {
 		let db = ctx.data::<Arc<Database>>()?;
 		let chapters = database_entities::chapters::Entity::find()

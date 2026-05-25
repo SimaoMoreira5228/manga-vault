@@ -1,11 +1,9 @@
-use anyhow::Context;
-use rustls::pki_types::CertificateDer;
-use rustls_pemfile::certs;
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{env, fs};
 
+use anyhow::Context;
 use async_graphql::{EmptySubscription, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::http::{HeaderMap, HeaderValue, Method, header};
@@ -14,6 +12,8 @@ use axum::{Extension, Router};
 use database_connection::Database;
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use rand::Rng;
+use rustls::pki_types::CertificateDer;
+use rustls_pemfile::certs;
 use scraper_core::ScraperManager;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};

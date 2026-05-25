@@ -1,6 +1,7 @@
-use regex::Regex;
 use std::cmp::Ordering;
 use std::sync::OnceLock;
+
+use regex::Regex;
 
 static CHAPTER_PATTERNS: OnceLock<Vec<Regex>> = OnceLock::new();
 

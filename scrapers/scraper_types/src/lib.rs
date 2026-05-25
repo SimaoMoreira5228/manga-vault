@@ -344,8 +344,9 @@ impl FromLua for ScraperInfo {
 }
 
 pub mod conversion {
-	use super::*;
 	use serde_json::Value as JsonValue;
+
+	use super::*;
 	pub fn value_to_items(v: &JsonValue) -> Result<Vec<Item>, ScraperError> {
 		if let Ok(items) = serde_json::from_value::<Vec<Item>>(v.clone()) {
 			return Ok(items);
@@ -533,8 +534,9 @@ mod tests {
 
 #[cfg(test)]
 mod conversion_tests {
-	use super::*;
 	use serde_json::json;
+
+	use super::*;
 
 	#[test]
 	fn novel_items_convert_to_manga_items() {

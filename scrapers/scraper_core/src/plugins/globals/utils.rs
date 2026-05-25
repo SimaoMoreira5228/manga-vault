@@ -1,7 +1,9 @@
 use aes::Aes256;
-use base64::{Engine as _, engine::general_purpose};
+use base64::Engine as _;
+use base64::engine::general_purpose;
 use cbc::cipher::KeyIvInit;
-use cipher::{BlockModeDecrypt, block_padding::Pkcs7};
+use cipher::BlockModeDecrypt;
+use cipher::block_padding::Pkcs7;
 use md5;
 use mlua::{IntoLua, Lua, LuaSerdeExt, Table};
 use scraper_types::{ScraperError, ScraperErrorKind};

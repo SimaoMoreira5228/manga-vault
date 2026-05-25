@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -9,10 +9,10 @@ use database_entities::{favorite_mangas, favorite_novels, mangas, novels};
 use queue::queue_item::QueueItem;
 use queue::{EnqueueStrategy, TaskQueue};
 use scraper_core::ScraperManager;
-use sea_orm::{ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
-use sea_orm::{DbBackend, Statement, TransactionTrait};
+use sea_orm::{
+	ColumnTrait, ConnectionTrait, DbBackend, EntityTrait, QueryFilter, QueryOrder, QuerySelect, Statement, TransactionTrait,
+};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use tokio::sync::{Mutex, OwnedSemaphorePermit, Semaphore};
 
 #[allow(dead_code)]
