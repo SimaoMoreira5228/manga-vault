@@ -1,8 +1,13 @@
+use tracing_subscriber::FmtSubscriber;
+
 const PACKAGE_NAME: &str = env!("CARGO_PKG_NAME");
 const PACKAGE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+	let subscriber = FmtSubscriber::builder().with_max_level(tracing::Level::INFO).finish();
+	let _ = tracing::subscriber::set_global_default(subscriber);
+
 	let latest_release = version_check::get_latest_release(PACKAGE_NAME).await?;
 
 	match latest_release {

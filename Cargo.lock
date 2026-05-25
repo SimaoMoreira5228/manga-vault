@@ -2868,7 +2868,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gql-api"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "anyhow",
  "argon2",
@@ -2902,6 +2902,7 @@ dependencies = [
  "tokio-util",
  "tower-http",
  "tracing",
+ "tracing-subscriber",
  "uuid",
  "version-check",
  "webp",
@@ -6344,7 +6345,7 @@ dependencies = [
 
 [[package]]
 name = "scheduler"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6362,6 +6363,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "url",
  "version-check",
 ]
@@ -9392,7 +9394,7 @@ dependencies = [
 
 [[package]]
 name = "website-server"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -9406,6 +9408,7 @@ dependencies = [
  "tokio",
  "tower-http",
  "tracing",
+ "tracing-subscriber",
  "version-check",
 ]
 

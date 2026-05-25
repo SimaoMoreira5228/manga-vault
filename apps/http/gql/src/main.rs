@@ -1,11 +1,15 @@
 use database_connection::Database;
 use scraper_core::ScraperManager;
+use tracing_subscriber::FmtSubscriber;
 
 const PACKAGE_NAME: &str = env!("CARGO_PKG_NAME");
 const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+	let subscriber = FmtSubscriber::builder().with_max_level(tracing::Level::INFO).finish();
+	let _ = tracing::subscriber::set_global_default(subscriber);
+
 	let db = Database::new().await?;
 
 	let latest_release = version_check::get_latest_release(PACKAGE_NAME).await;
