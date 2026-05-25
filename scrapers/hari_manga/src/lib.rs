@@ -64,17 +64,17 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 
 	fn scrape_latest(page: u32) -> Vec<Item> {
-		let url = format!("https://harimanga.me/?s&post_type=wp-manga&m_orderby=latest&paged={page}");
+		let url = format!("https://www.harimanga.co.uk/home/page/{page}?orderby=latest&post_type=wp-manga");
 		scrape_manga_list(&url)
 	}
 
 	fn scrape_trending(page: u32) -> Vec<Item> {
-		let url = format!("https://harimanga.me/?s&post_type=wp-manga&m_orderby=trending&paged={page}");
+		let url = format!("https://www.harimanga.co.uk/home/page/{page}?orderby=trending&post_type=wp-manga");
 		scrape_manga_list(&url)
 	}
 
 	fn scrape_search(query: String, page: u32) -> Vec<Item> {
-		let url = format!("https://harimanga.me/page/{page}/?s={query}&post_type=wp-manga&op&author&artist&release&adult");
+		let url = format!("https://www.harimanga.co.uk/home/page/{page}?adult=&artist=&author=&op=&post_type=wp-manga&release=&s={query}");
 		scrape_manga_list(&url)
 	}
 
@@ -293,7 +293,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 
 	fn scrape_genres_list() -> Vec<Genre> {
-		let url = "https://harimanga.me/";
+		let url = "https://harimanga.co.uk/home";
 		let mut response = match http::get(url, None) {
 			Some(res) => res,
 			None => {
@@ -337,11 +337,11 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			name: "Hari Manga".to_string(),
 			scraper_type: ScraperType::Manga,
 			version: env!("CARGO_PKG_VERSION").to_string(),
-			img_url: "https://harimanga.me/wp-content/uploads/2021/08/cropped-android-chrome-512x512-1-32x32.png"
+			img_url: "https://harimanga.co.uk/image/icon/hari-logo.webp"
 				.to_string(),
-			referer_url: Some("https://harimanga.me/".to_string()),
-			base_url: Some("https://harimanga.me/".to_string()),
-			legacy_urls: Some(vec!["https://harimanga.com/".to_string()]),
+			referer_url: Some("https://harimanga.co.uk/home".to_string()),
+			base_url: Some("https://harimanga.co.uk/home".to_string()),
+			legacy_urls: Some(vec!["https://harimanga.com/".to_string(), "https://harimanga.me/".to_string()]),
 		}
 	}
 }
