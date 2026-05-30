@@ -1,4 +1,9 @@
-BASE_URL = "https://mangabuddy.com"
+BASE_URL = "https://mangak.io"
+
+local LEGACY_URLS = {
+	"https://mangabuddy.com/",
+	"https://www.mangabuddy.com/",
+}
 
 local function http_get(url, headers)
 	if url == "https://" or string.match(url, "^https?://[^/]+//") then
@@ -49,184 +54,391 @@ local function normalize_url(url)
 	return BASE_URL .. "/" .. url
 end
 
----@return string
-local function select_one_required(html, selector, label)
-	local res = scraping:try_select_element(html, selector)
-	if not res.ok then
-		utils.raise_error(
-			"parse",
-			"Invalid selector for " .. label .. ": '" .. selector .. "' - " .. (res.error and res.error.message or ""),
-			false
-		)
+local function extract_next_data_page_props(html)
+	if not html or html == "" then
+		return nil
 	end
 
-	if res.value == nil then
-		utils.raise_error("parse", "Missing required element for " .. label .. ": '" .. selector .. "'", false)
+	local next_data_json = string.match(html, '<script[^>]-id="__NEXT_DATA__"[^>]*>(.-)</script>')
+		or string.match(html, "<script[^>]-id='__NEXT_DATA__'[^>]*>(.-)</script>")
+
+	if not next_data_json or next_data_json == "" then
+		return nil
 	end
 
-	return tostring(res.value)
+	local decoded, err = utils.json_parse(next_data_json)
+	if err ~= nil then
+		log.warn("[mangabuddy] Failed to parse __NEXT_DATA__ JSON: " .. tostring(err))
+		return nil
+	end
+
+	if type(decoded) ~= "table" or type(decoded.props) ~= "table" or type(decoded.props.pageProps) ~= "table" then
+		return nil
+	end
+
+	return decoded.props.pageProps
 end
 
-local function select_many(html, selector, label)
-	local res = scraping:try_select_elements(html, selector)
-	if not res.ok then
-		utils.raise_error(
-			"parse",
-			"Invalid selector for " .. label .. ": '" .. selector .. "' - " .. (res.error and res.error.message or ""),
-			false
-		)
+local function parse_named_values_from_table(items)
+	if type(items) ~= "table" then
+		return {}
 	end
-	return res.value or {}
+
+	local out = {}
+	for _, value in ipairs(items) do
+		if type(value) == "string" then
+			local cleaned = string.trim(value)
+			if cleaned ~= "" then
+				table.insert(out, cleaned)
+			end
+		elseif type(value) == "table" and type(value.name) == "string" then
+			local cleaned = string.trim(value.name)
+			if cleaned ~= "" then
+				table.insert(out, cleaned)
+			end
+		end
+	end
+
+	return out
 end
 
-local function extract_js_string_var(html, name)
-	local token_single = "var " .. name .. " = '"
-	if string.contains(html, token_single) then
-		local after = string.substring_after(html, token_single)
-		return string.substring_before(after, "'")
+local function parse_chapters_from_table(items)
+	if type(items) ~= "table" then
+		return {}
 	end
 
-	local token_double = "var " .. name .. " = \""
-	if string.contains(html, token_double) then
-		local after = string.substring_after(html, token_double)
-		return string.substring_before(after, "\"")
+	local chapters = {}
+	for _, chapter in ipairs(items) do
+		if type(chapter) == "table" then
+			local chapter_url = normalize_url(chapter.url or "")
+			local chapter_title = chapter.name or chapter.title or ""
+			local chapter_date = chapter.updatedAt or chapter.date or ""
+			if chapter_url ~= "" and chapter_title ~= "" then
+				table.insert(chapters, {
+					title = chapter_title,
+					url = chapter_url,
+					date = chapter_date,
+				})
+			end
+		end
+	end
+
+	return chapters
+end
+
+local function json_unescape(s)
+	if not s or s == "" then
+		return ""
+	end
+
+	s = string.gsub(s, "\\/", "/")
+	s = string.gsub(s, "\\\"", "\"")
+	s = string.gsub(s, "\\n", "\n")
+	s = string.gsub(s, "\\r", "\r")
+	s = string.gsub(s, "\\t", "\t")
+	s = string.gsub(s, "\\u003c", "<")
+	s = string.gsub(s, "\\u003e", ">")
+	s = string.gsub(s, "\\u0026", "&")
+	s = string.gsub(s, "\\u0027", "'")
+	return s
+end
+
+local function extract_balanced_block(text, start_pos, open_char, close_char)
+	if not text or start_pos < 1 or start_pos > #text then
+		return nil
+	end
+	if string.sub(text, start_pos, start_pos) ~= open_char then
+		return nil
+	end
+
+	local depth = 0
+	local in_string = false
+	local escaped = false
+
+	for i = start_pos, #text do
+		local ch = string.sub(text, i, i)
+		if in_string then
+			if escaped then
+				escaped = false
+			elseif ch == "\\" then
+				escaped = true
+			elseif ch == "\"" then
+				in_string = false
+			end
+		else
+			if ch == "\"" then
+				in_string = true
+			elseif ch == open_char then
+				depth = depth + 1
+			elseif ch == close_char then
+				depth = depth - 1
+				if depth == 0 then
+					return string.sub(text, start_pos, i)
+				end
+			end
+		end
+	end
+
+	return nil
+end
+
+local function extract_json_block_after_key(text, key, open_char, close_char)
+	local token = "\"" .. key .. "\""
+	local key_pos = string.find(text, token, 1, true)
+	if not key_pos then
+		return nil
+	end
+
+	local block_start = string.find(text, open_char, key_pos + #token, true)
+	if not block_start then
+		return nil
+	end
+
+	return extract_balanced_block(text, block_start, open_char, close_char)
+end
+
+local function extract_json_string_field(text, key)
+	local token = "\"" .. key .. "\""
+	local key_pos = string.find(text, token, 1, true)
+	if not key_pos then
+		return ""
+	end
+
+	local quote_start = string.find(text, "\"", key_pos + #token)
+	if not quote_start then
+		return ""
+	end
+
+	local i = quote_start + 1
+	local escaped = false
+	while i <= #text do
+		local ch = string.sub(text, i, i)
+		if escaped then
+			escaped = false
+		elseif ch == "\\" then
+			escaped = true
+		elseif ch == "\"" then
+			return json_unescape(string.sub(text, quote_start + 1, i - 1))
+		end
+		i = i + 1
 	end
 
 	return ""
 end
 
+local function extract_top_level_objects(array_block)
+	local objects = {}
+	if not array_block or #array_block < 2 then
+		return objects
+	end
+
+	local depth = 0
+	local in_string = false
+	local escaped = false
+	local obj_start = nil
+
+	for i = 2, (#array_block - 1) do
+		local ch = string.sub(array_block, i, i)
+		if in_string then
+			if escaped then
+				escaped = false
+			elseif ch == "\\" then
+				escaped = true
+			elseif ch == "\"" then
+				in_string = false
+			end
+		else
+			if ch == "\"" then
+				in_string = true
+			elseif ch == "{" then
+				if depth == 0 then
+					obj_start = i
+				end
+				depth = depth + 1
+			elseif ch == "}" then
+				depth = depth - 1
+				if depth == 0 and obj_start then
+					table.insert(objects, string.sub(array_block, obj_start, i))
+					obj_start = nil
+				end
+			end
+		end
+	end
+
+	return objects
+end
+
+local function extract_json_string_array(array_block)
+	local values = {}
+	if not array_block or #array_block < 2 then
+		return values
+	end
+
+	local i = 2
+	while i < #array_block do
+		local quote_start = string.find(array_block, "\"", i, true)
+		if not quote_start then
+			break
+		end
+
+		local j = quote_start + 1
+		local escaped = false
+		while j <= #array_block do
+			local ch = string.sub(array_block, j, j)
+			if escaped then
+				escaped = false
+			elseif ch == "\\" then
+				escaped = true
+			elseif ch == "\"" then
+				table.insert(values, json_unescape(string.sub(array_block, quote_start + 1, j - 1)))
+				break
+			end
+			j = j + 1
+		end
+
+		i = j + 1
+	end
+
+	return values
+end
+
+local function parse_named_objects_array(parent_obj, key)
+	local arr = extract_json_block_after_key(parent_obj, key, "[", "]")
+	if not arr then
+		return {}
+	end
+
+	local names = {}
+	for _, obj in ipairs(extract_top_level_objects(arr)) do
+		local name = string.trim(extract_json_string_field(obj, "name"))
+		if name ~= "" then
+			table.insert(names, name)
+		end
+	end
+	return names
+end
+
+local function parse_chapters_from_initial_manga(parent_obj)
+	local arr = extract_json_block_after_key(parent_obj, "chapters", "[", "]")
+	if not arr then
+		return {}
+	end
+
+	local chapters = {}
+	for _, chapter_obj in ipairs(extract_top_level_objects(arr)) do
+		local title = extract_json_string_field(chapter_obj, "name")
+		local chapter_url = normalize_url(extract_json_string_field(chapter_obj, "url"))
+		local chapter_date = extract_json_string_field(chapter_obj, "updatedAt")
+		if chapter_date == "" then
+			chapter_date = extract_json_string_field(chapter_obj, "date")
+		end
+
+		if title ~= "" and chapter_url ~= "" then
+			table.insert(chapters, { title = title, url = chapter_url, date = chapter_date })
+		end
+	end
+
+	return chapters
+end
+
+local function parse_items_from_next_data(html)
+	local page_props = extract_next_data_page_props(html)
+	if page_props then
+		local keys = { "items", "ssrItems", "initialItems" }
+		for _, key in ipairs(keys) do
+			local source = page_props[key]
+			if type(source) == "table" then
+				local items = {}
+				for _, entry in ipairs(source) do
+					if type(entry) == "table" then
+						local url = entry.url or ""
+						local title = entry.name or entry.title or ""
+						local img_url = entry.cover or entry.image or ""
+						if url ~= "" and title ~= "" and not string.find(url, "/chapter-", 1, true) then
+							table.insert(items, {
+								title = title,
+								img_url = img_url,
+								url = normalize_url(url),
+							})
+						end
+					end
+				end
+
+				if #items > 0 then
+					return items
+				end
+			end
+		end
+	end
+
+	local keys = { "items", "ssrItems", "initialItems" }
+	for _, key in ipairs(keys) do
+		local arr = extract_json_block_after_key(html, key, "[", "]")
+		if arr then
+			local items = {}
+			for _, obj in ipairs(extract_top_level_objects(arr)) do
+				local url = extract_json_string_field(obj, "url")
+				local title = extract_json_string_field(obj, "name")
+				local img_url = extract_json_string_field(obj, "cover")
+				if url ~= "" and title ~= "" and not string.find(url, "/chapter-", 1, true) then
+					table.insert(items, {
+						title = title,
+						img_url = img_url,
+						url = normalize_url(url),
+					})
+				end
+			end
+
+			if #items > 0 then
+				return items
+			end
+		end
+	end
+
+	return {}
+end
+
 function Scrape_chapter(url)
 	local request = http_get(url)
 	local html = request.text
+
+	local page_props = extract_next_data_page_props(html)
+	if page_props and type(page_props.initialChapter) == "table" and type(page_props.initialChapter.images) == "table" then
+		local images = {}
+		for _, image in ipairs(page_props.initialChapter.images) do
+			if type(image) == "string" and image ~= "" then
+				table.insert(images, image)
+			end
+		end
+		if #images > 0 then
+			return images
+		end
+	end
+
+	local initial_chapter_obj = extract_json_block_after_key(html, "initialChapter", "{", "}")
+	if initial_chapter_obj then
+		local images_array = extract_json_block_after_key(initial_chapter_obj, "images", "[", "]")
+		if images_array then
+			local images = extract_json_string_array(images_array)
+			if #images > 0 then
+				return images
+			end
+		end
+	end
+
 	local imgs = {}
-
-	local main_server = extract_js_string_var(html, "mainServer")
-	local chap_images_str = extract_js_string_var(html, "chapImages")
-
-	local chapter_images_from_html = select_many(html, "#chapter-images img, .chapter-image[data-src]", "chapter images")
-
-	if main_server ~= "" and chap_images_str ~= "" then
-		local scheme_prefix = string.starts_with(main_server, "//") and "https:" or ""
-		local main_prefix = scheme_prefix .. main_server
-		local chap_images = string.split(chap_images_str, ",")
-
-		for _, raw in ipairs(chap_images) do
-			local img = string.trim(raw)
-			if img ~= "" then
-				if string.starts_with(img, "http://") or string.starts_with(img, "https://") then
-					table.insert(imgs, img)
-				else
-					table.insert(imgs, main_prefix .. img)
-				end
+	local image_elements = scraping:select_elements(html, "#images img, #images source, img[data-src]") or {}
+	for _, element_html in ipairs(image_elements) do
+		local image_url = scraping:get_image_url(element_html) or ""
+		if image_url == "" then
+			local srcset = element_html:match("srcset%s*=%s*\"([^\"]+)\"") or element_html:match("srcset%s*=%s*'([^']+)'")
+			if srcset then
+				local first_src = srcset:match("(%S+)")
+				image_url = first_src or ""
 			end
 		end
-
-		if #imgs > 0 then
-			return imgs
-		end
-	end
-
-	local main_server = extract_js_string_var(html, "mainServer")
-	local chap_images_str = extract_js_string_var(html, "chapImages")
-
-	local chapter_images_from_html =
-		select_many(html, "#chapter-images img, .chapter-image[data-src], #chapter-images source", "chapter images")
-
-	local function get_srcset_image(el)
-		if not el then
-			return nil
-		end
-		local s = tostring(el)
-		local srcset = s:match("srcset%s*=%s*\"([^\"]+)\"") or s:match("srcset%s*=%s*'([^']+)'")
-		if not srcset then
-			srcset = s:match("data%-srcset%s*=%s*\"([^\"]+)\"") or s:match("data%-srcset%s*=%s*'([^']+)'")
-		end
-		if srcset then
-			for item in srcset:gmatch("([^,]+)") do
-				local url = item:match("(%S+)")
-				if url and url ~= "" then
-					return url
-				end
-			end
-		end
-		return nil
-	end
-
-	local function image_from_element(el)
-		if not el then
-			return nil
-		end
-		if scraping.get_image_url then
-			local u = scraping:get_image_url(el)
-			if u and u ~= "" then
-				return u
-			end
-		end
-		local maybe = get_srcset_image(el)
-		if maybe and maybe ~= "" then
-			return maybe
-		end
-		local s = tostring(el)
-		local data_src = s:match("data%-src%s*=%s*\"([^\"]+)\"") or s:match("data%-src%s*=%s*'([^']+)'")
-		if data_src and data_src ~= "" then
-			return data_src
-		end
-		local src = s:match("src%s*=%s*\"([^\"]+)\"") or s:match("src%s*=%s*'([^']+)'")
-		if src and src ~= "" then
-			return src
-		end
-		return nil
-	end
-
-	if main_server ~= "" and chap_images_str ~= "" then
-		local scheme_prefix = main_server:match("^//") and "https:" or ""
-		local main_prefix = scheme_prefix .. main_server
-		local chap_images = string.split(chap_images_str, ",")
-
-		for _, raw in ipairs(chap_images) do
-			local img = string.trim(raw)
-			if img ~= "" then
-				local full = img
-				if not full:match("^https?://") then
-					if string.sub(main_prefix, -1) == "/" and string.sub(img, 1, 1) == "/" then
-						full = string.sub(main_prefix, 1, -2) .. img
-					else
-						full = main_prefix .. img
-					end
-				end
-				table.insert(imgs, full)
-			end
-		end
-
-		if #imgs > 0 then
-			return imgs
-		end
-	end
-
-	if chap_images_str ~= "" then
-		local chapter_images_from_js = string.split(chap_images_str, ",")
-		local all_absolute = true
-		local cleaned = {}
-		for _, raw in ipairs(chapter_images_from_js) do
-			local img = string.trim(raw)
-			if img ~= "" then
-				if img:match("^https?://") then
-					table.insert(cleaned, img)
-				else
-					all_absolute = false
-				end
-			end
-		end
-
-		if all_absolute and (#chapter_images_from_html < #cleaned) then
-			return cleaned
-		end
-	end
-
-	for _, img_html in ipairs(chapter_images_from_html) do
-		local img_url = image_from_element(img_html) or scraping:get_image_url(img_html)
-		if img_url and img_url ~= "" then
-			table.insert(imgs, img_url)
+		if image_url ~= "" then
+			table.insert(imgs, image_url)
 		end
 	end
 
@@ -242,62 +454,115 @@ function Scrape_manga_list(url)
 	local request = http_get(url)
 	local html = request.text
 
-	local manga_divs = select_many(html, "div.book-detailed-item", "manga list")
-	local manga_items = {}
-
-	for _, manga_div_html in ipairs(manga_divs) do
-		local link_res = scraping:try_select_element(manga_div_html, "h3 a")
-		if not link_res.ok then
-			utils.raise_error(
-				"parse",
-				"Invalid selector in manga list: 'h3 a' - " .. (link_res.error and link_res.error.message or ""),
-				false
-			)
-		end
-
-		local link_element = link_res.value and tostring(link_res.value) or ""
-		if link_element == "" then
-			goto continue
-		end
-
-		local title = scraping:get_text(link_element) or ""
-		local manga_url = normalize_url(scraping:get_url(link_element) or "")
-
-		local img_res = scraping:try_select_element(manga_div_html, ".thumb img")
-		if not img_res.ok then
-			utils.raise_error(
-				"parse",
-				"Invalid selector in manga list: '.thumb img' - " .. (img_res.error and img_res.error.message or ""),
-				false
-			)
-		end
-		local img_url = img_res.value and (scraping:get_image_url(tostring(img_res.value)) or "") or ""
-
-		if manga_url ~= "" then
-			table.insert(manga_items, {
-				title = title,
-				img_url = img_url,
-				url = manga_url,
-			})
-		end
-
-		::continue::
+	local items = parse_items_from_next_data(html)
+	if #items > 0 then
+		return items
 	end
+
+	local function looks_like_manga_path(path)
+		if not path or path == "" then
+			return false
+		end
+		if not string.match(path, "^/[^/?#]+$") then
+			return false
+		end
+		local reserved = {
+			home = true,
+			latest = true,
+			ranking = true,
+			search = true,
+			filters = true,
+			community = true,
+			contact = true,
+			["feature-requests"] = true,
+			["privacy-policy"] = true,
+			["terms-of-service"] = true,
+			dmca = true,
+			["api-docs"] = true,
+			sitemap = true,
+		}
+		local slug = string.sub(path, 2)
+		if reserved[slug] then
+			return false
+		end
+		return true
+	end
+
+	local function title_from_slug(path)
+		local slug = string.sub(path or "", 2)
+		if slug == "" then
+			return ""
+		end
+		local words = {}
+		for part in string.gmatch(slug, "[^%-]+") do
+			local w = string.sub(part, 1, 1):upper() .. string.sub(part, 2)
+			table.insert(words, w)
+		end
+		return table.concat(words, " ")
+	end
+
+	local map = {}
+	local order = {}
+
+	local anchor_elements = scraping:select_elements(html, "a[href]") or {}
+	for _, anchor_html in ipairs(anchor_elements) do
+		local raw_href = scraping:get_url(anchor_html) or ""
+		local href_path = raw_href
+		if string.match(href_path, "^https?://") then
+			href_path = string.match(href_path, "^https?://[^/]+(/[^?#]*)") or ""
+		end
+
+		local manga_path = ""
+		if string.find(href_path, "/chapter-", 1, true) then
+			manga_path = string.sub(href_path, 1, string.find(href_path, "/chapter-", 1, true) - 1)
+		elseif looks_like_manga_path(href_path) then
+			manga_path = href_path
+		end
+
+		if manga_path ~= "" and looks_like_manga_path(manga_path) then
+			local manga_url = normalize_url(manga_path)
+			if not map[manga_url] then
+				map[manga_url] = { title = "", img_url = "", url = manga_url }
+				table.insert(order, manga_url)
+			end
+
+			local title = string.trim(scraping:get_text(anchor_html) or "")
+			if title ~= "" and map[manga_url].title == "" then
+				map[manga_url].title = title
+			end
+
+			local img_url = scraping:get_image_url(anchor_html) or ""
+			if img_url ~= "" and map[manga_url].img_url == "" then
+				map[manga_url].img_url = img_url
+			end
+		end
+	end
+
+	local manga_items = {}
+	for _, manga_url in ipairs(order) do
+		local item = map[manga_url]
+		if item.title == "" then
+			local path = string.match(manga_url, "^https?://[^/]+(/[^?#]*)") or ""
+			item.title = title_from_slug(path)
+		end
+		table.insert(manga_items, item)
+	end
+
 	return manga_items
 end
 
 function Scrape_latest(page)
-	local url = BASE_URL .. "/search?sort=updated_at&page=" .. tostring(page)
+	local url = BASE_URL .. "/latest?page=" .. tostring(page)
 	return Scrape_manga_list(url)
 end
 
 function Scrape_trending(page)
-	local url = BASE_URL .. "/search?sort=views&page=" .. tostring(page)
+	local url = BASE_URL .. "/ranking?page=" .. tostring(page)
 	return Scrape_manga_list(url)
 end
 
 function Scrape_search(query, page)
-	local url = BASE_URL .. "/search?q=" .. http:url_encode(query) .. "&page=" .. tostring(page)
+	local url = BASE_URL .. "/search?q=" .. http:url_encode(query) .. "&sort=latest&page=" .. tostring(page)
 	return Scrape_manga_list(url)
 end
 
@@ -305,177 +570,190 @@ function Scrape(url)
 	local request = http_get(url)
 	local html = request.text
 
-	local title = scraping:get_text(select_one_required(html, ".detail h1", "manga title")) or ""
-
-	local cover_res = scraping:try_select_element(html, "#cover img")
-	if not cover_res.ok then
-		utils.raise_error(
-			"parse",
-			"Invalid selector for cover: '#cover img' - " .. (cover_res.error and cover_res.error.message or ""),
-			false
-		)
-	end
-	local img_url = cover_res.value and (scraping:get_image_url(tostring(cover_res.value)) or "") or ""
-
-	local description_parts = {}
-	local description_elements = select_many(html, ".summary .content, .summary .content ~ p", "manga description")
-	for _, element_html in ipairs(description_elements) do
-		local t = scraping:get_text(element_html) or ""
-		if t ~= "" then
-			table.insert(description_parts, t)
+	local page_props = extract_next_data_page_props(html)
+	if page_props and type(page_props.initialManga) == "table" then
+		local manga = page_props.initialManga
+		local status = "Unknown"
+		local status_text = tostring(manga.status or "")
+		local lowered = string.lower(status_text)
+		if lowered == "ongoing" then
+			status = "Ongoing"
+		elseif lowered == "completed" then
+			status = "Completed"
 		end
+
+		local chapters = parse_chapters_from_table(manga.chapters)
+		if #chapters > 0 then
+			chapters = table.reverse(chapters)
+		end
+
+		return {
+			title = manga.name or manga.title or "",
+			url = url,
+			img_url = manga.cover or manga.image or "",
+			genres = parse_named_values_from_table(manga.genres),
+			alternative_names = parse_named_values_from_table(manga.altNames),
+			authors = parse_named_values_from_table(manga.authors),
+			artists = parse_named_values_from_table(manga.artists),
+			status = status,
+			manga_type = "",
+			release_date = "",
+			description = manga.summary or manga.description or "",
+			chapters = chapters,
+		}
 	end
-	local description = table.concat(description_parts, "\n")
+
+	local initial_manga_obj = extract_json_block_after_key(html, "initialManga", "{", "}")
+	if initial_manga_obj then
+		local title = extract_json_string_field(initial_manga_obj, "name")
+		local img_url = extract_json_string_field(initial_manga_obj, "cover")
+		local description = extract_json_string_field(initial_manga_obj, "summary")
+		local genres = parse_named_objects_array(initial_manga_obj, "genres")
+		local authors = parse_named_objects_array(initial_manga_obj, "authors")
+		local alternative_names = parse_named_objects_array(initial_manga_obj, "altNames")
+		local status_text = extract_json_string_field(initial_manga_obj, "status")
+		local chapters = parse_chapters_from_initial_manga(initial_manga_obj)
+
+		local status = "Unknown"
+		local lowered = string.lower(status_text)
+		if lowered == "ongoing" then
+			status = "Ongoing"
+		elseif lowered == "completed" then
+			status = "Completed"
+		end
+
+		if #chapters > 0 then
+			chapters = table.reverse(chapters)
+		end
+
+		return {
+			title = title,
+			url = url,
+			img_url = img_url,
+			genres = genres,
+			alternative_names = alternative_names,
+			authors = authors,
+			artists = {},
+			status = status,
+			manga_type = "",
+			release_date = "",
+			description = description,
+			chapters = chapters,
+		}
+	end
+
+	local title_el = scraping:select_element(html, "h1")
+	local title = title_el and (scraping:get_text(title_el) or "") or ""
+	local cover_res = scraping:select_element(html, "img[src*='/covers/']")
+	local img_url = cover_res and (scraping:get_image_url(cover_res) or "") or ""
+	local desc_el = scraping:select_element(html, "h2 + p")
+	local description = desc_el and (scraping:get_text(desc_el) or "") or ""
 
 	local genres = {}
-	local genre_elements = select_many(html, ".detail .meta p a[href*='/genres/']", "genres")
-	for _, genre_html in ipairs(genre_elements) do
-		local trimmed_genre = string.trim(scraping:get_text(genre_html) or "")
-		local genre = string.gsub(trimmed_genre, ",", "")
-		table.insert(genres, genre)
+	for _, genre_html in ipairs(scraping:select_elements(html, "a[href*='/genres/']") or {}) do
+		local name = string.trim(scraping:get_text(genre_html) or "")
+		if name ~= "" then
+			table.insert(genres, name)
+		end
 	end
 
 	local authors = {}
-	local author_elements = select_many(html, ".detail .meta p a[href*='/authors/']", "authors")
-	for _, author_html in ipairs(author_elements) do
-		table.insert(authors, scraping:get_text(author_html) or "")
-	end
-
-	local status_res = scraping:try_select_element(html, ".detail .meta p a[href*='/status/']")
-	if not status_res.ok then
-		utils.raise_error(
-			"parse",
-			"Invalid selector for status: '.detail .meta p a[href*=/status/]' - "
-				.. (status_res.error and status_res.error.message or ""),
-			false
-		)
-	end
-	local status_text = status_res.value and (scraping:get_text(tostring(status_res.value)) or ""):lower() or ""
-	local status = "Unknown"
-	if status_text == "ongoing" then
-		status = "Ongoing"
-	elseif status_text == "completed" then
-		status = "Completed"
-	end
-
-	local alt_names_header = scraping:select_element(html, ".detail h2")
-	local alternative_names = {}
-	if alt_names_header then
-		local alt_text = scraping:get_text(alt_names_header)
-		for name in string.gmatch(alt_text, "([^,;]+)") do
-			local trimmed_name = string.trim(name)
-			if trimmed_name ~= "" and trimmed_name ~= title then
-				table.insert(alternative_names, trimmed_name)
-			end
-		end
-	end
-	if #alternative_names > 0 then
-		description = description .. "\n\nAlternative names: " .. table.concat(alternative_names, ", ")
-	end
-
-	local function parse_chapters_list(chapters_html)
-		local chapters = {}
-		local chapter_elements = select_many(chapters_html, "#chapter-list > li", "chapter list")
-
-		for _, chapter_html in ipairs(chapter_elements) do
-			local link_el = scraping:select_element(chapter_html, "a")
-			if link_el then
-				local chapter_url = normalize_url(scraping:get_url(link_el) or "")
-				local title_el = scraping:select_element(chapter_html, ".chapter-title")
-				local date_el = scraping:select_element(chapter_html, ".chapter-update")
-				local chapter_title = title_el and (scraping:get_text(title_el) or "") or (scraping:get_text(link_el) or "")
-				local chapter_date = date_el and (scraping:get_text(date_el) or "") or ""
-
-				table.insert(chapters, { title = chapter_title, url = chapter_url, date = chapter_date })
-			end
-		end
-
-		return chapters
-	end
-
-	local initial_chapters = parse_chapters_list(html)
-	local chapters = initial_chapters
-
-	local book_slug = string.match(html, "var bookSlug = \"([^\"]+)\"")
-	if book_slug and scraping:select_element(html, "div#show-more-chapters") then
-		local api_url = BASE_URL .. "/api/manga/" .. book_slug .. "/chapters?source=detail"
-		local api_request = http_get(api_url)
-		local api_html = api_request.text
-		local api_chapters = parse_chapters_list(api_html)
-
-		if #api_chapters > 0 then
-			local api_urls = {}
-			for _, ch in ipairs(api_chapters) do
-				api_urls[ch.url] = true
-			end
-
-			local cut_index = #initial_chapters + 1
-			for i, ch in ipairs(initial_chapters) do
-				if api_urls[ch.url] then
-					cut_index = i
-					break
-				end
-			end
-
-			local merged = {}
-			for i = 1, (cut_index - 1) do
-				table.insert(merged, initial_chapters[i])
-			end
-			for _, ch in ipairs(api_chapters) do
-				table.insert(merged, ch)
-			end
-			chapters = merged
+	for _, author_html in ipairs(scraping:select_elements(html, "a[href*='/authors/']") or {}) do
+		local name = string.trim(scraping:get_text(author_html) or "")
+		if name ~= "" then
+			table.insert(authors, name)
 		end
 	end
 
-	local page = {
+	local chapters = {}
+	for _, chapter_html in ipairs(scraping:select_elements(html, "a[data-chapter-row='true']") or {}) do
+		local chapter_url = normalize_url(scraping:get_url(chapter_html) or "")
+		local chapter_title = string.trim(scraping:get_text(chapter_html) or "")
+		if chapter_url ~= "" then
+			table.insert(chapters, { title = chapter_title, url = chapter_url, date = "" })
+		end
+	end
+
+	return {
 		title = title,
 		url = url,
 		img_url = img_url,
 		genres = genres,
-		alternative_names = alternative_names,
+		alternative_names = {},
 		authors = authors,
 		artists = {},
-		status = status,
+		status = "Unknown",
 		manga_type = "",
 		release_date = "",
 		description = description,
 		chapters = table.reverse(chapters),
 	}
-	return page
 end
 
 function Scrape_genres_list()
-	local url = BASE_URL .. "/home"
-	local request = http_get(url)
+	local request = http_get(BASE_URL .. "/filters")
 	local html = request.text
 	local genres = {}
-	local genre_elements = select_many(html, "ul.genres__wrapper.clearfix a", "genres list")
-	for _, genre_element in ipairs(genre_elements) do
-		local name = scraping:get_text(genre_element) or ""
-		local genre_url = scraping:get_url(genre_element) or ""
+
+	local page_props = extract_next_data_page_props(html)
+	if page_props and type(page_props.initialGenres) == "table" then
+		for _, genre in ipairs(page_props.initialGenres) do
+			if type(genre) == "table" then
+				local name = string.trim(genre.name or "")
+				local slug = string.trim(genre.slug or "")
+				if name ~= "" and slug ~= "" then
+					table.insert(genres, { name = name, url = BASE_URL .. "/genres/" .. slug })
+				end
+			end
+		end
+		if #genres > 0 then
+			return genres
+		end
+	end
+
+	local initial_genres = extract_json_block_after_key(html, "initialGenres", "[", "]")
+	if initial_genres then
+		for _, genre_obj in ipairs(extract_top_level_objects(initial_genres)) do
+			local name = string.trim(extract_json_string_field(genre_obj, "name"))
+			local slug = string.trim(extract_json_string_field(genre_obj, "slug"))
+			if name ~= "" and slug ~= "" then
+				table.insert(genres, { name = name, url = BASE_URL .. "/genres/" .. slug })
+			end
+		end
+	end
+
+	if #genres > 0 then
+		return genres
+	end
+
+	for _, genre_html in ipairs(scraping:select_elements(html, "a[href*='/genres/']") or {}) do
+		local name = string.trim(scraping:get_text(genre_html) or "")
+		local genre_url = normalize_url(scraping:get_url(genre_html) or "")
 		if name ~= "" and genre_url ~= "" then
 			table.insert(genres, { name = name, url = genre_url })
 		end
 	end
+
 	return genres
 end
 
 function Get_info()
 	return {
 		id = "mangabuddy",
-		version = "0.4.1",
-		name = "MangaBuddy",
-		img_url = "https://mangabuddy.com/favicon.ico",
-		referer_url = "https://mangabuddy.com/",
+		version = "0.6.0",
+		name = "MangaK",
+		img_url = "https://mangak.io/static/sites/mangak/icons/favicon.ico",
+		referer_url = "https://mangak.io/",
+		base_url = "https://mangak.io/home",
+		legacy_urls = LEGACY_URLS,
 	}
 end
 
 Tests = {
 	Test_Scrape_manga = function()
-		local manga = Scrape("https://mangabuddy.com/solo-leveling")
-		assert(manga.title == "Solo Leveling", "Manga title mismatch")
-		assert(manga.url == "https://mangabuddy.com/solo-leveling", "Manga URL mismatch")
+		local manga = Scrape("https://mangak.io/i-became-the-first-prince-legend-of-swords-song")
+		assert(manga.title ~= "", "Manga title is empty")
+		assert(manga.url == "https://mangak.io/i-became-the-first-prince-legend-of-swords-song", "Manga URL mismatch")
 		assert(manga.img_url ~= "", "Manga image URL is empty")
 		assert(#manga.genres > 0, "No genres found")
 		assert(#manga.authors > 0, "No authors found")
@@ -485,7 +763,7 @@ Tests = {
 	end,
 
 	Test_Scrape_chapter = function()
-		local images = Scrape_chapter("https://mangabuddy.com/solo-leveling/chapter-1")
+		local images = Scrape_chapter("https://mangak.io/i-became-the-first-prince-legend-of-swords-song/chapter-37")
 		assert(#images > 0, "No images found")
 	end,
 
@@ -500,7 +778,7 @@ Tests = {
 	end,
 
 	Test_Scrape_search = function()
-		local mangas = Scrape_search("nano", 1)
+		local mangas = Scrape_search("love", 1)
 		assert(#mangas > 0, "No mangas found in search")
 	end,
 

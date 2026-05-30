@@ -224,6 +224,8 @@ impl FromLua for Genre {
 pub struct ScraperInfo {
 	pub id: String,
 	pub name: String,
+	#[serde(default)]
+	pub version: String,
 	pub img_url: String,
 	pub referer_url: Option<String>,
 	pub base_url: Option<String>,
@@ -319,6 +321,7 @@ impl IntoLua for ScraperInfo {
 		let table = lua.create_table()?;
 		table.set("id", self.id)?;
 		table.set("name", self.name)?;
+		table.set("version", self.version)?;
 		table.set("img_url", self.img_url)?;
 		table.set("referer_url", self.referer_url)?;
 		table.set("base_url", self.base_url)?;
@@ -334,6 +337,7 @@ impl FromLua for ScraperInfo {
 		Ok(ScraperInfo {
 			id: table.get("id")?,
 			name: table.get("name")?,
+			version: table.get("version").ok().unwrap_or_default(),
 			img_url: table.get("img_url")?,
 			referer_url: table.get("referer_url").ok(),
 			base_url: table.get("base_url").ok(),

@@ -76,6 +76,7 @@ impl From<crate::plugins::wasm::bindings::exports::scraper::types::scraper::Scra
 		Self {
 			id: info.id,
 			name: info.name,
+			version: info.version,
 			r#type: info.scraper_type.into(),
 			img_url: info.img_url,
 			referer_url: info.referer_url,

@@ -5,7 +5,7 @@ use cbc::cipher::KeyIvInit;
 use cipher::BlockModeDecrypt;
 use cipher::block_padding::Pkcs7;
 use md5;
-use mlua::{IntoLua, Lua, LuaSerdeExt, Table};
+use mlua::{IntoLua, Lua, LuaSerdeExt, Table, Value};
 use scraper_types::{ScraperError, ScraperErrorKind};
 
 use crate::plugins::common::http::Response;
@@ -85,6 +85,31 @@ pub fn load(lua: &Lua) -> anyhow::Result<()> {
 		lua.create_function(|lua, s: String| {
 			let encoded = general_purpose::STANDARD.encode(s.as_bytes());
 			lua.to_value(&encoded)
+		})?,
+	)?;
+
+	utils_table.set(
+		"json_parse",
+		lua.create_function(|lua, s: String| {
+			let parsed: serde_json::Result<serde_json::Value> = serde_json::from_str(&s);
+			match parsed {
+				Ok(value) => Ok((lua.to_value(&value)?, Value::Nil)),
+				Err(err) => Ok((Value::Nil, lua.to_value(&err.to_string())?)),
+			}
+		})?,
+	)?;
+
+	utils_table.set(
+		"json_stringify",
+		lua.create_function(|lua, value: Value| {
+			let json_value: Result<serde_json::Value, _> = lua.from_value(value);
+			match json_value {
+				Ok(v) => match serde_json::to_string(&v) {
+					Ok(json) => Ok((lua.to_value(&json)?, Value::Nil)),
+					Err(err) => Ok((Value::Nil, lua.to_value(&err.to_string())?)),
+				},
+				Err(err) => Ok((Value::Nil, lua.to_value(&err.to_string())?)),
+			}
 		})?,
 	)?;
 
@@ -220,5 +245,51 @@ mod tests {
 			}
 			_ => panic!("Expected callback ScraperError, got {:?}", result),
 		}
+	}
+
+	#[test]
+	fn test_json_parse_success() {
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+
+		let script = r#"
+            local value, err = utils.json_parse('{"name":"manga","count":2}')
+            return value, err
+        "#;
+
+		let (table, err): (mlua::Table, mlua::Value) = lua.load(script).eval().unwrap();
+		assert!(matches!(err, mlua::Value::Nil));
+		assert_eq!(table.get::<String>("name").unwrap(), "manga");
+		assert_eq!(table.get::<i64>("count").unwrap(), 2);
+	}
+
+	#[test]
+	fn test_json_parse_error() {
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+
+		let script = r#"
+            local value, err = utils.json_parse('{"name":')
+            return value == nil, type(err) == 'string'
+        "#;
+
+		let (value_is_nil, err_is_string): (bool, bool) = lua.load(script).eval().unwrap();
+		assert!(value_is_nil);
+		assert!(err_is_string);
+	}
+
+	#[test]
+	fn test_json_stringify_success() {
+		let lua = Lua::new();
+		super::load(&lua).unwrap();
+
+		let script = r#"
+            local json, err = utils.json_stringify({ title = 'Example', tags = { 'a', 'b' } })
+            return json, err
+        "#;
+
+		let (json, err): (String, mlua::Value) = lua.load(script).eval().unwrap();
+		assert!(matches!(err, mlua::Value::Nil));
+		assert!(json.contains("\"title\":\"Example\""));
 	}
 }

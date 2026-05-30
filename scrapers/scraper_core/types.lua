@@ -61,6 +61,8 @@
 ---@field base64_encode fun(s: string): string
 ---@field base64_decode fun(s: string): string
 ---@field aes_decrypt fun(ct_base64: string, password: string): string
+---@field json_parse fun(s: string): any?, string?
+---@field json_stringify fun(value: any): string?, string?
 
 -- Logging
 ---@class Log

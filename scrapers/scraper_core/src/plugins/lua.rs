@@ -112,6 +112,23 @@ impl LuaPlugin {
 		let info: ScraperInfo = get_info.call_async(()).await.map_err(classify_lua_error)?;
 		Ok(info)
 	}
+
+	pub async fn run_declared_tests(&self) -> anyhow::Result<Vec<String>> {
+		let globals = self.runtime.globals();
+		let tests_table: mlua::Table = match globals.get("Tests") {
+			Ok(t) => t,
+			Err(_) => return Ok(Vec::new()),
+		};
+
+		let mut executed = Vec::new();
+		for pair in tests_table.pairs::<String, mlua::Function>() {
+			let (test_name, test_fn) = pair.map_err(classify_lua_error)?;
+			test_fn.call_async::<()>(()).await.map_err(classify_lua_error)?;
+			executed.push(test_name);
+		}
+
+		Ok(executed)
+	}
 }
 
 #[cfg(test)]

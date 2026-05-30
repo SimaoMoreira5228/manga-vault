@@ -2868,7 +2868,7 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "gql-api"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "anyhow",
  "argon2",
@@ -2996,7 +2996,7 @@ dependencies = [
 
 [[package]]
 name = "hari_manga"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "reqwest 0.13.3",
  "scraper 0.27.0",
@@ -4125,6 +4125,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lua_scraper_tester"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "scraper_core",
+ "tokio",
+]
+
+[[package]]
 name = "luajit-src"
 version = "210.6.6+707c12b"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4182,7 +4191,7 @@ dependencies = [
 
 [[package]]
 name = "manga-vault"
-version = "1.9.0"
+version = "1.10.0"
 dependencies = [
  "config 0.1.0",
  "database-connection",
@@ -6347,7 +6356,7 @@ dependencies = [
 
 [[package]]
 name = "scheduler"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "chrono",
