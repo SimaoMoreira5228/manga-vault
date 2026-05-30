@@ -22,9 +22,9 @@
 		{
 			"name": "hari_manga",
 			"urls": {
-				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/hari_manga%40v0.7.0/hari_manga.wasm"
+				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/hari_manga%40v0.7.1/hari_manga.wasm"
 			},
-			"version": "0.7.0",
+			"version": "0.7.1",
 			"state": "updated",
 			"build_state": "beta"
 		},
@@ -67,9 +67,9 @@
 		{
 			"name": "mangabuddy",
 			"urls": {
-				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangabuddy%40v0.4.1/mangabuddy.lua"
+				"lua": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangabuddy%40v0.6.0/mangabuddy.lua"
 			},
-			"version": "0.4.1",
+			"version": "0.6.0",
 			"state": "updated",
 			"build_state": "beta"
 		},
