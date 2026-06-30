@@ -12,7 +12,7 @@ anyhow = { workspace = true }
 async-trait = "0.1"
 base64 = "0.22"
 cbc = "0.2"
-cipher = "0.5.1"
+cipher = "0.5"
 config = { workspace = true }
 config-derive = { workspace = true }
 fantoccini = "0.22"
@@ -22,7 +22,7 @@ mlua = { version = "0.11", features = ["lua54", "serde", "anyhow", "async", "use
 notify = "8"
 regex = { workspace = true }
 reqwest = { workspace = true }
-scraper = { version = "0.26", features = ["serde", "atomic"] }
+scraper = { version = "0.27", features = ["serde", "atomic"] }
 scraper_types = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -32,8 +32,8 @@ tracing = { workspace = true }
 urlencoding = "2.1"
 uuid = { version = "1.23", features = ["v4"] }
 wasm-bindgen = "0.2"
-wasmtime = "44"
-wasmtime-wasi = "44"
+wasmtime = "46"
+wasmtime-wasi = "46"
 
 [dev-dependencies]
 mockito = "1.7"

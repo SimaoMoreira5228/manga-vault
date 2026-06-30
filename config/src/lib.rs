@@ -39,9 +39,6 @@ where
 	let env_vars = read_env_vars("MVAULT", "__");
 	merge_values(&mut merged_config, env_vars);
 
-	let updated_json = serde_json::to_string_pretty(&merged_config)?;
-	fs::write(&main_file, updated_json)?;
-
 	let result: T = serde_json::from_value(merged_config)?;
 	Ok(result)
 }

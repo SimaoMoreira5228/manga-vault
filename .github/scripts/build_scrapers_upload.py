@@ -2,6 +2,10 @@
 import os, sys, json, subprocess
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+from release_helpers import ensure_release, upload_asset_to_release
+
 try:
   import requests
 except Exception:
@@ -68,7 +72,12 @@ for e in entries:
     try:
       artifact = build_wasm(crate, pkg_path)
       print("Uploading", artifact)
-      upload_asset(e["upload_url"], artifact)
+      release = ensure_release(
+        e["tag_name"],
+        e.get("name"),
+        e.get("body"),
+      )
+      upload_asset_to_release(e["tag_name"], artifact, release)
       print("Uploaded wasm for", crate)
     except Exception as ex:
       print("Failed wasm build/upload for", crate, ex)
@@ -77,7 +86,12 @@ for e in entries:
     if lua_file.exists():
       try:
         print("Uploading lua plugin", lua_file)
-        upload_asset(e["upload_url"], lua_file)
+        release = ensure_release(
+          e["tag_name"],
+          e.get("name"),
+          e.get("body"),
+        )
+        upload_asset_to_release(e["tag_name"], lua_file, release)
         print("Uploaded lua", lua_file.name)
       except Exception as ex:
         print("Failed uploading lua", lua_file, ex)

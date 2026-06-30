@@ -2,6 +2,10 @@
 import os, sys, json, argparse, subprocess, shutil
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+from release_helpers import ensure_release, upload_asset_to_release
+
 try:
   import requests
 except Exception:
@@ -124,8 +128,13 @@ for entry in created:
       out_name = f"{bin_name}-{suffix}{'.exe' if artifact.suffix == '.exe' else ''}"
       out_path = Path(out_name)
       shutil.copy2(artifact, out_path)
-      print("Uploading", out_path)
-      upload_asset(entry["upload_url"], out_path)
+
+      release = ensure_release(
+        entry["tag_name"],
+        entry.get("name"),
+        entry.get("body"),
+      )
+      upload_asset_to_release(entry["tag_name"], out_path, release)
       out_path.unlink(missing_ok=True)
       print("Uploaded", out_name)
     except Exception as e:
@@ -151,7 +160,12 @@ for entry in created:
         )
 
         zip_website(website_build_dir, entry.get("zip_name"))
-        upload_asset(entry["upload_url"], Path(entry.get("zip_name")))
+        release = ensure_release(
+          entry["tag_name"],
+          entry.get("name"),
+          entry.get("body"),
+        )
+        upload_asset_to_release(entry["tag_name"], Path(entry.get("zip_name")), release)
         Path(entry.get("zip_name")).unlink(missing_ok=True)
         print("Uploaded", entry.get("zip_name"))
       except Exception as e:

@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-scraper = "0.26"
+scraper = "0.27"
 wit-bindgen = { workspace = true }
 
 [build-dependencies]

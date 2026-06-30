@@ -39,7 +39,10 @@ pub fn derive_config(input: TokenStream) -> TokenStream {
 					.expect("Executable has no parent directory")
 					.to_path_buf();
 				let env = std::env::var("APP_ENV").unwrap_or_else(|_| "development".into());
-				let config_path = format!("{}/config/{}", base_path.display(), #base_str);
+				let config_dir = std::env::var("MVAULT_CONFIG_DIR")
+					.map(std::path::PathBuf::from)
+					.unwrap_or_else(|_| base_path.join("config"));
+				let config_path = config_dir.join(#base_str).display().to_string();
 				config::load_config::<Self>(&config_path, &env)
 					.expect("Failed to load config")
 			}

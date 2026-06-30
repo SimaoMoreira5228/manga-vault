@@ -271,7 +271,7 @@ def read_local_version_for_pkg(entry):
   return None
 
 
-print("Preparing releases...")
+print("Preparing release manifest...")
 releases_json = github_list_releases()
 manifest = {"created_releases": []}
 
@@ -284,33 +284,22 @@ for entry in PACKAGES:
   print(entry["id"], "local", local_ver, "remote", remote_ver)
   if is_newer(local_ver, remote_ver):
     tag = f"{entry['tag_prefix']}@v{local_ver}"
-    try:
-      tag_and_push(tag)
-    except Exception as e:
-      print("Warning: tag push error:", e)
-    try:
-      rel = create_github_release(
-        tag,
-        f"{entry['id']} v{local_ver}",
-        f"Automatic release for {entry['id']} v{local_ver}",
-      )
-      manifest["created_releases"].append(
-        {
-          "id": entry["id"],
-          "type": entry["type"],
-          "tag_name": tag,
-          "version": local_ver,
-          "upload_url": rel["upload_url"],
-          "crate": entry.get("crate"),
-          "bin_name": entry.get("bin_name"),
-          "path": entry.get("path"),
-          "lua_file": entry.get("lua_file"),
-          "zip_name": entry.get("zip_name"),
-        }
-      )
-      print("Created release for", entry["id"], tag)
-    except Exception as e:
-      print("Failed to create release for", entry["id"], e)
+    manifest["created_releases"].append(
+      {
+        "id": entry["id"],
+        "type": entry["type"],
+        "tag_name": tag,
+        "version": local_ver,
+        "name": f"{entry['id']} v{local_ver}",
+        "body": f"Automatic release for {entry['id']} v{local_ver}",
+        "crate": entry.get("crate"),
+        "bin_name": entry.get("bin_name"),
+        "path": entry.get("path"),
+        "lua_file": entry.get("lua_file"),
+        "zip_name": entry.get("zip_name"),
+      }
+    )
+    print("Prepared release manifest entry for", entry["id"], tag)
 
 with open("release_manifest.json", "w", encoding="utf-8") as f:
   json.dump(manifest, f, indent=2)

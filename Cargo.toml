@@ -1,6 +1,6 @@
 [package]
 name = "manga-vault"
-version = "1.10.0"
+version = "1.11.0"
 edition = "2024"
 
 [[bin]]
@@ -52,7 +52,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 version-check = { path = "apps/http/version_check" }
 website-server = { path = "apps/website/server" }
-wit-bindgen = "0.57"
+wit-bindgen = "0.58"
 
 [dependencies]
 config = { workspace = true }

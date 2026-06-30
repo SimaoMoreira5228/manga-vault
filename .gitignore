@@ -7,3 +7,4 @@ db.sqlite
 .vscode
 TODO.md
 node_modules
+.github/scripts/__pycache__
