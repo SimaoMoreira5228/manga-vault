@@ -82,23 +82,23 @@ pub struct ScraperManager {
 impl ScraperManager {
 	pub async fn new(update: bool) -> Result<Arc<Self>> {
 		if update {
-			tracing::info!("Creating plugin manager without updating");
+			tracing::info!("Creating plugin manager");
 			let manager = Self {
 				plugins: Arc::new(RwLock::new(HashMap::new())),
 				modification_tracker: Arc::new(RwLock::new(HashMap::new())),
 			};
 
-			manager.initialize(false).await?;
+			manager.initialize(true).await?;
 			return Ok(Arc::new(manager));
 		}
 
-		tracing::info!("Creating plugin manager");
+		tracing::info!("Creating plugin manager without updating");
 		let manager = Self {
 			plugins: Arc::new(RwLock::new(HashMap::new())),
 			modification_tracker: Arc::new(RwLock::new(HashMap::new())),
 		};
 
-		manager.initialize(true).await?;
+		manager.initialize(false).await?;
 		Ok(Arc::new(manager))
 	}
 

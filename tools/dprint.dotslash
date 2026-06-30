@@ -4,42 +4,42 @@
   "platforms": {
     "linux-x86_64": {
       "hash": "sha256",
-      "digest": "95c7e633a67531ffc4990c152d59ed0802e1c0caf7e27e424e9cea9ef3d499d4",
-      "size": 8712704,
+      "digest": "14f40c47b2a1c79ced321b62bf177f88f064d7b11c41f1ee28488ee0d9391bb2",
+      "size": 10442349,
       "format": "zip",
       "path": "dprint",
       "providers": [
-        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.50.2", "name": "dprint-x86_64-unknown-linux-gnu.zip" }
+        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.55.1", "name": "dprint-x86_64-unknown-linux-gnu.zip" }
       ]
     },
     "macos-aarch64":{
       "hash": "sha256",
-      "digest": "f534bcc054947ab2a42c069b5f6027914d252729bd15c1109812313b35a662a5",
-      "size": 7875009,
+      "digest": "94a9ce5ca91dbb609d4f22f2ccf28d8b422627c0944c6ee63d1beecac28f8cd4",
+      "size": 9199414,
       "format": "zip",
       "path": "dprint",
       "providers": [
-        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.50.2", "name": "dprint-aarch64-apple-darwin.zip" }
+        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.55.1", "name": "dprint-aarch64-apple-darwin.zip" }
       ]
     },
     "macos-x86_64": {
       "hash": "sha256",
-      "digest": "61becbf8d1b16540e364a4f00be704266ae322ee0ff3ba66a4a21033f66a8d55",
-      "size": 8265462,
+      "digest": "21f9784b3edf3b0a686932b4387359ebd83fba798ac2f7e2ba1e7b8c9f674e3e",
+      "size": 10146541,
       "format": "zip",
       "path": "dprint",
       "providers": [
-        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.50.2", "name": "dprint-x86_64-apple-darwin.zip" }
+        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.55.1", "name": "dprint-x86_64-apple-darwin.zip" }
       ]
     },
     "windows-x86_64": {
       "hash": "sha256",
-      "digest": "2dbdb57106818acd930a00bc0c2c33370bd4c7265f78a6cda000e3621f2d3c1c",
-      "size": 7383585,
+      "digest": "dfdee60f04810c14df310696ce680da7ece599cd27b162f77906adc80d5e9679",
+      "size": 8771704,
       "format": "zip",
       "path": "dprint.exe",
       "providers": [
-        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.50.2", "name": "dprint-x86_64-pc-windows-msvc.zip" }
+        { "type": "github-release", "repo": "https://github.com/dprint/dprint", "tag": "0.55.1", "name": "dprint-x86_64-pc-windows-msvc.zip" }
       ]
     }
   }

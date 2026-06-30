@@ -6,6 +6,8 @@ WORKDIR /app
 
 COPY manga-vault-gql-linux-x86_64 ./manga-vault-gql
 
+COPY plugins.json ./config/plugins.json
+
 RUN chmod +x manga-vault-gql && mkdir -p config plugins uploads
 
 EXPOSE 5228

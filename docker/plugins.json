@@ -1,0 +1,6 @@
+{
+	"flaresolverr_url": null,
+	"headless": null,
+	"plugins_folder": "/app/plugins",
+	"repositories": [{ "url": "https://raw.githubusercontent.com/SimaoMoreira5228/manga-vault/refs/heads/master/repo.json" }]
+}

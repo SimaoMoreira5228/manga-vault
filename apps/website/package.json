@@ -40,8 +40,5 @@
 		"vite-plugin-devtools-json": "^1.0.0",
 		"zod": "^4.4.3"
 	},
-	"dependencies": {
-		"@skeletonlabs/skeleton": "^4.15.2",
-		"@skeletonlabs/skeleton-svelte": "^4.15.2"
-	}
+	"dependencies": { "@skeletonlabs/skeleton": "^4.15.2", "@skeletonlabs/skeleton-svelte": "^4.15.2" }
 }

@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
-use scraper_core::{Config, load_plugin};
+use anyhow::{Context, Result, bail};
 use scraper_core::plugins::{Plugin, PluginType};
+use scraper_core::{Config, load_plugin};
 use scraper_types::Item;
 
 fn print_usage() {
@@ -20,9 +20,7 @@ fn print_usage() {
 }
 
 fn parse_page_arg(arg: Option<&String>) -> Result<u32> {
-	Ok(arg
-		.map(|value| value.parse::<u32>().unwrap_or(1))
-		.unwrap_or(1))
+	Ok(arg.map(|value| value.parse::<u32>().unwrap_or(1)).unwrap_or(1))
 }
 
 fn detect_plugin_type(path: &Path) -> Result<PluginType> {

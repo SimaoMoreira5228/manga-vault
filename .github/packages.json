@@ -1,0 +1,105 @@
+[
+	{
+		"id": "manga-vault",
+		"path": ".",
+		"type": "cargo-bin",
+		"crate": "manga-vault",
+		"bin_name": "manga-vault",
+		"tag_prefix": "manga-vault"
+	},
+	{
+		"id": "gql-api",
+		"path": "apps/http/gql",
+		"type": "cargo-bin",
+		"crate": "gql-api",
+		"bin_name": "manga-vault-gql",
+		"tag_prefix": "gql-api"
+	},
+	{
+		"id": "scheduler",
+		"path": "apps/scheduler",
+		"type": "cargo-bin",
+		"crate": "scheduler",
+		"bin_name": "manga-vault-scheduler",
+		"tag_prefix": "scheduler"
+	},
+	{
+		"id": "website-server",
+		"path": "apps/website/server",
+		"type": "cargo-bin",
+		"crate": "website-server",
+		"bin_name": "manga-vault-website-server",
+		"tag_prefix": "website-server"
+	},
+	{ "id": "website", "path": "apps/website", "type": "web-app", "zip_name": "website.zip", "tag_prefix": "website" },
+	{
+		"id": "hari_manga",
+		"path": "scrapers/hari_manga",
+		"type": "scraper-rust-wasm",
+		"crate": "hari_manga",
+		"tag_prefix": "hari_manga"
+	},
+	{
+		"id": "manga_dex",
+		"path": "scrapers/manga_dex",
+		"type": "scraper-rust-wasm",
+		"crate": "manga_dex",
+		"tag_prefix": "manga_dex"
+	},
+	{
+		"id": "mangaread_org",
+		"path": "scrapers/mangaread_org",
+		"type": "scraper-rust-wasm",
+		"crate": "mangaread_org",
+		"tag_prefix": "mangaread_org"
+	},
+	{
+		"id": "readernovel",
+		"path": "scrapers/readernovel",
+		"type": "scraper-rust-wasm",
+		"crate": "readernovel",
+		"tag_prefix": "readernovel"
+	},
+	{
+		"id": "novelfire",
+		"path": "scrapers/novelfire",
+		"type": "scraper-rust-wasm",
+		"crate": "novelfire",
+		"tag_prefix": "novelfire"
+	},
+	{
+		"id": "freewebnovel",
+		"path": "scrapers/freewebnovel",
+		"type": "scraper-rust-wasm",
+		"crate": "freewebnovel",
+		"tag_prefix": "freewebnovel"
+	},
+	{
+		"id": "manhuafast",
+		"path": "scrapers/manhuafast",
+		"type": "lua-plugin",
+		"lua_file": "manhuafast.lua",
+		"tag_prefix": "manhuafast"
+	},
+	{
+		"id": "natomanga",
+		"path": "scrapers/natomanga",
+		"type": "lua-plugin",
+		"lua_file": "natomanga.lua",
+		"tag_prefix": "natomanga"
+	},
+	{
+		"id": "mangabuddy",
+		"path": "scrapers/mangabuddy",
+		"type": "lua-plugin",
+		"lua_file": "mangabuddy.lua",
+		"tag_prefix": "mangabuddy"
+	},
+	{
+		"id": "mangakakalot",
+		"path": "scrapers/mangakakalot",
+		"type": "lua-plugin",
+		"lua_file": "mangakakalot.lua",
+		"tag_prefix": "mangakakalot"
+	}
+]

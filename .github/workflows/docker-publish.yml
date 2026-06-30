@@ -51,6 +51,8 @@ jobs:
           chmod +x docker/bin/manga-vault-scheduler-linux-x86_64
           chmod +x docker/bin/manga-vault-website-server-linux-x86_64
 
+          cp docker/plugins.json docker/bin/plugins.json
+
           if [ ! -f apps/website/.env ] && [ -f apps/website/.env.example ]; then
             cp apps/website/.env.example apps/website/.env
           fi

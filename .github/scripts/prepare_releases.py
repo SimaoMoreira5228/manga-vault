@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-import os, sys, re, json, subprocess
+import os, sys, re, json
 from pathlib import Path
 from typing import Optional, Tuple
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 try:
   import tomllib
@@ -28,117 +30,8 @@ OWNER, REPO_NAME = REPO.split("/")
 WORKSPACE = os.getenv("GITHUB_WORKSPACE", os.getcwd())
 os.chdir(WORKSPACE)
 
-PACKAGES = [
-  {
-    "id": "manga-vault",
-    "path": ".",
-    "type": "cargo-bin",
-    "crate": "manga-vault",
-    "bin_name": "manga-vault",
-    "tag_prefix": "manga-vault",
-  },
-  {
-    "id": "gql-api",
-    "path": "apps/http/gql",
-    "type": "cargo-bin",
-    "crate": "gql-api",
-    "bin_name": "manga-vault-gql",
-    "tag_prefix": "gql-api",
-  },
-  {
-    "id": "scheduler",
-    "path": "apps/scheduler",
-    "type": "cargo-bin",
-    "crate": "scheduler",
-    "bin_name": "manga-vault-scheduler",
-    "tag_prefix": "scheduler",
-  },
-  {
-    "id": "website-server",
-    "path": "apps/website/server",
-    "type": "cargo-bin",
-    "crate": "website-server",
-    "bin_name": "manga-vault-website-server",
-    "tag_prefix": "website-server",
-  },
-  {
-    "id": "website",
-    "path": "apps/website",
-    "type": "web-app",
-    "zip_name": "website.zip",
-    "tag_prefix": "website",
-  },
-  {
-    "id": "hari_manga",
-    "path": "scrapers/hari_manga",
-    "type": "scraper-rust-wasm",
-    "crate": "hari_manga",
-    "tag_prefix": "hari_manga",
-  },
-  {
-    "id": "manga_dex",
-    "path": "scrapers/manga_dex",
-    "type": "scraper-rust-wasm",
-    "crate": "manga_dex",
-    "tag_prefix": "manga_dex",
-  },
-  {
-    "id": "mangaread_org",
-    "path": "scrapers/mangaread_org",
-    "type": "scraper-rust-wasm",
-    "crate": "mangaread_org",
-    "tag_prefix": "mangaread_org",
-  },
-  {
-    "id": "readernovel",
-    "path": "scrapers/readernovel",
-    "type": "scraper-rust-wasm",
-    "crate": "readernovel",
-    "tag_prefix": "readernovel",
-  },
-  {
-    "id": "novelfire",
-    "path": "scrapers/novelfire",
-    "type": "scraper-rust-wasm",
-    "crate": "novelfire",
-    "tag_prefix": "novelfire",
-  },
-  {
-    "id": "freewebnovel",
-    "path": "scrapers/freewebnovel",
-    "type": "scraper-rust-wasm",
-    "crate": "freewebnovel",
-    "tag_prefix": "freewebnovel",
-  },
-  {
-    "id": "manhuafast",
-    "path": "scrapers/manhuafast",
-    "type": "lua-plugin",
-    "lua_file": "manhuafast.lua",
-    "tag_prefix": "manhuafast",
-  },
-  {
-    "id": "natomanga",
-    "path": "scrapers/natomanga",
-    "type": "lua-plugin",
-    "lua_file": "natomanga.lua",
-    "tag_prefix": "natomanga",
-  },
-  {
-    "id": "mangabuddy",
-    "path": "scrapers/mangabuddy",
-    "type": "lua-plugin",
-    "lua_file": "mangabuddy.lua",
-    "tag_prefix": "mangabuddy",
-  },
-  {
-    "id": "mangakakalot",
-    "path": "scrapers/mangakakalot",
-    "type": "lua-plugin",
-    "lua_file": "mangakakalot.lua",
-    "tag_prefix": "mangakakalot",
-  },
-]
+PACKAGES_FILE = SCRIPT_DIR.parent / "packages.json"
+PACKAGES = json.loads(PACKAGES_FILE.read_text())
 
 API_BASE = "https://api.github.com"
 
@@ -233,29 +126,6 @@ def find_latest_release_version_for_prefix(releases_json, prefix: str) -> Option
   return best
 
 
-def run(cmd, cwd=None):
-  print("> " + " ".join(cmd))
-  subprocess = __import__("subprocess")
-  subprocess.run(cmd, cwd=cwd, check=True)
-
-
-def tag_and_push(tag_name: str):
-  run(["git", "tag", "-a", tag_name, "-m", f"Release {tag_name}"])
-  run(["git", "push", "origin", tag_name])
-
-
-def create_github_release(tag_name: str, name: str, body: str):
-  url = f"{API_BASE}/repos/{OWNER}/{REPO_NAME}/releases"
-  headers = {
-    "Authorization": f"token {GITHUB_TOKEN}",
-    "Accept": "application/vnd.github+json",
-  }
-  payload = {"tag_name": tag_name, "name": name, "body": body, "prerelease": False}
-  r = requests.post(url, headers=headers, json=payload)
-  r.raise_for_status()
-  return r.json()
-
-
 def read_local_version_for_pkg(entry):
   p = Path(entry.get("path", "."))
 
@@ -292,9 +162,8 @@ for entry in PACKAGES:
         "version": local_ver,
         "name": f"{entry['id']} v{local_ver}",
         "body": f"Automatic release for {entry['id']} v{local_ver}",
-        "crate": entry.get("crate"),
         "bin_name": entry.get("bin_name"),
-        "path": entry.get("path"),
+        "crate": entry.get("crate"),
         "lua_file": entry.get("lua_file"),
         "zip_name": entry.get("zip_name"),
       }

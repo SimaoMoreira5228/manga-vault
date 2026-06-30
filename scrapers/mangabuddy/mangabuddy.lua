@@ -59,7 +59,7 @@ local function extract_next_data_page_props(html)
 		return nil
 	end
 
-	local next_data_json = string.match(html, '<script[^>]-id="__NEXT_DATA__"[^>]*>(.-)</script>')
+	local next_data_json = string.match(html, "<script[^>]-id=\"__NEXT_DATA__\"[^>]*>(.-)</script>")
 		or string.match(html, "<script[^>]-id='__NEXT_DATA__'[^>]*>(.-)</script>")
 
 	if not next_data_json or next_data_json == "" then

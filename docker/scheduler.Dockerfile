@@ -6,6 +6,8 @@ WORKDIR /app
 
 COPY manga-vault-scheduler-linux-x86_64 ./manga-vault-scheduler
 
+COPY plugins.json ./config/plugins.json
+
 RUN chmod +x manga-vault-scheduler && mkdir -p config plugins uploads
 
 CMD ["./manga-vault-scheduler"]

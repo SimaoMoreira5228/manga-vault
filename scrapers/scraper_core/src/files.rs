@@ -57,11 +57,7 @@ async fn remove_existing_plugin(plugins: &PluginMap, file_path: &Path, plugin_ty
 	});
 }
 
-pub async fn load_plugin(
-	config: Arc<Config>,
-	file_path: PathBuf,
-	plugin_type: PluginType,
-) -> Result<Arc<Plugin>> {
+pub async fn load_plugin(config: Arc<Config>, file_path: PathBuf, plugin_type: PluginType) -> Result<Arc<Plugin>> {
 	match plugin_type {
 		PluginType::Lua => {
 			let plugin = LuaPlugin::new(config, &file_path).await?;

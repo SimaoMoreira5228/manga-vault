@@ -31,10 +31,10 @@ HEADERS = {
 
 ROOT = Path(os.getenv("GITHUB_WORKSPACE", os.getcwd()))
 
-RUST_SCRAPERS = ["mangaread_org", "manga_dex", "hari_manga", "readernovel", "novelfire", "freewebnovel"]
-LUA_SCRAPERS = ["manhuafast", "natomanga", "mangabuddy", "mangakakalot"]
-
-ALL = [{"id": s, "type": "scraper-rust-wasm"} for s in RUST_SCRAPERS] + [{"id": s, "type": "lua-plugin"} for s in LUA_SCRAPERS]
+SCRIPT_DIR = Path(__file__).resolve().parent
+PACKAGES_FILE = SCRIPT_DIR.parent / "packages.json"
+ALL_PACKAGES = json.loads(PACKAGES_FILE.read_text())
+ALL = [p for p in ALL_PACKAGES if p["type"] in ("scraper-rust-wasm", "lua-plugin")]
 
 
 def semver_tuple(v: str) -> Tuple[int, int, int]:
