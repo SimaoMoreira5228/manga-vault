@@ -81,17 +81,30 @@ jobs:
           cache-on-failure: true
           shared-key: "rust-release-build-${{ runner.os }}"
 
-      - name: Build all binaries
+      - name: Download manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: .
+
+      - name: Check binaries needed
+        id: check
+        run: |
+          echo "count=$(jq '[.created_releases[] | select(.type=="cargo-bin")] | length' release_manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Build binaries
+        if: steps.check.outputs.count > 0
         shell: bash
         run: |
-          CRATES=$(jq -r '.[] | select(.type=="cargo-bin") | "-p \(.crate)"' .github/packages.json | tr -d '\r' | tr '\n' ' ')
+          CRATES=$(jq -r '.created_releases[] | select(.type=="cargo-bin") | "-p \(.crate)"' release_manifest.json | tr -d '\r' | tr '\n' ' ')
           cargo build $CRATES --release
 
       - name: Stage renamed binaries
+        if: steps.check.outputs.count > 0
         shell: bash
         run: |
           mkdir -p staging
-          for bin in $(jq -r '.[] | select(.type=="cargo-bin") | .bin_name' .github/packages.json | tr -d '\r'); do
+          for bin in $(jq -r '.created_releases[] | select(.type=="cargo-bin") | .bin_name' release_manifest.json | tr -d '\r'); do
             src="target/release/$bin"
             if [ -f "${src}.exe" ]; then
               cp "${src}.exe" "staging/${bin}-${{ matrix.suffix }}.exe"
@@ -101,6 +114,7 @@ jobs:
           done
 
       - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.count > 0
         with:
           name: binaries-${{ matrix.suffix }}
           path: staging/
@@ -132,21 +146,37 @@ jobs:
       - name: Add cargo bin to PATH
         run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
+      - name: Download manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: .
+
+      - name: Check scrapers needed
+        id: check
+        run: |
+          echo "wasm_count=$(jq '[.created_releases[] | select(.type=="scraper-rust-wasm")] | length' release_manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "lua_count=$(jq '[.created_releases[] | select(.type=="lua-plugin")] | length' release_manifest.json)" >> "$GITHUB_OUTPUT"
+
       - name: Build WASM scrapers
+        if: steps.check.outputs.wasm_count > 0
         run: |
           mkdir -p staging
-          for crate in $(jq -r '.[] | select(.type=="scraper-rust-wasm") | .crate' .github/packages.json); do
+          for crate in $(jq -r '.created_releases[] | select(.type=="scraper-rust-wasm") | .crate' release_manifest.json); do
             cargo component build --package "$crate" --target wasm32-wasip1 --release
             cp "target/wasm32-wasip1/release/${crate}.wasm" "staging/"
           done
 
       - name: Copy Lua plugins
+        if: steps.check.outputs.lua_count > 0
         run: |
-          for src in $(jq -r '.[] | select(.type=="lua-plugin") | .id' .github/packages.json); do
-            cp "scrapers/$src/${src}.lua" "staging/"
+          mkdir -p staging
+          for id in $(jq -r '.created_releases[] | select(.type=="lua-plugin") | .id' release_manifest.json); do
+            cp "scrapers/$id/$id.lua" "staging/"
           done
 
       - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.wasm_count > 0 || steps.check.outputs.lua_count > 0
         with:
           name: scrapers
           path: staging/
@@ -161,14 +191,28 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Download manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: .
+
+      - name: Check website needed
+        id: check
+        run: |
+          echo "count=$(jq '[.created_releases[] | select(.type=="web-app")] | length' release_manifest.json)" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v4
+        if: steps.check.outputs.count > 0
         with:
           node-version: "22"
 
       - name: Enable pnpm
+        if: steps.check.outputs.count > 0
         run: corepack enable pnpm
 
       - name: Build website
+        if: steps.check.outputs.count > 0
         working-directory: apps/website
         run: |
           if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi
@@ -176,6 +220,7 @@ jobs:
           pnpm run build
 
       - name: Create version.json
+        if: steps.check.outputs.count > 0
         working-directory: apps/website
         run: |
           VERSION=$(node -p "require('./package.json').version")
@@ -183,12 +228,14 @@ jobs:
           printf '{"version":"%s","tag_name":"website@v%s"}\n' "$VERSION" "$VERSION" > build/version.json
 
       - name: Zip website
+        if: steps.check.outputs.count > 0
         run: |
           mkdir -p staging
           cd apps/website/build
           zip -r "$OLDPWD/staging/website.zip" .
 
       - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.count > 0
         with:
           name: website
           path: staging/
@@ -208,12 +255,26 @@ jobs:
 
       - run: pip install requests
 
+      - name: Download manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: .
+
+      - name: Check built artifact types
+        id: what
+        run: |
+          echo "bins=$(jq '[.created_releases[] | select(.type=="cargo-bin")] | length' release_manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "scrapers=$(jq '[.created_releases[] | select(.type | startswith("scraper"))] | length' release_manifest.json)" >> "$GITHUB_OUTPUT"
+          echo "website=$(jq '[.created_releases[] | select(.type=="web-app")] | length' release_manifest.json)" >> "$GITHUB_OUTPUT"
+
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Download build artifacts
+        if: steps.what.outputs.bins > 0
         uses: actions/download-artifact@v4
         with:
           pattern: binaries-*
@@ -221,6 +282,7 @@ jobs:
           path: assets/
 
       - name: Download scraper artifacts
+        if: steps.what.outputs.scrapers > 0
         uses: actions/download-artifact@v4
         with:
           pattern: scrapers
@@ -228,17 +290,12 @@ jobs:
           path: assets/
 
       - name: Download website artifacts
+        if: steps.what.outputs.website > 0
         uses: actions/download-artifact@v4
         with:
           pattern: website
           merge-multiple: true
           path: assets/
-
-      - name: Download manifest
-        uses: actions/download-artifact@v4
-        with:
-          name: release-manifest
-          path: .
 
       - name: Assemble releases
         env:

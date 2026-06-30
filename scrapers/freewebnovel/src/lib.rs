@@ -2,6 +2,29 @@ wit_bindgen::generate!({
 	path: "scraper.wit"
 });
 
+fn headers() -> Vec<scraper::types::http::Header> {
+	vec![
+		scraper::types::http::Header {
+			name: "Content-Type".to_string(),
+			value: "application/x-www-form-urlencoded".to_string(),
+		},
+		scraper::types::http::Header {
+			name: "Referer".to_string(),
+			value: "https://freewebnovel.com/home".to_string(),
+		},
+		scraper::types::http::Header {
+			name: "Origin".to_string(),
+			value: "https://freewebnovel.com".to_string(),
+		},
+		scraper::types::http::Header {
+			name: "User-Agent".to_string(),
+			value:
+				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+					.to_string(),
+		},
+	]
+}
+
 fn absolute(url: &str) -> String {
 	if url.starts_with("http") {
 		url.to_string()
@@ -155,7 +178,7 @@ export!(ScraperImpl);
 
 impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	fn scrape_chapter(url: String) -> Vec<String> {
-		let mut res = match scraper::types::http::get(&url, None) {
+		let mut res = match scraper::types::http::get(&url, Some(&headers()[..])) {
 			Some(r) => r,
 			None => return Vec::new(),
 		};
@@ -177,7 +200,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 	fn scrape_latest(page: u32) -> Vec<exports::scraper::types::scraper::Item> {
 		let url = format!("https://freewebnovel.com/sort/latest-release?p={}", page);
-		let mut res = match scraper::types::http::get(&url, None) {
+		let mut res = match scraper::types::http::get(&url, Some(&headers()[..])) {
 			Some(r) => r,
 			None => return Vec::new(),
 		};
@@ -223,7 +246,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 	fn scrape_trending(page: u32) -> Vec<exports::scraper::types::scraper::Item> {
 		let url = format!("https://freewebnovel.com/sort/most-popular?p={}", page);
-		let mut res = match scraper::types::http::get(&url, None) {
+		let mut res = match scraper::types::http::get(&url, Some(&headers()[..])) {
 			Some(r) => r,
 			None => return Vec::new(),
 		};
@@ -271,27 +294,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 		let search_url = "https://freewebnovel.com/search".to_string();
 		let body = format!("searchkey={}", urlencoding::encode(&query));
 
-		let headers_vec = vec![
-			scraper::types::http::Header {
-				name: "Content-Type".to_string(),
-				value: "application/x-www-form-urlencoded".to_string(),
-			},
-			scraper::types::http::Header {
-				name: "Referer".to_string(),
-				value: "https://freewebnovel.com/home".to_string(),
-			},
-			scraper::types::http::Header {
-				name: "Origin".to_string(),
-				value: "https://freewebnovel.com".to_string(),
-			},
-			scraper::types::http::Header {
-				name: "User-Agent".to_string(),
-				value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36".to_string(),
-			},
-		];
-		let headers_ref: Option<&[scraper::types::http::Header]> = Some(&headers_vec[..]);
-
-		if let Some(res) = scraper::types::http::post(&search_url, &body, headers_ref) {
+		if let Some(res) = scraper::types::http::post(&search_url, &body, Some(&headers()[..])) {
 			if res.status == 200 {
 				let html = ::scraper::Html::parse_document(&res.body);
 				let row_sel = ::scraper::Selector::parse("div.li-row").unwrap();
@@ -326,7 +329,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 
 	fn scrape(url: String) -> exports::scraper::types::scraper::Page {
-		let mut res = match scraper::types::http::get(&url, None) {
+		let mut res = match scraper::types::http::get(&url, Some(&headers()[..])) {
 			Some(r) => r,
 			None => return default_page(url),
 		};
@@ -348,7 +351,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 
 	fn scrape_genres_list() -> Vec<exports::scraper::types::scraper::Genre> {
 		let url = "https://freewebnovel.com/home".to_string();
-		let mut res = match scraper::types::http::get(&url, None) {
+		let mut res = match scraper::types::http::get(&url, Some(&headers()[..])) {
 			Some(r) => r,
 			None => return Vec::new(),
 		};
