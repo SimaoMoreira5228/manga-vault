@@ -2,6 +2,8 @@ wit_bindgen::generate!({
 	path: "scraper.wit"
 });
 
+use serde_json::Value;
+
 fn headers() -> Vec<scraper::types::http::Header> {
 	vec![
 		scraper::types::http::Header {
@@ -346,7 +348,83 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 			return default_page(url);
 		}
 
-		parse_page_from_html(&res.body, &url)
+		let mut page = parse_page_from_html(&res.body, &url);
+
+		let headers_ref: Option<&[scraper::types::http::Header]> = Some(&headers()[..]);
+		let mut all_chapters: Vec<exports::scraper::types::scraper::Chapter> = page.chapters.clone();
+
+		let ajax_first = format!("{}?ajax=chapters&page=1&pageSize=40", url);
+		if let Some(ajax_res) = scraper::types::http::get(&ajax_first, headers_ref) {
+			if ajax_res.status == 200 {
+				if let Ok(json) = serde_json::from_str::<Value>(&ajax_res.body) {
+					if let Some(html_val) = json.get("html").and_then(|h| h.as_str()) {
+						let doc = ::scraper::Html::parse_document(html_val);
+						for a in doc.select(&::scraper::Selector::parse("a").unwrap()) {
+							let href = a.value().attr("href").unwrap_or("");
+							let title = a.value().attr("title").unwrap_or("").to_string();
+							all_chapters.push(exports::scraper::types::scraper::Chapter {
+								title,
+								url: absolute(href),
+								date: String::new(),
+								scanlation_group: None,
+							});
+						}
+
+						let total_pages = json.get("totalPage").and_then(|p| p.as_u64()).unwrap_or(1) as u32;
+						let safe_total = if total_pages > 1000 { 1000 } else { total_pages };
+
+						for p in 2..=safe_total {
+							std::thread::sleep(std::time::Duration::from_millis(500));
+							let ajax_url = format!("{}?ajax=chapters&page={}&pageSize=40", url, p);
+							let mut p_res = match scraper::types::http::get(&ajax_url, headers_ref) {
+								Some(r) => r,
+								None => break,
+							};
+
+							if scraper::types::http::has_cloudflare_protection(&p_res.body, Some(p_res.status), Some(&p_res.headers)) {
+								if let Some(nr) = scraper::types::flare_solverr::get(&ajax_url, None) {
+									p_res = nr;
+								} else {
+									break;
+								}
+							}
+
+							if p_res.status != 200 {
+								break;
+							}
+
+							if let Ok(json2) = serde_json::from_str::<Value>(&p_res.body) {
+								if let Some(html_val2) = json2.get("html").and_then(|h| h.as_str()) {
+									let doc2 = ::scraper::Html::parse_document(html_val2);
+									let mut page_chapters: Vec<exports::scraper::types::scraper::Chapter> = Vec::new();
+									for a in doc2.select(&::scraper::Selector::parse("a").unwrap()) {
+										let href = a.value().attr("href").unwrap_or("");
+										let title = a.value().attr("title").unwrap_or("").to_string();
+										page_chapters.push(exports::scraper::types::scraper::Chapter {
+											title,
+											url: absolute(href),
+											date: String::new(),
+											scanlation_group: None,
+										});
+									}
+									if page_chapters.is_empty() {
+										break;
+									}
+									all_chapters.append(&mut page_chapters);
+								}
+							}
+						}
+
+						use std::collections::HashSet;
+						let mut seen = HashSet::new();
+						page.chapters = all_chapters.into_iter().filter(|c| seen.insert(c.url.clone())).collect();
+						return page;
+					}
+				}
+			}
+		}
+
+		page
 	}
 
 	fn scrape_genres_list() -> Vec<exports::scraper::types::scraper::Genre> {
