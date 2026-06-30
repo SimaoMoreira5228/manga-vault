@@ -2,11 +2,11 @@
 	"name": "dewn_plugins",
 	"plugins": [
 		{
-			"name": "mangaread_org",
+			"name": "hari_manga",
 			"urls": {
-				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangaread_org%40v0.6.0/mangaread_org.wasm"
+				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/hari_manga%40v0.7.1/hari_manga.wasm"
 			},
-			"version": "0.6.0",
+			"version": "0.7.1",
 			"state": "updated",
 			"build_state": "beta"
 		},
@@ -20,11 +20,20 @@
 			"build_state": "beta"
 		},
 		{
-			"name": "hari_manga",
+			"name": "mangaread_org",
 			"urls": {
-				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/hari_manga%40v0.7.1/hari_manga.wasm"
+				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/mangaread_org%40v0.6.0/mangaread_org.wasm"
 			},
-			"version": "0.7.1",
+			"version": "0.6.0",
+			"state": "updated",
+			"build_state": "beta"
+		},
+		{
+			"name": "readernovel",
+			"urls": {
+				"wasm": "https://github.com/SimaoMoreira5228/manga-vault/releases/download/readernovel%40v0.3.0/readernovel.wasm"
+			},
+			"version": "0.3.0",
 			"state": "updated",
 			"build_state": "beta"
 		},
