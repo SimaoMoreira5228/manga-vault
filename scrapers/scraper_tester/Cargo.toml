@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 anyhow = { workspace = true }
 scraper_core = { workspace = true }
+scraper_types = { workspace = true }
 tokio = { workspace = true }

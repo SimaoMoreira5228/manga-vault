@@ -2600,10 +2600,10 @@ dependencies = [
 
 [[package]]
 name = "freewebnovel"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "reqwest 0.13.3",
- "scraper 0.26.0",
+ "scraper 0.27.0",
  "urlencoding",
  "wit-bindgen 0.57.1",
 ]
@@ -4130,6 +4130,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "scraper_core",
+ "scraper_types",
  "tokio",
 ]
 

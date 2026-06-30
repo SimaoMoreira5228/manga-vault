@@ -57,6 +57,23 @@ async fn remove_existing_plugin(plugins: &PluginMap, file_path: &Path, plugin_ty
 	});
 }
 
+pub async fn load_plugin(
+	config: Arc<Config>,
+	file_path: PathBuf,
+	plugin_type: PluginType,
+) -> Result<Arc<Plugin>> {
+	match plugin_type {
+		PluginType::Lua => {
+			let plugin = LuaPlugin::new(config, &file_path).await?;
+			Ok(Arc::new(Plugin::Lua(plugin)))
+		}
+		PluginType::Wasm => {
+			let plugin = WasmPlugin::new(&file_path).await?;
+			Ok(Arc::new(Plugin::Wasm(plugin)))
+		}
+	}
+}
+
 pub async fn load_plugin_file(
 	config: Arc<Config>,
 	plugins: PluginMap,
@@ -65,21 +82,12 @@ pub async fn load_plugin_file(
 ) -> Result<()> {
 	remove_existing_plugin(&plugins, &file_path, &plugin_type).await;
 
-	match plugin_type {
-		PluginType::Lua => {
-			let plugin = LuaPlugin::new(config, &file_path).await?;
-
-			plugins.write().await.insert(plugin.id.clone(), Arc::new(Plugin::Lua(plugin)));
-		}
-		PluginType::Wasm => {
-			let plugin = WasmPlugin::new(&file_path).await?;
-
-			plugins
-				.write()
-				.await
-				.insert(plugin.name.clone(), Arc::new(Plugin::Wasm(plugin)));
-		}
-	}
+	let plugin = load_plugin(config, file_path, plugin_type).await?;
+	let id = match &*plugin {
+		Plugin::Lua(plugin) => plugin.id.clone(),
+		Plugin::Wasm(plugin) => plugin.name.clone(),
+	};
+	plugins.write().await.insert(id, plugin);
 
 	Ok(())
 }

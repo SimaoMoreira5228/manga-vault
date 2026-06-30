@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 mod files;
+pub use files::load_plugin;
 pub mod plugins;
 mod repository;
 

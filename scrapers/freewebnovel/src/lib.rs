@@ -280,6 +280,14 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 				name: "Referer".to_string(),
 				value: "https://freewebnovel.com/home".to_string(),
 			},
+			scraper::types::http::Header {
+				name: "Origin".to_string(),
+				value: "https://freewebnovel.com".to_string(),
+			},
+			scraper::types::http::Header {
+				name: "User-Agent".to_string(),
+				value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36".to_string(),
+			},
 		];
 		let headers_ref: Option<&[scraper::types::http::Header]> = Some(&headers_vec[..]);
 
@@ -290,6 +298,7 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 				let mut items = Vec::new();
 
 				for row in html.select(&row_sel) {
+					println!("Row: {:?}", row.inner_html());
 					if let Some(a) = row.select(&::scraper::Selector::parse(".pic a").unwrap()).next() {
 						let href = a.value().attr("href").unwrap_or("");
 						let title = row
