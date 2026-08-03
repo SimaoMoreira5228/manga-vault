@@ -293,41 +293,49 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 	}
 
 	fn scrape_search(query: String, _page: u32) -> Vec<exports::scraper::types::scraper::Item> {
-		let search_url = "https://freewebnovel.com/search".to_string();
-		let body = format!("searchkey={}", urlencoding::encode(&query));
+		let url = format!("https://freewebnovel.com/search?keyword={}", urlencoding::encode(&query));
+		let mut res = match scraper::types::http::get(&url, Some(&headers()[..])) {
+			Some(r) => r,
+			None => return Vec::new(),
+		};
 
-		if let Some(res) = scraper::types::http::post(&search_url, &body, Some(&headers()[..])) {
-			if res.status == 200 {
-				let html = ::scraper::Html::parse_document(&res.body);
-				let row_sel = ::scraper::Selector::parse("div.li-row").unwrap();
-				let mut items = Vec::new();
-
-				for row in html.select(&row_sel) {
-					println!("Row: {:?}", row.inner_html());
-					if let Some(a) = row.select(&::scraper::Selector::parse(".pic a").unwrap()).next() {
-						let href = a.value().attr("href").unwrap_or("");
-						let title = row
-							.select(&::scraper::Selector::parse(".txt h3.tit a").unwrap())
-							.next()
-							.map(|t| t.text().collect::<Vec<_>>().join(" ").trim().to_string())
-							.unwrap_or_default();
-
-						let img = row.select(&::scraper::Selector::parse(".pic img").unwrap()).next();
-						let img_url = img.map(|i| get_image_url(&i)).unwrap_or_default();
-
-						items.push(exports::scraper::types::scraper::Item {
-							title,
-							url: absolute(href),
-							img_url: absolute(&img_url),
-						});
-					}
-				}
-
-				return items;
+		if scraper::types::http::has_cloudflare_protection(&res.body, Some(res.status), Some(&res.headers)) {
+			if let Some(nr) = scraper::types::flare_solverr::get(&url, None) {
+				res = nr;
+			} else {
+				return Vec::new();
 			}
 		}
 
-		Vec::new()
+		if res.status != 200 {
+			return Vec::new();
+		}
+
+		let html = ::scraper::Html::parse_document(&res.body);
+		let row_sel = ::scraper::Selector::parse("div.li-row").unwrap();
+		let mut items = Vec::new();
+
+		for row in html.select(&row_sel) {
+			if let Some(a) = row.select(&::scraper::Selector::parse(".pic a").unwrap()).next() {
+				let href = a.value().attr("href").unwrap_or("");
+				let title = row
+					.select(&::scraper::Selector::parse(".txt h3.tit a").unwrap())
+					.next()
+					.map(|t| t.text().collect::<Vec<_>>().join(" ").trim().to_string())
+					.unwrap_or_default();
+
+				let img = row.select(&::scraper::Selector::parse(".pic img").unwrap()).next();
+				let img_url = img.map(|i| get_image_url(&i)).unwrap_or_default();
+
+				items.push(exports::scraper::types::scraper::Item {
+					title,
+					url: absolute(href),
+					img_url: absolute(&img_url),
+				});
+			}
+		}
+
+		items
 	}
 
 	fn scrape(url: String) -> exports::scraper::types::scraper::Page {
@@ -381,7 +389,11 @@ impl exports::scraper::types::scraper::Guest for ScraperImpl {
 								None => break,
 							};
 
-							if scraper::types::http::has_cloudflare_protection(&p_res.body, Some(p_res.status), Some(&p_res.headers)) {
+							if scraper::types::http::has_cloudflare_protection(
+								&p_res.body,
+								Some(p_res.status),
+								Some(&p_res.headers),
+							) {
 								if let Some(nr) = scraper::types::flare_solverr::get(&ajax_url, None) {
 									p_res = nr;
 								} else {
