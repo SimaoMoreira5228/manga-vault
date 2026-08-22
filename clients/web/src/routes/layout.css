@@ -1,5 +1,5 @@
-@import 'tailwindcss';
-@plugin '@tailwindcss/forms';
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
 
 @theme {
 	--color-surface: #1a120b;
@@ -24,8 +24,8 @@
 	--color-error: #ffb4ab;
 	--color-on-error: #690005;
 
-	--font-display: 'Playfair Display', Georgia, serif;
-	--font-body: 'Geist', ui-sans-serif, system-ui, sans-serif;
+	--font-display: "Playfair Display", Georgia, serif;
+	--font-body: "Geist", ui-sans-serif, system-ui, sans-serif;
 
 	--radius-card: 0.5rem;
 }
@@ -51,17 +51,4 @@ body {
 .mono-label {
 	font-size: 0.6875rem;
 	line-height: 1rem;
-}
-
-.material-symbols-outlined {
-	font-family: 'Material Symbols Outlined';
-	font-weight: normal;
-	font-style: normal;
-	line-height: 1;
-	letter-spacing: normal;
-	text-transform: none;
-	display: inline-block;
-	white-space: nowrap;
-	direction: ltr;
-	user-select: none;
 }
