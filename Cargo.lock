@@ -2510,12 +2510,14 @@ dependencies = [
  "domain",
  "jobs",
  "persistence",
+ "reqwest",
  "serde",
  "serde_json",
  "source-manager",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
  "uuid",
 ]
 

@@ -2,6 +2,7 @@ mod auth_extractor;
 mod auth_handlers;
 mod error;
 mod library_handlers;
+mod proxy_handler;
 mod reading_handlers;
 mod sources_handlers;
 mod works_handlers;
@@ -17,6 +18,8 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/auth/login", post(auth_handlers::login))
 		.route("/api/auth/logout", post(auth_handlers::logout))
 		.route("/api/me", get(auth_handlers::me))
+		.route("/api/me/continue-reading", get(reading_handlers::continue_reading))
+		.route("/api/proxy", get(proxy_handler::proxy))
 		.route("/api/me/sessions", get(auth_handlers::list_sessions))
 		.route("/api/me/sessions/{token}", delete(auth_handlers::revoke_session))
 		.route("/api/sources", get(sources_handlers::list))

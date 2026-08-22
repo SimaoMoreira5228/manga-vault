@@ -33,3 +33,10 @@ pub async fn progress_for_work(
 	let read_ids = state.vault.read_chapter_ids(auth.user.id, work_id).await?;
 	Ok(Json(json!({ "read_chapter_ids": read_ids })))
 }
+
+pub async fn continue_reading(
+	State(state): State<AppState>,
+	auth: Authenticated,
+) -> ApiResult<Vec<application::reading::ContinueReadingItem>> {
+	Ok(Json(state.vault.continue_reading(auth.user.id).await?))
+}

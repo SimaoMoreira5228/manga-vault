@@ -5,8 +5,8 @@ use axum::response::{IntoResponse, Response};
 use serde_json::json;
 
 pub struct ApiError {
-	status: StatusCode,
-	message: String,
+	pub status: StatusCode,
+	pub message: String,
 }
 
 impl From<VaultError> for ApiError {

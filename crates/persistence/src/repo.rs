@@ -86,6 +86,7 @@ pub trait ProgressRepository: Send + Sync {
 	async fn mark_read(&self, progress: ReadingProgress) -> StoreResult<()>;
 	async fn mark_unread(&self, user_id: UserId, chapter_id: ChapterId) -> StoreResult<()>;
 	async fn read_chapter_ids(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Vec<ChapterId>>;
+	async fn recent_progress(&self, user_id: UserId, limit: u64) -> StoreResult<Vec<(ReadingProgress, Chapter)>>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

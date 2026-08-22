@@ -3,7 +3,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrde
 
 use super::{utc_to_db, *};
 use crate::StoreResult;
-use crate::entities::{categories, library_entries, reading_progress};
+use crate::entities::{categories, chapters, library_entries, reading_progress};
 use crate::repo::{LibraryRepository, ProgressRepository};
 
 #[async_trait::async_trait]
@@ -150,5 +150,45 @@ impl ProgressRepository for SeaStore {
 			.all(&self.db)
 			.await?;
 		Ok(models.iter().map(|p| p.chapter_id).collect())
+	}
+
+	async fn recent_progress(
+		&self,
+		user_id: uuid::Uuid,
+		limit: u64,
+	) -> StoreResult<Vec<(domain::ReadingProgress, domain::Chapter)>> {
+		let rows = reading_progress::Entity::find()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.order_by_desc(reading_progress::Column::ReadAt)
+			.all(&self.db)
+			.await?;
+
+		let chapter_ids: Vec<uuid::Uuid> = rows.iter().map(|p| p.chapter_id).collect();
+		let chapters_by_id: std::collections::HashMap<uuid::Uuid, domain::Chapter> = if chapter_ids.is_empty() {
+			std::collections::HashMap::new()
+		} else {
+			chapters::Entity::find()
+				.filter(chapters::Column::Id.is_in(chapter_ids))
+				.all(&self.db)
+				.await?
+				.into_iter()
+				.map(|model| (model.id, domain::Chapter::from(&model)))
+				.collect()
+		};
+
+		let mut seen_works = std::collections::HashSet::new();
+		let mut out = Vec::new();
+		for progress in rows {
+			if !seen_works.insert(progress.work_id) {
+				continue;
+			}
+			if let Some(chapter) = chapters_by_id.get(&progress.chapter_id) {
+				out.push((domain::ReadingProgress::from(&progress), chapter.clone()));
+			}
+			if out.len() as u64 >= limit {
+				break;
+			}
+		}
+		Ok(out)
 	}
 }

@@ -4,6 +4,15 @@ use uuid::Uuid;
 
 use crate::{Vault, VaultError, VaultResult};
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ContinueReadingItem {
+	pub work: domain::Work,
+	pub last_read: domain::Chapter,
+	pub next_chapter: Option<domain::Chapter>,
+	pub chapters_read: usize,
+	pub chapters_total: usize,
+}
+
 impl Vault {
 	pub async fn mark_read(&self, user_id: UserId, chapter_id: ChapterId) -> VaultResult<ReadingProgress> {
 		let chapter = self
@@ -28,5 +37,27 @@ impl Vault {
 
 	pub async fn read_chapter_ids(&self, user_id: UserId, work_id: WorkId) -> VaultResult<Vec<ChapterId>> {
 		Ok(self.db.read_chapter_ids(user_id, work_id).await?)
+	}
+
+	pub async fn continue_reading(&self, user_id: UserId) -> VaultResult<Vec<ContinueReadingItem>> {
+		let recent = self.db.recent_progress(user_id, 12).await?;
+		let mut items = Vec::with_capacity(recent.len());
+		for (_progress, last_read) in recent {
+			let Some(work) = self.db.get_work(last_read.work_id).await? else {
+				continue;
+			};
+			let chapters = self.db.chapters_for_work(work.id).await?;
+			let chapters_total = chapters.len();
+			let position = chapters.iter().position(|chapter| chapter.id == last_read.id);
+			let next_chapter = position.and_then(|index| chapters.get(index + 1).cloned());
+			items.push(ContinueReadingItem {
+				work,
+				last_read,
+				next_chapter,
+				chapters_read: position.map(|index| index + 1).unwrap_or(0),
+				chapters_total,
+			});
+		}
+		Ok(items)
 	}
 }

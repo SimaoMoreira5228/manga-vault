@@ -1,7 +1,7 @@
 mod auth;
 mod cache;
 mod library;
-mod reading;
+pub mod reading;
 pub mod work_refresh;
 mod works;
 
