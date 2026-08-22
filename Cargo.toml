@@ -1,0 +1,83 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/domain",
+    "crates/application",
+    "crates/persistence",
+    "crates/source-sdk",
+    "crates/source-runtime-lua",
+    "crates/source-runtime-wasm",
+    "crates/source-manager",
+    "crates/jobs",
+    "apps/server",
+    "tools/migrate",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+domain = { path = "crates/domain" }
+application = { path = "crates/application" }
+persistence = { path = "crates/persistence" }
+source-sdk = { path = "crates/source-sdk" }
+source-runtime-lua = { path = "crates/source-runtime-lua" }
+source-runtime-wasm = { path = "crates/source-runtime-wasm" }
+source-manager = { path = "crates/source-manager" }
+jobs = { path = "crates/jobs" }
+
+axum = { version = "0.8", features = ["macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+sea-orm = { version = "2", features = [
+    "sqlx-sqlite",
+    "sqlx-postgres",
+    "sqlx-mysql",
+    "runtime-tokio-native-tls",
+    "macros",
+    "with-chrono",
+    "with-json",
+    "with-uuid",
+] }
+sea-orm-migration = { version = "2", features = [
+    "sqlx-sqlite",
+    "sqlx-postgres",
+    "sqlx-mysql",
+    "runtime-tokio-native-tls",
+] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tower-http = { version = "0.7", features = ["fs", "trace", "cors"] }
+argon2 = "0.5"
+async-trait = "0.1"
+reqwest = { version = "0.13", features = ["json", "cookies"] }
+scraper = "0.27"
+mlua = { version = "0.12", features = [
+    "lua54",
+    "serde",
+    "async",
+    "vendored",
+    "send",
+    "error-send",
+] }
+wasmtime = "48"
+wasmtime-wasi = "48"
+futures = "0.3"
+dashmap = "6"
+parking_lot = "0.12"
+toml = "1.1"
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite"] }
+
+[workspace.lints.clippy]
+all = { level = "warn" }
+pedantic = { level = "warn" }
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

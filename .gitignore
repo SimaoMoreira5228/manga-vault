@@ -1,0 +1,10 @@
+/local
+/target
+/data
+node_modules/
+.svelte-kit/
+build/
+dist/
+.env
+*.db
+*.sqlite
