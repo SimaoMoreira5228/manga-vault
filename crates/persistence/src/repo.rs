@@ -1,0 +1,145 @@
+use async_trait::async_trait;
+use chrono::{DateTime, Utc};
+use domain::{
+	Category, Chapter, ChapterId, LibraryEntry, ReadingProgress, Session, SourceId, User, UserId, Work, WorkId, WorkKind,
+};
+
+use crate::StoreResult;
+
+#[derive(Debug, Clone)]
+pub struct SourceRecord {
+	pub id: SourceId,
+	pub name: String,
+	pub version: String,
+	pub kind: WorkKind,
+	pub icon_url: Option<String>,
+	pub referer_url: Option<String>,
+	pub base_url: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct JobRow {
+	pub id: uuid::Uuid,
+	pub kind: String,
+	pub subject: String,
+	pub attempts: i64,
+}
+
+#[async_trait]
+pub trait SourceRepository: Send + Sync {
+	async fn upsert_source(&self, source: &SourceRecord) -> StoreResult<()>;
+	async fn list_sources(&self) -> StoreResult<Vec<SourceRecord>>;
+}
+
+#[async_trait]
+pub trait WorkRepository: Send + Sync {
+	async fn save_work_snapshot(&self, work: &Work, chapters: &[Chapter]) -> StoreResult<Work>;
+	async fn get_work(&self, id: WorkId) -> StoreResult<Option<Work>>;
+	async fn get_work_by_remote(&self, source_id: &SourceId, remote_url: &str) -> StoreResult<Option<Work>>;
+	async fn get_works(&self, ids: &[WorkId]) -> StoreResult<Vec<Work>>;
+	async fn stale_work_ids(&self, older_than: DateTime<Utc>, limit: u64) -> StoreResult<Vec<WorkId>>;
+
+	async fn chapters_for_work(&self, work_id: WorkId) -> StoreResult<Vec<Chapter>>;
+	async fn get_chapter(&self, id: ChapterId) -> StoreResult<Option<Chapter>>;
+}
+
+#[async_trait]
+pub trait UserRepository: Send + Sync {
+	async fn create_user(&self, username: &str, password_hash: &str) -> StoreResult<User>;
+	async fn get_user(&self, id: UserId) -> StoreResult<Option<User>>;
+	async fn get_user_by_username(&self, username: &str) -> StoreResult<Option<User>>;
+}
+
+#[async_trait]
+pub trait SessionRepository: Send + Sync {
+	async fn create_session(&self, session: Session) -> StoreResult<()>;
+	async fn get_session(&self, token: uuid::Uuid) -> StoreResult<Option<Session>>;
+	async fn touch_session(&self, token: uuid::Uuid, seen_at: DateTime<Utc>) -> StoreResult<()>;
+	async fn delete_session(&self, token: uuid::Uuid) -> StoreResult<()>;
+	async fn sessions_for_user(&self, user_id: UserId) -> StoreResult<Vec<Session>>;
+}
+
+#[async_trait]
+pub trait LibraryRepository: Send + Sync {
+	async fn add_to_library(
+		&self,
+		user_id: UserId,
+		work_id: WorkId,
+		category_id: Option<uuid::Uuid>,
+	) -> StoreResult<LibraryEntry>;
+	async fn remove_from_library(&self, user_id: UserId, work_id: WorkId) -> StoreResult<()>;
+	async fn library_entries(&self, user_id: UserId) -> StoreResult<Vec<LibraryEntry>>;
+	async fn set_entry_category(
+		&self,
+		entry_id: uuid::Uuid,
+		user_id: UserId,
+		category_id: Option<uuid::Uuid>,
+	) -> StoreResult<()>;
+
+	async fn create_category(&self, user_id: UserId, name: &str) -> StoreResult<Category>;
+	async fn delete_category(&self, user_id: UserId, id: uuid::Uuid) -> StoreResult<()>;
+	async fn categories(&self, user_id: UserId) -> StoreResult<Vec<Category>>;
+}
+
+#[async_trait]
+pub trait ProgressRepository: Send + Sync {
+	async fn mark_read(&self, progress: ReadingProgress) -> StoreResult<()>;
+	async fn mark_unread(&self, user_id: UserId, chapter_id: ChapterId) -> StoreResult<()>;
+	async fn read_chapter_ids(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Vec<ChapterId>>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JobKind {
+	RefreshWork,
+	CleanupExpiredData,
+}
+
+impl JobKind {
+	pub fn as_str(&self) -> &'static str {
+		match self {
+			Self::RefreshWork => "refresh_work",
+			Self::CleanupExpiredData => "cleanup_expired_data",
+		}
+	}
+
+	#[allow(clippy::should_implement_trait)]
+	pub fn from_str(raw: &str) -> Option<Self> {
+		match raw {
+			"refresh_work" => Some(Self::RefreshWork),
+			"cleanup_expired_data" => Some(Self::CleanupExpiredData),
+			_ => None,
+		}
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JobStatus {
+	Pending,
+	Running,
+	Retrying,
+	Done,
+	Dead,
+}
+
+impl JobStatus {
+	pub fn as_str(&self) -> &'static str {
+		match self {
+			Self::Pending => "pending",
+			Self::Running => "running",
+			Self::Retrying => "retrying",
+			Self::Done => "done",
+			Self::Dead => "dead",
+		}
+	}
+}
+
+#[async_trait]
+pub trait JobRepository: Send + Sync {
+	async fn enqueue(&self, kind: JobKind, subject: &str, next_attempt_at: DateTime<Utc>) -> StoreResult<bool>;
+
+	/// NOTE: claim-then-mark is not replica-safe; hosted multi-replica mode
+	/// must switch to SELECT ... FOR UPDATE SKIP LOCKED on Postgres.
+	async fn claim_due(&self, now: DateTime<Utc>, limit: u64) -> StoreResult<Vec<JobRow>>;
+	async fn complete(&self, job_id: uuid::Uuid) -> StoreResult<()>;
+	async fn fail(&self, job_row: JobRow, error: &str, retry_at: Option<DateTime<Utc>>) -> StoreResult<()>;
+}
