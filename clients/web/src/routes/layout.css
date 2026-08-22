@@ -1,0 +1,67 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+
+@theme {
+	--color-surface: #1a120b;
+	--color-surface-dim: #1a120b;
+	--color-surface-bright: #42372f;
+	--color-surface-lowest: #150c06;
+	--color-surface-low: #231a13;
+	--color-surface-container: #271e16;
+	--color-surface-high: #322820;
+	--color-surface-highest: #3e332b;
+	--color-on-surface: #f2dfd3;
+	--color-on-surface-variant: #dbc2b0;
+	--color-outline: #a38c7c;
+	--color-outline-variant: #554336;
+	--color-primary: #ffb77d;
+	--color-on-primary: #4d2600;
+	--color-primary-container: #d97707;
+	--color-on-primary-container: #432100;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: rgba(68, 226, 205, 0.12);
+	--color-error: #ffb4ab;
+	--color-on-error: #690005;
+
+	--font-display: 'Playfair Display', Georgia, serif;
+	--font-body: 'Geist', ui-sans-serif, system-ui, sans-serif;
+
+	--radius-card: 0.5rem;
+}
+
+html {
+	background-color: var(--color-surface);
+	color: var(--color-on-surface);
+	font-family: var(--font-body);
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+}
+
+.label-caps {
+	font-size: 0.75rem;
+	font-weight: 500;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.mono-label {
+	font-size: 0.6875rem;
+	line-height: 1rem;
+}
+
+.material-symbols-outlined {
+	font-family: 'Material Symbols Outlined';
+	font-weight: normal;
+	font-style: normal;
+	line-height: 1;
+	letter-spacing: normal;
+	text-transform: none;
+	display: inline-block;
+	white-space: nowrap;
+	direction: ltr;
+	user-select: none;
+}
