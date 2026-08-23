@@ -150,6 +150,23 @@ class RemoteService implements VaultService {
 	bool get supportsDownloads => false;
 
 	@override
+	Future<List<ContinueItem>> continueReading() async {
+		final payload = await _send('GET', '/api/me/continue-reading');
+		return [
+			for (final item in payload as List)
+				ContinueItem(
+					workId: item['work']['id'] as String,
+					title: item['work']['title'] as String,
+					coverUrl: item['work']['cover_url'] as String?,
+					chapterId: (item['next_chapter'] ?? item['last_read'])['id'] as String,
+				),
+		];
+	}
+
+	@override
+	Future<void> refreshWork({required String workId}) => _send('POST', '/api/works/$workId/refresh');
+
+	@override
 	Future<void> downloadChapter({required String chapterId}) async =>
 		throw UnsupportedError('downloads are device-local');
 

@@ -20,6 +20,7 @@ class _WorkPageState extends State<WorkPage> {
 	Set<String> read = {};
 	Set<String> downloaded = {};
 	bool inLibrary = false;
+	bool refreshing = false;
 
 	@override
 	void initState() {
@@ -55,6 +56,23 @@ class _WorkPageState extends State<WorkPage> {
 				builder: (_) => ReaderPage(vault: widget.vault, chapters: chapters, index: index),
 			))
 			.then((_) => _refresh());
+	}
+
+	Future<void> _refreshFromSource() async {
+		setState(() => refreshing = true);
+		try {
+			await widget.vault.refreshWork(workId: widget.details.id);
+			await _refresh();
+			if (mounted) {
+				ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Refreshed from source')));
+			}
+		} catch (e) {
+			if (mounted) {
+				ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Refresh failed: $e')));
+			}
+		} finally {
+			if (mounted) setState(() => refreshing = false);
+		}
 	}
 
 	Future<void> _refresh() async {
@@ -98,6 +116,17 @@ class _WorkPageState extends State<WorkPage> {
 							SliverAppBar(
 								title: Text(details.title),
 								actions: [
+									IconButton(
+										icon: refreshing
+												? const SizedBox(
+													width: 18,
+													height: 18,
+													child: CircularProgressIndicator(strokeWidth: 2),
+												)
+												: const Icon(Icons.refresh),
+										onPressed: refreshing ? null : _refreshFromSource,
+										tooltip: 'Check for updates',
+									),
 									IconButton(
 										icon: Icon(inLibrary ? Icons.favorite : Icons.favorite_border),
 										onPressed: () => _toggleLibrary(details.id),

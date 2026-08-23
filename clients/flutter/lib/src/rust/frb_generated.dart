@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -1497131945;
+  int get rustContentHash => -905351426;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -103,7 +103,7 @@ abstract class RustLibApi extends BaseApi {
     required LocalVault that,
   });
 
-  Future<List<WorkSummary>> crateApiLocalLocalVaultContinueReading({
+  Future<List<ContinueItem>> crateApiLocalLocalVaultContinueReading({
     required LocalVault that,
   });
 
@@ -175,6 +175,11 @@ abstract class RustLibApi extends BaseApi {
   });
 
   Future<List<String>> crateApiLocalLocalVaultReadChapters({
+    required LocalVault that,
+    required String workId,
+  });
+
+  Future<void> crateApiLocalLocalVaultRefreshWork({
     required LocalVault that,
     required String workId,
   });
@@ -440,7 +445,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<List<WorkSummary>> crateApiLocalLocalVaultContinueReading({
+  Future<List<ContinueItem>> crateApiLocalLocalVaultContinueReading({
     required LocalVault that,
   }) {
     return handler.executeNormal(
@@ -459,7 +464,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_work_summary,
+          decodeSuccessData: sse_decode_list_continue_item,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiLocalLocalVaultContinueReadingConstMeta,
@@ -1037,6 +1042,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiLocalLocalVaultRefreshWork({
+    required LocalVault that,
+    required String workId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(workId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 22,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultRefreshWorkConstMeta,
+        argValues: [that, workId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultRefreshWorkConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_refresh_work",
+        argNames: ["that", "workId"],
+      );
+
+  @override
   Future<void> crateApiLocalLocalVaultRemoveDownload({
     required LocalVault that,
     required String chapterId,
@@ -1053,7 +1096,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 23,
             port: port_,
           );
         },
@@ -1091,7 +1134,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 24,
             port: port_,
           );
         },
@@ -1129,7 +1172,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1171,7 +1214,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1211,7 +1254,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1253,7 +1296,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 28,
             port: port_,
           );
         },
@@ -1293,7 +1336,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1329,7 +1372,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1367,7 +1410,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 31,
             port: port_,
           );
         },
@@ -1402,7 +1445,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 31,
+            funcId: 32,
             port: port_,
           );
         },
@@ -1529,6 +1572,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ContinueItem dco_decode_continue_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ContinueItem(
+      workId: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      coverUrl: dco_decode_opt_String(arr[2]),
+      chapterId: dco_decode_opt_String(arr[3]),
+    );
+  }
+
+  @protected
   PlatformInt64 dco_decode_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeI64(raw);
@@ -1562,6 +1619,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<ChapterSummary> dco_decode_list_chapter_summary(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_chapter_summary).toList();
+  }
+
+  @protected
+  List<ContinueItem> dco_decode_list_continue_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_continue_item).toList();
   }
 
   @protected
@@ -1823,6 +1886,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ContinueItem sse_decode_continue_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_workId = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_coverUrl = sse_decode_opt_String(deserializer);
+    var var_chapterId = sse_decode_opt_String(deserializer);
+    return ContinueItem(
+      workId: var_workId,
+      title: var_title,
+      coverUrl: var_coverUrl,
+      chapterId: var_chapterId,
+    );
+  }
+
+  @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getPlatformInt64();
@@ -1870,6 +1948,20 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var ans_ = <ChapterSummary>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
       ans_.add(sse_decode_chapter_summary(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<ContinueItem> sse_decode_list_continue_item(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ContinueItem>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_continue_item(deserializer));
     }
     return ans_;
   }
@@ -2168,6 +2260,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_continue_item(ContinueItem self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.workId, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_opt_String(self.coverUrl, serializer);
+    sse_encode_opt_String(self.chapterId, serializer);
+  }
+
+  @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putPlatformInt64(self);
@@ -2210,6 +2311,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
       sse_encode_chapter_summary(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_continue_item(
+    List<ContinueItem> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_continue_item(item, serializer);
     }
   }
 
@@ -2414,7 +2527,7 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
   Future<void> clearTranslationProvider() => RustLib.instance.api
       .crateApiLocalLocalVaultClearTranslationProvider(that: this);
 
-  Future<List<WorkSummary>> continueReading() =>
+  Future<List<ContinueItem>> continueReading() =>
       RustLib.instance.api.crateApiLocalLocalVaultContinueReading(that: this);
 
   Future<ProfileSummary> createProfile({required String name, String? pin}) =>
@@ -2483,6 +2596,9 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
       .instance
       .api
       .crateApiLocalLocalVaultReadChapters(that: this, workId: workId);
+
+  Future<void> refreshWork({required String workId}) => RustLib.instance.api
+      .crateApiLocalLocalVaultRefreshWork(that: this, workId: workId);
 
   Future<void> removeDownload({required String chapterId}) => RustLib
       .instance

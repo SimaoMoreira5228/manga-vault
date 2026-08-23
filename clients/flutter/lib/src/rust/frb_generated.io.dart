@@ -68,6 +68,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ChapterSummary dco_decode_chapter_summary(dynamic raw);
 
   @protected
+  ContinueItem dco_decode_continue_item(dynamic raw);
+
+  @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
 
   @protected
@@ -81,6 +84,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<ChapterSummary> dco_decode_list_chapter_summary(dynamic raw);
+
+  @protected
+  List<ContinueItem> dco_decode_list_continue_item(dynamic raw);
 
   @protected
   List<LibraryItem> dco_decode_list_library_item(dynamic raw);
@@ -173,6 +179,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ChapterSummary sse_decode_chapter_summary(SseDeserializer deserializer);
 
   @protected
+  ContinueItem sse_decode_continue_item(SseDeserializer deserializer);
+
+  @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
 
   @protected
@@ -186,6 +195,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<ChapterSummary> sse_decode_list_chapter_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<ContinueItem> sse_decode_list_continue_item(
     SseDeserializer deserializer,
   );
 
@@ -297,6 +311,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_continue_item(ContinueItem self, SseSerializer serializer);
+
+  @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
 
   @protected
@@ -314,6 +331,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_chapter_summary(
     List<ChapterSummary> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_continue_item(
+    List<ContinueItem> self,
     SseSerializer serializer,
   );
 

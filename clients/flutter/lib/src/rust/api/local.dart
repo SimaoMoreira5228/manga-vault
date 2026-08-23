@@ -31,7 +31,7 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<void> clearTranslationProvider();
 
-  Future<List<WorkSummary>> continueReading();
+  Future<List<ContinueItem>> continueReading();
 
   Future<ProfileSummary> createProfile({required String name, String? pin});
 
@@ -68,6 +68,8 @@ abstract class LocalVault implements RustOpaqueInterface {
   Future<List<ProfileSummary>> profiles();
 
   Future<List<String>> readChapters({required String workId});
+
+  Future<void> refreshWork({required String workId});
 
   Future<void> removeDownload({required String chapterId});
 
@@ -172,6 +174,34 @@ class ChapterSummary {
           id == other.id &&
           title == other.title &&
           sortIndex == other.sortIndex;
+}
+
+class ContinueItem {
+  final String workId;
+  final String title;
+  final String? coverUrl;
+  final String? chapterId;
+
+  const ContinueItem({
+    required this.workId,
+    required this.title,
+    this.coverUrl,
+    this.chapterId,
+  });
+
+  @override
+  int get hashCode =>
+      workId.hashCode ^ title.hashCode ^ coverUrl.hashCode ^ chapterId.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ContinueItem &&
+          runtimeType == other.runtimeType &&
+          workId == other.workId &&
+          title == other.title &&
+          coverUrl == other.coverUrl &&
+          chapterId == other.chapterId;
 }
 
 class LibraryItem {

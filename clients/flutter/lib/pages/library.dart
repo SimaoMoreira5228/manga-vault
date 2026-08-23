@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../service/sync_scheduler.dart';
 import '../service/vault_service.dart';
+import 'continue_reading.dart';
 import 'work_page.dart';
 
 class LibraryPage extends StatefulWidget {
@@ -41,19 +43,43 @@ class _LibraryPageState extends State<LibraryPage> {
 			appBar: AppBar(title: const Text('Library')),
 			body: shown == null
 					? const Center(child: CircularProgressIndicator())
-					: shown.isEmpty
-						? const Center(child: Text('Nothing in your library yet'))
-						: ListView.builder(
-							itemCount: shown.length,
-							itemBuilder: (context, index) => ListTile(
-								leading: shown[index].work.coverUrl != null
-										? Image.network(shown[index].work.coverUrl!, width: 40)
-										: const Icon(Icons.menu_book),
-								title: Text(shown[index].work.title),
-								subtitle: Text('${shown[index].work.chapters.length} chapters'),
-								onTap: () => _open(shown[index]),
-							),
+					: RefreshIndicator(
+						onRefresh: () async {
+							await _load();
+							SyncScheduler.instance.nudge();
+						},
+						child: CustomScrollView(
+							physics: const AlwaysScrollableScrollPhysics(),
+							slivers: [
+								SliverToBoxAdapter(
+									child: ContinueReadingRow(vault: widget.vault, onChanged: () {}),
+								),
+								if (shown.isEmpty)
+									const SliverFillRemaining(
+										hasScrollBody: false,
+										child: Center(child: Text('Nothing in your library yet')),
+									)
+								else
+									SliverList(
+										delegate: SliverChildBuilderDelegate(
+											(context, index) {
+												final item = shown[index];
+												final cover = item.work.coverUrl;
+												return ListTile(
+													leading: cover != null
+															? Image.network(cover, width: 40)
+															: const Icon(Icons.menu_book),
+													title: Text(item.work.title),
+													subtitle: Text('${item.work.chapters.length} chapters'),
+													onTap: () => _open(item),
+												);
+											},
+											childCount: shown.length,
+										),
+									),
+							],
 						),
+					),
 		);
 	}
 }

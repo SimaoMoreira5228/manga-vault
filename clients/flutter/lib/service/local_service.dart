@@ -44,6 +44,12 @@ class LocalService implements VaultService {
 	Future<List<String>> readChapters({required String workId}) => _vault.readChapters(workId: workId);
 
 	@override
+	Future<List<ContinueItem>> continueReading() => _vault.continueReading();
+
+	@override
+	Future<void> refreshWork({required String workId}) => _vault.refreshWork(workId: workId);
+
+	@override
 	bool get supportsDownloads => true;
 
 	@override

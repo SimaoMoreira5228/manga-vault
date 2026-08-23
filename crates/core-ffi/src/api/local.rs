@@ -380,17 +380,25 @@ impl LocalVault {
 		Ok(())
 	}
 
-	pub async fn continue_reading(&self) -> anyhow::Result<Vec<WorkSummary>> {
+	pub async fn continue_reading(&self) -> anyhow::Result<Vec<ContinueItem>> {
 		let items = self.vault.continue_reading(self.user_id).await?;
 		Ok(items
 			.into_iter()
-			.map(|item| WorkSummary {
-				id: Some(item.work.id.to_string()),
+			.map(|item| ContinueItem {
+				work_id: item.work.id.to_string(),
 				title: item.work.title,
-				remote_url: item.last_read.remote_url,
 				cover_url: item.work.cover_url,
+				chapter_id: item
+					.next_chapter
+					.or(Some(item.last_read))
+					.map(|chapter| chapter.id.to_string()),
 			})
 			.collect())
+	}
+
+	pub async fn refresh_work(&self, work_id: String) -> anyhow::Result<()> {
+		self.vault.refresh_work(work_id.parse()?).await?;
+		Ok(())
 	}
 }
 
@@ -398,6 +406,13 @@ pub struct PluginRepo {
 	pub id: String,
 	pub name: String,
 	pub url: String,
+}
+
+pub struct ContinueItem {
+	pub work_id: String,
+	pub title: String,
+	pub cover_url: Option<String>,
+	pub chapter_id: Option<String>,
 }
 
 pub struct ProfileSummary {
