@@ -191,6 +191,14 @@ export const api = {
 	requestRefresh: (workId: string) => post(`/api/works/${workId}/refresh`),
 	chapterContent: (chapterId: string) => get<ChapterContent>(`/api/chapters/${chapterId}`),
 
+	translationMode: () =>
+		get<{ translation: { mode: string } }>('/api/me/capabilities').then((r) => r.translation.mode),
+	saveTranslationSettings: (payload: { api_key: string; base_url?: string; model?: string }) =>
+		put('/api/me/translation-settings', payload),
+	clearTranslationSettings: () => del('/api/me/translation-settings'),
+	translateChapter: (chapterId: string, to: string) =>
+		post<{ content: string; cached: boolean }>(`/api/chapters/${chapterId}/translate`, { to }),
+
 	markRead: (chapterId: string) => put<{ id: string }>(`/api/chapters/${chapterId}/read`),
 	markUnread: (chapterId: string) => del(`/api/chapters/${chapterId}/read`),
 

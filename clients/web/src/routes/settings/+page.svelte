@@ -2,6 +2,7 @@
 import { api, type InviteInfo, type RegistrationMode, type Session } from '$lib/api';
 import { appearance, THEMES } from '$lib/appearance.svelte';
 import { auth } from '$lib/auth.svelte';
+import IconTranslate from '~icons/material-symbols/translate';
 
 let sessions = $state<Session[]>([]);
 let loading = $state(true);
@@ -10,11 +11,22 @@ let registrationMode: RegistrationMode | null = $state(null);
 let invites = $state<InviteInfo[]>([]);
 let inviteBusy = $state(false);
 
+let translationMode = $state<string>('unavailable');
+let translationKey = $state('');
+let translationBaseUrl = $state('');
+let translationModel = $state('');
+let translationBusy = $state(false);
+let translationMessage = $state('');
+
 $effect(() => {
 	api
 		.sessions()
 		.then((result) => (sessions = result))
 		.finally(() => (loading = false));
+	api
+		.translationMode()
+		.then((mode) => (translationMode = mode))
+		.catch(() => (translationMode = 'unavailable'));
 	api
 		.registrationAdminView()
 		.then((view) => {
@@ -54,6 +66,40 @@ async function revokeInvite(code: string) {
 async function revoke(token: string) {
 	await api.revokeSession(token);
 	sessions = sessions.filter((session) => session.token !== token);
+}
+
+async function saveTranslationSettings() {
+	translationBusy = true;
+	translationMessage = '';
+	try {
+		await api.saveTranslationSettings({
+			api_key: translationKey,
+			base_url: translationBaseUrl || undefined,
+			model: translationModel || undefined,
+		});
+		translationKey = '';
+		translationMessage = 'Key stored: used only for your own requests.';
+		translationMode = await api.translationMode();
+	} catch (error) {
+		translationMessage = `Failed: ${error instanceof Error ? error.message : String(error)}`;
+	} finally {
+		translationBusy = false;
+	}
+}
+
+async function clearTranslationSettings() {
+	translationBusy = true;
+	translationMessage = '';
+	try {
+		await api.clearTranslationSettings();
+		translationKey = '';
+		translationMessage = 'Stored key removed.';
+		translationMode = await api.translationMode();
+	} catch (error) {
+		translationMessage = `Failed: ${error instanceof Error ? error.message : String(error)}`;
+	} finally {
+		translationBusy = false;
+	}
 }
 </script>
 
@@ -111,7 +157,7 @@ async function revoke(token: string) {
 			<span>
 				<span class="title-md block">Pure black background</span>
 				<span class="body-md mt-0.5 block text-on-surface-variant">
-					Use #000 for the app background — ideal for OLED screens.
+					Use #000 for the app background: ideal for OLED screens.
 				</span>
 			</span>
 			<input
@@ -139,6 +185,83 @@ async function revoke(token: string) {
 		</button>
 	</section>
 
+	<section class="mt-12" aria-labelledby="translation-heading">
+		<h2 id="translation-heading" class="title-lg flex items-center gap-2">
+			<IconTranslate class="size-5" />
+			Translation
+		</h2>
+		{#if translationMode === 'unavailable'}
+			<p class="body-md mt-2 text-on-surface-variant">
+				Translation is not available on this server.
+			</p>
+		{:else}
+			<p class="body-md mt-2 text-on-surface-variant">
+				{#if translationMode === 'byok'}
+					Using your own API key: usage is billed to your provider account only.
+				{:else if translationMode === 'instance'}
+					Served by this server's own Ollama instance.
+				{:else}
+					Configure a key to enable novel translation.
+				{/if}
+				Your key is stored encrypted on the server and is never used for anyone else's requests.
+			</p>
+			<form
+				class="mt-4 grid gap-3 sm:grid-cols-2"
+				onsubmit={(event) => {
+					event.preventDefault();
+					saveTranslationSettings();
+				}}
+			>
+				<label class="body-md text-on-surface-variant">
+					API key
+					<input
+						type="password"
+						bind:value={translationKey}
+						required
+						placeholder="sk-… / AIza…"
+						class="mt-1 w-full rounded-card border border-outline-variant/60 bg-surface-container px-3 py-2 outline-none focus:border-primary"
+					>
+				</label>
+				<label class="body-md text-on-surface-variant">
+					Base URL <span class="mono-label">(optional)</span>
+					<input
+						bind:value={translationBaseUrl}
+						placeholder="https://generativelanguage.googleapis.com/v1beta/openai"
+						class="mt-1 w-full rounded-card border border-outline-variant/60 bg-surface-container px-3 py-2 outline-none focus:border-primary"
+					>
+				</label>
+				<label class="body-md text-on-surface-variant">
+					Model <span class="mono-label">(optional)</span>
+					<input
+						bind:value={translationModel}
+						placeholder="gemini-2.0-flash"
+						class="mt-1 w-full rounded-card border border-outline-variant/60 bg-surface-container px-3 py-2 outline-none focus:border-primary"
+					>
+				</label>
+				<div class="flex items-end gap-3">
+					<button
+						type="submit"
+						disabled={translationBusy || translationKey.length === 0}
+						class="label-caps rounded-card border border-primary/60 px-4 py-2.5 text-primary hover:border-primary disabled:opacity-40"
+					>
+						Save key
+					</button>
+					<button
+						type="button"
+						disabled={translationBusy || translationMode !== 'byok'}
+						class="mono-label uppercase text-error hover:underline disabled:opacity-40"
+						onclick={clearTranslationSettings}
+					>
+						Remove key
+					</button>
+				</div>
+			</form>
+			{#if translationMessage}
+				<p class="mono-label mt-2 text-secondary">{translationMessage}</p>
+			{/if}
+		{/if}
+	</section>
+
 	<section class="mt-12" aria-labelledby="registration-heading">
 		<h2 id="registration-heading" class="title-lg">Registration</h2>
 		{#if registrationMode !== null}
@@ -150,8 +273,8 @@ async function revoke(token: string) {
 					class="rounded-card border border-outline-variant/60 bg-surface-container px-4 py-2.5 outline-none focus:border-primary"
 					aria-label="Registration mode"
 				>
-					<option value="open">Open — anyone can register</option>
-					<option value="closed">Closed — no new accounts</option>
+					<option value="open">Open: anyone can register</option>
+					<option value="closed">Closed: no new accounts</option>
 					<option value="invite">Invite codes only</option>
 				</select>
 				<button

@@ -258,7 +258,7 @@ function chapterDate(chapter: Chapter): string {
 							class="min-w-0 flex-1 truncate body-md hover:text-primary"
 						>
 							{index === currentChapterIndex + 1 && nextChapter?.id === chapter.id
-								? `Ch. ${chapter.sort_index + 1} — ${chapter.title}`
+								? `Ch. ${chapter.sort_index + 1}: ${chapter.title}`
 								: chapter.title}
 						</a>
 						{#if readIds.has(chapter.id)}
@@ -268,7 +268,7 @@ function chapterDate(chapter: Chapter): string {
 					</li>
 				{:else}
 					<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
-						No chapters imported yet — check for updates
+						No chapters imported yet: check for updates
 					</li>
 				{/each}
 			</ol>

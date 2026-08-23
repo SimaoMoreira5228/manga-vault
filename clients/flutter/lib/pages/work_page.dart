@@ -250,7 +250,7 @@ class _ReaderPageState extends State<ReaderPage> {
 	bool get _canTranslate => translatedHtml == null && translationMode != null && translationMode != 'off' && translationMode != 'unavailable';
 
 	Future<void> _translate() async {
-		final controller = TextEditingController(text: 'pt');
+		final controller = TextEditingController(text: 'en');
 		final language = await showDialog<String>(
 			context: context,
 			builder: (context) => AlertDialog(

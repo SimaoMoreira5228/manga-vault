@@ -10,12 +10,19 @@ let chapters = $state<Chapter[]>([]);
 let content = $state<ChapterContent | null>(null);
 let currentPage = $state(1);
 
+let translationMode = $state<string>('unavailable');
+let translatedHtml = $state<string | null>(null);
+let translating = $state(false);
+let language = $state('en');
+const languages = ['pt', 'es', 'en', 'fr', 'de', 'it', 'ja', 'ko', 'zh'];
+
 const images = $derived(content && 'Images' in content ? content.Images : []);
 const html = $derived(content && 'Html' in content ? content.Html : null);
 const chapterIndex = $derived(chapters.findIndex((chapter) => chapter.id === params.chapterId));
 const chapterTitle = $derived(chapters[chapterIndex]?.title ?? '');
 const previousChapter = $derived(chapterIndex >= 0 ? (chapters[chapterIndex + 1] ?? null) : null);
 const nextChapter = $derived(chapterIndex >= 0 ? (chapters[chapterIndex - 1] ?? null) : null);
+const canTranslate = $derived(html !== null && !translating && translationMode !== 'unavailable');
 
 function page_url_search(): string {
 	return typeof window === 'undefined' ? '' : window.location.search;
@@ -38,6 +45,19 @@ async function markRead() {
 	await api.markRead(params.chapterId).catch(() => undefined);
 }
 
+async function translate() {
+	translating = true;
+	try {
+		const result = await api.translateChapter(params.chapterId, language);
+		translatedHtml = result.content;
+	} catch (error) {
+		translatedHtml = null;
+		console.error('translation failed', error);
+	} finally {
+		translating = false;
+	}
+}
+
 $effect(() => {
 	load();
 });
@@ -45,6 +65,11 @@ $effect(() => {
 async function load() {
 	content = await api.chapterContent(params.chapterId);
 	workId = new URLSearchParams(window.location.search).get('work');
+	translatedHtml = null;
+	api
+		.translationMode()
+		.then((mode) => (translationMode = mode))
+		.catch(() => (translationMode = 'unavailable'));
 	if (workId) {
 		const data = await api.getWork(workId);
 		work = data.work;
@@ -69,7 +94,7 @@ async function load() {
 			<IconMenu class="size-5" />
 		</a>
 		<h1 class="truncate px-4 font-display text-base">
-			{work ? `${work.title} — ${chapterTitle}` : chapterTitle}
+			{work ? `${work.title}: ${chapterTitle}` : chapterTitle}
 		</h1>
 		<span class="mono-label shrink-0 text-secondary">
 			Ch. {chapterIndex + 1} / Pg. {currentPage}/{images.length || 1}
@@ -90,8 +115,40 @@ async function load() {
 				{/each}
 			</div>
 		{:else if html}
+			{#if translationMode !== 'unavailable'}
+				<div class="mx-auto flex max-w-3xl flex-wrap items-center justify-end gap-2 px-6 pt-4">
+					{#if translatedHtml !== null}
+						<button
+							type="button"
+							class="label-caps rounded-card border border-outline-variant/60 px-3 py-1.5 hover:border-outline"
+							onclick={() => (translatedHtml = null)}
+						>
+							Original
+						</button>
+					{/if}
+					<input
+						bind:value={language}
+						list="translation-languages"
+						class="w-20 rounded-card border border-outline-variant/60 bg-surface-container px-2 py-1.5 mono-label uppercase outline-none focus:border-primary"
+						aria-label="Target language"
+					>
+					<datalist id="translation-languages">
+						{#each languages as code (code)}
+							<option value={code}></option>
+						{/each}
+					</datalist>
+					<button
+						type="button"
+						disabled={!canTranslate}
+						class="label-caps rounded-card border border-primary/60 px-3 py-1.5 text-primary hover:border-primary disabled:opacity-40"
+						onclick={translate}
+					>
+						{translating ? 'Translating…' : 'Translate'}
+					</button>
+				</div>
+			{/if}
 			<article class="prose prose-invert prose-p:leading-relaxed mx-auto max-w-3xl px-6 pb-24">
-				{@html html}
+				{@html translatedHtml ?? html}
 			</article>
 		{:else}
 			<p class="mono-label p-10 text-center text-on-surface-variant">Loading chapter…</p>

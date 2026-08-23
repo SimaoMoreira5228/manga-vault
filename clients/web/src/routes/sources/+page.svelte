@@ -173,7 +173,7 @@ async function uninstall(pluginId: string) {
 				</article>
 			{:else}
 				<p class="body-md col-span-full text-on-surface-variant">
-					No {filter === 'all' ? '' : `${filter} `}sources installed — install one from the catalog
+					No {filter === 'all' ? '' : `${filter} `}sources installed: install one from the catalog
 					below.
 				</p>
 			{/each}
@@ -184,7 +184,7 @@ async function uninstall(pluginId: string) {
 		<h2 id="catalog-heading" class="title-lg">Plugin Catalog</h2>
 		{#if managedByOperator}
 			<p class="body-md mt-1 text-on-surface-variant">
-				Sources are managed by the server operator — contact them to request new sources.
+				Sources are managed by the server operator: contact them to request new sources.
 			</p>
 		{:else}
 			<p class="body-md mt-1 text-on-surface-variant">
@@ -230,7 +230,7 @@ async function uninstall(pluginId: string) {
 					</li>
 				{:else}
 					<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
-						Nothing available — add a repository to browse its plugins.
+						Nothing available: add a repository to browse its plugins.
 					</li>
 				{/each}
 			</ul>

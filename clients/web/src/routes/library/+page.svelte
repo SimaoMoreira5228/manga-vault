@@ -44,7 +44,7 @@ $effect(() => {
 				<SeriesCard {work} kind={work.kind} />
 			{:else}
 				<p class="body-md col-span-full text-on-surface-variant">
-					Your {filter === 'all' ? '' : `${filter} `}library is empty — explore sources to import
+					Your {filter === 'all' ? '' : `${filter} `}library is empty: explore sources to import
 					works.
 				</p>
 			{/each}
