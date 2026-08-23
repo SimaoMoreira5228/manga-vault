@@ -11,6 +11,20 @@ pub struct ApiError {
 }
 
 impl ApiError {
+	pub fn bad_request(message: impl Into<String>) -> Self {
+		Self {
+			status: StatusCode::BAD_REQUEST,
+			message: message.into(),
+		}
+	}
+
+	pub fn forbidden(message: impl Into<String>) -> Self {
+		Self {
+			status: StatusCode::FORBIDDEN,
+			message: message.into(),
+		}
+	}
+
 	pub fn not_found(message: impl Into<String>) -> Self {
 		Self {
 			status: StatusCode::NOT_FOUND,

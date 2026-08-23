@@ -1,6 +1,7 @@
 mod jobs;
 mod library;
 mod registration;
+pub mod translation;
 mod users;
 mod works;
 

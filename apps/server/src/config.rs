@@ -10,6 +10,10 @@ pub struct ServerConfig {
 	pub cors_origins: Vec<String>,
 	pub admin_username: Option<String>,
 	pub registration_mode: Option<application::registration::RegistrationMode>,
+	pub ollama_endpoint: Option<String>,
+	pub ollama_model: String,
+	pub secret_key: Option<String>,
+	pub translation_enabled: bool,
 }
 
 fn env_or(key: &str, fallback: &str) -> String {
@@ -43,6 +47,10 @@ impl ServerConfig {
 			admin_username: env_opt("ADMIN_USERNAME"),
 			registration_mode: env_opt("REGISTRATION_MODE")
 				.and_then(|raw| application::registration::RegistrationMode::parse(&raw)),
+			ollama_endpoint: env_opt("OLLAMA_ENDPOINT"),
+			ollama_model: env_or("OLLAMA_MODEL", "qwen2.5:7b"),
+			secret_key: env_opt("SECRET_KEY"),
+			translation_enabled: std::env::var("TRANSLATION_ENABLED").as_deref() != Ok("false"),
 		}
 	}
 }

@@ -6,6 +6,7 @@ pub mod profiles;
 pub mod reading;
 pub mod registration;
 pub mod sync;
+pub mod user_settings;
 pub mod work_refresh;
 mod works;
 

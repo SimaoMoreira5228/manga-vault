@@ -14,7 +14,10 @@ persistence = { workspace = true }
 jobs = { workspace = true }
 source-manager = { workspace = true }
 source-sdk = { workspace = true }
+translation = { workspace = true }
 source-updater = { workspace = true }
+aes-gcm = { workspace = true }
+rand = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }
 tower-http = { workspace = true }

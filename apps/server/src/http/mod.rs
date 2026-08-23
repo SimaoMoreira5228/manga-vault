@@ -8,6 +8,7 @@ mod reading_handlers;
 mod registration_handlers;
 mod sources_handlers;
 mod sync_handlers;
+mod translation_handlers;
 mod works_handlers;
 
 use axum::Router;
@@ -55,6 +56,15 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/plugins/{plugin_id}", delete(plugin_handlers::uninstall))
 		.route("/api/sync/state", get(sync_handlers::state))
 		.route("/api/sync/apply", post(sync_handlers::apply))
+		.route("/api/me/capabilities", get(translation_handlers::my_capabilities))
+		.route(
+			"/api/me/translation-settings",
+			put(translation_handlers::save_translation_settings).delete(translation_handlers::clear_translation_settings),
+		)
+		.route(
+			"/api/chapters/{chapter_id}/translate",
+			post(translation_handlers::translate_chapter),
+		)
 		.route(
 			"/api/registration",
 			get(registration_handlers::public_mode).put(registration_handlers::update),

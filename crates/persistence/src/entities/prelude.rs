@@ -11,3 +11,5 @@ pub use super::sessions::Entity as Sessions;
 pub use super::sources::Entity as Sources;
 pub use super::users::Entity as Users;
 pub use super::works::Entity as Works;
+pub use crate::entities::translation_cache::Entity as TranslationCache;
+pub use crate::entities::user_settings::Entity as UserSettings;

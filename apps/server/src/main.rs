@@ -1,5 +1,6 @@
 mod config;
 mod http;
+mod secrets;
 mod state;
 
 use std::sync::Arc;
@@ -66,10 +67,20 @@ async fn main() {
 		scheduler.run(Arc::new(RefreshExecutor(scheduler_vault)), shutdown_rx).await;
 	});
 
+	let ollama_translator = server_config.ollama_endpoint.clone().map(|endpoint| {
+		let translator: std::sync::Arc<dyn translation::Translator> = std::sync::Arc::new(
+			translation::OllamaTranslator::new(endpoint, server_config.ollama_model.clone()),
+		);
+		translator
+	});
+
 	let app = http::router(AppState {
 		vault: vault.clone(),
 		updater,
 		admin_username: server_config.admin_username,
+		ollama_translator,
+		secret_key: server_config.secret_key.clone(),
+		translation_enabled: server_config.translation_enabled,
 	});
 
 	let app = if server_config.cors_origins.is_empty() {

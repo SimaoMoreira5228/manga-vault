@@ -6,6 +6,7 @@ use domain::{
 use serde::{Deserialize, Serialize};
 
 use crate::StoreResult;
+pub use crate::sea_store::translation::UserSettingsRecord;
 
 #[derive(Debug, Clone)]
 pub struct SourceRecord {
@@ -70,6 +71,14 @@ pub trait UserRepository: Send + Sync {
 	async fn get_user(&self, id: UserId) -> StoreResult<Option<User>>;
 	async fn get_user_by_username(&self, username: &str) -> StoreResult<Option<User>>;
 	async fn list_users(&self) -> StoreResult<Vec<User>>;
+}
+
+#[async_trait]
+pub trait TranslationRepository: Send + Sync {
+	async fn get_user_settings(&self, user_id: UserId) -> StoreResult<Option<UserSettingsRecord>>;
+	async fn save_user_settings(&self, settings: &UserSettingsRecord) -> StoreResult<()>;
+	async fn translation_cached(&self, key: &str) -> StoreResult<Option<String>>;
+	async fn translation_cache_put(&self, key: &str, content: &str) -> StoreResult<()>;
 }
 
 #[async_trait]
