@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -7,9 +9,11 @@ import 'package:path_provider/path_provider.dart';
 import 'pages/discover.dart';
 import 'pages/library.dart';
 import 'pages/profile_picker.dart';
+import 'pages/settings.dart';
 import 'pages/sources.dart';
 import 'service/local_service.dart';
 import 'service/remote_service.dart';
+import 'service/sync_engine.dart';
 import 'service/vault_service.dart';
 import 'src/rust/api/local.dart' as local;
 import 'src/rust/frb_generated.dart';
@@ -64,17 +68,31 @@ class _ConnectPageState extends State<ConnectPage> {
 				return;
 			}
 			final saved = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-			await _enter(RemoteService(baseUrl: saved['base_url'] as String, token: saved['token'] as String));
+			final kind = saved['kind'] ?? 'remote';
+			if (kind == 'link') {
+				final vault = await local.start(
+					dataDir: '${support.path}/local',
+					pluginsDir: '${support.path}/plugins',
+				);
+				final service = LocalService(vault);
+				final remote = RemoteService(baseUrl: saved['base_url'] as String, token: saved['token'] as String);
+				await _enter(service, true, remote: remote);
+				return;
+			}
+			await _enter(RemoteService(baseUrl: saved['base_url'] as String, token: saved['token'] as String), false);
 		} catch (_) {
 			setState(() => busy = false);
 		}
 	}
 
-	Future<void> _enter(VaultService service) async {
+	Future<void> _enter(VaultService service, bool isLocal, {RemoteService? remote}) async {
 		if (!mounted) return;
 		Navigator.of(context).pushReplacement(MaterialPageRoute(
-			builder: (_) => HomePage(service: service),
+			builder: (_) => HomePage(service: service, isLocal: isLocal),
 		));
+		if (remote != null) {
+			unawaited(SyncEngine(local: service, remote: remote).synchronize().then<void>((_) {}, onError: (_) {}));
+		}
 	}
 
 	Future<void> _startLocal() async {
@@ -93,7 +111,7 @@ class _ConnectPageState extends State<ConnectPage> {
 			if (!mounted) return;
 			if (unlocked) {
 				await vault.selectProfile(id: profiles.first.id);
-				await _enter(LocalService(vault));
+				await _enter(LocalService(vault), true);
 			} else {
 				setState(() {
 					busy = false;
@@ -116,7 +134,7 @@ class _ConnectPageState extends State<ConnectPage> {
 			return ProfilePickerPage(
 				vault: pendingVault!,
 				profiles: pendingProfiles,
-				onSelected: (service) => _enter(service),
+				onSelected: (service) => _enter(service, true),
 			);
 		}
 		return Scaffold(
@@ -191,11 +209,11 @@ class _ConnectPageState extends State<ConnectPage> {
 								);
 								final support = await getApplicationSupportDirectory();
 								_remoteStateFile(support).writeAsStringSync(
-									jsonEncode({'base_url': service.baseUrl, 'token': service.token}),
+									jsonEncode({'kind': 'remote', 'base_url': service.baseUrl, 'token': service.token}),
 								);
 								if (!context.mounted) return;
 								Navigator.of(context).pop();
-								await _enter(service);
+								await _enter(service, false);
 							} catch (e) {
 								if (!context.mounted) return;
 								ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
@@ -210,14 +228,15 @@ class _ConnectPageState extends State<ConnectPage> {
 }
 
 class HomePage extends StatelessWidget {
-	const HomePage({super.key, required this.service});
+	const HomePage({super.key, required this.service, required this.isLocal});
 
 	final VaultService service;
+	final bool isLocal;
 
 	@override
 	Widget build(BuildContext context) {
 		return DefaultTabController(
-			length: 3,
+			length: isLocal ? 4 : 3,
 			animationDuration: Duration.zero,
 			child: Scaffold(
 				body: TabBarView(
@@ -225,13 +244,15 @@ class HomePage extends StatelessWidget {
 						DiscoverPage(vault: service),
 						LibraryPage(vault: service),
 						SourcesPage(vault: service),
+						if (isLocal) SettingsPage(service: service as LocalService),
 					],
 				),
 				bottomNavigationBar: TabBar(
-					tabs: const [
-						Tab(icon: Icon(Icons.explore_outlined), text: 'Discover'),
-						Tab(icon: Icon(Icons.collections_bookmark_outlined), text: 'Library'),
-						Tab(icon: Icon(Icons.extension_outlined), text: 'Plugins'),
+					tabs: [
+						const Tab(icon: Icon(Icons.explore_outlined), text: 'Discover'),
+						const Tab(icon: Icon(Icons.collections_bookmark_outlined), text: 'Library'),
+						const Tab(icon: Icon(Icons.extension_outlined), text: 'Plugins'),
+						if (isLocal) const Tab(icon: Icon(Icons.settings_outlined), text: 'Settings'),
 					],
 					labelColor: Theme.of(context).colorScheme.primary,
 					unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,

@@ -182,6 +182,16 @@ impl LocalVault {
 			.collect())
 	}
 
+	pub async fn export_sync_state(&self) -> anyhow::Result<String> {
+		Ok(serde_json::to_string(&self.vault.export_sync_state(self.user_id).await?)?)
+	}
+
+	pub async fn apply_sync_state(&self, state_json: String) -> anyhow::Result<()> {
+		let state: application::sync::SyncState = serde_json::from_str(&state_json)?;
+		self.vault.apply_sync_state(self.user_id, state).await?;
+		Ok(())
+	}
+
 	pub async fn add_to_library(&self, work_id: String) -> anyhow::Result<()> {
 		self.vault.add_to_library(self.user_id, work_id.parse()?, None).await?;
 		Ok(())

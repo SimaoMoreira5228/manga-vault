@@ -25,6 +25,8 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<void> addToLibrary({required String workId});
 
+  Future<void> applySyncState({required String stateJson});
+
   Future<ChapterBody> chapterContent({required String chapterId});
 
   Future<List<WorkSummary>> continueReading();
@@ -34,6 +36,8 @@ abstract class LocalVault implements RustOpaqueInterface {
   Future<void> downloadChapter({required String chapterId});
 
   Future<List<String>> downloadedChapters({required String workId});
+
+  Future<String> exportSyncState();
 
   Future<WorkDetails> getWork({required String workId});
 

@@ -112,7 +112,7 @@ impl LibraryRepository for SeaStore {
 
 #[async_trait::async_trait]
 impl ProgressRepository for SeaStore {
-	async fn mark_read(&self, progress: ReadingProgress) -> StoreResult<()> {
+	async fn mark_read(&self, progress: ReadingProgress) -> StoreResult<bool> {
 		let exists = reading_progress::Entity::find()
 			.filter(reading_progress::Column::UserId.eq(progress.user_id))
 			.filter(reading_progress::Column::ChapterId.eq(progress.chapter_id))
@@ -120,7 +120,7 @@ impl ProgressRepository for SeaStore {
 			.await?
 			.is_some();
 		if exists {
-			return Ok(());
+			return Ok(false);
 		}
 		reading_progress::ActiveModel {
 			id: Set(progress.id),
@@ -131,7 +131,7 @@ impl ProgressRepository for SeaStore {
 		}
 		.insert(&self.db)
 		.await?;
-		Ok(())
+		Ok(true)
 	}
 
 	async fn mark_unread(&self, user_id: uuid::Uuid, chapter_id: uuid::Uuid) -> StoreResult<()> {
@@ -150,6 +150,16 @@ impl ProgressRepository for SeaStore {
 			.all(&self.db)
 			.await?;
 		Ok(models.iter().map(|p| p.chapter_id).collect())
+	}
+
+	async fn read_progress(&self, user_id: uuid::Uuid) -> StoreResult<Vec<domain::ReadingProgress>> {
+		Ok(reading_progress::Entity::find()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.all(&self.db)
+			.await?
+			.into_iter()
+			.map(|row| domain::ReadingProgress::from(&row))
+			.collect())
 	}
 
 	async fn recent_progress(

@@ -115,6 +115,13 @@ class RemoteService implements VaultService {
 	}
 
 	@override
+	Future<Map<String, dynamic>> exportSyncState() async => await _send('GET', '/api/sync/state');
+
+	@override
+	Future<void> applySyncState(Map<String, dynamic> state) =>
+		_send('POST', '/api/sync/apply', body: jsonEncode(state));
+
+	@override
 	Future<void> downloadChapter({required String chapterId}) async =>
 		throw UnsupportedError('downloads are device-local');
 

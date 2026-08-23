@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'vault_service.dart';
 
 class LocalService implements VaultService {
@@ -67,4 +69,12 @@ class LocalService implements VaultService {
 
 	@override
 	Future<bool> uninstallPlugin({required String pluginId}) => _vault.uninstallPlugin(pluginId: pluginId);
+
+	@override
+	Future<Map<String, dynamic>> exportSyncState() async =>
+		jsonDecode(await _vault.exportSyncState()) as Map<String, dynamic>;
+
+	@override
+	Future<void> applySyncState(Map<String, dynamic> state) =>
+		_vault.applySyncState(stateJson: jsonEncode(state));
 }

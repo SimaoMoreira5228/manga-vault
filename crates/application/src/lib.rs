@@ -5,6 +5,7 @@ mod library;
 pub mod profiles;
 pub mod reading;
 pub mod registration;
+pub mod sync;
 pub mod work_refresh;
 mod works;
 

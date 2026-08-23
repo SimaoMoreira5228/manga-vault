@@ -14,6 +14,8 @@ abstract class VaultService {
 	Future<List<LibraryItem>> listLibrary();
 	Future<void> markRead({required String chapterId});
 	Future<List<String>> readChapters({required String workId});
+	Future<Map<String, dynamic>> exportSyncState();
+	Future<void> applySyncState(Map<String, dynamic> state);
 	Future<void> downloadChapter({required String chapterId});
 	Future<void> removeDownload({required String chapterId});
 	Future<List<String>> downloadedChapters({required String workId});

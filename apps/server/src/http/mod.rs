@@ -7,6 +7,7 @@ mod proxy_handler;
 mod reading_handlers;
 mod registration_handlers;
 mod sources_handlers;
+mod sync_handlers;
 mod works_handlers;
 
 use axum::Router;
@@ -52,6 +53,8 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/plugins/catalog", get(plugin_handlers::catalog))
 		.route("/api/plugins/{plugin_id}/install", put(plugin_handlers::install))
 		.route("/api/plugins/{plugin_id}", delete(plugin_handlers::uninstall))
+		.route("/api/sync/state", get(sync_handlers::state))
+		.route("/api/sync/apply", post(sync_handlers::apply))
 		.route(
 			"/api/registration",
 			get(registration_handlers::public_mode).put(registration_handlers::update),

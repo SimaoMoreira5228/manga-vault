@@ -987,6 +987,7 @@ dependencies = [
  "domain",
  "flutter_rust_bridge",
  "persistence",
+ "serde_json",
  "source-manager",
  "source-sdk",
  "source-updater",
