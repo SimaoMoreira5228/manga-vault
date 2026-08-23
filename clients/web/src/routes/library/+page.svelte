@@ -1,14 +1,19 @@
 <script lang="ts">
-import { api, type ContinueReadingItem, proxied } from '$lib/api';
-import ProgressBar from '$lib/components/ProgressBar.svelte';
+import { api, type LibraryEntry, type Work, type WorkKind } from '$lib/api';
+import SeriesCard from '$lib/components/SeriesCard.svelte';
 
-let items = $state<ContinueReadingItem[]>([]);
+let items = $state<[LibraryEntry, Work][]>([]);
+let filter = $state<'all' | WorkKind>('all');
 let loading = $state(true);
+
+const filtered = $derived(
+	filter === 'all' ? items : items.filter(([, work]) => work.kind === filter),
+);
 
 $effect(() => {
 	api
-		.continueReading()
-		.then((result) => (items = result))
+		.library()
+		.then((library) => (items = library.entries))
 		.finally(() => (loading = false));
 });
 </script>
@@ -16,33 +21,31 @@ $effect(() => {
 <div class="px-4 py-6 md:px-10 md:py-10">
 	<h1 class="font-display text-3xl font-bold md:text-4xl">Library</h1>
 
-	{#if !loading}
-		<div class="mt-8 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-6">
-			{#each items as item (item.work.id)}
-				<a
-					href="/work/{item.work.id}"
-					class="group block overflow-hidden rounded-card border border-outline-variant/40 hover:border-outline"
+	{#if items.length > 0}
+		<div class="mt-6 flex gap-2">
+			{#each ['all', 'manga', 'novel'] as const as option (option)}
+				<button
+					type="button"
+					class="label-caps rounded-card border px-4 py-2 capitalize transition-colors {filter === option
+						? 'border-primary text-primary'
+						: 'border-outline-variant/50 text-on-surface-variant hover:border-outline'}"
+					onclick={() => (filter = option)}
+					aria-pressed={filter === option}
 				>
-					<div class="relative aspect-2/3 bg-surface-high">
-						{#if item.work.cover_url}
-							<img
-								src={proxied(item.work.cover_url)}
-								alt={item.work.title}
-								class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-							>
-						{/if}
-						<span class="mono-label absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5">
-							CH. {item.chapters_read}/{item.chapters_total}
-						</span>
-					</div>
-					<h3 class="title-md mt-2 line-clamp-2 px-1">{item.work.title}</h3>
-					<div class="px-1 pb-1">
-						<ProgressBar value={item.chapters_read} max={item.chapters_total} />
-					</div>
-				</a>
+					{option === 'all' ? 'All' : `${option}s`}
+				</button>
+			{/each}
+		</div>
+	{/if}
+
+	{#if !loading}
+		<div class="mt-8 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
+			{#each filtered as [entry, work] (entry.id)}
+				<SeriesCard {work} kind={work.kind} />
 			{:else}
 				<p class="body-md col-span-full text-on-surface-variant">
-					Your library is empty — explore sources to import works.
+					Your {filter === 'all' ? '' : `${filter} `}library is empty — explore sources to import
+					works.
 				</p>
 			{/each}
 		</div>

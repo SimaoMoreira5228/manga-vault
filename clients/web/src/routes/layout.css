@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
 
 @theme {
 	--color-surface: #1a120b;
@@ -30,15 +31,82 @@
 	--radius-card: 0.5rem;
 }
 
+[data-theme="forest"] {
+	--color-surface: #111812;
+	--color-surface-dim: #111812;
+	--color-surface-bright: #33463a;
+	--color-surface-lowest: #0c110d;
+	--color-surface-low: #141c16;
+	--color-surface-container: #18231a;
+	--color-surface-high: #1e2c20;
+	--color-surface-highest: #253627;
+	--color-on-surface: #dcebdd;
+	--color-on-surface-variant: #b0c4af;
+	--color-outline: #8fa48c;
+	--color-outline-variant: #2c3f30;
+	--color-primary: #a8d5a2;
+	--color-on-primary: #0d2a13;
+	--color-primary-container: #63a86b;
+	--color-on-primary-container: #081508;
+}
+
+[data-theme="slate"] {
+	--color-surface: #0d1518;
+	--color-surface-dim: #0d1518;
+	--color-surface-bright: #2b4048;
+	--color-surface-lowest: #080f12;
+	--color-surface-low: #10191d;
+	--color-surface-container: #142024;
+	--color-surface-high: #19282d;
+	--color-surface-highest: #1f3238;
+	--color-on-surface: #d5e4e8;
+	--color-on-surface-variant: #adc0c7;
+	--color-outline: #8aa4aa;
+	--color-outline-variant: #23353b;
+	--color-primary: #80c8d4;
+	--color-on-primary: #00363d;
+	--color-primary-container: #56a9ba;
+	--color-on-primary-container: #03242a;
+}
+
+[data-pure-black] {
+	--color-surface: #000000;
+	--color-surface-dim: #000000;
+	--color-surface-lowest: #000000;
+}
+
 html {
 	background-color: var(--color-surface);
 	color: var(--color-on-surface);
 	font-family: var(--font-body);
+	color-scheme: dark;
 }
 
 body {
 	margin: 0;
 	min-height: 100dvh;
+}
+
+@utility title-lg {
+	font-size: 1.25rem;
+	line-height: 1.75rem;
+	font-weight: 600;
+}
+
+@utility title-md {
+	font-size: 1rem;
+	line-height: 1.5rem;
+	font-weight: 600;
+}
+
+@utility body-lg {
+	font-size: 1rem;
+	line-height: 1.625rem;
+}
+
+@utility body-md {
+	font-size: 0.875rem;
+	line-height: 1.375rem;
 }
 
 .label-caps {

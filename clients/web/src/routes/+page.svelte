@@ -5,6 +5,7 @@ import {
 	proxied,
 	type RemoteWorkSummary,
 	type SourceInfo,
+	type WorkKind,
 } from '$lib/api';
 import ProgressBar from '$lib/components/ProgressBar.svelte';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
@@ -15,14 +16,14 @@ import IconVerified from '~icons/material-symbols/verified';
 
 let continueReading = $state<ContinueReadingItem[]>([]);
 let sources = $state<SourceInfo[]>([]);
-let selectedSource = $state<string | null>(null);
-let latest = $state<{ source: string; items: RemoteWorkSummary[] }[]>([]);
+let latest = $state<
+	{ sourceId: string; sourceName: string; kind: WorkKind; items: RemoteWorkSummary[] }[]
+>([]);
+let trendingSourceId = $state<string | null>(null);
 let trending = $state<{ rank: number; item: RemoteWorkSummary }[]>([]);
 let loading = $state(true);
 
-function placeholderWork(item: RemoteWorkSummary, sourceId: string) {
-	return { id: '', title: item.title, cover_url: item.cover_url, source_id: sourceId };
-}
+const trendingSource = $derived(sources.find((source) => source.id === trendingSourceId) ?? null);
 
 $effect(() => {
 	load();
@@ -32,28 +33,42 @@ async function load() {
 	const [shelf, allSources] = await Promise.all([api.continueReading(), api.sources()]);
 	continueReading = shelf;
 	sources = allSources;
-	selectedSource = allSources[0]?.id ?? null;
+	trendingSourceId ??= allSources[0]?.id ?? null;
 
-	if (selectedSource) {
-		const [latestResults, trendingResults] = await Promise.all([
-			Promise.allSettled(allSources.map((source) => api.latestFromSource(source.id))),
-			api.trendingFromSource(selectedSource).catch(() => []),
-		]);
-		latest = latestResults.map((result, index) => ({
-			source: allSources[index].name,
-			items: result.status === 'fulfilled' ? result.value : [],
-		}));
-		trending = trendingResults.slice(0, 5).map((item, index) => ({ rank: index + 1, item }));
-	}
+	const [latestResults, trendingResults] = await Promise.all([
+		Promise.allSettled(allSources.map((source) => api.latestFromSource(source.id))),
+		trendingSourceId
+			? api.trendingFromSource(trendingSourceId).catch(() => [])
+			: Promise.resolve([]),
+	]);
+	latest = latestResults.map((result, index) => ({
+		sourceId: allSources[index].id,
+		sourceName: allSources[index].name,
+		kind: allSources[index].kind,
+		items: result.status === 'fulfilled' ? result.value : [],
+	}));
+	trending = (trendingResults as RemoteWorkSummary[]).slice(0, 5).map((item, index) => ({
+		rank: index + 1,
+		item,
+	}));
 	loading = false;
 }
 
-function importFrom(sourceId: string | null, remoteUrl: string): (() => Promise<void>) | undefined {
-	if (!sourceId) return undefined;
-	return async () => {
-		const work = await api.importWork(sourceId, remoteUrl);
-		window.location.href = `/work/${work.id}`;
-	};
+async function switchTrending(sourceId: string) {
+	if (!sourceId || trendingSourceId === sourceId) return;
+	trendingSourceId = sourceId;
+	trending = [];
+	try {
+		const results = await api.trendingFromSource(sourceId);
+		trending = results.slice(0, 5).map((item, index) => ({ rank: index + 1, item }));
+	} catch {
+		trending = [];
+	}
+}
+
+async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
+	const work = await api.importWork(sourceId, remoteUrl);
+	window.location.href = `/work/${work.id}`;
 }
 </script>
 
@@ -92,16 +107,16 @@ function importFrom(sourceId: string | null, remoteUrl: string): (() => Promise<
 										>
 									{/if}
 									<span
+										class={`mono-label absolute top-2 left-2 rounded px-1.5 py-0.5 uppercase ${entry.work.kind === 'novel'
+											? 'bg-secondary/20 text-secondary backdrop-blur-sm'
+											: 'bg-primary/20 text-primary backdrop-blur-sm'}`}
+									>
+										{entry.work.kind}
+									</span>
+									<span
 										class="mono-label absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5"
 									>
 										CH. {entry.chapters_read}
-									</span>
-									<span
-										class="mono-label absolute bottom-2 left-2 rounded px-1.5 py-0.5 {entry.work.kind === 'novel'
-											? 'bg-secondary/20 text-secondary'
-											: 'bg-primary/20 text-primary'}"
-									>
-										{entry.work.kind.toUpperCase()}
 									</span>
 								</div>
 							</a>
@@ -115,25 +130,37 @@ function importFrom(sourceId: string | null, remoteUrl: string): (() => Promise<
 
 		<section class="mt-12 grid gap-8 xl:grid-cols-[1fr_18rem]" aria-labelledby="latest-heading">
 			<div>
-				<div class="mb-4 flex items-center justify-between">
-					<h2 id="latest-heading" class="title-lg flex items-center gap-2">
-						<IconVerified class="size-5 text-primary" />
-						Latest from Sources
-					</h2>
-				</div>
-				{#each latest as group (group.source)}
+				<h2 id="latest-heading" class="title-lg mb-4 flex items-center gap-2">
+					<IconVerified class="size-5 text-primary" />
+					Latest from Sources
+				</h2>
+				{#each latest as group (group.sourceId)}
 					{#if group.items.length > 0}
-						<h3 class="label-caps mt-6 mb-3 first:mt-0 text-outline">{group.source}</h3>
+						<a
+							href="/sources"
+							class="label-caps mt-6 mb-3 block first:mt-0 text-outline hover:text-primary"
+						>
+							{group.sourceName}
+							<span class="ml-2 normal-case opacity-70">{group.kind}</span>
+						</a>
 						<div class="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
-							{#each group.items as item (group.source + item.remote_url)}
+							{#each group.items as item (group.sourceId + item.remote_url)}
 								<SeriesCard
-									work={placeholderWork(item, sources.find((source) => source.name === group.source)?.id ?? '')}
+									work={{
+										id: '',
+										title: item.title,
+										cover_url: item.cover_url,
+										source_id: group.sourceName,
+									}}
+									kind={group.kind}
 									label="IMPORT +"
-									onclick={importFrom(selectedSource, item.remote_url)}
+									onclick={() => importFrom(group.sourceId, item.remote_url)}
 								/>
 							{/each}
 						</div>
 					{/if}
+				{:else}
+					<p class="body-md text-on-surface-variant">No sources have reported updates yet.</p>
 				{/each}
 			</div>
 
@@ -145,6 +172,19 @@ function importFrom(sourceId: string | null, remoteUrl: string): (() => Promise<
 					<IconTrendingUp class="size-5 text-primary" />
 					Trending Now
 				</h2>
+				<div class="mt-3 flex flex-wrap gap-1.5">
+					{#each sources as source (source.id)}
+						<button
+							type="button"
+							class={`mono-label rounded-full border px-2.5 py-1 uppercase transition-colors ${trendingSourceId === source.id
+								? 'border-primary text-primary'
+								: 'border-outline-variant/50 text-on-surface-variant hover:border-outline'}`}
+							onclick={() => switchTrending(source.id)}
+						>
+							{source.name}
+						</button>
+					{/each}
+				</div>
 				<ol class="mt-4 space-y-4">
 					{#each trending as entry (entry.item.remote_url)}
 						<li class="flex items-center gap-3">
@@ -152,9 +192,14 @@ function importFrom(sourceId: string | null, remoteUrl: string): (() => Promise<
 							<button
 								type="button"
 								class="min-w-0 text-left"
-								onclick={importFrom(selectedSource, entry.item.remote_url)}
+								onclick={() => {
+									if (trendingSource) importFrom(trendingSource.id, entry.item.remote_url);
+								}}
 							>
-								<p class="truncate title-md">{entry.item.title}</p>
+								<p class="truncate title-md hover:text-primary">{entry.item.title}</p>
+								{#if trendingSource}
+									<p class="mono-label text-on-surface-variant">{trendingSource.kind}</p>
+								{/if}
 							</button>
 						</li>
 					{:else}

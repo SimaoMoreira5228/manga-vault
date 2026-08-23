@@ -41,8 +41,8 @@ async function load(id: string) {
 	chapters = data.chapters;
 	readIds = new Set(data.read_chapter_ids);
 
-	const entries = await fetch('/api/library', { credentials: 'include' }).then((r) => r.json());
-	inLibrary = (entries.entries as { work: Work }[]).some((entry) => entry.work.id === id);
+	const library = await api.library();
+	inLibrary = library.entries.some(([, entryWork]) => entryWork.id === id);
 }
 
 async function toggleLibrary() {
@@ -97,7 +97,26 @@ function chapterDate(chapter: Chapter): string {
 
 			<div class="min-w-0">
 				<h1 class="font-display text-4xl font-bold md:text-5xl">{work.title}</h1>
+				{#if work.alternative_names.length > 0}
+					<p class="body-md mt-2 text-on-surface-variant">
+						Also known as {work.alternative_names.slice(0, 3).join(' · ')}
+					</p>
+				{/if}
 				<div class="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2">
+					<span
+						class={`label-caps rounded px-2.5 py-1 uppercase ${work.kind === 'novel'
+							? 'bg-secondary-tint text-secondary'
+							: 'bg-primary/15 text-primary'}`}
+					>
+						{work.kind}
+					</span>
+					{#if work.status}
+						<span
+							class="label-caps rounded bg-surface-highest px-2.5 py-1 text-on-surface-variant capitalize"
+						>
+							{work.status}
+						</span>
+					{/if}
 					{#if work.authors.length > 0}
 						<p class="label-caps flex items-center gap-1.5 text-outline-variant">
 							<IconEdit class="size-3.5" />
@@ -114,9 +133,6 @@ function chapterDate(chapter: Chapter): string {
 						<IconPublic class="size-3.5" />
 						Source: <span class="text-on-surface">{work.source_id}</span>
 					</p>
-					<span class="label-caps rounded bg-secondary-tint px-2.5 py-1 text-secondary uppercase">
-						{work.status ?? work.kind}
-					</span>
 				</div>
 
 				<div class="mt-6 flex flex-wrap items-center gap-3">

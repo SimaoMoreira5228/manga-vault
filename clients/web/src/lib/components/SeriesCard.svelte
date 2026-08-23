@@ -1,15 +1,17 @@
 <script lang="ts">
-import { proxied } from '$lib/api';
+import { proxied, type WorkKind } from '$lib/api';
 import ProgressBar from './ProgressBar.svelte';
 
 let {
 	work,
 	label = null,
+	kind = null,
 	progress = null,
 	onclick = undefined,
 }: {
 	work: Pick<import('$lib/api').Work, 'id' | 'title' | 'cover_url' | 'source_id'>;
 	label?: string | null;
+	kind?: WorkKind | null;
 	progress?: { read: number; total: number } | null;
 	onclick?: () => void;
 } = $props();
@@ -27,19 +29,28 @@ let {
 					loading="lazy"
 					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
 				>
-				{#if label}
-					<span
-						class="mono-label absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-on-surface"
-					>
-						{label}
-					</span>
-				{/if}
 			{:else}
 				<div
 					class="flex h-full items-center justify-center p-4 text-center font-display text-lg text-on-surface-variant"
 				>
 					{work.title}
 				</div>
+			{/if}
+			{#if kind}
+				<span
+					class={`mono-label absolute top-2 left-2 rounded px-1.5 py-0.5 uppercase ${kind === 'novel'
+						? 'bg-secondary/20 text-secondary backdrop-blur-sm'
+						: 'bg-primary/20 text-primary backdrop-blur-sm'}`}
+				>
+					{kind}
+				</span>
+			{/if}
+			{#if label && work.cover_url}
+				<span
+					class="mono-label absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-on-surface"
+				>
+					{label}
+				</span>
 			{/if}
 		</div>
 		<h3 class="title-md mt-2 line-clamp-2 px-1">{work.title}</h3>

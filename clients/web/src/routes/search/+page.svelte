@@ -1,16 +1,21 @@
 <script lang="ts">
-import { api, proxied, type RemoteWorkSummary } from '$lib/api';
+import { api, type RemoteWorkSummary, type SourceInfo } from '$lib/api';
+import SeriesCard from '$lib/components/SeriesCard.svelte';
 
-let sources = $state<{ id: string; name: string }[]>([]);
+let sources = $state<SourceInfo[]>([]);
 let selected = $state<string | null>(null);
 let query = $state('');
+let page = $state(1);
 let results = $state<RemoteWorkSummary[]>([]);
 let busy = $state<string | null>(null);
 let searched = $state(false);
+let error = $state<string | null>(null);
+
+const selectedKind = $derived(sources.find((source) => source.id === selected)?.kind ?? null);
 
 $effect(() => {
 	api.sources().then((all) => {
-		sources = all.map((source) => ({ id: source.id, name: source.name }));
+		sources = all;
 		selected ??= all[0]?.id ?? null;
 	});
 });
@@ -18,16 +23,30 @@ $effect(() => {
 async function submit(event: SubmitEvent) {
 	event.preventDefault();
 	if (!selected || !query.trim()) return;
-	results = await api.searchSource(selected, query.trim());
+	page = 1;
+	await runSearch();
+}
+
+async function changePage(delta: number) {
+	if (!selected) return;
+	page += delta;
+	await runSearch();
+}
+
+async function runSearch() {
+	results = await api.searchSource(selected as string, query.trim(), page);
 	searched = true;
 }
 
 async function importAndOpen(remoteUrl: string) {
 	if (!selected) return;
 	busy = remoteUrl;
+	error = null;
 	try {
 		const work = await api.importWork(selected, remoteUrl);
 		window.location.href = `/work/${work.id}`;
+	} catch (cause) {
+		error = cause instanceof Error ? cause.message : 'import failed';
 	} finally {
 		busy = null;
 	}
@@ -49,7 +68,7 @@ async function importAndOpen(remoteUrl: string) {
 			class="rounded-card border border-outline-variant/60 bg-surface-container px-4 py-3 outline-none focus:border-primary"
 		>
 			{#each sources as source (source.id)}
-				<option value={source.id}>{source.name}</option>
+				<option value={source.id}>{source.name} · {source.kind}</option>
 			{/each}
 		</select>
 		<button
@@ -60,32 +79,44 @@ async function importAndOpen(remoteUrl: string) {
 		</button>
 	</form>
 
+	{#if error}
+		<p class="body-md mt-4 text-error" role="alert">{error}</p>
+	{/if}
+
 	<div class="mt-8 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
 		{#each results as item (item.remote_url)}
-			<button
-				type="button"
-				class="group block w-full text-left"
+			<SeriesCard
+				work={{ id: '', title: item.title, cover_url: item.cover_url, source_id: selected ?? '' }}
+				kind={selectedKind}
+				label={busy === item.remote_url ? 'IMPORTING…' : 'IMPORT +'}
 				onclick={() => importAndOpen(item.remote_url)}
-				disabled={busy !== null}
-			>
-				<div
-					class="relative aspect-2/3 overflow-hidden rounded-card border border-outline-variant/40 bg-surface-high"
-				>
-					{#if item.cover_url}
-						<img src={proxied(item.cover_url)} alt={item.title} class="h-full w-full object-cover">
-					{/if}
-					<span
-						class="mono-label absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 opacity-0 transition-opacity group-hover:opacity-100"
-					>
-						{busy === item.remote_url ? 'IMPORTING…' : 'IMPORT +'}
-					</span>
-				</div>
-				<h3 class="title-md mt-2 line-clamp-2">{item.title}</h3>
-			</button>
+			/>
 		{:else}
 			{#if searched}
 				<p class="body-md col-span-full text-on-surface-variant">No results for “{query}”.</p>
 			{/if}
 		{/each}
 	</div>
+
+	{#if results.length > 0}
+		<nav class="mt-8 flex items-center gap-4" aria-label="Search pagination">
+			<button
+				type="button"
+				class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline disabled:opacity-40"
+				disabled={page <= 1}
+				onclick={() => changePage(-1)}
+			>
+				Previous
+			</button>
+			<span class="mono-label text-on-surface-variant">Page {page}</span>
+			<button
+				type="button"
+				class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline disabled:opacity-40"
+				disabled={results.length === 0}
+				onclick={() => changePage(1)}
+			>
+				Next
+			</button>
+		</nav>
+	{/if}
 </div>

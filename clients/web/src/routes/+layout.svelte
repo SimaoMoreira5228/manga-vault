@@ -7,6 +7,7 @@ import favicon from '$lib/assets/favicon.svg';
 import { auth } from '$lib/auth.svelte';
 import IconClose from '~icons/material-symbols/close';
 import IconExplore from '~icons/material-symbols/explore';
+import IconExtension from '~icons/material-symbols/extension';
 import IconLogout from '~icons/material-symbols/logout';
 import IconMenu from '~icons/material-symbols/menu';
 import IconLibrary from '~icons/material-symbols/menu-book';
@@ -21,6 +22,7 @@ const navItems = [
 	{ href: '/library', label: 'Library', icon: IconLibrary },
 	{ href: '/updates', label: 'Updates', icon: IconUpdates },
 	{ href: '/', label: 'Explore', icon: IconExplore },
+	{ href: '/sources', label: 'Sources', icon: IconExtension },
 	{ href: '/settings', label: 'Settings', icon: IconSettings },
 ];
 
@@ -118,7 +120,7 @@ $effect(() => {
 			</main>
 
 			<nav
-				class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-outline-variant/30 bg-surface-low md:hidden"
+				class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-outline-variant/30 bg-surface-low md:hidden"
 				aria-label="Primary"
 			>
 				{#each navItems as item (item.href)}

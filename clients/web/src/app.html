@@ -3,12 +3,22 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="description" content="Manga Vault">
+		<meta name="theme-color" content="#1a120b">
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link
 			href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap"
 			rel="stylesheet"
 		>
+		<script>
+		try {
+			const stored = localStorage.getItem('mv-theme');
+			if (stored) document.documentElement.dataset.theme = stored;
+			if (localStorage.getItem('mv-pure-black') === '1')
+				document.documentElement.dataset.pureBlack = '';
+		} catch {}
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">

@@ -61,6 +61,21 @@ export interface Session {
 	last_seen_at: string;
 }
 
+export interface LibraryEntry {
+	id: string;
+	user_id: string;
+	work_id: string;
+	category_id: string | null;
+	created_at: string;
+}
+
+export interface Category {
+	id: string;
+	user_id: string;
+	name: string;
+	created_at: string;
+}
+
 export interface ContinueReadingItem {
 	work: Work;
 	last_read: Chapter;
@@ -151,6 +166,7 @@ export const api = {
 
 	continueReading: () => get<ContinueReadingItem[]>('/api/me/continue-reading'),
 
-	addToLibrary: (workId: string) => put<{ id: string }>('/api/library', { work_id: workId }),
+	library: () => get<{ entries: [LibraryEntry, Work][]; categories: Category[] }>('/api/library'),
+	addToLibrary: (workId: string) => put<LibraryEntry>('/api/library', { work_id: workId }),
 	removeFromLibrary: (workId: string) => del(`/api/library/${workId}`),
 };
