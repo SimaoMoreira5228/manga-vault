@@ -10,6 +10,7 @@ members = [
     "crates/source-manager",
     "crates/source-updater",
     "crates/jobs",
+    "crates/core-ffi",
     "apps/server",
     "tools/migrate",
 ]
@@ -28,6 +29,7 @@ source-runtime-wasm = { path = "crates/source-runtime-wasm" }
 source-manager = { path = "crates/source-manager" }
 source-updater = { path = "crates/source-updater" }
 jobs = { path = "crates/jobs" }
+core-ffi = { path = "crates/core-ffi" }
 
 axum = { version = "0.8", features = ["macros"] }
 serde = { version = "1", features = ["derive"] }

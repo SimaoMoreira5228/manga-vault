@@ -1,6 +1,7 @@
 mod auth;
 mod cache;
 mod library;
+pub mod profiles;
 pub mod reading;
 pub mod registration;
 pub mod work_refresh;
