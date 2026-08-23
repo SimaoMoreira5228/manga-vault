@@ -71,6 +71,24 @@ class LocalService implements VaultService {
 	Future<bool> uninstallPlugin({required String pluginId}) => _vault.uninstallPlugin(pluginId: pluginId);
 
 	@override
+	Future<String> translationMode() => _vault.translationMode();
+
+	@override
+	Future<void> setTranslationProvider({String? providerBaseUrl, String? apiKey, String? model}) =>
+		_vault.setTranslationProvider(
+			providerBaseUrl: providerBaseUrl,
+			apiKey: apiKey,
+			model: model,
+		);
+
+	@override
+	Future<void> clearTranslationProvider() => _vault.clearTranslationProvider();
+
+	@override
+	Future<String> translateChapter({required String chapterId, required String to}) =>
+		_vault.translateChapter(chapterId: chapterId, to: to);
+
+	@override
 	Future<Map<String, dynamic>> exportSyncState() async =>
 		jsonDecode(await _vault.exportSyncState()) as Map<String, dynamic>;
 

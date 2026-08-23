@@ -3,9 +3,9 @@ use domain::UserId;
 use sea_orm::{ActiveModelTrait, EntityTrait};
 use serde::{Deserialize, Serialize};
 
+use crate::StoreResult;
 use crate::entities::{translation_cache, user_settings};
 use crate::repo::TranslationRepository;
-use crate::StoreResult;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserSettingsRecord {

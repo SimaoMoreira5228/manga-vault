@@ -14,6 +14,10 @@ abstract class VaultService {
 	Future<List<LibraryItem>> listLibrary();
 	Future<void> markRead({required String chapterId});
 	Future<List<String>> readChapters({required String workId});
+	Future<String> translationMode();
+	Future<void> setTranslationProvider({String? providerBaseUrl, String? apiKey, String? model});
+	Future<void> clearTranslationProvider();
+	Future<String> translateChapter({required String chapterId, required String to});
 	Future<Map<String, dynamic>> exportSyncState();
 	Future<void> applySyncState(Map<String, dynamic> state);
 	Future<void> downloadChapter({required String chapterId});

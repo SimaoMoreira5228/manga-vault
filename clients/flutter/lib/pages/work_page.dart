@@ -230,6 +230,8 @@ class ReaderPage extends StatefulWidget {
 class _ReaderPageState extends State<ReaderPage> {
 	late ChapterSummary current;
 	late ChapterBody? body;
+	String? translatedHtml;
+	String? translationMode;
 
 	@override
 	void initState() {
@@ -237,12 +239,41 @@ class _ReaderPageState extends State<ReaderPage> {
 		current = widget.chapters[widget.index];
 		body = null;
 		_load(current.id);
+		widget.vault.translationMode().then((mode) {
+			if (mounted) setState(() => translationMode = mode);
+		}).catchError((_) {});
+	}
+
+	bool get _canTranslate => translatedHtml == null && translationMode != null && translationMode != 'off' && translationMode != 'unavailable';
+
+	Future<void> _translate() async {
+		final controller = TextEditingController(text: 'pt');
+		final language = await showDialog<String>(
+			context: context,
+			builder: (context) => AlertDialog(
+				title: const Text('Translate to'),
+				content: TextField(controller: controller, autofocus: true),
+				actions: [
+					TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+					FilledButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Translate')),
+				],
+			),
+		);
+		if (language == null || language.isEmpty) return;
+		final html = await widget.vault.translateChapter(chapterId: current.id, to: language);
+		if (!mounted) return;
+		setState(() => translatedHtml = html);
 	}
 
 	Future<void> _load(String chapterId) async {
 		final content = await widget.vault.chapterContent(chapterId: chapterId);
 		await widget.vault.markRead(chapterId: chapterId);
-		if (mounted) setState(() => body = content);
+		if (mounted) {
+			setState(() {
+				body = content;
+				translatedHtml = null;
+			});
+		}
 	}
 
 	Future<void> _go(int delta) async {
@@ -272,6 +303,8 @@ class _ReaderPageState extends State<ReaderPage> {
 				),
 				leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.of(context).pop()),
 				actions: [
+					if (_canTranslate)
+						IconButton(icon: const Icon(Icons.translate), onPressed: _translate),
 					IconButton(icon: const Icon(Icons.skip_previous), onPressed: widget.index > 0 ? () => _go(-1) : null),
 					IconButton(
 						icon: const Icon(Icons.skip_next),
@@ -297,7 +330,10 @@ class _ReaderPageState extends State<ReaderPage> {
 						constraints: const BoxConstraints(maxWidth: 720),
 						child: SingleChildScrollView(
 							padding: const EdgeInsets.all(24),
-							child: Text(_stripTags(html.field0), style: Theme.of(context).textTheme.bodyLarge),
+							child: Text(
+								_stripTags(translatedHtml ?? html.field0),
+								style: Theme.of(context).textTheme.bodyLarge,
+							),
 						),
 					),
 				),

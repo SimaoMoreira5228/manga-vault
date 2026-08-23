@@ -9,7 +9,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'local.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `chapter_summary`, `summary`, `work_details`
+// These functions are ignored because they are not marked as `pub`: `build_translator`, `chapter_summary`, `summary`, `work_details`
 
 Future<LocalVault> start({
   required String dataDir,
@@ -28,6 +28,8 @@ abstract class LocalVault implements RustOpaqueInterface {
   Future<void> applySyncState({required String stateJson});
 
   Future<ChapterBody> chapterContent({required String chapterId});
+
+  Future<void> clearTranslationProvider();
 
   Future<List<WorkSummary>> continueReading();
 
@@ -80,6 +82,19 @@ abstract class LocalVault implements RustOpaqueInterface {
   });
 
   Future<void> selectProfile({required String id, String? pin});
+
+  Future<void> setTranslationProvider({
+    String? providerBaseUrl,
+    String? apiKey,
+    String? model,
+  });
+
+  Future<String> translateChapter({
+    required String chapterId,
+    required String to,
+  });
+
+  Future<String> translationMode();
 
   Future<bool> uninstallPlugin({required String pluginId});
 }

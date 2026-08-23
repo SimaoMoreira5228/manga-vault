@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use application::Vault;
 use domain::{ChapterContent, UserId};
+use persistence::UserSettingsRecord;
 use source_manager::SourceManager;
 
 pub struct LocalVault {
@@ -190,6 +191,76 @@ impl LocalVault {
 		let state: application::sync::SyncState = serde_json::from_str(&state_json)?;
 		self.vault.apply_sync_state(self.user_id, state).await?;
 		Ok(())
+	}
+
+	pub async fn set_translation_provider(
+		&self,
+		provider_base_url: Option<String>,
+		api_key: Option<String>,
+		model: Option<String>,
+	) -> anyhow::Result<()> {
+		self.vault
+			.save_user_settings(&UserSettingsRecord {
+				user_id: self.user_id,
+				api_key_enc: api_key.map(|key| key.into_bytes()),
+				provider_base_url,
+				provider_model: model,
+			})
+			.await?;
+		Ok(())
+	}
+
+	fn build_translator(settings: Option<UserSettingsRecord>) -> Option<Box<dyn translation::Translator>> {
+		let settings = settings?;
+		match (settings.api_key_enc, settings.provider_base_url.clone()) {
+			(Some(key), _) => {
+				let base = settings
+					.provider_base_url
+					.unwrap_or_else(|| "https://api.openai.com/v1".into());
+				let model = settings.provider_model.unwrap_or_else(|| "gpt-4o-mini".into());
+				Some(Box::new(translation::OpenAiCompatibleTranslator::new(
+					base,
+					String::from_utf8(key).ok()?,
+					model,
+				)))
+			}
+			(None, Some(endpoint)) => {
+				let model = settings.provider_model.unwrap_or_else(|| "qwen2.5:7b".into());
+				Some(Box::new(translation::OllamaTranslator::new(endpoint, model)))
+			}
+			(None, None) => None,
+		}
+	}
+
+	pub async fn translation_mode(&self) -> anyhow::Result<String> {
+		Ok(match self.vault.get_user_settings(self.user_id).await? {
+			Some(settings) if settings.api_key_enc.is_some() => "byok".into(),
+			Some(settings) if settings.provider_base_url.is_some() => "ollama".into(),
+			_ => "off".into(),
+		})
+	}
+
+	pub async fn clear_translation_provider(&self) -> anyhow::Result<()> {
+		self.set_translation_provider(None, None, None).await
+	}
+
+	pub async fn translate_chapter(&self, chapter_id: String, to: String) -> anyhow::Result<String> {
+		let id: domain::ChapterId = chapter_id.parse()?;
+		let translator = Self::build_translator(self.vault.get_user_settings(self.user_id).await?)
+			.ok_or_else(|| anyhow::anyhow!("no translation provider configured"))?;
+
+		let (content, _) = self.vault.chapter_content_cached(id).await?;
+		let domain::ChapterContent::Html(html) = content else {
+			return Err(anyhow::anyhow!("only novel chapters can be translated"));
+		};
+
+		let key = translation::sha256_key(&html, &to);
+		if let Some(cached) = self.vault.translation_cached(&key).await? {
+			return Ok(cached);
+		}
+		let translated = translator.translate(&html, "auto", &to).await?;
+		self.vault.translation_cache_put(&key, &translated).await?;
+		Ok(translated)
 	}
 
 	pub async fn add_to_library(&self, work_id: String) -> anyhow::Result<()> {

@@ -1,6 +1,6 @@
+use aes_gcm::aead::consts::U12;
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Nonce};
-use aes_gcm::aead::consts::U12;
 
 const NONCE_LEN: usize = 12;
 

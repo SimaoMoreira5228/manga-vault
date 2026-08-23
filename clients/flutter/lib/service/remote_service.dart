@@ -115,6 +115,31 @@ class RemoteService implements VaultService {
 	}
 
 	@override
+	Future<String> translationMode() async {
+		final caps = await _send('GET', '/api/me/capabilities');
+		return caps['translation']['mode'] as String;
+	}
+
+	@override
+	Future<void> setTranslationProvider({String? providerBaseUrl, String? apiKey, String? model}) async {
+		final payload = {'api_key': ?apiKey, 'base_url': ?providerBaseUrl, 'model': ?model};
+		await _send('PUT', '/api/me/translation-settings', body: jsonEncode(payload));
+	}
+
+	@override
+	Future<void> clearTranslationProvider() => _send('DELETE', '/api/me/translation-settings');
+
+	@override
+	Future<String> translateChapter({required String chapterId, required String to}) async {
+		final response = await _send(
+			'POST',
+			'/api/chapters/$chapterId/translate',
+			body: jsonEncode({'to': to}),
+		);
+		return response['content'] as String;
+	}
+
+	@override
 	Future<Map<String, dynamic>> exportSyncState() async => await _send('GET', '/api/sync/state');
 
 	@override

@@ -137,8 +137,112 @@ class _SettingsPageState extends State<SettingsPage> {
 									? const CircularProgressIndicator()
 									: IconButton(icon: const Icon(Icons.sync), onPressed: _syncNow),
 						),
+					const Padding(
+						padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+						child:
+							Text('TRANSLATION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.6)),
+					),
+					FutureBuilder<String>(
+						future: widget.service.translationMode(),
+						builder: (context, snapshot) {
+							final mode = snapshot.data ?? 'off';
+							return ListTile(
+								title: Text(switch (mode) {
+									'byok' => 'Your own API key',
+									'ollama' => 'Ollama endpoint',
+									_ => 'Disabled',
+								}),
+								subtitle: const Text('Translate novels while reading. Stored on this device only.'),
+								trailing: mode == 'off'
+										? FilledButton(onPressed: _configureTranslation, child: const Text('Set up'))
+										: Row(mainAxisSize: MainAxisSize.min, children: [
+											TextButton(onPressed: _configureTranslation, child: const Text('Change')),
+											TextButton(onPressed: () async {
+												await widget.service.clearTranslationProvider();
+												if (context.mounted) setState(() {});
+											}, child: const Text('Clear')),
+										]),
+							);
+						},
+					),
 				],
 			),
+		);
+	}
+
+	Future<void> _configureTranslation() async {
+		await showDialog<void>(
+			context: context,
+			builder: (context) => _TranslationConfigDialog(service: widget.service),
+		);
+		if (mounted) setState(() {});
+	}
+}
+
+class _TranslationConfigDialog extends StatefulWidget {
+	const _TranslationConfigDialog({required this.service});
+
+	final LocalService service;
+
+	@override
+	State<_TranslationConfigDialog> createState() => _TranslationConfigDialogState();
+}
+
+class _TranslationConfigDialogState extends State<_TranslationConfigDialog> {
+	var useKey = false;
+	final endpoint = TextEditingController();
+	final key = TextEditingController();
+	final model = TextEditingController();
+
+	@override
+	Widget build(BuildContext context) {
+		return AlertDialog(
+			title: const Text('Translation provider'),
+			content: Column(
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					RadioGroup<bool>(
+						groupValue: useKey,
+						onChanged: (value) => setState(() => useKey = value!),
+						child: Column(
+							mainAxisSize: MainAxisSize.min,
+							children: [
+								RadioListTile<bool>(
+									value: false,
+									title: const Text('Ollama endpoint'),
+									subtitle: const Text('e.g. http://localhost:11434'),
+								),
+								RadioListTile<bool>(
+									value: true,
+									title: const Text('API key (OpenAI-compatible)'),
+									subtitle: const Text('Gemini, OpenRouter, OpenAI…'),
+								),
+							],
+						),
+					),
+					if (!useKey)
+						TextField(controller: endpoint, decoration: const InputDecoration(hintText: 'http://localhost:11434')),
+					if (useKey) ...[
+						TextField(controller: key, obscureText: true, decoration: const InputDecoration(hintText: 'API key')),
+						TextField(controller: endpoint, decoration: const InputDecoration(hintText: 'Base URL (optional)')),
+					],
+					TextField(controller: model, decoration: const InputDecoration(hintText: 'Model (optional)')),
+				],
+			),
+			actions: [
+				TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+				FilledButton(
+					onPressed: () async {
+						await widget.service.setTranslationProvider(
+							providerBaseUrl: endpoint.text.trim().isEmpty ? null : endpoint.text.trim(),
+							apiKey: key.text.isEmpty ? null : key.text,
+							model: model.text.trim().isEmpty ? null : model.text.trim(),
+						);
+						if (context.mounted) Navigator.of(context).pop();
+					},
+					child: const Text('Save'),
+				),
+			],
 		);
 	}
 }

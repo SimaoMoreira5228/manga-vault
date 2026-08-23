@@ -1028,6 +1028,7 @@ dependencies = [
  "source-sdk",
  "source-updater",
  "tokio",
+ "translation",
 ]
 
 [[package]]
