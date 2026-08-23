@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -2119521408;
+  int get rustContentHash => -216926381;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,8 +79,91 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<PluginRepo> crateApiLocalLocalVaultAddPluginRepo({
+    required LocalVault that,
+    required String url,
+  });
+
+  Future<void> crateApiLocalLocalVaultAddToLibrary({
+    required LocalVault that,
+    required String workId,
+  });
+
+  Future<ChapterBody> crateApiLocalLocalVaultChapterContent({
+    required LocalVault that,
+    required String chapterId,
+  });
+
+  Future<List<WorkSummary>> crateApiLocalLocalVaultContinueReading({
+    required LocalVault that,
+  });
+
+  Future<ProfileSummary> crateApiLocalLocalVaultCreateProfile({
+    required LocalVault that,
+    required String name,
+    String? pin,
+  });
+
+  Future<WorkDetails> crateApiLocalLocalVaultGetWork({
+    required LocalVault that,
+    required String workId,
+  });
+
+  Future<WorkDetails> crateApiLocalLocalVaultImportWork({
+    required LocalVault that,
+    required String sourceId,
+    required String remoteUrl,
+  });
+
+  Future<void> crateApiLocalLocalVaultInstallPlugin({
+    required LocalVault that,
+    required String pluginId,
+  });
+
+  Future<List<WorkSummary>> crateApiLocalLocalVaultLatestSource({
+    required LocalVault that,
+    required String sourceId,
+    required int page,
+  });
+
+  Future<List<LibraryItem>> crateApiLocalLocalVaultListLibrary({
+    required LocalVault that,
+  });
+
   Future<List<SourceSummary>> crateApiLocalLocalVaultListSources({
     required LocalVault that,
+  });
+
+  Future<void> crateApiLocalLocalVaultMarkRead({
+    required LocalVault that,
+    required String chapterId,
+  });
+
+  Future<List<CatalogItem>> crateApiLocalLocalVaultPluginCatalog({
+    required LocalVault that,
+  });
+
+  Future<List<PluginRepo>> crateApiLocalLocalVaultPluginRepos({
+    required LocalVault that,
+  });
+
+  Future<List<ProfileSummary>> crateApiLocalLocalVaultProfiles({
+    required LocalVault that,
+  });
+
+  Future<List<String>> crateApiLocalLocalVaultReadChapters({
+    required LocalVault that,
+    required String workId,
+  });
+
+  Future<void> crateApiLocalLocalVaultRemoveFromLibrary({
+    required LocalVault that,
+    required String workId,
+  });
+
+  Future<void> crateApiLocalLocalVaultRemovePluginRepo({
+    required LocalVault that,
+    required String repoId,
   });
 
   Future<List<WorkSummary>> crateApiLocalLocalVaultSearchSource({
@@ -88,6 +171,17 @@ abstract class RustLibApi extends BaseApi {
     required String sourceId,
     required String query,
     required int page,
+  });
+
+  Future<void> crateApiLocalLocalVaultSelectProfile({
+    required LocalVault that,
+    required String id,
+    String? pin,
+  });
+
+  Future<bool> crateApiLocalLocalVaultUninstallPlugin({
+    required LocalVault that,
+    required String pluginId,
   });
 
   Future<LocalVault> crateApiLocalStart({
@@ -113,6 +207,388 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<PluginRepo> crateApiLocalLocalVaultAddPluginRepo({
+    required LocalVault that,
+    required String url,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(url, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_plugin_repo,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultAddPluginRepoConstMeta,
+        argValues: [that, url],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultAddPluginRepoConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_add_plugin_repo",
+        argNames: ["that", "url"],
+      );
+
+  @override
+  Future<void> crateApiLocalLocalVaultAddToLibrary({
+    required LocalVault that,
+    required String workId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(workId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 2,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultAddToLibraryConstMeta,
+        argValues: [that, workId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultAddToLibraryConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_add_to_library",
+        argNames: ["that", "workId"],
+      );
+
+  @override
+  Future<ChapterBody> crateApiLocalLocalVaultChapterContent({
+    required LocalVault that,
+    required String chapterId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(chapterId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_chapter_body,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultChapterContentConstMeta,
+        argValues: [that, chapterId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultChapterContentConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_chapter_content",
+        argNames: ["that", "chapterId"],
+      );
+
+  @override
+  Future<List<WorkSummary>> crateApiLocalLocalVaultContinueReading({
+    required LocalVault that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_work_summary,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultContinueReadingConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultContinueReadingConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_continue_reading",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<ProfileSummary> crateApiLocalLocalVaultCreateProfile({
+    required LocalVault that,
+    required String name,
+    String? pin,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(name, serializer);
+          sse_encode_opt_String(pin, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_profile_summary,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultCreateProfileConstMeta,
+        argValues: [that, name, pin],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultCreateProfileConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_create_profile",
+        argNames: ["that", "name", "pin"],
+      );
+
+  @override
+  Future<WorkDetails> crateApiLocalLocalVaultGetWork({
+    required LocalVault that,
+    required String workId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(workId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_work_details,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultGetWorkConstMeta,
+        argValues: [that, workId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultGetWorkConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_get_work",
+        argNames: ["that", "workId"],
+      );
+
+  @override
+  Future<WorkDetails> crateApiLocalLocalVaultImportWork({
+    required LocalVault that,
+    required String sourceId,
+    required String remoteUrl,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(sourceId, serializer);
+          sse_encode_String(remoteUrl, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_work_details,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultImportWorkConstMeta,
+        argValues: [that, sourceId, remoteUrl],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultImportWorkConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_import_work",
+        argNames: ["that", "sourceId", "remoteUrl"],
+      );
+
+  @override
+  Future<void> crateApiLocalLocalVaultInstallPlugin({
+    required LocalVault that,
+    required String pluginId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(pluginId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultInstallPluginConstMeta,
+        argValues: [that, pluginId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultInstallPluginConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_install_plugin",
+        argNames: ["that", "pluginId"],
+      );
+
+  @override
+  Future<List<WorkSummary>> crateApiLocalLocalVaultLatestSource({
+    required LocalVault that,
+    required String sourceId,
+    required int page,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(sourceId, serializer);
+          sse_encode_u_32(page, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 9,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_work_summary,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultLatestSourceConstMeta,
+        argValues: [that, sourceId, page],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultLatestSourceConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_latest_source",
+        argNames: ["that", "sourceId", "page"],
+      );
+
+  @override
+  Future<List<LibraryItem>> crateApiLocalLocalVaultListLibrary({
+    required LocalVault that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 10,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_library_item,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultListLibraryConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultListLibraryConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_list_library",
+        argNames: ["that"],
+      );
+
+  @override
   Future<List<SourceSummary>> crateApiLocalLocalVaultListSources({
     required LocalVault that,
   }) {
@@ -127,7 +603,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 11,
             port: port_,
           );
         },
@@ -146,6 +622,263 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "LocalVault_list_sources",
         argNames: ["that"],
+      );
+
+  @override
+  Future<void> crateApiLocalLocalVaultMarkRead({
+    required LocalVault that,
+    required String chapterId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(chapterId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 12,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultMarkReadConstMeta,
+        argValues: [that, chapterId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultMarkReadConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_mark_read",
+        argNames: ["that", "chapterId"],
+      );
+
+  @override
+  Future<List<CatalogItem>> crateApiLocalLocalVaultPluginCatalog({
+    required LocalVault that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 13,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_catalog_item,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultPluginCatalogConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultPluginCatalogConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_plugin_catalog",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<List<PluginRepo>> crateApiLocalLocalVaultPluginRepos({
+    required LocalVault that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_plugin_repo,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiLocalLocalVaultPluginReposConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultPluginReposConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_plugin_repos",
+        argNames: ["that"],
+      );
+
+  @override
+  Future<List<ProfileSummary>> crateApiLocalLocalVaultProfiles({
+    required LocalVault that,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 15,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_profile_summary,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultProfilesConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultProfilesConstMeta =>
+      const TaskConstMeta(debugName: "LocalVault_profiles", argNames: ["that"]);
+
+  @override
+  Future<List<String>> crateApiLocalLocalVaultReadChapters({
+    required LocalVault that,
+    required String workId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(workId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 16,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultReadChaptersConstMeta,
+        argValues: [that, workId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultReadChaptersConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_read_chapters",
+        argNames: ["that", "workId"],
+      );
+
+  @override
+  Future<void> crateApiLocalLocalVaultRemoveFromLibrary({
+    required LocalVault that,
+    required String workId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(workId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 17,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultRemoveFromLibraryConstMeta,
+        argValues: [that, workId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultRemoveFromLibraryConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_remove_from_library",
+        argNames: ["that", "workId"],
+      );
+
+  @override
+  Future<void> crateApiLocalLocalVaultRemovePluginRepo({
+    required LocalVault that,
+    required String repoId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(repoId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultRemovePluginRepoConstMeta,
+        argValues: [that, repoId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultRemovePluginRepoConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_remove_plugin_repo",
+        argNames: ["that", "repoId"],
       );
 
   @override
@@ -169,7 +902,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 19,
             port: port_,
           );
         },
@@ -191,6 +924,84 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiLocalLocalVaultSelectProfile({
+    required LocalVault that,
+    required String id,
+    String? pin,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(id, serializer);
+          sse_encode_opt_String(pin, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 20,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultSelectProfileConstMeta,
+        argValues: [that, id, pin],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultSelectProfileConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_select_profile",
+        argNames: ["that", "id", "pin"],
+      );
+
+  @override
+  Future<bool> crateApiLocalLocalVaultUninstallPlugin({
+    required LocalVault that,
+    required String pluginId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(pluginId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 21,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultUninstallPluginConstMeta,
+        argValues: [that, pluginId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultUninstallPluginConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_uninstall_plugin",
+        argNames: ["that", "pluginId"],
+      );
+
+  @override
   Future<LocalVault> crateApiLocalStart({
     required String dataDir,
     required String pluginsDir,
@@ -204,7 +1015,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 22,
             port: port_,
           );
         },
@@ -250,6 +1061,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   LocalVault
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return LocalVaultImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  LocalVault
   dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
     dynamic raw,
   ) {
@@ -273,9 +1093,112 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool dco_decode_bool(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as bool;
+  }
+
+  @protected
+  CatalogItem dco_decode_catalog_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 7)
+      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
+    return CatalogItem(
+      id: dco_decode_String(arr[0]),
+      backend: dco_decode_String(arr[1]),
+      repoId: dco_decode_String(arr[2]),
+      repoName: dco_decode_String(arr[3]),
+      availableVersion: dco_decode_String(arr[4]),
+      installedVersion: dco_decode_opt_String(arr[5]),
+      updateAvailable: dco_decode_bool(arr[6]),
+    );
+  }
+
+  @protected
+  ChapterBody dco_decode_chapter_body(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return ChapterBody_Images(dco_decode_list_String(raw[1]));
+      case 1:
+        return ChapterBody_Html(dco_decode_String(raw[1]));
+      default:
+        throw Exception("unreachable");
+    }
+  }
+
+  @protected
+  ChapterSummary dco_decode_chapter_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return ChapterSummary(
+      id: dco_decode_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      sortIndex: dco_decode_i_64(arr[2]),
+    );
+  }
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeI64(raw);
+  }
+
+  @protected
+  LibraryItem dco_decode_library_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return LibraryItem(
+      entryId: dco_decode_String(arr[0]),
+      work: dco_decode_work_details(arr[1]),
+    );
+  }
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_String).toList();
+  }
+
+  @protected
+  List<CatalogItem> dco_decode_list_catalog_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_catalog_item).toList();
+  }
+
+  @protected
+  List<ChapterSummary> dco_decode_list_chapter_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_chapter_summary).toList();
+  }
+
+  @protected
+  List<LibraryItem> dco_decode_list_library_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_library_item).toList();
+  }
+
+  @protected
+  List<PluginRepo> dco_decode_list_plugin_repo(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_plugin_repo).toList();
+  }
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint8List;
+  }
+
+  @protected
+  List<ProfileSummary> dco_decode_list_profile_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_profile_summary).toList();
   }
 
   @protected
@@ -294,6 +1217,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  PluginRepo dco_decode_plugin_repo(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return PluginRepo(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      url: dco_decode_String(arr[2]),
+    );
+  }
+
+  @protected
+  ProfileSummary dco_decode_profile_summary(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return ProfileSummary(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      hasPin: dco_decode_bool(arr[2]),
+    );
   }
 
   @protected
@@ -335,15 +1284,35 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  WorkDetails dco_decode_work_details(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 9)
+      throw Exception('unexpected arr length: expect 9 but see ${arr.length}');
+    return WorkDetails(
+      id: dco_decode_String(arr[0]),
+      kind: dco_decode_String(arr[1]),
+      title: dco_decode_String(arr[2]),
+      coverUrl: dco_decode_opt_String(arr[3]),
+      authors: dco_decode_list_String(arr[4]),
+      status: dco_decode_opt_String(arr[5]),
+      description: dco_decode_opt_String(arr[6]),
+      genres: dco_decode_list_String(arr[7]),
+      chapters: dco_decode_list_chapter_summary(arr[8]),
+    );
+  }
+
+  @protected
   WorkSummary dco_decode_work_summary(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 3)
-      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return WorkSummary(
-      title: dco_decode_String(arr[0]),
-      remoteUrl: dco_decode_String(arr[1]),
-      coverUrl: dco_decode_opt_String(arr[2]),
+      id: dco_decode_opt_String(arr[0]),
+      title: dco_decode_String(arr[1]),
+      remoteUrl: dco_decode_String(arr[2]),
+      coverUrl: dco_decode_opt_String(arr[3]),
     );
   }
 
@@ -357,6 +1326,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   LocalVault
   sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return LocalVaultImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  LocalVault
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -398,10 +1379,157 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  CatalogItem sse_decode_catalog_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_backend = sse_decode_String(deserializer);
+    var var_repoId = sse_decode_String(deserializer);
+    var var_repoName = sse_decode_String(deserializer);
+    var var_availableVersion = sse_decode_String(deserializer);
+    var var_installedVersion = sse_decode_opt_String(deserializer);
+    var var_updateAvailable = sse_decode_bool(deserializer);
+    return CatalogItem(
+      id: var_id,
+      backend: var_backend,
+      repoId: var_repoId,
+      repoName: var_repoName,
+      availableVersion: var_availableVersion,
+      installedVersion: var_installedVersion,
+      updateAvailable: var_updateAvailable,
+    );
+  }
+
+  @protected
+  ChapterBody sse_decode_chapter_body(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_list_String(deserializer);
+        return ChapterBody_Images(var_field0);
+      case 1:
+        var var_field0 = sse_decode_String(deserializer);
+        return ChapterBody_Html(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
+  }
+
+  @protected
+  ChapterSummary sse_decode_chapter_summary(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_sortIndex = sse_decode_i_64(deserializer);
+    return ChapterSummary(
+      id: var_id,
+      title: var_title,
+      sortIndex: var_sortIndex,
+    );
+  }
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getPlatformInt64();
+  }
+
+  @protected
+  LibraryItem sse_decode_library_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_entryId = sse_decode_String(deserializer);
+    var var_work = sse_decode_work_details(deserializer);
+    return LibraryItem(entryId: var_entryId, work: var_work);
+  }
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <String>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_String(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<CatalogItem> sse_decode_list_catalog_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <CatalogItem>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_catalog_item(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<ChapterSummary> sse_decode_list_chapter_summary(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ChapterSummary>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_chapter_summary(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<LibraryItem> sse_decode_list_library_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <LibraryItem>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_library_item(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<PluginRepo> sse_decode_list_plugin_repo(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <PluginRepo>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_plugin_repo(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
+  }
+
+  @protected
+  List<ProfileSummary> sse_decode_list_profile_summary(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ProfileSummary>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_profile_summary(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -439,6 +1567,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     } else {
       return null;
     }
+  }
+
+  @protected
+  PluginRepo sse_decode_plugin_repo(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_url = sse_decode_String(deserializer);
+    return PluginRepo(id: var_id, name: var_name, url: var_url);
+  }
+
+  @protected
+  ProfileSummary sse_decode_profile_summary(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_name = sse_decode_String(deserializer);
+    var var_hasPin = sse_decode_bool(deserializer);
+    return ProfileSummary(id: var_id, name: var_name, hasPin: var_hasPin);
   }
 
   @protected
@@ -480,12 +1626,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  WorkDetails sse_decode_work_details(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_String(deserializer);
+    var var_kind = sse_decode_String(deserializer);
+    var var_title = sse_decode_String(deserializer);
+    var var_coverUrl = sse_decode_opt_String(deserializer);
+    var var_authors = sse_decode_list_String(deserializer);
+    var var_status = sse_decode_opt_String(deserializer);
+    var var_description = sse_decode_opt_String(deserializer);
+    var var_genres = sse_decode_list_String(deserializer);
+    var var_chapters = sse_decode_list_chapter_summary(deserializer);
+    return WorkDetails(
+      id: var_id,
+      kind: var_kind,
+      title: var_title,
+      coverUrl: var_coverUrl,
+      authors: var_authors,
+      status: var_status,
+      description: var_description,
+      genres: var_genres,
+      chapters: var_chapters,
+    );
+  }
+
+  @protected
   WorkSummary sse_decode_work_summary(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_id = sse_decode_opt_String(deserializer);
     var var_title = sse_decode_String(deserializer);
     var var_remoteUrl = sse_decode_String(deserializer);
     var var_coverUrl = sse_decode_opt_String(deserializer);
     return WorkSummary(
+      id: var_id,
       title: var_title,
       remoteUrl: var_remoteUrl,
       coverUrl: var_coverUrl,
@@ -496,12 +1669,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getInt32();
-  }
-
-  @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
   }
 
   @protected
@@ -522,6 +1689,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
       (self as LocalVaultImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+    LocalVault self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as LocalVaultImpl).frbInternalSseEncode(move: false),
       serializer,
     );
   }
@@ -559,6 +1739,118 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_bool(bool self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_catalog_item(CatalogItem self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.backend, serializer);
+    sse_encode_String(self.repoId, serializer);
+    sse_encode_String(self.repoName, serializer);
+    sse_encode_String(self.availableVersion, serializer);
+    sse_encode_opt_String(self.installedVersion, serializer);
+    sse_encode_bool(self.updateAvailable, serializer);
+  }
+
+  @protected
+  void sse_encode_chapter_body(ChapterBody self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case ChapterBody_Images(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_list_String(field0, serializer);
+      case ChapterBody_Html(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_String(field0, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_chapter_summary(
+    ChapterSummary self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_i_64(self.sortIndex, serializer);
+  }
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putPlatformInt64(self);
+  }
+
+  @protected
+  void sse_encode_library_item(LibraryItem self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.entryId, serializer);
+    sse_encode_work_details(self.work, serializer);
+  }
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_String(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_catalog_item(
+    List<CatalogItem> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_catalog_item(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_chapter_summary(
+    List<ChapterSummary> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_chapter_summary(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_library_item(
+    List<LibraryItem> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_library_item(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_plugin_repo(
+    List<PluginRepo> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_plugin_repo(item, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
     SseSerializer serializer,
@@ -566,6 +1858,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
+  }
+
+  @protected
+  void sse_encode_list_profile_summary(
+    List<ProfileSummary> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_profile_summary(item, serializer);
+    }
   }
 
   @protected
@@ -603,6 +1907,25 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_plugin_repo(PluginRepo self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_String(self.url, serializer);
+  }
+
+  @protected
+  void sse_encode_profile_summary(
+    ProfileSummary self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_bool(self.hasPin, serializer);
+  }
+
+  @protected
   void sse_encode_source_summary(SourceSummary self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.id, serializer);
@@ -635,8 +1958,23 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_work_details(WorkDetails self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.kind, serializer);
+    sse_encode_String(self.title, serializer);
+    sse_encode_opt_String(self.coverUrl, serializer);
+    sse_encode_list_String(self.authors, serializer);
+    sse_encode_opt_String(self.status, serializer);
+    sse_encode_opt_String(self.description, serializer);
+    sse_encode_list_String(self.genres, serializer);
+    sse_encode_list_chapter_summary(self.chapters, serializer);
+  }
+
+  @protected
   void sse_encode_work_summary(WorkSummary self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_String(self.id, serializer);
     sse_encode_String(self.title, serializer);
     sse_encode_String(self.remoteUrl, serializer);
     sse_encode_opt_String(self.coverUrl, serializer);
@@ -646,12 +1984,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putInt32(self);
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
   }
 }
 
@@ -674,8 +2006,85 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
         RustLib.instance.api.rust_arc_decrement_strong_count_LocalVaultPtr,
   );
 
+  Future<PluginRepo> addPluginRepo({required String url}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultAddPluginRepo(that: this, url: url);
+
+  Future<void> addToLibrary({required String workId}) => RustLib.instance.api
+      .crateApiLocalLocalVaultAddToLibrary(that: this, workId: workId);
+
+  Future<ChapterBody> chapterContent({required String chapterId}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultChapterContent(that: this, chapterId: chapterId);
+
+  Future<List<WorkSummary>> continueReading() =>
+      RustLib.instance.api.crateApiLocalLocalVaultContinueReading(that: this);
+
+  Future<ProfileSummary> createProfile({required String name, String? pin}) =>
+      RustLib.instance.api.crateApiLocalLocalVaultCreateProfile(
+        that: this,
+        name: name,
+        pin: pin,
+      );
+
+  Future<WorkDetails> getWork({required String workId}) => RustLib.instance.api
+      .crateApiLocalLocalVaultGetWork(that: this, workId: workId);
+
+  Future<WorkDetails> importWork({
+    required String sourceId,
+    required String remoteUrl,
+  }) => RustLib.instance.api.crateApiLocalLocalVaultImportWork(
+    that: this,
+    sourceId: sourceId,
+    remoteUrl: remoteUrl,
+  );
+
+  Future<void> installPlugin({required String pluginId}) => RustLib.instance.api
+      .crateApiLocalLocalVaultInstallPlugin(that: this, pluginId: pluginId);
+
+  Future<List<WorkSummary>> latestSource({
+    required String sourceId,
+    required int page,
+  }) => RustLib.instance.api.crateApiLocalLocalVaultLatestSource(
+    that: this,
+    sourceId: sourceId,
+    page: page,
+  );
+
+  Future<List<LibraryItem>> listLibrary() =>
+      RustLib.instance.api.crateApiLocalLocalVaultListLibrary(that: this);
+
   Future<List<SourceSummary>> listSources() =>
       RustLib.instance.api.crateApiLocalLocalVaultListSources(that: this);
+
+  Future<void> markRead({required String chapterId}) => RustLib.instance.api
+      .crateApiLocalLocalVaultMarkRead(that: this, chapterId: chapterId);
+
+  Future<List<CatalogItem>> pluginCatalog() =>
+      RustLib.instance.api.crateApiLocalLocalVaultPluginCatalog(that: this);
+
+  Future<List<PluginRepo>> pluginRepos() =>
+      RustLib.instance.api.crateApiLocalLocalVaultPluginRepos(that: this);
+
+  Future<List<ProfileSummary>> profiles() =>
+      RustLib.instance.api.crateApiLocalLocalVaultProfiles(that: this);
+
+  Future<List<String>> readChapters({required String workId}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultReadChapters(that: this, workId: workId);
+
+  Future<void> removeFromLibrary({required String workId}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultRemoveFromLibrary(that: this, workId: workId);
+
+  Future<void> removePluginRepo({required String repoId}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultRemovePluginRepo(that: this, repoId: repoId);
 
   Future<List<WorkSummary>> searchSource({
     required String sourceId,
@@ -687,4 +2096,14 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
     query: query,
     page: page,
   );
+
+  Future<void> selectProfile({required String id, String? pin}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultSelectProfile(that: this, id: id, pin: pin);
+
+  Future<bool> uninstallPlugin({required String pluginId}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultUninstallPlugin(that: this, pluginId: pluginId);
 }

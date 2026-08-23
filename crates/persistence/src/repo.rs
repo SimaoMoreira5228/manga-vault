@@ -69,6 +69,7 @@ pub trait UserRepository: Send + Sync {
 	async fn create_user(&self, username: &str, password_hash: &str) -> StoreResult<User>;
 	async fn get_user(&self, id: UserId) -> StoreResult<Option<User>>;
 	async fn get_user_by_username(&self, username: &str) -> StoreResult<Option<User>>;
+	async fn list_users(&self) -> StoreResult<Vec<User>>;
 }
 
 #[async_trait]

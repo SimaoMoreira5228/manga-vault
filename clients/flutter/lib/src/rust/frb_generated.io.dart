@@ -36,6 +36,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   LocalVault
+  dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+    dynamic raw,
+  );
+
+  @protected
+  LocalVault
   dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
     dynamic raw,
   );
@@ -50,7 +56,43 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  bool dco_decode_bool(dynamic raw);
+
+  @protected
+  CatalogItem dco_decode_catalog_item(dynamic raw);
+
+  @protected
+  ChapterBody dco_decode_chapter_body(dynamic raw);
+
+  @protected
+  ChapterSummary dco_decode_chapter_summary(dynamic raw);
+
+  @protected
+  PlatformInt64 dco_decode_i_64(dynamic raw);
+
+  @protected
+  LibraryItem dco_decode_library_item(dynamic raw);
+
+  @protected
+  List<String> dco_decode_list_String(dynamic raw);
+
+  @protected
+  List<CatalogItem> dco_decode_list_catalog_item(dynamic raw);
+
+  @protected
+  List<ChapterSummary> dco_decode_list_chapter_summary(dynamic raw);
+
+  @protected
+  List<LibraryItem> dco_decode_list_library_item(dynamic raw);
+
+  @protected
+  List<PluginRepo> dco_decode_list_plugin_repo(dynamic raw);
+
+  @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+  @protected
+  List<ProfileSummary> dco_decode_list_profile_summary(dynamic raw);
 
   @protected
   List<SourceSummary> dco_decode_list_source_summary(dynamic raw);
@@ -60,6 +102,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  PluginRepo dco_decode_plugin_repo(dynamic raw);
+
+  @protected
+  ProfileSummary dco_decode_profile_summary(dynamic raw);
 
   @protected
   SourceSummary dco_decode_source_summary(dynamic raw);
@@ -77,6 +125,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt dco_decode_usize(dynamic raw);
 
   @protected
+  WorkDetails dco_decode_work_details(dynamic raw);
+
+  @protected
   WorkSummary dco_decode_work_summary(dynamic raw);
 
   @protected
@@ -85,6 +136,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   LocalVault
   sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  LocalVault
+  sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
     SseDeserializer deserializer,
   );
 
@@ -104,7 +161,47 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  CatalogItem sse_decode_catalog_item(SseDeserializer deserializer);
+
+  @protected
+  ChapterBody sse_decode_chapter_body(SseDeserializer deserializer);
+
+  @protected
+  ChapterSummary sse_decode_chapter_summary(SseDeserializer deserializer);
+
+  @protected
+  PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
+
+  @protected
+  LibraryItem sse_decode_library_item(SseDeserializer deserializer);
+
+  @protected
+  List<String> sse_decode_list_String(SseDeserializer deserializer);
+
+  @protected
+  List<CatalogItem> sse_decode_list_catalog_item(SseDeserializer deserializer);
+
+  @protected
+  List<ChapterSummary> sse_decode_list_chapter_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<LibraryItem> sse_decode_list_library_item(SseDeserializer deserializer);
+
+  @protected
+  List<PluginRepo> sse_decode_list_plugin_repo(SseDeserializer deserializer);
+
+  @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+  @protected
+  List<ProfileSummary> sse_decode_list_profile_summary(
+    SseDeserializer deserializer,
+  );
 
   @protected
   List<SourceSummary> sse_decode_list_source_summary(
@@ -116,6 +213,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  PluginRepo sse_decode_plugin_repo(SseDeserializer deserializer);
+
+  @protected
+  ProfileSummary sse_decode_profile_summary(SseDeserializer deserializer);
 
   @protected
   SourceSummary sse_decode_source_summary(SseDeserializer deserializer);
@@ -133,13 +236,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
+  WorkDetails sse_decode_work_details(SseDeserializer deserializer);
+
+  @protected
   WorkSummary sse_decode_work_summary(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
-
-  @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
   void sse_encode_AnyhowException(
@@ -150,6 +253,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void
   sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+    LocalVault self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
     LocalVault self,
     SseSerializer serializer,
   );
@@ -172,8 +282,62 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_catalog_item(CatalogItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chapter_body(ChapterBody self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_chapter_summary(
+    ChapterSummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_library_item(LibraryItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_String(List<String> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_catalog_item(
+    List<CatalogItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_chapter_summary(
+    List<ChapterSummary> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_library_item(
+    List<LibraryItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_plugin_repo(
+    List<PluginRepo> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_prim_u_8_strict(
     Uint8List self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_profile_summary(
+    List<ProfileSummary> self,
     SseSerializer serializer,
   );
 
@@ -193,6 +357,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_plugin_repo(PluginRepo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_profile_summary(
+    ProfileSummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_source_summary(SourceSummary self, SseSerializer serializer);
 
   @protected
@@ -208,13 +381,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_usize(BigInt self, SseSerializer serializer);
 
   @protected
+  void sse_encode_work_details(WorkDetails self, SseSerializer serializer);
+
+  @protected
   void sse_encode_work_summary(WorkSummary self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
 }
 
 // Section: wire_class

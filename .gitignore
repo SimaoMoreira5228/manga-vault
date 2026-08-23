@@ -9,3 +9,4 @@ dist/
 *.db
 *.sqlite
 plugin-repo/
+clients/flutter/android/app/src/main/jniLibs/

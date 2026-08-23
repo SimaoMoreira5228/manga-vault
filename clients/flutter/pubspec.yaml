@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_rust_bridge: 2.12.0
   path_provider: ^2.1.6
+  freezed_annotation: ^3.1.0
 
 dev_dependencies:
   flutter_test:
@@ -47,17 +48,34 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
-
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter packages.
+  freezed: ^4.0.0
+  build_runner: ^2.16.0
+  flutter_launcher_icons: ^0.14.4
 flutter:
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/icon.png
+
+  fonts:
+    - family: Geist
+      fonts:
+        - asset: assets/fonts/geist-v5-latin-regular.ttf
+          weight: 400
+        - asset: assets/fonts/geist-v5-latin-500.ttf
+          weight: 500
+        - asset: assets/fonts/geist-v5-latin-600.ttf
+          weight: 600
+        - asset: assets/fonts/geist-v5-latin-700.ttf
+          weight: 700
+    - family: Playfair Display
+      fonts:
+        - asset: assets/fonts/playfair-display-v40-latin-700.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

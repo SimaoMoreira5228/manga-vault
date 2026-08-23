@@ -1,8 +1,19 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'pages/discover.dart';
+import 'pages/library.dart';
+import 'pages/profile_picker.dart';
+import 'pages/sources.dart';
+import 'service/local_service.dart';
+import 'service/remote_service.dart';
+import 'service/vault_service.dart';
 import 'src/rust/api/local.dart' as local;
 import 'src/rust/frb_generated.dart';
+import 'theme.dart';
 
 Future<void> main() async {
 	WidgetsFlutterBinding.ensureInitialized();
@@ -17,125 +28,218 @@ class MangaVaultApp extends StatelessWidget {
 	Widget build(BuildContext context) {
 		return MaterialApp(
 			title: 'Manga Vault',
-			theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo), useMaterial3: true),
-			darkTheme: ThemeData(
-				colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo, brightness: Brightness.dark),
-				useMaterial3: true,
-			),
-			home: const DiscoverPage(),
+			theme: buildVaultTheme(),
+			home: const ConnectPage(),
 		);
 	}
 }
 
-class DiscoverPage extends StatefulWidget {
-	const DiscoverPage({super.key});
+File _remoteStateFile(Directory support) => File('${support.path}/remote.json');
+
+class ConnectPage extends StatefulWidget {
+	const ConnectPage({super.key});
 
 	@override
-	State<DiscoverPage> createState() => _DiscoverPageState();
+	State<ConnectPage> createState() => _ConnectPageState();
 }
 
-class _DiscoverPageState extends State<DiscoverPage> {
-	local.LocalVault? vault;
-	List<local.SourceSummary> sources = [];
+class _ConnectPageState extends State<ConnectPage> {
+	bool busy = true;
 	String? error;
+	local.LocalVault? pendingVault;
+	List<local.ProfileSummary> pendingProfiles = const [];
 
 	@override
 	void initState() {
 		super.initState();
-		_start();
+		_restore();
 	}
 
-	Future<void> _start() async {
+	Future<void> _restore() async {
 		try {
-			final docs = await getApplicationSupportDirectory();
-			final started = await local.start(
-				dataDir: '${docs.path}/local',
-				pluginsDir: '${docs.path}/plugins',
-			);
-			setState(() {
-				vault = started;
-				error = null;
-			});
-			await _loadSources();
-		} catch (e) {
-			setState(() => error = e.toString());
+			final support = await getApplicationSupportDirectory();
+			final file = _remoteStateFile(support);
+			if (!file.existsSync()) {
+				setState(() => busy = false);
+				return;
+			}
+			final saved = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+			await _enter(RemoteService(baseUrl: saved['base_url'] as String, token: saved['token'] as String));
+		} catch (_) {
+			setState(() => busy = false);
 		}
 	}
 
-	Future<void> _loadSources() async {
-		final loaded = await vault!.listSources();
-		setState(() => sources = loaded);
+	Future<void> _enter(VaultService service) async {
+		if (!mounted) return;
+		Navigator.of(context).pushReplacement(MaterialPageRoute(
+			builder: (_) => HomePage(service: service),
+		));
+	}
+
+	Future<void> _startLocal() async {
+		setState(() {
+			busy = true;
+			error = null;
+		});
+		try {
+			final support = await getApplicationSupportDirectory();
+			final vault = await local.start(
+				dataDir: '${support.path}/local',
+				pluginsDir: '${support.path}/plugins',
+			);
+			final profiles = await vault.profiles();
+			final unlocked = profiles.length == 1 && !profiles.first.hasPin;
+			if (!mounted) return;
+			if (unlocked) {
+				await vault.selectProfile(id: profiles.first.id);
+				await _enter(LocalService(vault));
+			} else {
+				setState(() {
+					busy = false;
+					pendingVault = vault;
+					pendingProfiles = profiles;
+				});
+			}
+		} catch (e) {
+			setState(() {
+				busy = false;
+				error = e.toString();
+			});
+		}
 	}
 
 	@override
 	Widget build(BuildContext context) {
+		if (busy) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+		if (pendingVault != null) {
+			return ProfilePickerPage(
+				vault: pendingVault!,
+				profiles: pendingProfiles,
+				onSelected: (service) => _enter(service),
+			);
+		}
 		return Scaffold(
-			appBar: AppBar(title: const Text('Manga Vault')),
-			body: error != null
-					? Center(child: Text(error!))
-					: sources.isEmpty
-						? const Center(child: CircularProgressIndicator())
-						: ListView.builder(
-							itemCount: sources.length,
-							itemBuilder: (context, index) => ListTile(
-								title: Text(sources[index].name),
-								subtitle: Text('${sources[index].kind} · v${sources[index].version}'),
-								onTap: () => Navigator.of(context).push(MaterialPageRoute(
-									builder: (_) => SourcePage(vault: vault!, source: sources[index]),
-								)),
-							),
-						),
-		);
-	}
-}
-
-class SourcePage extends StatefulWidget {
-	const SourcePage({super.key, required this.vault, required this.source});
-
-	final local.LocalVault vault;
-	final local.SourceSummary source;
-
-	@override
-	State<SourcePage> createState() => _SourcePageState();
-}
-
-class _SourcePageState extends State<SourcePage> {
-	final query = TextEditingController();
-	List<local.WorkSummary> results = [];
-
-	Future<void> _search() async {
-		final found = await widget.vault.searchSource(
-			sourceId: widget.source.id,
-			query: query.text,
-			page: 1,
-		);
-		setState(() => results = found);
-	}
-
-	@override
-	Widget build(BuildContext context) {
-		return Scaffold(
-			appBar: AppBar(title: Text(widget.source.name)),
-			body: Column(
-				children: [
-					Padding(
-						padding: const EdgeInsets.all(12),
-						child: TextField(
-							controller: query,
-							onSubmitted: (_) => _search(),
-							decoration: InputDecoration(
-								hintText: 'Search ${widget.source.name}',
-								suffixIcon: IconButton(icon: const Icon(Icons.search), onPressed: _search),
-							),
-						),
+			body: Center(
+				child: ConstrainedBox(
+					constraints: const BoxConstraints(maxWidth: 360),
+					child: Column(
+						mainAxisAlignment: MainAxisAlignment.center,
+						crossAxisAlignment: CrossAxisAlignment.stretch,
+						children: [
+							Text('Manga Vault', style: Theme.of(context).textTheme.displayMedium, textAlign: TextAlign.center),
+							const SizedBox(height: 8),
+							Text('Private Archive', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+							const SizedBox(height: 48),
+							FilledButton(onPressed: _startLocal, child: const Text('Use this device')),
+							const SizedBox(height: 12),
+							OutlinedButton(onPressed: () => _openRemoteForm(), child: const Text('Connect to a server')),
+							if (error != null) ...[
+								const SizedBox(height: 24),
+								Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+							],
+						],
 					),
-					Expanded(
-						child: ListView.builder(
-							itemCount: results.length,
-							itemBuilder: (context, index) => ListTile(title: Text(results[index].title)),
-						),
+				),
+			),
+		);
+	}
+
+	Future<void> _openRemoteForm() async {
+		final baseUrl = TextEditingController();
+		final username = TextEditingController();
+		final password = TextEditingController();
+		final formKey = GlobalKey<FormState>();
+		await showDialog<void>(
+			context: context,
+			builder: (context) => AlertDialog(
+				title: const Text('Connect to a server'),
+				content: Form(
+					key: formKey,
+					child: Column(
+						mainAxisSize: MainAxisSize.min,
+						children: [
+							TextFormField(
+								controller: baseUrl,
+								decoration: const InputDecoration(hintText: 'https://server.example.org'),
+								validator: (value) => (value == null || value.trim().isEmpty) ? 'Required' : null,
+							),
+							TextFormField(
+								controller: username,
+								decoration: const InputDecoration(hintText: 'Username'),
+								validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
+							),
+							TextFormField(
+								controller: password,
+								obscureText: true,
+								decoration: const InputDecoration(hintText: 'Password'),
+								validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
+							),
+						],
+					),
+				),
+				actions: [
+					TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+					FilledButton(
+						onPressed: () async {
+							if (!(formKey.currentState?.validate() ?? false)) return;
+							try {
+								final service = await RemoteService.login(
+									baseUrl: baseUrl.text.trim(),
+									username: username.text,
+									password: password.text,
+								);
+								final support = await getApplicationSupportDirectory();
+								_remoteStateFile(support).writeAsStringSync(
+									jsonEncode({'base_url': service.baseUrl, 'token': service.token}),
+								);
+								if (!context.mounted) return;
+								Navigator.of(context).pop();
+								await _enter(service);
+							} catch (e) {
+								if (!context.mounted) return;
+								ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+							}
+						},
+						child: const Text('Sign in'),
 					),
 				],
+			),
+		);
+	}
+}
+
+class HomePage extends StatelessWidget {
+	const HomePage({super.key, required this.service});
+
+	final VaultService service;
+
+	@override
+	Widget build(BuildContext context) {
+		return DefaultTabController(
+			length: 3,
+			animationDuration: Duration.zero,
+			child: Scaffold(
+				body: TabBarView(
+					children: [
+						DiscoverPage(vault: service),
+						LibraryPage(vault: service),
+						SourcesPage(vault: service),
+					],
+				),
+				bottomNavigationBar: TabBar(
+					tabs: const [
+						Tab(icon: Icon(Icons.explore_outlined), text: 'Discover'),
+						Tab(icon: Icon(Icons.collections_bookmark_outlined), text: 'Library'),
+						Tab(icon: Icon(Icons.extension_outlined), text: 'Plugins'),
+					],
+					labelColor: Theme.of(context).colorScheme.primary,
+					unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+					indicatorColor: Theme.of(context).colorScheme.primary,
+					dividerColor: Colors.transparent,
+					labelStyle: const TextStyle(fontFamily: 'Geist', fontSize: 12, fontWeight: FontWeight.w500),
+					unselectedLabelStyle: const TextStyle(fontFamily: 'Geist', fontSize: 12, fontWeight: FontWeight.w500),
+				),
 			),
 		);
 	}

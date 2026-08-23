@@ -6,8 +6,10 @@
 import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
+part 'local.freezed.dart';
 
-// These functions are ignored because they are not marked as `pub`: `summary`
+// These functions are ignored because they are not marked as `pub`: `chapter_summary`, `summary`, `work_details`
 
 Future<LocalVault> start({
   required String dataDir,
@@ -19,13 +21,194 @@ Future<LocalVault> start({
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>
 abstract class LocalVault implements RustOpaqueInterface {
+  Future<PluginRepo> addPluginRepo({required String url});
+
+  Future<void> addToLibrary({required String workId});
+
+  Future<ChapterBody> chapterContent({required String chapterId});
+
+  Future<List<WorkSummary>> continueReading();
+
+  Future<ProfileSummary> createProfile({required String name, String? pin});
+
+  Future<WorkDetails> getWork({required String workId});
+
+  Future<WorkDetails> importWork({
+    required String sourceId,
+    required String remoteUrl,
+  });
+
+  Future<void> installPlugin({required String pluginId});
+
+  Future<List<WorkSummary>> latestSource({
+    required String sourceId,
+    required int page,
+  });
+
+  Future<List<LibraryItem>> listLibrary();
+
   Future<List<SourceSummary>> listSources();
+
+  Future<void> markRead({required String chapterId});
+
+  Future<List<CatalogItem>> pluginCatalog();
+
+  Future<List<PluginRepo>> pluginRepos();
+
+  Future<List<ProfileSummary>> profiles();
+
+  Future<List<String>> readChapters({required String workId});
+
+  Future<void> removeFromLibrary({required String workId});
+
+  Future<void> removePluginRepo({required String repoId});
 
   Future<List<WorkSummary>> searchSource({
     required String sourceId,
     required String query,
     required int page,
   });
+
+  Future<void> selectProfile({required String id, String? pin});
+
+  Future<bool> uninstallPlugin({required String pluginId});
+}
+
+class CatalogItem {
+  final String id;
+  final String backend;
+  final String repoId;
+  final String repoName;
+  final String availableVersion;
+  final String? installedVersion;
+  final bool updateAvailable;
+
+  const CatalogItem({
+    required this.id,
+    required this.backend,
+    required this.repoId,
+    required this.repoName,
+    required this.availableVersion,
+    this.installedVersion,
+    required this.updateAvailable,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      backend.hashCode ^
+      repoId.hashCode ^
+      repoName.hashCode ^
+      availableVersion.hashCode ^
+      installedVersion.hashCode ^
+      updateAvailable.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CatalogItem &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          backend == other.backend &&
+          repoId == other.repoId &&
+          repoName == other.repoName &&
+          availableVersion == other.availableVersion &&
+          installedVersion == other.installedVersion &&
+          updateAvailable == other.updateAvailable;
+}
+
+@freezed
+sealed class ChapterBody with _$ChapterBody {
+  const ChapterBody._();
+
+  const factory ChapterBody.images(List<String> field0) = ChapterBody_Images;
+  const factory ChapterBody.html(String field0) = ChapterBody_Html;
+}
+
+class ChapterSummary {
+  final String id;
+  final String title;
+  final PlatformInt64 sortIndex;
+
+  const ChapterSummary({
+    required this.id,
+    required this.title,
+    required this.sortIndex,
+  });
+
+  @override
+  int get hashCode => id.hashCode ^ title.hashCode ^ sortIndex.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ChapterSummary &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          title == other.title &&
+          sortIndex == other.sortIndex;
+}
+
+class LibraryItem {
+  final String entryId;
+  final WorkDetails work;
+
+  const LibraryItem({required this.entryId, required this.work});
+
+  @override
+  int get hashCode => entryId.hashCode ^ work.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LibraryItem &&
+          runtimeType == other.runtimeType &&
+          entryId == other.entryId &&
+          work == other.work;
+}
+
+class PluginRepo {
+  final String id;
+  final String name;
+  final String url;
+
+  const PluginRepo({required this.id, required this.name, required this.url});
+
+  @override
+  int get hashCode => id.hashCode ^ name.hashCode ^ url.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PluginRepo &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          url == other.url;
+}
+
+class ProfileSummary {
+  final String id;
+  final String name;
+  final bool hasPin;
+
+  const ProfileSummary({
+    required this.id,
+    required this.name,
+    required this.hasPin,
+  });
+
+  @override
+  int get hashCode => id.hashCode ^ name.hashCode ^ hasPin.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ProfileSummary &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          hasPin == other.hasPin;
 }
 
 class SourceSummary {
@@ -56,25 +239,80 @@ class SourceSummary {
           kind == other.kind;
 }
 
+class WorkDetails {
+  final String id;
+  final String kind;
+  final String title;
+  final String? coverUrl;
+  final List<String> authors;
+  final String? status;
+  final String? description;
+  final List<String> genres;
+  final List<ChapterSummary> chapters;
+
+  const WorkDetails({
+    required this.id,
+    required this.kind,
+    required this.title,
+    this.coverUrl,
+    required this.authors,
+    this.status,
+    this.description,
+    required this.genres,
+    required this.chapters,
+  });
+
+  @override
+  int get hashCode =>
+      id.hashCode ^
+      kind.hashCode ^
+      title.hashCode ^
+      coverUrl.hashCode ^
+      authors.hashCode ^
+      status.hashCode ^
+      description.hashCode ^
+      genres.hashCode ^
+      chapters.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkDetails &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          kind == other.kind &&
+          title == other.title &&
+          coverUrl == other.coverUrl &&
+          authors == other.authors &&
+          status == other.status &&
+          description == other.description &&
+          genres == other.genres &&
+          chapters == other.chapters;
+}
+
 class WorkSummary {
+  final String? id;
   final String title;
   final String remoteUrl;
   final String? coverUrl;
 
   const WorkSummary({
+    this.id,
     required this.title,
     required this.remoteUrl,
     this.coverUrl,
   });
 
   @override
-  int get hashCode => title.hashCode ^ remoteUrl.hashCode ^ coverUrl.hashCode;
+  int get hashCode =>
+      id.hashCode ^ title.hashCode ^ remoteUrl.hashCode ^ coverUrl.hashCode;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is WorkSummary &&
           runtimeType == other.runtimeType &&
+          id == other.id &&
           title == other.title &&
           remoteUrl == other.remoteUrl &&
           coverUrl == other.coverUrl;

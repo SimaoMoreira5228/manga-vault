@@ -79,6 +79,16 @@ impl UserRepository for SeaStore {
 			.as_ref()
 			.map(User::from))
 	}
+
+	async fn list_users(&self) -> StoreResult<Vec<User>> {
+		Ok(users::Entity::find()
+			.order_by_asc(users::Column::CreatedAt)
+			.all(&self.db)
+			.await?
+			.iter()
+			.map(User::from)
+			.collect())
+	}
 }
 
 #[async_trait::async_trait]

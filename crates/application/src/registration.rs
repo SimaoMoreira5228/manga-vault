@@ -41,7 +41,7 @@ pub struct InviteInfo {
 	pub used_by: Option<String>,
 }
 
-fn hash_password(password: &str) -> VaultResult<String> {
+pub(crate) fn hash_password(password: &str) -> VaultResult<String> {
 	let salt = SaltString::generate(&mut OsRng);
 	argon2::Argon2::default()
 		.hash_password(password.as_bytes(), &salt)

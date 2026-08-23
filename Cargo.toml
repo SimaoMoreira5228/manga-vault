@@ -42,7 +42,7 @@ sea-orm = { version = "2", features = [
     "sqlx-sqlite",
     "sqlx-postgres",
     "sqlx-mysql",
-    "runtime-tokio-native-tls",
+    "runtime-tokio-rustls",
     "macros",
     "with-chrono",
     "with-json",
@@ -52,14 +52,14 @@ sea-orm-migration = { version = "2", features = [
     "sqlx-sqlite",
     "sqlx-postgres",
     "sqlx-mysql",
-    "runtime-tokio-native-tls",
+    "runtime-tokio-rustls",
 ] }
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 argon2 = "0.5"
 async-trait = "0.1"
-reqwest = { version = "0.13", features = ["json", "cookies"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "cookies", "rustls"] }
 scraper = "0.27"
 mlua = { version = "0.12", features = [
     "lua54",
