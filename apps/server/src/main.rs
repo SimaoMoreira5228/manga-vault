@@ -12,6 +12,14 @@ use jobs::{Scheduler, SchedulerConfig};
 use source_manager::SourceManager;
 use state::AppState;
 
+fn image_cache() -> std::sync::Arc<moka::future::Cache<String, std::sync::Arc<http::proxy_handler::CachedResponse>>> {
+	let megabytes = std::env::var("IMAGE_CACHE_MB")
+		.ok()
+		.and_then(|value| value.parse::<u64>().ok())
+		.unwrap_or(512);
+	std::sync::Arc::new(http::proxy_handler::new_image_cache(megabytes * 1024 * 1024))
+}
+
 #[tokio::main]
 async fn main() {
 	tracing_subscriber::fmt()
@@ -81,6 +89,7 @@ async fn main() {
 		ollama_translator,
 		secret_key: server_config.secret_key.clone(),
 		translation_enabled: server_config.translation_enabled,
+		image_cache: image_cache(),
 	});
 
 	let app = if server_config.cors_origins.is_empty() {

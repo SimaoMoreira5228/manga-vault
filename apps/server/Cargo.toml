@@ -17,8 +17,10 @@ source-sdk = { workspace = true }
 translation = { workspace = true }
 source-updater = { workspace = true }
 aes-gcm = { workspace = true }
+bytes = { workspace = true }
 rand = { workspace = true }
 axum = { workspace = true }
+moka = { workspace = true }
 tokio = { workspace = true }
 tower-http = { workspace = true }
 serde = { workspace = true }

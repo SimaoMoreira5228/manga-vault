@@ -5,6 +5,7 @@ use axum::response::{IntoResponse, Response};
 use serde_json::json;
 use source_updater::{RepoError, UpdateError};
 
+#[derive(Clone)]
 pub struct ApiError {
 	pub status: StatusCode,
 	pub message: String,

@@ -3,7 +3,7 @@ mod auth_handlers;
 mod error;
 mod library_handlers;
 mod plugin_handlers;
-mod proxy_handler;
+pub mod proxy_handler;
 mod reading_handlers;
 mod registration_handlers;
 mod sources_handlers;

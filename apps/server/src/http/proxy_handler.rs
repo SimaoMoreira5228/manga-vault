@@ -1,13 +1,38 @@
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
 
 use axum::extract::{Query, State};
 use axum::http::header;
 use axum::response::{IntoResponse, Response};
+use moka::future::Cache;
 use serde::Deserialize;
 use url::Url;
 
 use crate::http::error::ApiError;
 use crate::state::AppState;
+
+const MAX_ENTRY_BYTES: usize = 16 * 1024 * 1024;
+
+pub struct CachedResponse {
+	bytes: bytes::Bytes,
+	content_type: String,
+}
+
+pub fn new_image_cache(max_megabytes: u64) -> Cache<String, Arc<CachedResponse>> {
+	Cache::builder()
+		.max_capacity(max_megabytes * 1024 * 1024)
+		.time_to_live(Duration::from_secs(30 * 60))
+		.build()
+}
+
+fn shared_client() -> reqwest::Client {
+	reqwest::Client::builder()
+		.user_agent(source_sdk::BROWSER_USER_AGENT)
+		.timeout(Duration::from_secs(20))
+		.build()
+		.expect("proxy http client")
+}
 
 #[derive(Deserialize)]
 pub struct ProxyQuery {
@@ -29,6 +54,41 @@ fn allowed_hosts(state: &AppState) -> HashMap<String, Option<String>> {
 
 fn host_of(raw: Option<&str>) -> Option<String> {
 	Url::parse(raw?).ok()?.host_str().map(|host| host.to_ascii_lowercase())
+}
+
+async fn fetch_upstream(
+	target: Url,
+	referer_url: &str,
+	cache: &Cache<String, Arc<CachedResponse>>,
+	key: &str,
+) -> Result<Arc<CachedResponse>, ApiError> {
+	let client = shared_client();
+	let upstream = client
+		.get(target)
+		.header(header::REFERER, referer_url)
+		.send()
+		.await
+		.map_err(|e| ApiError {
+			status: axum::http::StatusCode::BAD_GATEWAY,
+			message: e.to_string(),
+		})?;
+
+	let content_type = upstream
+		.headers()
+		.get(header::CONTENT_TYPE)
+		.and_then(|value| value.to_str().ok())
+		.unwrap_or("application/octet-stream")
+		.to_owned();
+	let bytes = upstream.bytes().await.map_err(|e| ApiError {
+		status: axum::http::StatusCode::BAD_GATEWAY,
+		message: e.to_string(),
+	})?;
+
+	let cached = Arc::new(CachedResponse { bytes, content_type });
+	if cached.bytes.len() <= MAX_ENTRY_BYTES {
+		cache.insert(key.to_owned(), cached.clone()).await;
+	}
+	Ok(cached)
 }
 
 pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery>) -> Result<Response, ApiError> {
@@ -58,41 +118,66 @@ pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery
 		});
 	};
 
-	let client = reqwest::Client::builder()
-		.user_agent(source_sdk::BROWSER_USER_AGENT)
-		.timeout(std::time::Duration::from_secs(20))
-		.build()
-		.map_err(|e| ApiError {
-			status: axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-			message: e.to_string(),
-		})?;
-	let upstream = client
-		.get(target)
-		.header(header::REFERER, referer_url)
-		.send()
+	let key = format!("{}/{}", referer_url, query.url);
+	let cached = match state
+		.image_cache
+		.try_get_with(key.clone(), fetch_upstream(target, &referer_url, &state.image_cache, &key))
 		.await
-		.map_err(|e| ApiError {
-			status: axum::http::StatusCode::BAD_GATEWAY,
-			message: e.to_string(),
-		})?;
-
-	let content_type = upstream
-		.headers()
-		.get(header::CONTENT_TYPE)
-		.and_then(|value| value.to_str().ok())
-		.unwrap_or("application/octet-stream")
-		.to_owned();
-	let bytes = upstream.bytes().await.map_err(|e| ApiError {
-		status: axum::http::StatusCode::BAD_GATEWAY,
-		message: e.to_string(),
-	})?;
+	{
+		Ok(cached) => cached,
+		Err(error) => return Err(Arc::unwrap_or_clone(error)),
+	};
 
 	Ok((
 		[
-			(header::CONTENT_TYPE, content_type),
+			(header::CONTENT_TYPE, cached.content_type.clone()),
 			(header::CACHE_CONTROL, "public, max-age=3600".to_owned()),
 		],
-		bytes,
+		cached.bytes.clone(),
 	)
 		.into_response())
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[tokio::test]
+	async fn try_get_with_collapses_concurrent_loads_into_one_fetch() {
+		const KEY: &str = "test|https://example.test/image.jpg";
+		let cache: Cache<String, Arc<CachedResponse>> = Cache::builder()
+			.max_capacity(1024 * 1024)
+			.time_to_live(Duration::from_millis(80))
+			.build();
+
+		let first = cache
+			.try_get_with(KEY.to_owned(), async {
+				Ok::<_, ()>(Arc::new(CachedResponse {
+					bytes: bytes::Bytes::from_static(b"one"),
+					content_type: "image/jpeg".into(),
+				}))
+			})
+			.await
+			.unwrap();
+		assert_eq!(first.bytes, bytes::Bytes::from_static(b"one"));
+
+		tokio::time::sleep(Duration::from_millis(20)).await;
+		let second = cache
+			.try_get_with(KEY.to_owned(), async {
+				Ok::<_, ()>(Arc::new(CachedResponse {
+					bytes: bytes::Bytes::from_static(b"two"),
+					content_type: "image/jpeg".into(),
+				}))
+			})
+			.await
+			.unwrap();
+		assert_eq!(
+			second.bytes,
+			bytes::Bytes::from_static(b"one"),
+			"fresh entry must win over refetch"
+		);
+
+		tokio::time::sleep(Duration::from_millis(90)).await;
+		assert!(cache.get(KEY).await.is_none(), "stale entry must be evicted");
+	}
 }
