@@ -4,6 +4,7 @@ use persistence::{
 	LibraryRepository, ProgressRepository, SeaStore, SessionRepository, SourceRecord, SourceRepository, UserRepository,
 	WorkRepository,
 };
+use sea_orm_migration::MigratorTrait;
 use uuid::Uuid;
 
 async fn seed_source(db: &SeaStore) {
@@ -58,10 +59,24 @@ fn sample_work(work_id: WorkId) -> (Work, Vec<Chapter>) {
 	(work, chapters)
 }
 
+static DB_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+async fn connect_store() -> (SeaStore, tokio::sync::MutexGuard<'static, ()>) {
+	let guard = DB_LOCK.lock().await;
+	let store = match std::env::var("MV_TEST_DATABASE_URL") {
+		Ok(url) => {
+			let db = sea_orm::Database::connect(&url).await.unwrap();
+			persistence::migration::Migrator::fresh(&db).await.unwrap();
+			SeaStore::new(db)
+		}
+		Err(_) => SeaStore::new(persistence::connect("sqlite::memory:").await.unwrap()),
+	};
+	(store, guard)
+}
+
 #[tokio::test]
 async fn work_snapshot_upsert_keeps_chapter_ids_and_reorders() {
-	let db = persistence::connect("sqlite::memory:").await.unwrap();
-	let store = SeaStore::new(db);
+	let (store, _db_lock) = connect_store().await;
 	seed_source(&store).await;
 	let work_id = Uuid::now_v7();
 	let (work, chapters) = sample_work(work_id);
@@ -101,8 +116,7 @@ async fn work_snapshot_upsert_keeps_chapter_ids_and_reorders() {
 
 #[tokio::test]
 async fn users_sessions_and_progress_roundtrip() {
-	let db = persistence::connect("sqlite::memory:").await.unwrap();
-	let store = SeaStore::new(db);
+	let (store, _db_lock) = connect_store().await;
 	seed_source(&store).await;
 
 	let user: User = store.create_user("dewn", "argon-hash").await.unwrap();

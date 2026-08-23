@@ -1,6 +1,6 @@
 pub mod entities;
 mod error;
-mod migration;
+pub mod migration;
 pub mod repo;
 pub mod sea_store;
 
