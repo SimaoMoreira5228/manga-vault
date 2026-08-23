@@ -115,6 +115,17 @@ class RemoteService implements VaultService {
 	}
 
 	@override
+	Future<void> downloadChapter({required String chapterId}) async =>
+		throw UnsupportedError('downloads are device-local');
+
+	@override
+	Future<void> removeDownload({required String chapterId}) async =>
+		throw UnsupportedError('downloads are device-local');
+
+	@override
+	Future<List<String>> downloadedChapters({required String workId}) async => const [];
+
+	@override
 	Future<List<PluginRepo>> pluginRepos() =>
 		_list('/api/plugin-repos', (raw) => PluginRepo(id: raw['id'], name: raw['name'], url: raw['url']));
 

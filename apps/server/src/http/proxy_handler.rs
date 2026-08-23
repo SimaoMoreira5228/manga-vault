@@ -59,6 +59,7 @@ pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery
 	};
 
 	let client = reqwest::Client::builder()
+		.user_agent(source_sdk::BROWSER_USER_AGENT)
 		.timeout(std::time::Duration::from_secs(20))
 		.build()
 		.map_err(|e| ApiError {

@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -216926381;
+  int get rustContentHash => -520815180;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -102,6 +102,16 @@ abstract class RustLibApi extends BaseApi {
     required LocalVault that,
     required String name,
     String? pin,
+  });
+
+  Future<void> crateApiLocalLocalVaultDownloadChapter({
+    required LocalVault that,
+    required String chapterId,
+  });
+
+  Future<List<String>> crateApiLocalLocalVaultDownloadedChapters({
+    required LocalVault that,
+    required String workId,
   });
 
   Future<WorkDetails> crateApiLocalLocalVaultGetWork({
@@ -154,6 +164,11 @@ abstract class RustLibApi extends BaseApi {
   Future<List<String>> crateApiLocalLocalVaultReadChapters({
     required LocalVault that,
     required String workId,
+  });
+
+  Future<void> crateApiLocalLocalVaultRemoveDownload({
+    required LocalVault that,
+    required String chapterId,
   });
 
   Future<void> crateApiLocalLocalVaultRemoveFromLibrary({
@@ -397,6 +412,82 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiLocalLocalVaultDownloadChapter({
+    required LocalVault that,
+    required String chapterId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(chapterId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultDownloadChapterConstMeta,
+        argValues: [that, chapterId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultDownloadChapterConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_download_chapter",
+        argNames: ["that", "chapterId"],
+      );
+
+  @override
+  Future<List<String>> crateApiLocalLocalVaultDownloadedChapters({
+    required LocalVault that,
+    required String workId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(workId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_list_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultDownloadedChaptersConstMeta,
+        argValues: [that, workId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultDownloadedChaptersConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_downloaded_chapters",
+        argNames: ["that", "workId"],
+      );
+
+  @override
   Future<WorkDetails> crateApiLocalLocalVaultGetWork({
     required LocalVault that,
     required String workId,
@@ -413,7 +504,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 8,
             port: port_,
           );
         },
@@ -453,7 +544,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 9,
             port: port_,
           );
         },
@@ -491,7 +582,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 10,
             port: port_,
           );
         },
@@ -531,7 +622,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 11,
             port: port_,
           );
         },
@@ -567,7 +658,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -603,7 +694,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 13,
             port: port_,
           );
         },
@@ -641,7 +732,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 14,
             port: port_,
           );
         },
@@ -677,7 +768,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 15,
             port: port_,
           );
         },
@@ -713,7 +804,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 16,
             port: port_,
           );
         },
@@ -749,7 +840,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 17,
             port: port_,
           );
         },
@@ -784,7 +875,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 18,
             port: port_,
           );
         },
@@ -806,6 +897,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiLocalLocalVaultRemoveDownload({
+    required LocalVault that,
+    required String chapterId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(chapterId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 19,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultRemoveDownloadConstMeta,
+        argValues: [that, chapterId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultRemoveDownloadConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_remove_download",
+        argNames: ["that", "chapterId"],
+      );
+
+  @override
   Future<void> crateApiLocalLocalVaultRemoveFromLibrary({
     required LocalVault that,
     required String workId,
@@ -822,7 +951,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 20,
             port: port_,
           );
         },
@@ -860,7 +989,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 21,
             port: port_,
           );
         },
@@ -902,7 +1031,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 22,
             port: port_,
           );
         },
@@ -942,7 +1071,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 23,
             port: port_,
           );
         },
@@ -980,7 +1109,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 24,
             port: port_,
           );
         },
@@ -1015,7 +1144,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 25,
             port: port_,
           );
         },
@@ -2029,6 +2158,16 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
         pin: pin,
       );
 
+  Future<void> downloadChapter({required String chapterId}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultDownloadChapter(that: this, chapterId: chapterId);
+
+  Future<List<String>> downloadedChapters({required String workId}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultDownloadedChapters(that: this, workId: workId);
+
   Future<WorkDetails> getWork({required String workId}) => RustLib.instance.api
       .crateApiLocalLocalVaultGetWork(that: this, workId: workId);
 
@@ -2075,6 +2214,11 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
       .instance
       .api
       .crateApiLocalLocalVaultReadChapters(that: this, workId: workId);
+
+  Future<void> removeDownload({required String chapterId}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultRemoveDownload(that: this, chapterId: chapterId);
 
   Future<void> removeFromLibrary({required String workId}) => RustLib
       .instance

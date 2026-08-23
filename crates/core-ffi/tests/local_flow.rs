@@ -84,9 +84,22 @@ async fn local_mode_imports_reads_and_tracks() {
 		ChapterBody::Images(_) => panic!("novel chapter must yield html"),
 	}
 
+	let first_chapter = imported.chapters[0].id.clone();
+	vault.download_chapter(first_chapter.clone()).await.unwrap();
+	let downloaded = vault.downloaded_chapters(imported.id.clone()).await.unwrap();
+	assert_eq!(downloaded, vec![first_chapter.clone()]);
+
+	match vault.chapter_content(first_chapter.clone()).await.unwrap() {
+		ChapterBody::Html(html) => assert!(html.contains("<p>one</p>"), "downloaded chapter must read from storage"),
+		ChapterBody::Images(_) => panic!("novel download must stay html"),
+	}
+
+	vault.remove_download(first_chapter).await.unwrap();
+	assert!(vault.downloaded_chapters(imported.id.clone()).await.unwrap().is_empty());
+
 	vault.mark_read(imported.chapters[0].id.clone()).await.unwrap();
 	let imported_id = imported.id.clone();
-	vault.remove_from_library(imported.id).await.unwrap();
+	vault.remove_from_library(imported_id.clone()).await.unwrap();
 	assert!(vault.list_library().await.unwrap().is_empty());
 
 	let mut vault = vault;

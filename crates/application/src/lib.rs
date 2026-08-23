@@ -1,5 +1,6 @@
 mod auth;
 mod cache;
+pub mod downloads;
 mod library;
 pub mod profiles;
 pub mod reading;
@@ -7,6 +8,7 @@ pub mod registration;
 pub mod work_refresh;
 mod works;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use persistence::{SeaStore, SourceRepository};
@@ -64,15 +66,17 @@ pub struct Vault {
 	pub sources: Arc<SourceManager>,
 	pub cache: cache::TtlCache,
 	cache_config: CacheConfig,
+	pub downloads: downloads::DownloadStore,
 }
 
 impl Vault {
-	pub fn new(sources: Arc<SourceManager>, db: Arc<SeaStore>) -> Self {
+	pub fn new(sources: Arc<SourceManager>, db: Arc<SeaStore>, downloads_root: PathBuf) -> Self {
 		Self {
 			db,
 			sources,
 			cache: cache::TtlCache::default(),
 			cache_config: CacheConfig::default(),
+			downloads: downloads::DownloadStore::new(downloads_root),
 		}
 	}
 

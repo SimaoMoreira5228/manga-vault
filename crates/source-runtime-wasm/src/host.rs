@@ -13,7 +13,7 @@ impl WasmState {
 	pub fn new(flaresolverr_url: Option<String>) -> Self {
 		let client = reqwest::Client::builder()
 			.timeout(std::time::Duration::from_secs(30))
-			.user_agent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36")
+			.user_agent(source_sdk::BROWSER_USER_AGENT)
 			.build()
 			.expect("reqwest client");
 		Self {

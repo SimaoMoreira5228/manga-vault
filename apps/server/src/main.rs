@@ -41,7 +41,7 @@ async fn main() {
 	manager.load_dir(&server_config.plugins_dir).await;
 	let manager = Arc::new(manager);
 
-	let vault = Vault::new(manager.clone(), store.clone());
+	let vault = Vault::new(manager.clone(), store.clone(), server_config.data_dir.join("downloads"));
 	vault
 		.seed_registration_mode(
 			server_config

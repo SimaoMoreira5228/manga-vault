@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../service/vault_service.dart';
@@ -15,6 +17,7 @@ class WorkPage extends StatefulWidget {
 class _WorkPageState extends State<WorkPage> {
 	late Future<WorkDetails> _details;
 	Set<String> read = {};
+	Set<String> downloaded = {};
 	bool inLibrary = false;
 
 	@override
@@ -26,6 +29,7 @@ class _WorkPageState extends State<WorkPage> {
 	Future<WorkDetails> _load() async {
 		final fresh = await widget.vault.getWork(workId: widget.details.id);
 		read = (await widget.vault.readChapters(workId: fresh.id)).toSet();
+		downloaded = (await widget.vault.downloadedChapters(workId: fresh.id).catchError((_) => <String>[])).toSet();
 		return fresh;
 	}
 
@@ -57,6 +61,24 @@ class _WorkPageState extends State<WorkPage> {
 			_details = reload;
 		});
 		await reload;
+	}
+
+	Future<void> _toggleDownload(String chapterId, bool isDownloaded) async {
+		if (isDownloaded) {
+			await widget.vault.removeDownload(chapterId: chapterId);
+		} else {
+			try {
+				await widget.vault.downloadChapter(chapterId: chapterId);
+			} catch (e) {
+				if (mounted) {
+					ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: $e')));
+				}
+				return;
+			}
+		}
+		setState(() {
+			isDownloaded ? downloaded.remove(chapterId) : downloaded.add(chapterId);
+		});
 	}
 
 	@override
@@ -102,14 +124,28 @@ class _WorkPageState extends State<WorkPage> {
 									(context, index) {
 										final chapter = details.chapters[index];
 										final isRead = read.contains(chapter.id);
+										final isDownloaded = downloaded.contains(chapter.id);
 										return ListTile(
 											title: Text(
 												chapter.title,
 												style: TextStyle(color: isRead ? Theme.of(context).colorScheme.secondary : null),
 											),
-											trailing: isRead
-													? const Icon(Icons.check_circle_outline)
-													: const Icon(Icons.chevron_right),
+											trailing: Row(
+												mainAxisSize: MainAxisSize.min,
+												children: [
+													IconButton(
+														icon: Icon(
+															isDownloaded ? Icons.offline_pin : Icons.download_outlined,
+															color: isDownloaded ? Theme.of(context).colorScheme.secondary : null,
+														),
+														onPressed: () => _toggleDownload(chapter.id, isDownloaded),
+													),
+													if (isRead)
+														const Icon(Icons.check_circle_outline)
+													else
+														const Icon(Icons.chevron_right),
+												],
+											),
 											onTap: () => _openChapter(details.chapters, index),
 										);
 									},
@@ -248,7 +284,12 @@ class _ReaderPageState extends State<ReaderPage> {
 				ChapterBody_Images urls => InteractiveViewer(
 					child: ListView.builder(
 						itemCount: urls.field0.length,
-						itemBuilder: (context, index) => Image.network(urls.field0[index]),
+						itemBuilder: (context, index) {
+							final page = urls.field0[index];
+							return page.startsWith('file://')
+									? Image.file(File.fromUri(Uri.parse(page)), fit: BoxFit.cover)
+									: Image.network(page);
+						},
 					),
 				),
 				ChapterBody_Html html => Center(

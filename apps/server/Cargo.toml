@@ -13,6 +13,7 @@ domain = { workspace = true }
 persistence = { workspace = true }
 jobs = { workspace = true }
 source-manager = { workspace = true }
+source-sdk = { workspace = true }
 source-updater = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }

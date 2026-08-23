@@ -31,6 +31,10 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<ProfileSummary> createProfile({required String name, String? pin});
 
+  Future<void> downloadChapter({required String chapterId});
+
+  Future<List<String>> downloadedChapters({required String workId});
+
   Future<WorkDetails> getWork({required String workId});
 
   Future<WorkDetails> importWork({
@@ -58,6 +62,8 @@ abstract class LocalVault implements RustOpaqueInterface {
   Future<List<ProfileSummary>> profiles();
 
   Future<List<String>> readChapters({required String workId});
+
+  Future<void> removeDownload({required String chapterId});
 
   Future<void> removeFromLibrary({required String workId});
 

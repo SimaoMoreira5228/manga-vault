@@ -18,7 +18,7 @@ pub async fn start(data_dir: String, plugins_dir: String) -> anyhow::Result<Loca
 	let store = Arc::new(persistence::SeaStore::new(persistence::connect(&db_url).await?));
 	let manager = Arc::new(SourceManager::new(None)?);
 	manager.load_dir(Path::new(&plugins_dir)).await;
-	let vault = Arc::new(Vault::new(manager.clone(), store));
+	let vault = Arc::new(Vault::new(manager.clone(), store, Path::new(&data_dir).join("downloads")));
 	vault.sync_source_registry().await?;
 	let updater = Arc::new(source_updater::SourceUpdater::new(source_updater::UpdaterConfig {
 		repos_file: Path::new(&data_dir).join("repos.json"),
@@ -156,10 +156,30 @@ impl LocalVault {
 
 	pub async fn chapter_content(&self, chapter_id: String) -> anyhow::Result<ChapterBody> {
 		let id: domain::ChapterId = chapter_id.parse()?;
-		match self.vault.chapter_content(id).await? {
+		match self.vault.chapter_content_cached(id).await?.0 {
 			ChapterContent::Images(pages) => Ok(ChapterBody::Images(pages)),
 			ChapterContent::Html(html) => Ok(ChapterBody::Html(html)),
 		}
+	}
+
+	pub async fn download_chapter(&self, chapter_id: String) -> anyhow::Result<()> {
+		self.vault.download_chapter(chapter_id.parse()?).await?;
+		Ok(())
+	}
+
+	pub async fn remove_download(&self, chapter_id: String) -> anyhow::Result<()> {
+		self.vault.remove_download(chapter_id.parse()?)?;
+		Ok(())
+	}
+
+	pub async fn downloaded_chapters(&self, work_id: String) -> anyhow::Result<Vec<String>> {
+		Ok(self
+			.vault
+			.downloaded_chapters(work_id.parse()?)
+			.await?
+			.into_iter()
+			.map(|id| id.to_string())
+			.collect())
 	}
 
 	pub async fn add_to_library(&self, work_id: String) -> anyhow::Result<()> {

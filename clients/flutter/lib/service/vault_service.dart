@@ -14,6 +14,9 @@ abstract class VaultService {
 	Future<List<LibraryItem>> listLibrary();
 	Future<void> markRead({required String chapterId});
 	Future<List<String>> readChapters({required String workId});
+	Future<void> downloadChapter({required String chapterId});
+	Future<void> removeDownload({required String chapterId});
+	Future<List<String>> downloadedChapters({required String workId});
 	Future<List<PluginRepo>> pluginRepos();
 	Future<PluginRepo> addPluginRepo({required String url});
 	Future<void> removePluginRepo({required String repoId});

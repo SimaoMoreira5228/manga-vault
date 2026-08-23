@@ -42,6 +42,15 @@ class LocalService implements VaultService {
 	Future<List<String>> readChapters({required String workId}) => _vault.readChapters(workId: workId);
 
 	@override
+	Future<void> downloadChapter({required String chapterId}) => _vault.downloadChapter(chapterId: chapterId);
+
+	@override
+	Future<void> removeDownload({required String chapterId}) => _vault.removeDownload(chapterId: chapterId);
+
+	@override
+	Future<List<String>> downloadedChapters({required String workId}) => _vault.downloadedChapters(workId: workId);
+
+	@override
 	Future<List<PluginRepo>> pluginRepos() => _vault.pluginRepos();
 
 	@override

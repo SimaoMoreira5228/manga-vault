@@ -10,3 +10,4 @@ dist/
 *.sqlite
 plugin-repo/
 clients/flutter/android/app/src/main/jniLibs/
+.vscode/

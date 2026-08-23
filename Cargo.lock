@@ -184,12 +184,14 @@ dependencies = [
  "jobs",
  "persistence",
  "rand_core 0.6.4",
+ "reqwest",
  "serde",
  "serde_json",
  "source-manager",
  "source-sdk",
  "thiserror 2.0.20",
  "tokio",
+ "tracing",
  "uuid",
 ]
 
@@ -2705,6 +2707,7 @@ dependencies = [
  "serde",
  "serde_json",
  "source-manager",
+ "source-sdk",
  "source-updater",
  "tokio",
  "tower-http 0.7.0",

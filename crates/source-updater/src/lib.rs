@@ -58,7 +58,9 @@ impl SourceUpdater {
 		};
 		Ok(Self {
 			config,
-			http: reqwest::Client::builder().user_agent("manga-vault-source-updater").build()?,
+			http: reqwest::Client::builder()
+				.user_agent(source_sdk::BROWSER_USER_AGENT)
+				.build()?,
 			repos: RwLock::new(repos),
 		})
 	}
