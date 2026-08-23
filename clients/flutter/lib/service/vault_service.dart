@@ -20,6 +20,8 @@ abstract class VaultService {
 	Future<String> translateChapter({required String chapterId, required String to});
 	Future<Map<String, dynamic>> exportSyncState();
 	Future<void> applySyncState(Map<String, dynamic> state);
+	bool get supportsDownloads;
+
 	Future<void> downloadChapter({required String chapterId});
 	Future<void> removeDownload({required String chapterId});
 	Future<List<String>> downloadedChapters({required String workId});

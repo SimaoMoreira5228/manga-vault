@@ -1,3 +1,4 @@
+import '../service/sync_scheduler.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -48,6 +49,7 @@ class _WorkPageState extends State<WorkPage> {
 		await widget.vault.markRead(chapterId: chapter.id);
 		if (!mounted) return;
 		setState(() => read.add(chapter.id));
+		SyncScheduler.instance.nudge();
 		Navigator.of(context)
 			.push(MaterialPageRoute(
 				builder: (_) => ReaderPage(vault: widget.vault, chapters: chapters, index: index),
@@ -133,6 +135,7 @@ class _WorkPageState extends State<WorkPage> {
 											trailing: Row(
 												mainAxisSize: MainAxisSize.min,
 												children: [
+												if (widget.vault.supportsDownloads)
 													IconButton(
 														icon: Icon(
 															isDownloaded ? Icons.offline_pin : Icons.download_outlined,

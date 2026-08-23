@@ -1,16 +1,28 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../service/local_service.dart';
 import '../service/remote_service.dart';
 import '../service/sync_engine.dart';
-import 'dart:convert';
-import 'dart:io';
+import '../service/vault_service.dart';
 
 class SettingsPage extends StatefulWidget {
-	const SettingsPage({super.key, required this.service});
+	const SettingsPage({
+		super.key,
+		required this.service,
+		required this.isLocal,
+		required this.restartSession,
+	
+	});
 
-	final LocalService service;
+	final VaultService service;
+	final bool isLocal;
+	final VoidCallback restartSession;
+
 
 	@override
 	State<SettingsPage> createState() => _SettingsPageState();
@@ -44,9 +56,13 @@ class _SettingsPageState extends State<SettingsPage> {
 		} catch (_) {}
 	}
 
-	Future<void> _saveKind(Map<String, dynamic> payload) async {
+	Future<void> _saveKind(String kind) async {
 		final file = await _linkFile();
-		await file.writeAsString(jsonEncode(payload));
+		final existing = file.existsSync()
+				? jsonDecode(file.readAsStringSync()) as Map<String, dynamic>
+				: <String, dynamic>{};
+		existing['kind'] = kind;
+		await file.writeAsString(jsonEncode(existing));
 	}
 
 	Future<void> _link() async {
@@ -70,15 +86,15 @@ class _SettingsPageState extends State<SettingsPage> {
 					FilledButton(
 						onPressed: () async {
 							try {
-								final remote = await RemoteService.login(
+								await RemoteService.login(
 									baseUrl: baseUrl.text.trim(),
 									username: username.text,
 									password: password.text,
 								);
-								await _saveKind({'kind': 'link', 'base_url': remote.baseUrl, 'token': remote.token});
+								await _saveKind('link');
 								if (!context.mounted) return;
 								Navigator.of(context).pop();
-								setState(() => linked = remote);
+								widget.restartSession();
 							} catch (e) {
 								if (!context.mounted) return;
 								ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Link failed: $e')));
@@ -93,12 +109,21 @@ class _SettingsPageState extends State<SettingsPage> {
 
 	Future<void> _unlink() async {
 		final file = await _linkFile();
-		if (file.existsSync()) await file.delete();
-		setState(() => linked = null);
+		if (file.existsSync()) {
+			final saved = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+			saved['kind'] = 'local';
+			await file.writeAsString(jsonEncode(saved));
+		}
+		widget.restartSession();
+	}
+
+	Future<void> _switchToLocalDevice() async {
+		await _saveKind('local');
+		widget.restartSession();
 	}
 
 	Future<void> _syncNow() async {
-		if (linked == null) return;
+		if (linked == null || syncing) return;
 		setState(() => syncing = true);
 		try {
 			await SyncEngine(local: widget.service, remote: linked!).synchronize();
@@ -121,22 +146,41 @@ class _SettingsPageState extends State<SettingsPage> {
 					const Padding(
 						padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
 						child:
-							Text('SYNC', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.6)),
+							Text('CONNECTION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.6)),
 					),
-					ListTile(
-						title: Text(linked == null ? 'Not linked' : 'Linked to ${linked!.baseUrl}'),
-						subtitle: const Text('Sync library and reading progress with a server account'),
-						trailing: linked == null
-								? FilledButton(onPressed: _link, child: const Text('Link'))
-								: TextButton(onPressed: _unlink, child: const Text('Unlink')),
-					),
-					if (linked != null)
+					if (widget.isLocal)
 						ListTile(
-							title: const Text('Sync now'),
-							trailing: syncing
-									? const CircularProgressIndicator()
-									: IconButton(icon: const Icon(Icons.sync), onPressed: _syncNow),
+							title: const Text('This device'),
+							subtitle: const Text('Library and progress are stored locally.'),
+						)
+					else
+						ListTile(
+							title: const Text('Server account'),
+							subtitle: const Text('Library and progress live on the server.'),
+							trailing: FilledButton(onPressed: _switchToLocalDevice, child: const Text('Use this device')),
 						),
+					if (widget.isLocal) ...[
+						const Padding(
+							padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+							child: Text('SYNC',
+								style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.6)),
+						),
+						ListTile(
+							title: Text(linked == null ? 'Not linked' : 'Linked to ${linked!.baseUrl}'),
+							subtitle: const Text('Keep library and reading progress in step with a server account.'),
+							trailing: linked == null
+									? FilledButton(onPressed: _link, child: const Text('Link'))
+									: TextButton(onPressed: _unlink, child: const Text('Unlink')),
+						),
+						if (linked != null)
+							ListTile(
+								title: const Text('Sync now'),
+								subtitle: const Text('Also happens automatically in the background.'),
+								trailing: syncing
+										? const CircularProgressIndicator()
+										: IconButton(icon: const Icon(Icons.sync), onPressed: _syncNow),
+							),
+					],
 					const Padding(
 						padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
 						child:
@@ -148,20 +192,24 @@ class _SettingsPageState extends State<SettingsPage> {
 							final mode = snapshot.data ?? 'off';
 							return ListTile(
 								title: Text(switch (mode) {
-									'byok' => 'Your own API key',
+									'byok' || 'instance' => 'Your own API key',
 									'ollama' => 'Ollama endpoint',
 									_ => 'Disabled',
 								}),
-								subtitle: const Text('Translate novels while reading. Stored on this device only.'),
-								trailing: mode == 'off'
-										? FilledButton(onPressed: _configureTranslation, child: const Text('Set up'))
-										: Row(mainAxisSize: MainAxisSize.min, children: [
-											TextButton(onPressed: _configureTranslation, child: const Text('Change')),
-											TextButton(onPressed: () async {
-												await widget.service.clearTranslationProvider();
-												if (context.mounted) setState(() {});
-											}, child: const Text('Clear')),
-										]),
+								subtitle: Text(widget.isLocal
+										? 'Translate novels while reading. Stored on this device only.'
+										: 'Managed by the server account settings.'),
+								trailing: widget.isLocal
+										? (mode == 'off'
+											? FilledButton(onPressed: _configureTranslation, child: const Text('Set up'))
+											: Row(mainAxisSize: MainAxisSize.min, children: [
+												TextButton(onPressed: _configureTranslation, child: const Text('Change')),
+												TextButton(onPressed: () async {
+													await widget.service.clearTranslationProvider();
+													if (context.mounted) setState(() {});
+												}, child: const Text('Clear')),
+											]))
+										: null,
 							);
 						},
 					),
@@ -171,9 +219,11 @@ class _SettingsPageState extends State<SettingsPage> {
 	}
 
 	Future<void> _configureTranslation() async {
+		if (widget.service is! LocalService) return;
+		final service = widget.service as LocalService;
 		await showDialog<void>(
 			context: context,
-			builder: (context) => _TranslationConfigDialog(service: widget.service),
+			builder: (context) => _TranslationConfigDialog(service: service),
 		);
 		if (mounted) setState(() {});
 	}

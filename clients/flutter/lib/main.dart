@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'dart:convert';
 import 'dart:io';
 
@@ -14,6 +13,7 @@ import 'pages/sources.dart';
 import 'service/local_service.dart';
 import 'service/remote_service.dart';
 import 'service/sync_engine.dart';
+import 'service/sync_scheduler.dart';
 import 'service/vault_service.dart';
 import 'src/rust/api/local.dart' as local;
 import 'src/rust/frb_generated.dart';
@@ -25,29 +25,43 @@ Future<void> main() async {
 	runApp(const MangaVaultApp());
 }
 
-class MangaVaultApp extends StatelessWidget {
+class MangaVaultApp extends StatefulWidget {
 	const MangaVaultApp({super.key});
+
+	@override
+	State<MangaVaultApp> createState() => _MangaVaultAppState();
+}
+
+class _MangaVaultAppState extends State<MangaVaultApp> {
+	int sessionEpoch = 0;
 
 	@override
 	Widget build(BuildContext context) {
 		return MaterialApp(
 			title: 'Manga Vault',
 			theme: buildVaultTheme(),
-			home: const ConnectPage(),
+			home: BootstrapPage(key: ValueKey(sessionEpoch), onSessionEnded: () => setState(() => sessionEpoch += 1)),
 		);
 	}
 }
 
-File _remoteStateFile(Directory support) => File('${support.path}/remote.json');
-
-class ConnectPage extends StatefulWidget {
-	const ConnectPage({super.key});
-
-	@override
-	State<ConnectPage> createState() => _ConnectPageState();
+Future<File> _stateFile() async {
+	final support = await getApplicationSupportDirectory();
+	return File('${support.path}/remote.json');
 }
 
-class _ConnectPageState extends State<ConnectPage> {
+typedef RestartSession = void Function();
+
+class BootstrapPage extends StatefulWidget {
+	const BootstrapPage({super.key, required this.onSessionEnded});
+
+	final RestartSession onSessionEnded;
+
+	@override
+	State<BootstrapPage> createState() => _BootstrapPageState();
+}
+
+class _BootstrapPageState extends State<BootstrapPage> {
 	bool busy = true;
 	String? error;
 	local.LocalVault? pendingVault;
@@ -61,70 +75,140 @@ class _ConnectPageState extends State<ConnectPage> {
 
 	Future<void> _restore() async {
 		try {
-			final support = await getApplicationSupportDirectory();
-			final file = _remoteStateFile(support);
+			final file = await _stateFile();
 			if (!file.existsSync()) {
 				setState(() => busy = false);
 				return;
 			}
 			final saved = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-			final kind = saved['kind'] ?? 'remote';
-			if (kind == 'link') {
-				final vault = await local.start(
-					dataDir: '${support.path}/local',
-					pluginsDir: '${support.path}/plugins',
-				);
-				final service = LocalService(vault);
-				final remote = RemoteService(baseUrl: saved['base_url'] as String, token: saved['token'] as String);
-				await _enter(service, true, remote: remote);
-				return;
+			switch (saved['kind']) {
+				case 'local':
+					await _enterLocal();
+				case 'link':
+					await _startLinked(saved);
+				default:
+					await _enterRemote(RemoteService(baseUrl: saved['base_url'] as String, token: saved['token'] as String));
 			}
-			await _enter(RemoteService(baseUrl: saved['base_url'] as String, token: saved['token'] as String), false);
 		} catch (_) {
 			setState(() => busy = false);
 		}
 	}
 
-	Future<void> _enter(VaultService service, bool isLocal, {RemoteService? remote}) async {
-		if (!mounted) return;
-		Navigator.of(context).pushReplacement(MaterialPageRoute(
-			builder: (_) => HomePage(service: service, isLocal: isLocal),
-		));
-		if (remote != null) {
-			unawaited(SyncEngine(local: service, remote: remote).synchronize().then<void>((_) {}, onError: (_) {}));
-		}
+	Future<(local.LocalVault, Directory)> _startLocalCore(Directory support) async {
+		final vault = await local.start(
+			dataDir: '${support.path}/local',
+			pluginsDir: '${support.path}/plugins',
+		);
+		return (vault, support);
 	}
 
-	Future<void> _startLocal() async {
+	Future<void> _enterLocal() async {
+		final support = await getApplicationSupportDirectory();
+		final (vault, _) = await _startLocalCore(support);
+		final profiles = await vault.profiles();
+		if (profiles.length == 1 && !profiles.first.hasPin) {
+			await vault.selectProfile(id: profiles.first.id);
+			await _enter(LocalService(vault), isLocal: true);
+			return;
+		}
+		setState(() {
+			busy = false;
+			pendingVault = vault;
+			pendingProfiles = profiles;
+		});
+	}
+
+	Future<void> _enterLocalAs(local.LocalVault vault, local.ProfileSummary profile) async {
+		await vault.selectProfile(id: profile.id, pin: null);
+		await _enter(LocalService(vault), isLocal: true);
+	}
+
+	Future<void> _startLinked(Map<String, dynamic> saved) async {
+		final support = await getApplicationSupportDirectory();
+		final (vault, _) = await _startLocalCore(support);
+		final service = LocalService(vault);
+		final remote = RemoteService(baseUrl: saved['base_url'] as String, token: saved['token'] as String);
+		await _enter(service, isLocal: true, remote: remote);
+	}
+
+	Future<void> _enterRemote(RemoteService service) => _enter(service, isLocal: false);
+
+	Future<void> _enter(VaultService service, {required bool isLocal, RemoteService? remote}) async {
+		if (!mounted) return;
+		Navigator.of(context).pushReplacement(MaterialPageRoute(
+			builder: (_) => HomePage(
+				service: service,
+				isLocal: isLocal,
+				restartSession: widget.onSessionEnded,
+			),
+		));
+	}
+
+	Future<void> _saveKind(String kind) async {
+		final file = await _stateFile();
+		final existing = file.existsSync()
+				? jsonDecode(file.readAsStringSync()) as Map<String, dynamic>
+				: <String, dynamic>{};
+		existing['kind'] = kind;
+		await file.writeAsString(jsonEncode(existing));
+	}
+
+	Future<void> _startFreshLocal() async {
 		setState(() {
 			busy = true;
 			error = null;
 		});
 		try {
-			final support = await getApplicationSupportDirectory();
-			final vault = await local.start(
-				dataDir: '${support.path}/local',
-				pluginsDir: '${support.path}/plugins',
-			);
-			final profiles = await vault.profiles();
-			final unlocked = profiles.length == 1 && !profiles.first.hasPin;
-			if (!mounted) return;
-			if (unlocked) {
-				await vault.selectProfile(id: profiles.first.id);
-				await _enter(LocalService(vault), true);
-			} else {
-				setState(() {
-					busy = false;
-					pendingVault = vault;
-					pendingProfiles = profiles;
-				});
-			}
+			await _saveKind('local');
+			await _enterLocal();
 		} catch (e) {
 			setState(() {
 				busy = false;
 				error = e.toString();
 			});
 		}
+	}
+
+	Future<void> _connectServer() async {
+		final baseUrl = TextEditingController();
+		final username = TextEditingController();
+		final password = TextEditingController();
+		await showDialog<void>(
+			context: context,
+			builder: (context) => AlertDialog(
+				title: const Text('Use a server account'),
+				content: Column(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						TextField(controller: baseUrl, decoration: const InputDecoration(hintText: 'https://server.example.org')),
+						TextField(controller: username, decoration: const InputDecoration(hintText: 'Username')),
+						TextField(controller: password, obscureText: true, decoration: const InputDecoration(hintText: 'Password')),
+					],
+				),
+				actions: [
+					TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+					FilledButton(
+						onPressed: () async {
+							try {
+								final service = await RemoteService.login(
+									baseUrl: baseUrl.text.trim(),
+									username: username.text,
+									password: password.text,
+								);
+								await _saveKind('remote');
+								if (!context.mounted) return;
+								Navigator.of(context).pop();
+								await _enterRemote(service);
+							} catch (e) {
+								if (!context.mounted) return;
+								ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+							}
+						},
+						child: const Text('Sign in'),
+					),
+				],
+			),
+		);
 	}
 
 	@override
@@ -134,7 +218,12 @@ class _ConnectPageState extends State<ConnectPage> {
 			return ProfilePickerPage(
 				vault: pendingVault!,
 				profiles: pendingProfiles,
-				onSelected: (service) => _enter(service, true),
+				onSelected: (profile) async {
+					final vault = pendingVault!;
+					await _saveKind('local');
+					SyncScheduler.instance.stop();
+					await _enterLocalAs(vault, profile);
+				},
 			);
 		}
 		return Scaffold(
@@ -149,9 +238,9 @@ class _ConnectPageState extends State<ConnectPage> {
 							const SizedBox(height: 8),
 							Text('Private Archive', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
 							const SizedBox(height: 48),
-							FilledButton(onPressed: _startLocal, child: const Text('Use this device')),
+							FilledButton(onPressed: _startFreshLocal, child: const Text('Use this device')),
 							const SizedBox(height: 12),
-							OutlinedButton(onPressed: () => _openRemoteForm(), child: const Text('Connect to a server')),
+							OutlinedButton(onPressed: _connectServer, child: const Text('Use a server account')),
 							if (error != null) ...[
 								const SizedBox(height: 24),
 								Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
@@ -162,106 +251,86 @@ class _ConnectPageState extends State<ConnectPage> {
 			),
 		);
 	}
+}
 
-	Future<void> _openRemoteForm() async {
-		final baseUrl = TextEditingController();
-		final username = TextEditingController();
-		final password = TextEditingController();
-		final formKey = GlobalKey<FormState>();
-		await showDialog<void>(
-			context: context,
-			builder: (context) => AlertDialog(
-				title: const Text('Connect to a server'),
-				content: Form(
-					key: formKey,
-					child: Column(
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							TextFormField(
-								controller: baseUrl,
-								decoration: const InputDecoration(hintText: 'https://server.example.org'),
-								validator: (value) => (value == null || value.trim().isEmpty) ? 'Required' : null,
-							),
-							TextFormField(
-								controller: username,
-								decoration: const InputDecoration(hintText: 'Username'),
-								validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
-							),
-							TextFormField(
-								controller: password,
-								obscureText: true,
-								decoration: const InputDecoration(hintText: 'Password'),
-								validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
-							),
-						],
-					),
+class HomePage extends StatefulWidget {
+	const HomePage({
+		super.key,
+		required this.service,
+		required this.isLocal,
+		required this.restartSession,
+		this.linkedRemote,
+	});
+
+	final VaultService service;
+	final bool isLocal;
+	final RestartSession restartSession;
+	final RemoteService? linkedRemote;
+
+	@override
+	State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+	var tab = 0;
+
+	@override
+	void initState() {
+		super.initState();
+		WidgetsBinding.instance.addObserver(this);
+		if (widget.isLocal && widget.linkedRemote != null) {
+			final remote = widget.linkedRemote!;
+			SyncScheduler.instance.start(() => SyncEngine(local: widget.service, remote: remote).synchronize());
+		} else {
+			SyncScheduler.instance.stop();
+		}
+	}
+
+	@override
+	void dispose() {
+		WidgetsBinding.instance.removeObserver(this);
+		super.dispose();
+	}
+
+	@override
+	void didChangeAppLifecycleState(AppLifecycleState state) {
+		if (state == AppLifecycleState.resumed) SyncScheduler.instance.run();
+	}
+
+	@override
+	Widget build(BuildContext context) {
+		final destinations = [
+			const NavigationSection(icon: Icons.explore_outlined, label: 'Discover'),
+			const NavigationSection(icon: Icons.collections_bookmark_outlined, label: 'Library'),
+			const NavigationSection(icon: Icons.extension_outlined, label: 'Plugins'),
+			if (widget.isLocal) const NavigationSection(icon: Icons.settings_outlined, label: 'Settings'),
+		];
+		return Scaffold(
+			body: switch (tab) {
+				0 => DiscoverPage(vault: widget.service),
+				1 => LibraryPage(vault: widget.service),
+				2 => SourcesPage(vault: widget.service),
+				_ => SettingsPage(
+					service: widget.service as LocalService,
+					isLocal: widget.isLocal,
+					restartSession: widget.restartSession,
 				),
-				actions: [
-					TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-					FilledButton(
-						onPressed: () async {
-							if (!(formKey.currentState?.validate() ?? false)) return;
-							try {
-								final service = await RemoteService.login(
-									baseUrl: baseUrl.text.trim(),
-									username: username.text,
-									password: password.text,
-								);
-								final support = await getApplicationSupportDirectory();
-								_remoteStateFile(support).writeAsStringSync(
-									jsonEncode({'kind': 'remote', 'base_url': service.baseUrl, 'token': service.token}),
-								);
-								if (!context.mounted) return;
-								Navigator.of(context).pop();
-								await _enter(service, false);
-							} catch (e) {
-								if (!context.mounted) return;
-								ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
-							}
-						},
-						child: const Text('Sign in'),
-					),
+			},
+			bottomNavigationBar: NavigationBar(
+				selectedIndex: tab,
+				onDestinationSelected: (index) => setState(() => tab = index),
+				destinations: [
+					for (final section in destinations)
+						NavigationDestination(icon: Icon(section.icon), label: section.label),
 				],
 			),
 		);
 	}
 }
 
-class HomePage extends StatelessWidget {
-	const HomePage({super.key, required this.service, required this.isLocal});
+class NavigationSection {
+	const NavigationSection({required this.icon, required this.label});
 
-	final VaultService service;
-	final bool isLocal;
-
-	@override
-	Widget build(BuildContext context) {
-		return DefaultTabController(
-			length: isLocal ? 4 : 3,
-			animationDuration: Duration.zero,
-			child: Scaffold(
-				body: TabBarView(
-					children: [
-						DiscoverPage(vault: service),
-						LibraryPage(vault: service),
-						SourcesPage(vault: service),
-						if (isLocal) SettingsPage(service: service as LocalService),
-					],
-				),
-				bottomNavigationBar: TabBar(
-					tabs: [
-						const Tab(icon: Icon(Icons.explore_outlined), text: 'Discover'),
-						const Tab(icon: Icon(Icons.collections_bookmark_outlined), text: 'Library'),
-						const Tab(icon: Icon(Icons.extension_outlined), text: 'Plugins'),
-						if (isLocal) const Tab(icon: Icon(Icons.settings_outlined), text: 'Settings'),
-					],
-					labelColor: Theme.of(context).colorScheme.primary,
-					unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-					indicatorColor: Theme.of(context).colorScheme.primary,
-					dividerColor: Colors.transparent,
-					labelStyle: const TextStyle(fontFamily: 'Geist', fontSize: 12, fontWeight: FontWeight.w500),
-					unselectedLabelStyle: const TextStyle(fontFamily: 'Geist', fontSize: 12, fontWeight: FontWeight.w500),
-				),
-			),
-		);
-	}
+	final IconData icon;
+	final String label;
 }

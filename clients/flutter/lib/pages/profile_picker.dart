@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../src/rust/api/local.dart' as local;
 import '../service/local_service.dart';
-import '../service/vault_service.dart';
 
 class ProfilePickerPage extends StatefulWidget {
-	const ProfilePickerPage({super.key, required this.vault, required this.profiles, required this.onSelected});
+	const ProfilePickerPage({
+		super.key,
+		required this.vault,
+		required this.profiles,
+		required this.onSelected,
+	});
 
 	final local.LocalVault vault;
 	final List<local.ProfileSummary> profiles;
-	final ValueChanged<VaultService> onSelected;
+	final ValueChanged<local.ProfileSummary> onSelected;
 
 	@override
 	State<ProfilePickerPage> createState() => _ProfilePickerPageState();
@@ -39,7 +43,7 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
 			await widget.vault.selectProfile(id: profile.id);
 		}
 		if (!mounted) return;
-		widget.onSelected(LocalService(widget.vault));
+		widget.onSelected(profile);
 	}
 
 	Future<String?> _promptPin(String name) async {
@@ -90,7 +94,8 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
 							final trimmed = name.text.trim();
 							if (trimmed.isEmpty || !context.mounted) return;
 							try {
-								final created = await widget.vault.createProfile(name: trimmed, pin: pin.text.isEmpty ? null : pin.text);
+								final created =
+									await widget.vault.createProfile(name: trimmed, pin: pin.text.isEmpty ? null : pin.text);
 								if (!context.mounted) return;
 								Navigator.of(context).pop();
 								setState(() => profiles = [...profiles, created]);
@@ -142,10 +147,7 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
 											onPressed: () => _enter(profile),
 										),
 									ActionChip(
-										label: const Padding(
-											padding: EdgeInsets.all(8),
-											child: Icon(Icons.add, size: 40),
-										),
+										label: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.add, size: 40)),
 										onPressed: _createProfile,
 									),
 								],
@@ -157,3 +159,5 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
 		);
 	}
 }
+
+typedef LocalServiceReady = void Function(LocalService service);

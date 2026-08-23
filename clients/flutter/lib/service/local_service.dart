@@ -44,6 +44,9 @@ class LocalService implements VaultService {
 	Future<List<String>> readChapters({required String workId}) => _vault.readChapters(workId: workId);
 
 	@override
+	bool get supportsDownloads => true;
+
+	@override
 	Future<void> downloadChapter({required String chapterId}) => _vault.downloadChapter(chapterId: chapterId);
 
 	@override

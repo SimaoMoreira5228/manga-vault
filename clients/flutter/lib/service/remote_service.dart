@@ -147,6 +147,9 @@ class RemoteService implements VaultService {
 		_send('POST', '/api/sync/apply', body: jsonEncode(state));
 
 	@override
+	bool get supportsDownloads => false;
+
+	@override
 	Future<void> downloadChapter({required String chapterId}) async =>
 		throw UnsupportedError('downloads are device-local');
 
