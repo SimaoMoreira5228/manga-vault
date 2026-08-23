@@ -80,8 +80,10 @@ export class ApiError extends Error {
 	}
 }
 
+const API_BASE = import.meta.env.PUBLIC_API_URL ?? '';
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-	const response = await fetch(path, {
+	const response = await fetch(`${API_BASE}${path}`, {
 		credentials: 'include',
 		...init,
 		headers: { 'content-type': 'application/json', ...init?.headers },

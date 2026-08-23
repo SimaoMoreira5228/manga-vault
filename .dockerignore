@@ -1,0 +1,7 @@
+target/
+clients/
+local/
+.git/
+data/
+plugins/
+**/node_modules/

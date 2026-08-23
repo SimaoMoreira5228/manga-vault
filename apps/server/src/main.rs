@@ -51,6 +51,29 @@ async fn main() {
 
 	let app = http::router(AppState { vault: vault.clone() });
 
+	let app = if server_config.cors_origins.is_empty() {
+		app
+	} else {
+		let origins = tower_http::cors::AllowOrigin::list(
+			server_config
+				.cors_origins
+				.iter()
+				.map(|origin| origin.parse::<axum::http::HeaderValue>().expect("invalid CORS origin")),
+		);
+		app.layer(
+			tower_http::cors::CorsLayer::new()
+				.allow_origin(origins)
+				.allow_credentials(true)
+				.allow_methods([
+					axum::http::Method::GET,
+					axum::http::Method::POST,
+					axum::http::Method::PUT,
+					axum::http::Method::DELETE,
+				])
+				.allow_headers([axum::http::header::CONTENT_TYPE, axum::http::header::AUTHORIZATION]),
+		)
+	};
+
 	tracing::info!("manga-vault listening on {}", server_config.bind_addr);
 	let listener = tokio::net::TcpListener::bind(&server_config.bind_addr).await.expect("bind");
 	axum::serve(listener, app.into_make_service()).await.expect("server");
