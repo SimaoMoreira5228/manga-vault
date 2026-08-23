@@ -2,9 +2,11 @@
 
 pub use super::categories::Entity as Categories;
 pub use super::chapters::Entity as Chapters;
+pub use super::invite_codes::Entity as InviteCodes;
 pub use super::jobs::Entity as Jobs;
 pub use super::library_entries::Entity as LibraryEntries;
 pub use super::reading_progress::Entity as ReadingProgress;
+pub use super::server_settings::Entity as ServerSettings;
 pub use super::sessions::Entity as Sessions;
 pub use super::sources::Entity as Sources;
 pub use super::users::Entity as Users;

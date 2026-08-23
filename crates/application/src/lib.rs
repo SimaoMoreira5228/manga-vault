@@ -2,6 +2,7 @@ mod auth;
 mod cache;
 mod library;
 pub mod reading;
+pub mod registration;
 pub mod work_refresh;
 mod works;
 
@@ -22,6 +23,12 @@ pub enum VaultError {
 	BadCredentials,
 	#[error("username `{0}` is already taken")]
 	UsernameTaken(String),
+	#[error("registration is closed on this server")]
+	RegistrationClosed,
+	#[error("an invite code is required to register")]
+	InviteRequired,
+	#[error("invalid or already-used invite code")]
+	InvalidInvite,
 	#[error("{0}")]
 	Conflict(String),
 }

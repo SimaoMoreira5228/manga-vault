@@ -8,6 +8,7 @@ services:
       PLUGINS_DIR: /plugins
       FLARESOLVERR_URL: ${FLARESOLVERR_URL:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
     ports:
       - "8080:8080"
     volumes:

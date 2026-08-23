@@ -11,3 +11,4 @@ pub use types::{RemoteChapter, RemoteWorkDetails, RemoteWorkSummary, SourceInfo,
 
 pub const WORK_KIND_MANGA: &str = "manga";
 pub const WORK_KIND_NOVEL: &str = "novel";
+pub const PLUGIN_API_MAJOR: u64 = 1;

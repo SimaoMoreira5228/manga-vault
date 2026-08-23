@@ -19,8 +19,8 @@ class AuthState {
 		this.user = await api.me();
 	}
 
-	async register(username: string, password: string) {
-		await api.register(username, password);
+	async register(username: string, password: string, inviteCode?: string) {
+		await api.register(username, password, inviteCode);
 		this.user = await api.me();
 	}
 

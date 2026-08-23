@@ -15,6 +15,8 @@ pub struct Credentials {
 	pub username: String,
 	pub password: String,
 	pub device_label: Option<String>,
+	#[serde(default)]
+	pub invite_code: Option<String>,
 }
 
 fn with_session_cookie(mut response: Response, token: Uuid) -> Response {
@@ -32,7 +34,12 @@ async fn session_response(session: Session) -> Response {
 pub async fn register(State(state): State<AppState>, Json(payload): Json<Credentials>) -> Result<Response, ApiError> {
 	let session = state
 		.vault
-		.register(&payload.username, &payload.password, payload.device_label)
+		.register(
+			&payload.username,
+			&payload.password,
+			payload.device_label,
+			payload.invite_code.as_deref(),
+		)
 		.await?;
 	Ok(session_response(session).await)
 }

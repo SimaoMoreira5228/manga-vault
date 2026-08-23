@@ -1,8 +1,9 @@
 FROM rust:1-slim AS build
 WORKDIR /src
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends pkg-config libssl-dev \
+	&& apt-get install -y --no-install-recommends pkg-config libssl-dev mold \
 	&& rm -rf /var/lib/apt/lists/*
+COPY .cargo .cargo
 COPY Cargo.toml Cargo.lock ./
 COPY crates crates
 COPY apps apps

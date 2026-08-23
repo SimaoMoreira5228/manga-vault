@@ -5,8 +5,11 @@ pub struct ServerConfig {
 	pub database_url: String,
 	pub bind_addr: String,
 	pub plugins_dir: PathBuf,
+	pub data_dir: PathBuf,
 	pub flaresolverr_url: Option<String>,
 	pub cors_origins: Vec<String>,
+	pub admin_username: Option<String>,
+	pub registration_mode: Option<application::registration::RegistrationMode>,
 }
 
 fn env_or(key: &str, fallback: &str) -> String {
@@ -32,10 +35,14 @@ impl ServerConfig {
 			),
 			bind_addr: env_or("BIND_ADDR", "127.0.0.1:8080"),
 			plugins_dir: env_or("PLUGINS_DIR", "./plugins").into(),
+			data_dir: env_or("DATA_DIR", "./data").into(),
 			flaresolverr_url: env_opt("FLARESOLVERR_URL"),
 			cors_origins: env_opt("CORS_ORIGINS")
 				.map(|value| value.split(',').map(|origin| origin.trim().to_owned()).collect())
 				.unwrap_or_default(),
+			admin_username: env_opt("ADMIN_USERNAME"),
+			registration_mode: env_opt("REGISTRATION_MODE")
+				.and_then(|raw| application::registration::RegistrationMode::parse(&raw)),
 		}
 	}
 }

@@ -26,6 +26,37 @@ impl FromRequestParts<AppState> for Authenticated {
 	}
 }
 
+pub struct AdminUser {
+	pub user: User,
+}
+
+impl FromRequestParts<AppState> for AdminUser {
+	type Rejection = crate::http::error::ApiError;
+
+	async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+		let authenticated = Authenticated::from_request_parts(parts, state).await?;
+		let Some(admin_username) = &state.admin_username else {
+			return Err(plugin_management_disabled());
+		};
+		if authenticated.user.username != *admin_username {
+			return Err(crate::http::error::ApiError {
+				status: axum::http::StatusCode::FORBIDDEN,
+				message: "plugin management is reserved to the server operator".to_owned(),
+			});
+		}
+		Ok(Self {
+			user: authenticated.user,
+		})
+	}
+}
+
+pub fn plugin_management_disabled() -> crate::http::error::ApiError {
+	crate::http::error::ApiError {
+		status: axum::http::StatusCode::FORBIDDEN,
+		message: "plugin management is disabled on this deployment: set ADMIN_USERNAME".to_owned(),
+	}
+}
+
 fn extract_token(parts: &mut Parts) -> Option<Uuid> {
 	let headers = &parts.headers;
 	if let Some(value) = headers.get(axum::http::header::AUTHORIZATION).and_then(|v| v.to_str().ok())

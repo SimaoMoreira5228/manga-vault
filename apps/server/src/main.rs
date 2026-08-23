@@ -28,11 +28,28 @@ async fn main() {
 		.unwrap_or_else(|error| panic!("database connect failed: {error}"));
 	let store = Arc::new(persistence::SeaStore::new(db));
 
+	std::fs::create_dir_all(&server_config.data_dir).expect("data dir");
+	let updater = Arc::new(
+		source_updater::SourceUpdater::new(source_updater::UpdaterConfig {
+			repos_file: server_config.data_dir.join("repos.json"),
+			plugins_dir: server_config.plugins_dir.clone(),
+		})
+		.expect("source updater"),
+	);
+
 	let manager = SourceManager::new(server_config.flaresolverr_url.clone()).expect("source manager");
 	manager.load_dir(&server_config.plugins_dir).await;
 	let manager = Arc::new(manager);
 
 	let vault = Vault::new(manager.clone(), store.clone());
+	vault
+		.seed_registration_mode(
+			server_config
+				.registration_mode
+				.unwrap_or(application::registration::RegistrationMode::Open),
+		)
+		.await
+		.expect("seed registration mode");
 	vault.sync_source_registry().await.expect("source registry sync");
 	let vault = Arc::new(vault);
 	let scheduler_vault = vault.clone();
@@ -49,7 +66,11 @@ async fn main() {
 		scheduler.run(Arc::new(RefreshExecutor(scheduler_vault)), shutdown_rx).await;
 	});
 
-	let app = http::router(AppState { vault: vault.clone() });
+	let app = http::router(AppState {
+		vault: vault.clone(),
+		updater,
+		admin_username: server_config.admin_username,
+	});
 
 	let app = if server_config.cors_origins.is_empty() {
 		app

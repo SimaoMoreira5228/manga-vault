@@ -1,17 +1,55 @@
 <script lang="ts">
-import { api, type Session } from '$lib/api';
+import { api, type InviteInfo, type RegistrationMode, type Session } from '$lib/api';
 import { appearance, THEMES } from '$lib/appearance.svelte';
 import { auth } from '$lib/auth.svelte';
 
 let sessions = $state<Session[]>([]);
 let loading = $state(true);
 
+let registrationMode: RegistrationMode | null = $state(null);
+let invites = $state<InviteInfo[]>([]);
+let inviteBusy = $state(false);
+
 $effect(() => {
 	api
 		.sessions()
 		.then((result) => (sessions = result))
 		.finally(() => (loading = false));
+	api
+		.registrationAdminView()
+		.then((view) => {
+			registrationMode = view.mode;
+			invites = view.invites;
+		})
+		.catch(() => {});
 });
+
+async function changeMode(event: Event) {
+	const value = (event.currentTarget as HTMLSelectElement).value as RegistrationMode;
+	inviteBusy = true;
+	try {
+		await api.setRegistrationMode(value);
+		registrationMode = value;
+	} finally {
+		inviteBusy = false;
+	}
+}
+
+async function addInvite() {
+	inviteBusy = true;
+	try {
+		await api.createInvite();
+		const view = await api.registrationAdminView();
+		invites = view.invites;
+	} finally {
+		inviteBusy = false;
+	}
+}
+
+async function revokeInvite(code: string) {
+	await api.deleteInvite(code);
+	invites = invites.filter((invite) => invite.code !== code);
+}
 
 async function revoke(token: string) {
 	await api.revokeSession(token);
@@ -99,6 +137,64 @@ async function revoke(token: string) {
 		>
 			Sign out
 		</button>
+	</section>
+
+	<section class="mt-12" aria-labelledby="registration-heading">
+		<h2 id="registration-heading" class="title-lg">Registration</h2>
+		{#if registrationMode !== null}
+			<div class="mt-4 flex flex-wrap items-center gap-3">
+				<select
+					value={registrationMode}
+					onchange={changeMode}
+					disabled={inviteBusy}
+					class="rounded-card border border-outline-variant/60 bg-surface-container px-4 py-2.5 outline-none focus:border-primary"
+					aria-label="Registration mode"
+				>
+					<option value="open">Open — anyone can register</option>
+					<option value="closed">Closed — no new accounts</option>
+					<option value="invite">Invite codes only</option>
+				</select>
+				<button
+					type="button"
+					disabled={inviteBusy || registrationMode !== 'invite'}
+					class="label-caps rounded-card border border-outline-variant/60 px-4 py-2.5 hover:border-outline disabled:opacity-40"
+					onclick={addInvite}
+				>
+					Generate invite
+				</button>
+			</div>
+			<ul
+				class="mt-4 divide-y divide-outline-variant/20 rounded-card border border-outline-variant/40 bg-surface-low"
+			>
+				{#each invites as invite (invite.code)}
+					<li class="flex items-center gap-4 px-4 py-3">
+						<code class="min-w-0 flex-1 truncate mono-label text-on-surface">{invite.code}</code>
+						{#if invite.used_by}
+							<span class="mono-label text-secondary">used by {invite.used_by}</span>
+						{:else}
+							<span class="mono-label text-outline">unused</span>
+						{/if}
+						{#if !invite.used_by}
+							<button
+								type="button"
+								class="mono-label text-error uppercase hover:underline"
+								onclick={() => revokeInvite(invite.code)}
+							>
+								Revoke
+							</button>
+						{/if}
+					</li>
+				{:else}
+					<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
+						No invite codes generated.
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="body-md mt-2 text-on-surface-variant">
+				Registration is managed by the server operator.
+			</p>
+		{/if}
 	</section>
 
 	<section class="mt-12" aria-labelledby="devices-heading">

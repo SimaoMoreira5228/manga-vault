@@ -2,8 +2,10 @@ mod auth_extractor;
 mod auth_handlers;
 mod error;
 mod library_handlers;
+mod plugin_handlers;
 mod proxy_handler;
 mod reading_handlers;
+mod registration_handlers;
 mod sources_handlers;
 mod works_handlers;
 
@@ -42,5 +44,25 @@ pub fn router(state: AppState) -> Router {
 			get(library_handlers::categories).post(library_handlers::create_category),
 		)
 		.route("/api/categories/{category_id}", delete(library_handlers::delete_category))
+		.route(
+			"/api/plugin-repos",
+			get(plugin_handlers::list_repos).post(plugin_handlers::add_repo),
+		)
+		.route("/api/plugin-repos/{repo_id}", delete(plugin_handlers::remove_repo))
+		.route("/api/plugins/catalog", get(plugin_handlers::catalog))
+		.route("/api/plugins/{plugin_id}/install", put(plugin_handlers::install))
+		.route("/api/plugins/{plugin_id}", delete(plugin_handlers::uninstall))
+		.route(
+			"/api/registration",
+			get(registration_handlers::public_mode).put(registration_handlers::update),
+		)
+		.route(
+			"/api/registration/invites",
+			get(registration_handlers::show).post(registration_handlers::create_invite),
+		)
+		.route(
+			"/api/registration/invites/{code}",
+			delete(registration_handlers::delete_invite),
+		)
 		.with_state(state)
 }

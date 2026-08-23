@@ -4,9 +4,11 @@ pub mod prelude;
 
 pub mod categories;
 pub mod chapters;
+pub mod invite_codes;
 pub mod jobs;
 pub mod library_entries;
 pub mod reading_progress;
+pub mod server_settings;
 pub mod sessions;
 pub mod sources;
 pub mod users;

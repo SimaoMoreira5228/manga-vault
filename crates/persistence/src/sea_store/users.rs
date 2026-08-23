@@ -1,10 +1,54 @@
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use sea_orm::{
+	ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseTransaction, EntityTrait, QueryFilter, QueryOrder,
+	TransactionTrait,
+};
 
 use super::{utc_to_db, *};
 use crate::entities::{sessions, users};
 use crate::repo::{SessionRepository, UserRepository};
 use crate::{StoreError, StoreResult};
+
+async fn insert_user(db: &DatabaseTransaction, username: &str, password_hash: &str) -> StoreResult<User> {
+	let model = users::ActiveModel {
+		id: sea_orm::Set(uuid::Uuid::now_v7()),
+		username: sea_orm::Set(username.to_owned()),
+		password_hash: sea_orm::Set(password_hash.to_owned()),
+		created_at: sea_orm::Set(utc_to_db(Utc::now())),
+	}
+	.insert(db)
+	.await?;
+	Ok(User::from(&model))
+}
+
+impl SeaStore {
+	pub async fn register_with_invite(&self, username: &str, password_hash: &str, code: &str) -> StoreResult<User> {
+		let txn = self.db.begin().await?;
+		let now = Utc::now();
+		let redeemed = txn
+			.execute_raw(sea_orm::Statement::from_sql_and_values(
+				txn.get_database_backend(),
+				r#"UPDATE "invite_codes" SET "used_by" = $1, "used_at" = $2 WHERE "code" = $3 AND "used_by" IS NULL"#,
+				[username.into(), now.into(), code.into()],
+			))
+			.await?
+			.rows_affected()
+			> 0;
+		if !redeemed {
+			txn.rollback().await?;
+			return Err(StoreError::NotFound("invite code", code.to_owned()));
+		}
+		let user = match insert_user(&txn, username, password_hash).await {
+			Ok(user) => user,
+			Err(error) => {
+				txn.rollback().await?;
+				return Err(error);
+			}
+		};
+		txn.commit().await?;
+		Ok(user)
+	}
+}
 
 #[async_trait::async_trait]
 impl UserRepository for SeaStore {
@@ -17,15 +61,10 @@ impl UserRepository for SeaStore {
 		{
 			return Err(StoreError::UsernameTaken(username.to_owned()));
 		}
-		let model = users::ActiveModel {
-			id: sea_orm::Set(uuid::Uuid::now_v7()),
-			username: sea_orm::Set(username.to_owned()),
-			password_hash: sea_orm::Set(password_hash.to_owned()),
-			created_at: sea_orm::Set(utc_to_db(Utc::now())),
-		}
-		.insert(&self.db)
-		.await?;
-		Ok(User::from(&model))
+		let txn = self.db.begin().await?;
+		let user = insert_user(&txn, username, password_hash).await?;
+		txn.commit().await?;
+		Ok(user)
 	}
 
 	async fn get_user(&self, id: uuid::Uuid) -> StoreResult<Option<User>> {

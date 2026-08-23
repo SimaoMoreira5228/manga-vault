@@ -45,6 +45,16 @@ impl SourceManager {
 
 	async fn load_bundle(&self, path: &Path) -> Result<source_sdk::SourceInfo, String> {
 		let manifest = PluginManifest::load(path).map_err(|e| e.to_string())?;
+		match manifest.api_major() {
+			Some(major) if major > source_sdk::PLUGIN_API_MAJOR => {
+				return Err(format!(
+					"plugin {} requires plugin api {major}, this build supports {}",
+					manifest.id,
+					source_sdk::PLUGIN_API_MAJOR
+				));
+			}
+			_ => {}
+		}
 		let source: Arc<dyn Source> = match manifest.backend {
 			Backend::Lua => Arc::new(self.lua.load(path).map_err(|e| e.to_string())?),
 			Backend::Wasm => Arc::new(self.wasm.load(path).await.map_err(|e| e.to_string())?),
@@ -52,6 +62,10 @@ impl SourceManager {
 		let info = source.info().clone();
 		self.loaded.write().insert(manifest.id.clone(), source);
 		Ok(info)
+	}
+
+	pub async fn reload_bundle(&self, path: &Path) -> Result<source_sdk::SourceInfo, String> {
+		self.load_bundle(path).await
 	}
 
 	pub fn get(&self, id: &str) -> Option<Arc<dyn Source>> {

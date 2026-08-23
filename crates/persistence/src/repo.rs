@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use domain::{
 	Category, Chapter, ChapterId, LibraryEntry, ReadingProgress, Session, SourceId, User, UserId, Work, WorkId, WorkKind,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::StoreResult;
 
@@ -29,6 +30,26 @@ pub struct JobRow {
 pub trait SourceRepository: Send + Sync {
 	async fn upsert_source(&self, source: &SourceRecord) -> StoreResult<()>;
 	async fn list_sources(&self) -> StoreResult<Vec<SourceRecord>>;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InviteCodeRecord {
+	pub id: uuid::Uuid,
+	pub code: String,
+	pub created_by: String,
+	pub used_by: Option<String>,
+	pub created_at: DateTime<Utc>,
+	pub used_at: Option<DateTime<Utc>>,
+}
+
+#[async_trait]
+pub trait RegistrationRepository: Send + Sync {
+	async fn get_setting(&self, key: &str) -> StoreResult<Option<String>>;
+	async fn set_setting(&self, key: &str, value: &str) -> StoreResult<()>;
+	async fn create_invite(&self, code: &str, created_by: &str) -> StoreResult<InviteCodeRecord>;
+	async fn list_invites(&self) -> StoreResult<Vec<InviteCodeRecord>>;
+	async fn delete_invite(&self, code: &str) -> StoreResult<bool>;
+	async fn redeem_invite(&self, code: &str, username: &str, now: DateTime<Utc>) -> StoreResult<bool>;
 }
 
 #[async_trait]

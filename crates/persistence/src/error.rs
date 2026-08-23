@@ -6,6 +6,8 @@ pub enum StoreError {
 	Db(#[from] sea_orm::DbErr),
 	#[error("username `{0}` is already taken")]
 	UsernameTaken(String),
+	#[error("invite code `{0}` already exists")]
+	InviteCodeTaken(String),
 	#[error("{0} `{1}` not found")]
 	NotFound(&'static str, String),
 }

@@ -16,6 +16,8 @@ pub struct PluginManifest {
 	pub entrypoint: String,
 	#[serde(default)]
 	pub capabilities: Vec<String>,
+	#[serde(default)]
+	pub plugin_api: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -36,5 +38,9 @@ impl PluginManifest {
 			_ => ManifestError::Io(e, path.display().to_string()),
 		})?;
 		toml::from_str(&raw).map_err(|e| ManifestError::Invalid(e, path.display().to_string()))
+	}
+
+	pub fn api_major(&self) -> Option<u64> {
+		self.plugin_api.as_deref().and_then(|api| api.split('.').next()?.parse().ok())
 	}
 }

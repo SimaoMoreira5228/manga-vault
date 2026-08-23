@@ -86,6 +86,33 @@ export interface ContinueReadingItem {
 
 export type ChapterContent = { Images: string[] } | { Html: string };
 
+export type PluginBackend = 'lua' | 'wasm';
+
+export interface StoredRepo {
+	id: string;
+	name: string;
+	url: string;
+}
+
+export interface CatalogEntry {
+	id: string;
+	backend: PluginBackend;
+	repo_id: string;
+	repo_name: string;
+	available_version: string;
+	installed_version: string | null;
+	update_available: boolean;
+}
+
+export type RegistrationMode = 'open' | 'closed' | 'invite';
+
+export interface InviteInfo {
+	code: string;
+	created_by: string;
+	created_at: string;
+	used_by: string | null;
+}
+
 export class ApiError extends Error {
 	constructor(
 		public status: number,
@@ -94,7 +121,6 @@ export class ApiError extends Error {
 		super(message);
 	}
 }
-
 const API_BASE = import.meta.env.PUBLIC_API_URL ?? '';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -135,8 +161,12 @@ export function proxied(url: string): string {
 }
 
 export const api = {
-	register: (username: string, password: string) =>
-		post<Session>('/api/auth/register', { username, password }),
+	register: (username: string, password: string, inviteCode?: string) =>
+		post<Session>('/api/auth/register', {
+			username,
+			password,
+			...(inviteCode ? { invite_code: inviteCode } : {}),
+		}),
 	login: (username: string, password: string) =>
 		post<Session>('/api/auth/login', { username, password }),
 	logout: () => post('/api/auth/logout'),
@@ -169,4 +199,20 @@ export const api = {
 	library: () => get<{ entries: [LibraryEntry, Work][]; categories: Category[] }>('/api/library'),
 	addToLibrary: (workId: string) => put<LibraryEntry>('/api/library', { work_id: workId }),
 	removeFromLibrary: (workId: string) => del(`/api/library/${workId}`),
+
+	pluginRepos: () => get<StoredRepo[]>('/api/plugin-repos'),
+	addPluginRepo: (url: string) => post<StoredRepo>('/api/plugin-repos', { url }),
+	removePluginRepo: (repoId: string) => del(`/api/plugin-repos/${repoId}`),
+	pluginCatalog: () => get<CatalogEntry[]>('/api/plugins/catalog'),
+	installPlugin: (pluginId: string, repoId?: string) =>
+		put<unknown>(`/api/plugins/${pluginId}/install`, repoId ? { repo_id: repoId } : null),
+	uninstallPlugin: (pluginId: string) => del(`/api/plugins/${pluginId}`),
+
+	registrationMode: () => get<{ mode: RegistrationMode }>('/api/registration').then((r) => r.mode),
+	setRegistrationMode: (mode: RegistrationMode) =>
+		put<{ mode: RegistrationMode }>('/api/registration', { mode }),
+	registrationAdminView: () =>
+		get<{ mode: RegistrationMode; invites: InviteInfo[] }>('/api/registration/invites'),
+	createInvite: () => post<InviteInfo>('/api/registration/invites'),
+	deleteInvite: (code: string) => del(`/api/registration/invites/${code}`),
 };

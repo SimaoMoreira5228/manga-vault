@@ -1,38 +1,11 @@
-use argon2::password_hash::{PasswordHasher, PasswordVerifier, SaltString};
 use domain::Session;
 use persistence::{SessionRepository, UserRepository};
-use rand_core::OsRng;
 use uuid::Uuid;
 
+use crate::registration::verify_password;
 use crate::{Vault, VaultError, VaultResult};
 
-fn hash_password(password: &str) -> VaultResult<String> {
-	let salt = SaltString::generate(&mut OsRng);
-	argon2::Argon2::default()
-		.hash_password(password.as_bytes(), &salt)
-		.map(|hash| hash.to_string())
-		.map_err(|_| VaultError::Conflict("password hashing failed".into()))
-}
-
-pub fn verify_password(password: &str, stored: &str) -> bool {
-	if stored.starts_with("$2a$") || stored.starts_with("$2b$") || stored.starts_with("$2y$") {
-		return bcrypt::verify(password, stored).unwrap_or(false);
-	}
-	argon2::PasswordHash::new(stored)
-		.and_then(|parsed| argon2::Argon2::default().verify_password(password.as_bytes(), &parsed))
-		.is_ok()
-}
-
 impl Vault {
-	pub async fn register(&self, username: &str, password: &str, device_label: Option<String>) -> VaultResult<Session> {
-		let hashed = hash_password(password)?;
-		let user = self.db.create_user(username, &hashed).await.map_err(|e| match e {
-			persistence::StoreError::UsernameTaken(name) => VaultError::UsernameTaken(name),
-			other => VaultError::from(other),
-		})?;
-		self.open_session(user.id, device_label).await
-	}
-
 	pub async fn login(&self, username: &str, password: &str, device_label: Option<String>) -> VaultResult<Session> {
 		let user = self
 			.db
@@ -45,7 +18,7 @@ impl Vault {
 		self.open_session(user.id, device_label).await
 	}
 
-	async fn open_session(&self, user_id: Uuid, device_label: Option<String>) -> VaultResult<Session> {
+	pub(crate) async fn open_session(&self, user_id: Uuid, device_label: Option<String>) -> VaultResult<Session> {
 		let now = chrono::Utc::now();
 		let session = Session {
 			token: Uuid::new_v4(),
