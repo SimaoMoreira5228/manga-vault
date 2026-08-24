@@ -18,6 +18,8 @@ pub struct PluginManifest {
 	pub capabilities: Vec<String>,
 	#[serde(default)]
 	pub plugin_api: Option<String>,
+	#[serde(default)]
+	pub legacy_urls: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]

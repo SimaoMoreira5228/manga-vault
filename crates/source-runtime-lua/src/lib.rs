@@ -4,6 +4,7 @@ mod source;
 use std::path::Path;
 use std::sync::Arc;
 
+pub use source::classify_lua_error;
 use source_sdk::{Backend, PluginManifest, SourceInfo};
 use thiserror::Error;
 

@@ -29,6 +29,16 @@ pub fn install(lua: &Lua, flaresolverr_url: Option<String>) {
 		}
 	};
 	globals.set("flaresolverr", flaresolverr).expect("flaresolverr module");
+
+	let fail = lua
+		.create_function(
+			|_, (kind, message, retryable): (String, String, Option<bool>)| -> mlua::Result<()> {
+				let flag = if retryable.unwrap_or(false) { 1 } else { 0 };
+				Err(mlua::Error::external(format!("mangavault:{kind}:{flag}:{message}")))
+			},
+		)
+		.unwrap();
+	globals.set("fail", fail).expect("fail function");
 }
 
 #[derive(serde::Serialize)]
@@ -78,7 +88,7 @@ fn http_module(lua: &Lua, client: std::sync::Arc<reqwest::Client>) -> Table {
 			async move {
 				match apply_headers(client.get(&url), headers).send().await {
 					Ok(response) => http_response_value(&lua, response).await,
-					Err(_) => Ok(Value::Nil),
+					Err(error) => Err(mlua::Error::external(format!("mangavault:network:1:{}", error))),
 				}
 			}
 		})
@@ -90,7 +100,7 @@ fn http_module(lua: &Lua, client: std::sync::Arc<reqwest::Client>) -> Table {
 			async move {
 				match apply_headers(client.post(&url), headers).body(body).send().await {
 					Ok(response) => http_response_value(&lua, response).await,
-					Err(_) => Ok(Value::Nil),
+					Err(error) => Err(mlua::Error::external(format!("mangavault:network:1:{}", error))),
 				}
 			}
 		})

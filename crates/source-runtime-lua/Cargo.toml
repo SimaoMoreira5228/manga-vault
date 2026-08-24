@@ -14,3 +14,11 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
 async-trait = { workspace = true }
+url = { workspace = true }
+
+[[bin]]
+name = "lua-tester"
+path = "src/bin/lua-tester.rs"
+
+[dev-dependencies]
+anyhow = "1"

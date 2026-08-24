@@ -40,4 +40,8 @@ pub trait Source: Send + Sync {
 	async fn trending(&self, page: u32) -> SourceResult<Vec<RemoteWorkSummary>>;
 	async fn fetch_work(&self, url: &str) -> SourceResult<RemoteWorkDetails>;
 	async fn fetch_chapter(&self, url: &str) -> SourceResult<ChapterContent>;
+
+	async fn remap_url(&self, url: &str) -> String {
+		url.to_owned()
+	}
 }

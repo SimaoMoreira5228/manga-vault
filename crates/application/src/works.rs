@@ -69,14 +69,16 @@ impl Vault {
 			.await?
 			.ok_or(VaultError::NotFound("work", work_id.to_string()))?;
 		let source = self.resolve(&existing.source_id)?;
+		let fetch_url: String = source.remap_url(&existing.remote_url).await;
 		let details = source
-			.fetch_work(&existing.remote_url)
+			.fetch_work(&fetch_url)
 			.await
 			.map_err(|e| VaultError::Source(existing.source_id.clone(), e))?;
 
 		let mut refreshed = self.build_work(source.info(), &details);
 		refreshed.id = existing.id;
 		refreshed.kind = existing.kind;
+		refreshed.remote_url = fetch_url;
 		refreshed.created_at = existing.created_at;
 		refreshed.updated_at = chrono::Utc::now();
 
@@ -118,12 +120,13 @@ impl Vault {
 			.get_work(chapter.work_id)
 			.await?
 			.ok_or(VaultError::NotFound("work", chapter.work_id.to_string()))?;
+		let source = self.resolve(&work.source_id)?;
+		let fetch_url: String = source.remap_url(&chapter.remote_url).await;
 
 		let key = format!("chapter:{}:{chapter_id}", work.id);
 		let ttl = std::time::Duration::from_secs(self.cache_config.chapter_ttl_secs);
-		let source = self.resolve(&work.source_id)?;
 		self.cache
-			.get_or_insert(&key, ttl, || async { source.fetch_chapter(&chapter.remote_url).await })
+			.get_or_insert(&key, ttl, || async { source.fetch_chapter(&fetch_url).await })
 			.await
 			.map_err(|e| VaultError::Source(work.source_id.clone(), e))
 	}
