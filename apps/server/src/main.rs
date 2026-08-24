@@ -95,6 +95,7 @@ async fn main() {
 
 	let app = http::router(AppState {
 		vault: vault.clone(),
+		pending_oauth: Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::new())),
 		updater,
 		admin_username: server_config.admin_username,
 		ollama_translator,

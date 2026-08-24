@@ -62,11 +62,19 @@ class LocalService implements VaultService {
 	Future<List<Map<String, dynamic>>> myTrackerAccounts() async => const [];
 
 	@override
-	Future<void> linkTracker({required String trackerId, required String token}) async =>
-		throw UnsupportedError('trackers require a server');
+	Future<void> linkTracker({
+		required String trackerId,
+		String? token,
+		String? username,
+		String? password,
+	}) async => throw UnsupportedError('trackers require a server');
 
 	@override
 	Future<void> unlinkTracker({required String trackerId}) async =>
+		throw UnsupportedError('trackers require a server');
+
+	@override
+	Future<String> startTrackerOauth({required String trackerId, required String redirectUri}) async =>
 		throw UnsupportedError('trackers require a server');
 
 	@override

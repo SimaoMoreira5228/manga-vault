@@ -8,6 +8,7 @@ pub struct Model {
 	#[sea_orm(primary_key, auto_increment = false)]
 	pub tracker_id: String,
 	pub access_token_enc: Vec<u8>,
+	pub refresh_token_enc: Option<Vec<u8>>,
 	pub account_label: Option<String>,
 	pub updated_at: ChronoDateTimeUtc,
 }

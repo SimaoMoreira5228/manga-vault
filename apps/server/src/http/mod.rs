@@ -66,6 +66,14 @@ pub fn router(state: AppState) -> Router {
 			put(tracker_handlers::link_account).delete(tracker_handlers::unlink_account),
 		)
 		.route(
+			"/api/me/trackers/{tracker_id}/oauth/start",
+			post(tracker_handlers::oauth_start),
+		)
+		.route(
+			"/api/me/trackers/{tracker_id}/oauth/callback",
+			get(tracker_handlers::oauth_callback),
+		)
+		.route(
 			"/api/works/{work_id}/track",
 			get(tracker_handlers::list_work_track).post(tracker_handlers::bind_work),
 		)

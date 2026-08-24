@@ -1,7 +1,10 @@
 pub mod anilist;
 pub mod kitsu;
+pub mod myanimelist;
 
 pub use anilist::AniListProvider;
+pub use kitsu::KitsuProvider;
+pub use myanimelist::MyAnimeListProvider;
 use async_trait::async_trait;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
@@ -20,6 +23,7 @@ pub enum Credentials {
 	OAuthCode {
 		code: String,
 		verifier: Option<String>,
+		redirect_uri: Option<String>,
 	},
 	UsernamePassword {
 		username: String,
@@ -56,6 +60,8 @@ pub enum TrackerError {
 	Http(#[from] reqwest::Error),
 	#[error("tracker rejected the request: {0}")]
 	Provider(String),
+	#[error("tracker tokens expired: {0}")]
+	Unauthorized(String),
 	#[error("unknown tracker: {0}")]
 	Unknown(String),
 }
@@ -71,15 +77,35 @@ pub trait TrackerProvider: Send + Sync {
 	async fn search(&self, tokens: &Tokens, title: &str) -> TrackerResult<Vec<TrackSearchHit>>;
 	async fn track_state(&self, tokens: &Tokens, remote_id: &str) -> TrackerResult<RemoteTrackState>;
 	async fn update_progress(&self, tokens: &Tokens, remote_id: &str, chapters_read: f64) -> TrackerResult<()>;
+
+	fn oauth_authorize_url(&self, _redirect_uri: &str, _state: &str, _code_challenge: &str) -> Option<String> {
+		None
+	}
+
+	async fn refresh(&self, _tokens: &Tokens) -> TrackerResult<Tokens> {
+		Err(TrackerError::Provider("tracker does not support token refresh".into()))
+	}
+}
+
+pub fn pkce_pair() -> (String, String) {
+	use base64::Engine;
+	use sha2::{Digest, Sha256};
+
+	let random: [u8; 50] = rand::random();
+	let verifier = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(random);
+	let challenge = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
+	(verifier, challenge)
 }
 
 pub fn provider_for(id: &str) -> Option<Box<dyn TrackerProvider>> {
 	match id {
 		"anilist" => Some(Box::new(AniListProvider::default())),
+		"kitsu" => Some(Box::new(KitsuProvider::default())),
+		"myanimelist" => Some(Box::new(MyAnimeListProvider::default())),
 		_ => None,
 	}
 }
 
 pub fn registry() -> Vec<&'static str> {
-	vec!["anilist"]
+	vec!["anilist", "kitsu", "myanimelist"]
 }

@@ -39,8 +39,14 @@ abstract class VaultService {
 	bool get supportsTrackers;
 	Future<List<Map<String, dynamic>>> trackersRegistry();
 	Future<List<Map<String, dynamic>>> myTrackerAccounts();
-	Future<void> linkTracker({required String trackerId, required String token});
+	Future<void> linkTracker({
+	required String trackerId,
+	String? token,
+	String? username,
+	String? password,
+});
 	Future<void> unlinkTracker({required String trackerId});
+	Future<String> startTrackerOauth({required String trackerId, required String redirectUri});
 	Future<List<Map<String, dynamic>>> workTracks({required String workId});
 	Future<Map<String, dynamic>> bindWorkTrack({
 		required String workId,

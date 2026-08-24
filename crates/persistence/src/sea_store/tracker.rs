@@ -13,6 +13,7 @@ pub struct TrackerAccountRecord {
 	pub user_id: UserId,
 	pub tracker_id: String,
 	pub access_token_enc: Vec<u8>,
+	pub refresh_token_enc: Option<Vec<u8>>,
 	pub account_label: Option<String>,
 }
 
@@ -40,6 +41,7 @@ impl TrackerRepository for crate::SeaStore {
 			.map(|model| TrackerAccountRecord {
 				account_label: model.account_label,
 				access_token_enc: model.access_token_enc,
+				refresh_token_enc: model.refresh_token_enc,
 				tracker_id: model.tracker_id,
 				user_id: model.user_id,
 			})
@@ -55,6 +57,7 @@ impl TrackerRepository for crate::SeaStore {
 			.map(|model| TrackerAccountRecord {
 				account_label: model.account_label,
 				access_token_enc: model.access_token_enc,
+				refresh_token_enc: model.refresh_token_enc,
 				tracker_id: model.tracker_id,
 				user_id: model.user_id,
 			}))
@@ -80,6 +83,7 @@ impl TrackerRepository for crate::SeaStore {
 				user_id: sea_orm::Set(account.user_id),
 				tracker_id: sea_orm::Set(account.tracker_id.clone()),
 				access_token_enc: sea_orm::NotSet,
+				refresh_token_enc: sea_orm::NotSet,
 				account_label: sea_orm::NotSet,
 				updated_at: sea_orm::Set(Utc::now()),
 			}

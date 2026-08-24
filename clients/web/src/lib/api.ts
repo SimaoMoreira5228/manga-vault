@@ -158,7 +158,7 @@ export class ApiError extends Error {
 		super(message);
 	}
 }
-const API_BASE = import.meta.env.PUBLIC_API_URL ?? '';
+export const API_BASE = import.meta.env.PUBLIC_API_URL ?? '';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const response = await fetch(`${API_BASE}${path}`, {
@@ -241,8 +241,15 @@ export const api = {
 
 	trackersRegistry: () => get<{ trackers: TrackerInfo[] }>('/api/trackers'),
 	myTrackerAccounts: () => get<TrackerAccount[]>('/api/me/trackers'),
-	linkTracker: (id: string, token: string) => put(`/api/me/trackers/${id}`, { token }),
+	linkTracker: (
+		id: string,
+		payload: { token?: string; username?: string; password?: string },
+	) => put(`/api/me/trackers/${id}`, payload),
 	unlinkTracker: (id: string) => del(`/api/me/trackers/${id}`),
+	startTrackerOauth: (id: string, redirectUri: string) =>
+		post<{ authorize_url: string }>(`/api/me/trackers/${id}/oauth/start`, {
+			redirect_uri: redirectUri,
+		}),
 
 	workTracks: (workId: string) => get<WorkTrackLink[]>(`/api/works/${workId}/track`),
 	bindWorkTrack: (workId: string, trackerId: string, remoteId: string) =>

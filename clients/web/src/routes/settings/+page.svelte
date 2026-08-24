@@ -1,5 +1,5 @@
 <script lang="ts">
-import {
+import { API_BASE,
 	api,
 	type InviteInfo,
 	type RegistrationMode,
@@ -28,6 +28,7 @@ let translationMessage = $state('');
 let trackerRegistry = $state<TrackerInfo[]>([]);
 let trackerAccounts = $state<TrackerAccount[]>([]);
 let trackerTokens: Record<string, string> = $state({});
+let trackerCredentials: Record<string, { username: string; password: string }> = $state({});
 let trackerBusy = $state(false);
 
 $effect(() => {
@@ -37,7 +38,14 @@ $effect(() => {
 		.finally(() => (loading = false));
 	api
 		.trackersRegistry()
-		.then((result) => (trackerRegistry = result.trackers))
+		.then((result) => {
+			trackerRegistry = result.trackers;
+			for (const tracker of trackerRegistry) {
+				if (tracker.auth === 'credentials' && !trackerCredentials[tracker.id]) {
+					trackerCredentials[tracker.id] = { username: '', password: '' };
+				}
+			}
+		})
 		.catch(() => {});
 	api
 		.myTrackerAccounts()
@@ -83,12 +91,24 @@ async function revokeInvite(code: string) {
 	invites = invites.filter((invite) => invite.code !== code);
 }
 
-async function linkTracker(id: string) {
+async function linkTracker(id: string, payload: { token?: string; username?: string; password?: string }) {
 	trackerBusy = true;
 	try {
-		await api.linkTracker(id, trackerTokens[id]);
+		await api.linkTracker(id, payload);
 		trackerAccounts = await api.myTrackerAccounts();
-		trackerTokens[id] = '';
+		delete trackerTokens[id];
+		delete trackerCredentials[id];
+	} finally {
+		trackerBusy = false;
+	}
+}
+
+async function connectTrackerOauth(id: string) {
+	trackerBusy = true;
+	try {
+		const redirectUri = `${API_BASE}/api/me/trackers/${id}/oauth/callback`;
+		const result = await api.startTrackerOauth(id, redirectUri);
+		window.location.href = result.authorize_url;
 	} finally {
 		trackerBusy = false;
 	}
@@ -346,11 +366,51 @@ async function clearTranslationSettings() {
 										type="button"
 										disabled={trackerBusy || !trackerTokens[tracker.id]}
 										class="label-caps rounded-card border border-primary/60 px-3 py-1.5 text-primary hover:border-primary disabled:opacity-40"
-										onclick={() => linkTracker(tracker.id)}
+										onclick={() => linkTracker(tracker.id, { token: trackerTokens[tracker.id] })}
 									>
 										Link
 									</button>
 								</div>
+							{:else if tracker.auth === 'credentials'}
+								<div class="flex flex-wrap items-center gap-2">
+									<input
+										type="text"
+										bind:value={trackerCredentials[tracker.id].username}
+										placeholder="username"
+										class="rounded-card border border-outline-variant/60 bg-surface-container px-3 py-1.5 outline-none focus:border-primary"
+									>
+									<input
+										type="password"
+										bind:value={trackerCredentials[tracker.id].password}
+										placeholder="password"
+										class="rounded-card border border-outline-variant/60 bg-surface-container px-3 py-1.5 outline-none focus:border-primary"
+									>
+									<button
+										type="button"
+										disabled={
+											trackerBusy ||
+											!trackerCredentials[tracker.id]?.username ||
+											!trackerCredentials[tracker.id]?.password
+										}
+										class="label-caps rounded-card border border-primary/60 px-3 py-1.5 text-primary hover:border-primary disabled:opacity-40"
+										onclick={() =>
+											linkTracker(tracker.id, {
+												username: trackerCredentials[tracker.id]?.username,
+												password: trackerCredentials[tracker.id]?.password,
+											})}
+									>
+										Link
+									</button>
+								</div>
+							{:else if tracker.auth === 'oauth'}
+								<button
+									type="button"
+									disabled={trackerBusy}
+									class="label-caps rounded-card border border-primary/60 px-3 py-1.5 text-primary hover:border-primary disabled:opacity-40"
+									onclick={() => connectTrackerOauth(tracker.id)}
+								>
+									Connect
+								</button>
 							{/if}
 						</div>
 					</li>

@@ -205,11 +205,30 @@ class RemoteService implements VaultService {
 	}
 
 	@override
-	Future<void> linkTracker({required String trackerId, required String token}) => _send(
+	Future<void> linkTracker({
+		required String trackerId,
+		String? token,
+		String? username,
+		String? password,
+	}) => _send(
 		'PUT',
 		'/api/me/trackers/$trackerId',
-		body: jsonEncode({'token': token}),
+		body: jsonEncode({
+			if (token != null) 'token': token,
+			if (username != null) 'username': username,
+			if (password != null) 'password': password,
+		}),
 	);
+
+	@override
+	Future<String> startTrackerOauth({required String trackerId, required String redirectUri}) async {
+		final payload = await _send(
+			'POST',
+			'/api/me/trackers/$trackerId/oauth/start',
+			body: jsonEncode({'redirect_uri': redirectUri}),
+		);
+		return payload['authorize_url'] as String;
+	}
 
 	@override
 	Future<void> unlinkTracker({required String trackerId}) =>

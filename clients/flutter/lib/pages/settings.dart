@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../service/local_service.dart';
@@ -34,6 +35,9 @@ class _SettingsPageState extends State<SettingsPage> {
 	List<Map<String, dynamic>> trackerRegistry = const [];
 	Set<String> linkedTrackerIds = {};
 	Map<String, TextEditingController> trackerTokenFields = {};
+	Map<String, TextEditingController> trackerUsernameFields = {};
+	Map<String, TextEditingController> trackerPasswordFields = {};
+	String? serverBaseUrl;
 
 	@override
 	void initState() {
@@ -50,6 +54,7 @@ class _SettingsPageState extends State<SettingsPage> {
 		if (!widget.isLocal && widget.service is RemoteService) {
 			final service = widget.service as RemoteService;
 			try {
+				serverBaseUrl = service.baseUrl;
 				trackerRegistry = [for (final entry in await service.trackersRegistry()) entry];
 				linkedTrackerIds = (await service.myTrackerAccounts())
 					.map((account) => account['tracker_id'] as String)
@@ -62,6 +67,45 @@ class _SettingsPageState extends State<SettingsPage> {
 	}
 
 	bool _trackerLinked(String id) => linkedTrackerIds.contains(id);
+
+	Future<void> _linkCredentials(String id) async {
+		final remote = widget.service;
+		if (remote is! RemoteService) return;
+		final username = trackerUsernameFields.putIfAbsent(id, TextEditingController.new).text.trim();
+		final password = trackerPasswordFields.putIfAbsent(id, TextEditingController.new).text;
+		if (username.isEmpty || password.isEmpty) return;
+		await remote.linkTracker(trackerId: id, username: username, password: password);
+		await _reloadTrackers();
+	}
+
+	Future<void> _connectOauth(String id) async {
+		final remote = widget.service;
+		if (remote is! RemoteService || serverBaseUrl == null) return;
+		final redirectUri = '${serverBaseUrl!}/api/me/trackers/$id/oauth/callback';
+		final authorizeUrl = await remote.startTrackerOauth(trackerId: id, redirectUri: redirectUri);
+		final launched = await launchUrl(
+			Uri.parse(authorizeUrl),
+			mode: LaunchMode.externalApplication,
+		);
+		if (!launched) return;
+		for (var attempt = 0; attempt < 40; attempt++) {
+			await Future<void>.delayed(const Duration(seconds: 3));
+			try {
+				final accounts = await remote.myTrackerAccounts();
+				if (accounts.any((account) => account['tracker_id'] == id)) break;
+			} catch (_) {}
+		}
+		await _loadTrackers();
+	}
+
+	Future<void> _reloadTrackers() async {
+		final remote = widget.service;
+		if (remote is! RemoteService) return;
+		final accounts = await remote.myTrackerAccounts();
+		setState(() => linkedTrackerIds = {
+			for (final account in accounts) account['tracker_id'] as String,
+		});
+	}
 
 	Future<void> _linkTracker(String id) async {
 		final controller = trackerTokenFields.putIfAbsent(id, TextEditingController.new);
@@ -236,26 +280,63 @@ class _SettingsPageState extends State<SettingsPage> {
 										: null,
 								subtitle: _trackerLinked(tracker['id'] as String)
 										? null
-										: Row(
-											mainAxisSize: MainAxisSize.min,
-											children: [
-												SizedBox(
-													width: 200,
-													child: TextField(
-														controller: trackerTokenFields.putIfAbsent(
-															tracker['id'] as String,
-															TextEditingController.new,
+										: switch (tracker['auth'] as String?) {
+											'oauth' => TextButton(
+												onPressed: () => _connectOauth(tracker['id'] as String),
+												child: const Text('Connect in browser'),
+											),
+											'credentials' => Row(
+												mainAxisSize: MainAxisSize.min,
+												children: [
+													SizedBox(
+														width: 130,
+														child: TextField(
+															controller: trackerUsernameFields.putIfAbsent(
+																tracker['id'] as String,
+																TextEditingController.new,
+															),
+															decoration: const InputDecoration(hintText: 'username'),
 														),
-														obscureText: true,
-														decoration: const InputDecoration(hintText: 'access token'),
 													),
-												),
-												IconButton(
-													icon: const Icon(Icons.link),
-													onPressed: () => _linkTracker(tracker['id'] as String),
-												),
-											],
-										),
+													const SizedBox(width: 8),
+													SizedBox(
+														width: 130,
+														child: TextField(
+															controller: trackerPasswordFields.putIfAbsent(
+																tracker['id'] as String,
+																TextEditingController.new,
+															),
+															obscureText: true,
+															decoration: const InputDecoration(hintText: 'password'),
+														),
+													),
+													IconButton(
+														icon: const Icon(Icons.link),
+														onPressed: () => _linkCredentials(tracker['id'] as String),
+													),
+												],
+											),
+											_ => Row(
+												mainAxisSize: MainAxisSize.min,
+												children: [
+													SizedBox(
+														width: 200,
+														child: TextField(
+															controller: trackerTokenFields.putIfAbsent(
+																tracker['id'] as String,
+																TextEditingController.new,
+															),
+															obscureText: true,
+															decoration: const InputDecoration(hintText: 'access token'),
+														),
+													),
+													IconButton(
+														icon: const Icon(Icons.link),
+														onPressed: () => _linkTracker(tracker['id'] as String),
+													),
+												],
+											),
+										},
 							),
 					const Padding(
 						padding: EdgeInsets.fromLTRB(16, 16, 16, 4),

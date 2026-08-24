@@ -3717,6 +3717,7 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
@@ -5267,9 +5268,12 @@ name = "trackers"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "base64 0.23.1",
+ "rand 0.9.5",
  "reqwest",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "source-sdk",
  "thiserror 2.0.20",
  "tokio",

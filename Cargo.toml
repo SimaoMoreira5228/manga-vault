@@ -69,7 +69,7 @@ urlencoding = "2"
 moka = { version = "0.12", features = ["future"] }
 bytes = "1"
 async-trait = "0.1"
-reqwest = { version = "0.13", features = ["charset", "http2", "json", "rustls", "system-proxy"] }
+reqwest = { version = "0.13", features = ["charset", "http2", "json", "rustls", "system-proxy", "form", "query"] }
 scraper = "0.27"
 mlua = { version = "0.12", features = [
     "lua54",
