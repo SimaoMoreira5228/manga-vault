@@ -67,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -905351426;
+  int get rustContentHash => 2052765313;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -79,6 +79,12 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<void> crateApiLocalLocalVaultAddGlossaryMeaning({
+    required LocalVault that,
+    required String entryId,
+    required String meaning,
+  });
+
   Future<PluginRepo> crateApiLocalLocalVaultAddPluginRepo({
     required LocalVault that,
     required String url,
@@ -107,6 +113,14 @@ abstract class RustLibApi extends BaseApi {
     required LocalVault that,
   });
 
+  Future<void> crateApiLocalLocalVaultCreateGlossaryEntry({
+    required LocalVault that,
+    required String term,
+    required String language,
+    required String meaning,
+    String? romanization,
+  });
+
   Future<ProfileSummary> crateApiLocalLocalVaultCreateProfile({
     required LocalVault that,
     required String name,
@@ -130,6 +144,11 @@ abstract class RustLibApi extends BaseApi {
   Future<WorkDetails> crateApiLocalLocalVaultGetWork({
     required LocalVault that,
     required String workId,
+  });
+
+  Future<String> crateApiLocalLocalVaultGlossaryForLanguage({
+    required LocalVault that,
+    required String language,
   });
 
   Future<WorkDetails> crateApiLocalLocalVaultImportWork({
@@ -219,10 +238,16 @@ abstract class RustLibApi extends BaseApi {
     String? model,
   });
 
+  Future<bool> crateApiLocalLocalVaultToggleGlossaryVote({
+    required LocalVault that,
+    required String meaningId,
+  });
+
   Future<String> crateApiLocalLocalVaultTranslateChapter({
     required LocalVault that,
     required String chapterId,
     required String to,
+    String? from,
   });
 
   Future<String> crateApiLocalLocalVaultTranslationMode({
@@ -257,6 +282,46 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<void> crateApiLocalLocalVaultAddGlossaryMeaning({
+    required LocalVault that,
+    required String entryId,
+    required String meaning,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(entryId, serializer);
+          sse_encode_String(meaning, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultAddGlossaryMeaningConstMeta,
+        argValues: [that, entryId, meaning],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultAddGlossaryMeaningConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_add_glossary_meaning",
+        argNames: ["that", "entryId", "meaning"],
+      );
+
+  @override
   Future<PluginRepo> crateApiLocalLocalVaultAddPluginRepo({
     required LocalVault that,
     required String url,
@@ -273,7 +338,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 1,
+            funcId: 2,
             port: port_,
           );
         },
@@ -311,7 +376,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 2,
+            funcId: 3,
             port: port_,
           );
         },
@@ -349,7 +414,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 4,
             port: port_,
           );
         },
@@ -387,7 +452,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 5,
             port: port_,
           );
         },
@@ -423,7 +488,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 6,
             port: port_,
           );
         },
@@ -459,7 +524,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 7,
             port: port_,
           );
         },
@@ -481,6 +546,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<void> crateApiLocalLocalVaultCreateGlossaryEntry({
+    required LocalVault that,
+    required String term,
+    required String language,
+    required String meaning,
+    String? romanization,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(term, serializer);
+          sse_encode_String(language, serializer);
+          sse_encode_String(meaning, serializer);
+          sse_encode_opt_String(romanization, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 8,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultCreateGlossaryEntryConstMeta,
+        argValues: [that, term, language, meaning, romanization],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultCreateGlossaryEntryConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_create_glossary_entry",
+        argNames: ["that", "term", "language", "meaning", "romanization"],
+      );
+
+  @override
   Future<ProfileSummary> crateApiLocalLocalVaultCreateProfile({
     required LocalVault that,
     required String name,
@@ -499,7 +608,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 9,
             port: port_,
           );
         },
@@ -537,7 +646,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 8,
+            funcId: 10,
             port: port_,
           );
         },
@@ -575,7 +684,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 11,
             port: port_,
           );
         },
@@ -611,7 +720,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 12,
             port: port_,
           );
         },
@@ -649,7 +758,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 11,
+            funcId: 13,
             port: port_,
           );
         },
@@ -671,6 +780,44 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<String> crateApiLocalLocalVaultGlossaryForLanguage({
+    required LocalVault that,
+    required String language,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(language, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 14,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultGlossaryForLanguageConstMeta,
+        argValues: [that, language],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultGlossaryForLanguageConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_glossary_for_language",
+        argNames: ["that", "language"],
+      );
+
+  @override
   Future<WorkDetails> crateApiLocalLocalVaultImportWork({
     required LocalVault that,
     required String sourceId,
@@ -689,7 +836,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 15,
             port: port_,
           );
         },
@@ -727,7 +874,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 16,
             port: port_,
           );
         },
@@ -767,7 +914,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 14,
+            funcId: 17,
             port: port_,
           );
         },
@@ -803,7 +950,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 15,
+            funcId: 18,
             port: port_,
           );
         },
@@ -839,7 +986,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 16,
+            funcId: 19,
             port: port_,
           );
         },
@@ -877,7 +1024,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 17,
+            funcId: 20,
             port: port_,
           );
         },
@@ -913,7 +1060,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 21,
             port: port_,
           );
         },
@@ -949,7 +1096,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 22,
             port: port_,
           );
         },
@@ -985,7 +1132,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 23,
             port: port_,
           );
         },
@@ -1020,7 +1167,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 21,
+            funcId: 24,
             port: port_,
           );
         },
@@ -1058,7 +1205,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 22,
+            funcId: 25,
             port: port_,
           );
         },
@@ -1096,7 +1243,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 23,
+            funcId: 26,
             port: port_,
           );
         },
@@ -1134,7 +1281,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 24,
+            funcId: 27,
             port: port_,
           );
         },
@@ -1172,7 +1319,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 25,
+            funcId: 28,
             port: port_,
           );
         },
@@ -1214,7 +1361,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 26,
+            funcId: 29,
             port: port_,
           );
         },
@@ -1254,7 +1401,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 27,
+            funcId: 30,
             port: port_,
           );
         },
@@ -1296,7 +1443,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 28,
+            funcId: 31,
             port: port_,
           );
         },
@@ -1318,10 +1465,49 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<bool> crateApiLocalLocalVaultToggleGlossaryVote({
+    required LocalVault that,
+    required String meaningId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerLocalVault(
+            that,
+            serializer,
+          );
+          sse_encode_String(meaningId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 32,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_AnyhowException,
+        ),
+        constMeta: kCrateApiLocalLocalVaultToggleGlossaryVoteConstMeta,
+        argValues: [that, meaningId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLocalLocalVaultToggleGlossaryVoteConstMeta =>
+      const TaskConstMeta(
+        debugName: "LocalVault_toggle_glossary_vote",
+        argNames: ["that", "meaningId"],
+      );
+
+  @override
   Future<String> crateApiLocalLocalVaultTranslateChapter({
     required LocalVault that,
     required String chapterId,
     required String to,
+    String? from,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -1333,10 +1519,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_String(chapterId, serializer);
           sse_encode_String(to, serializer);
+          sse_encode_opt_String(from, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 29,
+            funcId: 33,
             port: port_,
           );
         },
@@ -1345,7 +1532,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiLocalLocalVaultTranslateChapterConstMeta,
-        argValues: [that, chapterId, to],
+        argValues: [that, chapterId, to, from],
         apiImpl: this,
       ),
     );
@@ -1354,7 +1541,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiLocalLocalVaultTranslateChapterConstMeta =>
       const TaskConstMeta(
         debugName: "LocalVault_translate_chapter",
-        argNames: ["that", "chapterId", "to"],
+        argNames: ["that", "chapterId", "to", "from"],
       );
 
   @override
@@ -1372,7 +1559,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 30,
+            funcId: 34,
             port: port_,
           );
         },
@@ -1410,7 +1597,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 31,
+            funcId: 35,
             port: port_,
           );
         },
@@ -1445,7 +1632,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 32,
+            funcId: 36,
             port: port_,
           );
         },
@@ -2506,6 +2693,15 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
         RustLib.instance.api.rust_arc_decrement_strong_count_LocalVaultPtr,
   );
 
+  Future<void> addGlossaryMeaning({
+    required String entryId,
+    required String meaning,
+  }) => RustLib.instance.api.crateApiLocalLocalVaultAddGlossaryMeaning(
+    that: this,
+    entryId: entryId,
+    meaning: meaning,
+  );
+
   Future<PluginRepo> addPluginRepo({required String url}) => RustLib
       .instance
       .api
@@ -2530,6 +2726,19 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
   Future<List<ContinueItem>> continueReading() =>
       RustLib.instance.api.crateApiLocalLocalVaultContinueReading(that: this);
 
+  Future<void> createGlossaryEntry({
+    required String term,
+    required String language,
+    required String meaning,
+    String? romanization,
+  }) => RustLib.instance.api.crateApiLocalLocalVaultCreateGlossaryEntry(
+    that: this,
+    term: term,
+    language: language,
+    meaning: meaning,
+    romanization: romanization,
+  );
+
   Future<ProfileSummary> createProfile({required String name, String? pin}) =>
       RustLib.instance.api.crateApiLocalLocalVaultCreateProfile(
         that: this,
@@ -2552,6 +2761,12 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
 
   Future<WorkDetails> getWork({required String workId}) => RustLib.instance.api
       .crateApiLocalLocalVaultGetWork(that: this, workId: workId);
+
+  Future<String> glossaryForLanguage({required String language}) =>
+      RustLib.instance.api.crateApiLocalLocalVaultGlossaryForLanguage(
+        that: this,
+        language: language,
+      );
 
   Future<WorkDetails> importWork({
     required String sourceId,
@@ -2642,13 +2857,21 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
     model: model,
   );
 
+  Future<bool> toggleGlossaryVote({required String meaningId}) =>
+      RustLib.instance.api.crateApiLocalLocalVaultToggleGlossaryVote(
+        that: this,
+        meaningId: meaningId,
+      );
+
   Future<String> translateChapter({
     required String chapterId,
     required String to,
+    String? from,
   }) => RustLib.instance.api.crateApiLocalLocalVaultTranslateChapter(
     that: this,
     chapterId: chapterId,
     to: to,
+    from: from,
   );
 
   Future<String> translationMode() =>

@@ -19,7 +19,20 @@ abstract class VaultService {
 	Future<String> translationMode();
 	Future<void> setTranslationProvider({String? providerBaseUrl, String? apiKey, String? model});
 	Future<void> clearTranslationProvider();
-	Future<String> translateChapter({required String chapterId, required String to});
+	Future<Map<String, dynamic>> translateChapter({
+		required String chapterId,
+		required String to,
+		String? from,
+	});
+	Future<List<Map<String, dynamic>>> glossaryForLanguage({required String language});
+	Future<void> createGlossaryEntry({
+		required String term,
+		required String language,
+		required String meaning,
+		String? romanization,
+	});
+	Future<void> addGlossaryMeaning({required String entryId, required String meaning});
+	Future<bool> toggleGlossaryVote({required String meaningId});
 	Future<Map<String, dynamic>> exportSyncState();
 	Future<void> applySyncState(Map<String, dynamic> state);
 	bool get supportsDownloads;

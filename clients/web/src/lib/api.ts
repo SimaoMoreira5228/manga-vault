@@ -106,6 +106,21 @@ export interface CatalogEntry {
 
 export type RegistrationMode = 'open' | 'closed' | 'invite';
 
+export interface GlossaryMeaning {
+	id: string;
+	meaning: string;
+	votes: number;
+	voted_by_me: boolean;
+}
+
+export interface GlossaryEntry {
+	id: string;
+	term: string;
+	language: string;
+	romanization: string | null;
+	meanings: GlossaryMeaning[];
+}
+
 export interface InviteInfo {
 	code: string;
 	created_by: string;
@@ -196,8 +211,23 @@ export const api = {
 	saveTranslationSettings: (payload: { api_key: string; base_url?: string; model?: string }) =>
 		put('/api/me/translation-settings', payload),
 	clearTranslationSettings: () => del('/api/me/translation-settings'),
-	translateChapter: (chapterId: string, to: string) =>
-		post<{ content: string; cached: boolean }>(`/api/chapters/${chapterId}/translate`, { to }),
+	translateChapter: (chapterId: string, to: string, from?: string) =>
+		post<{ content: string; cached: boolean; matches: GlossaryEntry[] }>(
+			`/api/chapters/${chapterId}/translate`,
+			{ to, ...(from ? { from } : {}) },
+		),
+
+	glossaryForLanguage: (language: string) => get<GlossaryEntry[]>(`/api/glossary?lang=${language}`),
+	createGlossaryEntry: (payload: {
+		term: string;
+		language: string;
+		meaning: string;
+		romanization?: string;
+	}) => post<GlossaryEntry>('/api/glossary', payload),
+	addGlossaryMeaning: (entryId: string, meaning: string) =>
+		post<GlossaryMeaning>(`/api/glossary/${entryId}/meanings`, { meaning }),
+	toggleGlossaryVote: (meaningId: string) =>
+		put<{ voted: boolean }>(`/api/glossary/meanings/${meaningId}/vote`, null),
 
 	markRead: (chapterId: string) => put<{ id: string }>(`/api/chapters/${chapterId}/read`),
 	markUnread: (chapterId: string) => del(`/api/chapters/${chapterId}/read`),

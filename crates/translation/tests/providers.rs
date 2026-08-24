@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 use std::net::TcpListener;
 
-use translation::{OllamaTranslator, OpenAiCompatibleTranslator, Translator, sha256_key};
+use translation::{OllamaTranslator, OpenAiCompatibleTranslator, TranslationInput, Translator, sha256_key};
 
 fn serve_once(response: &'static str) -> String {
 	let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -23,7 +23,10 @@ fn serve_once(response: &'static str) -> String {
 async fn ollama_translator_extracts_message_content() {
 	let server = serve_once(r#"{"message":{"content":"hola mundo"}}"#);
 	let translator = OllamaTranslator::new(server, "test-model");
-	let translated = translator.translate("hello world", "en", "es").await.unwrap();
+	let translated = translator
+		.translate(&TranslationInput::new("hello world", "en", "es"))
+		.await
+		.unwrap();
 	assert_eq!(translated, "hola mundo");
 }
 
@@ -31,14 +34,17 @@ async fn ollama_translator_extracts_message_content() {
 async fn openai_compatible_translator_extracts_choice_content() {
 	let server = serve_once(r#"{"choices":[{"message":{"content":"bonjour"}}]}"#);
 	let translator = OpenAiCompatibleTranslator::new(server, "key", "test-model");
-	let translated = translator.translate("hello", "en", "fr").await.unwrap();
+	let translated = translator
+		.translate(&TranslationInput::new("hello", "en", "fr"))
+		.await
+		.unwrap();
 	assert_eq!(translated, "bonjour");
 }
 
 #[test]
 fn cache_key_depends_on_content_target_and_pipeline() {
-	let key = sha256_key("same", "pt");
-	assert_eq!(key, sha256_key("same", "pt"));
-	assert_ne!(key, sha256_key("other", "pt"));
-	assert_ne!(key, sha256_key("same", "es"));
+	let key = sha256_key("same", "pt", "");
+	assert_eq!(key, sha256_key("same", "pt", ""));
+	assert_ne!(key, sha256_key("other", "pt", ""));
+	assert_ne!(key, sha256_key("same", "es", ""));
 }

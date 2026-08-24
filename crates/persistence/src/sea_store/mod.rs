@@ -1,3 +1,4 @@
+pub mod glossary;
 mod jobs;
 mod library;
 mod registration;

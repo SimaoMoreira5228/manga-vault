@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use application::Vault;
 use domain::{ChapterContent, UserId};
-use persistence::UserSettingsRecord;
+use persistence::{GlossaryEntryRecord, UserSettingsRecord};
 use source_manager::SourceManager;
 
 pub struct LocalVault {
@@ -244,7 +244,7 @@ impl LocalVault {
 		self.set_translation_provider(None, None, None).await
 	}
 
-	pub async fn translate_chapter(&self, chapter_id: String, to: String) -> anyhow::Result<String> {
+	pub async fn translate_chapter(&self, chapter_id: String, to: String, from: Option<String>) -> anyhow::Result<String> {
 		let id: domain::ChapterId = chapter_id.parse()?;
 		let translator = Self::build_translator(self.vault.get_user_settings(self.user_id).await?)
 			.ok_or_else(|| anyhow::anyhow!("no translation provider configured"))?;
@@ -254,13 +254,68 @@ impl LocalVault {
 			return Err(anyhow::anyhow!("only novel chapters can be translated"));
 		};
 
-		let key = translation::sha256_key(&html, &to);
+		let matches: Vec<GlossaryEntryRecord> = match from.as_deref() {
+			Some(from_lang) => {
+				self.vault
+					.glossary_matches_for_content(&html, from_lang, self.user_id)
+					.await?
+			}
+			None => Vec::new(),
+		};
+		let rules: Vec<translation::GlossaryRule> = matches
+			.iter()
+			.filter_map(|entry| entry.top_meaning().map(|meaning| (entry, meaning)))
+			.map(|(entry, meaning)| translation::GlossaryRule {
+				term: entry.term.clone(),
+				meaning: meaning.meaning.clone(),
+			})
+			.collect();
+
+		let fingerprint = translation::glossary_fingerprint(&rules);
+		let key = translation::sha256_key(&html, &to, &fingerprint);
 		if let Some(cached) = self.vault.translation_cached(&key).await? {
 			return Ok(cached);
 		}
-		let translated = translator.translate(&html, "auto", &to).await?;
+
+		let input = translation::TranslationInput {
+			text: html,
+			from: from.unwrap_or_else(|| "auto".into()),
+			to,
+			glossary: rules,
+		};
+		let translated = translator.translate(&input).await?;
 		self.vault.translation_cache_put(&key, &translated).await?;
-		Ok(translated)
+
+		Ok(serde_json::json!({ "content": translated, "matches": matches }).to_string())
+	}
+
+	pub async fn glossary_for_language(&self, language: String) -> anyhow::Result<String> {
+		let entries = self.vault.glossary_for_language(&language, self.user_id).await?;
+		Ok(serde_json::to_string(&entries)?)
+	}
+
+	pub async fn create_glossary_entry(
+		&self,
+		term: String,
+		language: String,
+		meaning: String,
+		romanization: Option<String>,
+	) -> anyhow::Result<()> {
+		self.vault
+			.create_glossary_entry(&term, &language, romanization.as_deref(), &meaning, self.user_id)
+			.await?;
+		Ok(())
+	}
+
+	pub async fn add_glossary_meaning(&self, entry_id: String, meaning: String) -> anyhow::Result<()> {
+		self.vault
+			.add_glossary_meaning(entry_id.parse()?, &meaning, self.user_id)
+			.await?;
+		Ok(())
+	}
+
+	pub async fn toggle_glossary_vote(&self, meaning_id: String) -> anyhow::Result<bool> {
+		Ok(self.vault.toggle_glossary_vote(self.user_id, meaning_id.parse()?).await?)
 	}
 
 	pub async fn add_to_library(&self, work_id: String) -> anyhow::Result<()> {

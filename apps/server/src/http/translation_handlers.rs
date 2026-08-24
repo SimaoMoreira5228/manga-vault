@@ -105,6 +105,7 @@ fn translator_for(
 #[derive(Deserialize)]
 pub struct TranslateRequest {
 	pub to: String,
+	pub from: Option<String>,
 }
 
 pub async fn translate_chapter(
@@ -124,16 +125,51 @@ pub async fn translate_chapter(
 		return Err(ApiError::bad_request("only novel chapters can be translated"));
 	};
 
-	let key = translation::sha256_key(&html, &payload.to);
+	let matches = match payload.from.as_deref() {
+		Some(from_lang) => {
+			state
+				.vault
+				.glossary_matches_for_content(&html, from_lang, auth.user.id)
+				.await?
+		}
+		None => Vec::new(),
+	};
+	let rules: Vec<translation::GlossaryRule> = matches
+		.iter()
+		.filter_map(|entry| entry.top_meaning().map(|meaning| (entry, meaning)))
+		.map(|(entry, meaning)| translation::GlossaryRule {
+			term: entry.term.clone(),
+			meaning: meaning.meaning.clone(),
+		})
+		.collect();
+
+	let fingerprint = translation::glossary_fingerprint(&rules);
+	let key = translation::sha256_key(&html, &payload.to, &fingerprint);
 	if let Some(cached) = state.vault.translation_cached(&key).await? {
-		return Ok(Json(json!({ "content": cached, "cached": true, "target": payload.to })));
+		return Ok(Json(json!({
+			"content": cached,
+			"cached": true,
+			"target": payload.to,
+			"matches": matches,
+		})));
 	}
 
+	let input = translation::TranslationInput {
+		text: html,
+		from: payload.from.unwrap_or_else(|| "auto".into()),
+		to: payload.to.clone(),
+		glossary: rules,
+	};
 	let translated = translator
-		.translate(&html, "auto", &payload.to)
+		.translate(&input)
 		.await
 		.map_err(|error| ApiError::bad_request(error.to_string()))?;
 	state.vault.translation_cache_put(&key, &translated).await?;
 
-	Ok(Json(json!({ "content": translated, "cached": false, "target": payload.to })))
+	Ok(Json(json!({
+		"content": translated,
+		"cached": false,
+		"target": payload.to,
+		"matches": matches,
+	})))
 }

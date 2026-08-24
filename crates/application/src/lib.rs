@@ -1,6 +1,7 @@
 mod auth;
 mod cache;
 pub mod downloads;
+pub mod glossary;
 mod library;
 pub mod profiles;
 pub mod reading;

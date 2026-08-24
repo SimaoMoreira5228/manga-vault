@@ -2,6 +2,7 @@ mod auth_extractor;
 mod auth_handlers;
 mod error;
 pub mod event_feed;
+mod glossary_handlers;
 mod library_handlers;
 mod plugin_handlers;
 pub mod proxy_handler;
@@ -56,6 +57,12 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/plugins/{plugin_id}/install", put(plugin_handlers::install))
 		.route("/api/plugins/{plugin_id}", delete(plugin_handlers::uninstall))
 		.route("/api/events", get(event_feed::events))
+		.route("/api/glossary", get(glossary_handlers::list).post(glossary_handlers::create))
+		.route("/api/glossary/{entry_id}/meanings", post(glossary_handlers::add_meaning))
+		.route(
+			"/api/glossary/meanings/{meaning_id}/vote",
+			put(glossary_handlers::toggle_vote),
+		)
 		.route("/api/sync/state", get(sync_handlers::state))
 		.route("/api/sync/apply", post(sync_handlers::apply))
 		.route("/api/me/capabilities", get(translation_handlers::my_capabilities))

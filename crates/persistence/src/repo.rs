@@ -4,8 +4,10 @@ use domain::{
 	Category, Chapter, ChapterId, LibraryEntry, ReadingProgress, Session, SourceId, User, UserId, Work, WorkId, WorkKind,
 };
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::StoreResult;
+pub use crate::sea_store::glossary::{GlossaryEntryRecord, GlossaryMeaningRecord};
 pub use crate::sea_store::translation::UserSettingsRecord;
 
 #[derive(Debug, Clone)]
@@ -79,6 +81,26 @@ pub trait TranslationRepository: Send + Sync {
 	async fn save_user_settings(&self, settings: &UserSettingsRecord) -> StoreResult<()>;
 	async fn translation_cached(&self, key: &str) -> StoreResult<Option<String>>;
 	async fn translation_cache_put(&self, key: &str, content: &str) -> StoreResult<()>;
+}
+
+#[async_trait]
+pub trait GlossaryRepository: Send + Sync {
+	async fn glossary_for_language(&self, language: &str, viewer: UserId) -> StoreResult<Vec<GlossaryEntryRecord>>;
+	async fn create_glossary_entry(
+		&self,
+		term: &str,
+		language: &str,
+		romanization: Option<&str>,
+		meaning: &str,
+		created_by: UserId,
+	) -> StoreResult<GlossaryEntryRecord>;
+	async fn add_glossary_meaning(
+		&self,
+		entry_id: Uuid,
+		meaning: &str,
+		created_by: UserId,
+	) -> StoreResult<GlossaryMeaningRecord>;
+	async fn toggle_glossary_vote(&self, user_id: UserId, meaning_id: Uuid) -> StoreResult<bool>;
 }
 
 #[async_trait]

@@ -1,5 +1,12 @@
 <script lang="ts">
-import { api, type Chapter, type ChapterContent, proxied, type Work } from '$lib/api';
+import {
+	api,
+	type Chapter,
+	type ChapterContent,
+	type GlossaryEntry,
+	proxied,
+	type Work,
+} from '$lib/api';
 import IconMenu from '~icons/material-symbols/menu';
 
 let { params }: { params: { chapterId: string } } = $props();
@@ -14,7 +21,10 @@ let translationMode = $state<string>('unavailable');
 let translatedHtml = $state<string | null>(null);
 let translating = $state(false);
 let language = $state('en');
+let sourceLanguage = $state('');
 const languages = ['pt', 'es', 'en', 'fr', 'de', 'it', 'ja', 'ko', 'zh'];
+let matches = $state<GlossaryEntry[]>([]);
+const showGlossary = $derived(matches.length > 0);
 
 const images = $derived(content && 'Images' in content ? content.Images : []);
 const html = $derived(content && 'Html' in content ? content.Html : null);
@@ -137,6 +147,12 @@ async function load() {
 							<option value={code}></option>
 						{/each}
 					</datalist>
+					<input
+						bind:value={sourceLanguage}
+						placeholder="from (optional)"
+						class="w-24 rounded-card border border-outline-variant/60 bg-surface-container px-2 py-1.5 mono-label outline-none focus:border-primary"
+						aria-label="Source language"
+					>
 					<button
 						type="button"
 						disabled={!canTranslate}
@@ -146,6 +162,50 @@ async function load() {
 						{translating ? 'Translating…' : 'Translate'}
 					</button>
 				</div>
+				{#if showGlossary}
+					<div class="mx-auto max-w-3xl space-y-2 px-6 pb-2">
+						{#each matches as entry (entry.id)}
+							<details
+								class="rounded-card border border-outline-variant/50 bg-surface-low px-4 py-2"
+							>
+								<summary class="cursor-pointer title-md">
+									{entry.term}
+									{#if entry.romanization}
+										<span class="mono-label ml-2 text-on-surface-variant"
+											>{entry.romanization}</span
+										>
+									{/if}
+								</summary>
+								<ul class="mt-2 space-y-1">
+									{#each entry.meanings as meaning (meaning.id)}
+										<li class="flex items-center justify-between gap-3">
+											<span class="body-md">{meaning.meaning}</span>
+											<form
+												onsubmit={(event) => {
+													event.preventDefault();
+													api.toggleGlossaryVote(meaning.id).then((result) => {
+														meaning.voted_by_me = result.voted;
+														meaning.votes += result.voted ? 1 : -1;
+													});
+												}}
+											>
+												<button
+													type="submit"
+													class="mono-label rounded-sm px-2 py-1 {meaning.voted_by_me
+														? 'bg-secondary/20 text-secondary'
+														: 'text-on-surface-variant hover:text-primary'}"
+												>
+													{meaning.votes}
+													▲
+												</button>
+											</form>
+										</li>
+									{/each}
+								</ul>
+							</details>
+						{/each}
+					</div>
+				{/if}
 			{/if}
 			<article class="prose prose-invert prose-p:leading-relaxed mx-auto max-w-3xl px-6 pb-24">
 				{@html translatedHtml ?? html}

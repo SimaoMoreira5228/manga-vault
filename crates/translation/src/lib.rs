@@ -1,6 +1,31 @@
 use async_trait::async_trait;
 use serde_json::json;
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct GlossaryRule {
+	pub term: String,
+	pub meaning: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct TranslationInput {
+	pub text: String,
+	pub from: String,
+	pub to: String,
+	pub glossary: Vec<GlossaryRule>,
+}
+
+impl TranslationInput {
+	pub fn new(text: impl Into<String>, from: impl Into<String>, to: impl Into<String>) -> Self {
+		Self {
+			text: text.into(),
+			from: from.into(),
+			to: to.into(),
+			glossary: Vec::new(),
+		}
+	}
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum TranslationError {
 	#[error("translation provider request failed: {0}")]
@@ -13,17 +38,27 @@ pub type TranslationResult<T> = Result<T, TranslationError>;
 
 #[async_trait]
 pub trait Translator: Send + Sync {
-	async fn translate(&self, text: &str, from: &str, to: &str) -> TranslationResult<String>;
+	async fn translate(&self, input: &TranslationInput) -> TranslationResult<String>;
 }
 
 pub const PIPELINE_VERSION: u32 = 1;
 
-fn prompt(text: &str, from: &str, to: &str) -> String {
-	format!(
-		"Translate the following text from {from} to {to}. \
+fn prompt(input: &TranslationInput) -> String {
+	let mut prompt = format!(
+		"Translate the following text from {} to {}. \
 		 If the text contains HTML tags, preserve the markup exactly and translate only the text nodes. \
-		 Reply with the translation only, no commentary.\n\n{text}"
-	)
+		 Reply with the translation only, no commentary.",
+		input.from, input.to
+	);
+	if !input.glossary.is_empty() {
+		prompt.push_str("\n\nMandatory terminology:");
+		for rule in &input.glossary {
+			prompt.push_str(&format!("\n- {} => {}", rule.term, rule.meaning));
+		}
+	}
+	prompt.push_str("\n\n");
+	prompt.push_str(&input.text);
+	prompt
 }
 
 pub struct OllamaTranslator {
@@ -44,13 +79,13 @@ impl OllamaTranslator {
 
 #[async_trait]
 impl Translator for OllamaTranslator {
-	async fn translate(&self, text: &str, from: &str, to: &str) -> TranslationResult<String> {
+	async fn translate(&self, input: &TranslationInput) -> TranslationResult<String> {
 		let response = self
 			.http
 			.post(format!("{}/api/chat", self.endpoint))
 			.json(&json!({
 				"model": self.model,
-				"messages": [{"role": "user", "content": prompt(text, from, to)}],
+				"messages": [{"role": "user", "content": prompt(input)}],
 				"stream": false,
 			}))
 			.send()
@@ -85,14 +120,14 @@ impl OpenAiCompatibleTranslator {
 
 #[async_trait]
 impl Translator for OpenAiCompatibleTranslator {
-	async fn translate(&self, text: &str, from: &str, to: &str) -> TranslationResult<String> {
+	async fn translate(&self, input: &TranslationInput) -> TranslationResult<String> {
 		let response = self
 			.http
 			.post(format!("{}/chat/completions", self.base_url))
 			.bearer_auth(&self.api_key)
 			.json(&json!({
 				"model": self.model,
-				"messages": [{"role": "user", "content": prompt(text, from, to)}],
+				"messages": [{"role": "user", "content": prompt(input)}],
 			}))
 			.send()
 			.await?
@@ -113,14 +148,31 @@ pub struct HybridTranslator {
 
 #[async_trait]
 impl Translator for HybridTranslator {
-	async fn translate(&self, text: &str, from: &str, to: &str) -> TranslationResult<String> {
-		let rough = self.baseline.translate(text, from, to).await?;
-		self.refine.translate(&rough, from, to).await
+	async fn translate(&self, input: &TranslationInput) -> TranslationResult<String> {
+		let mut rough_input = input.clone();
+		let rough = self.baseline.translate(&rough_input).await?;
+		rough_input.text = rough;
+		self.refine.translate(&rough_input).await
 	}
 }
 
-pub fn sha256_key(content: &str, to: &str) -> String {
+pub fn sha256_key(content: &str, to: &str, glossary_fingerprint: &str) -> String {
 	use sha2::Digest;
-	let digest = sha2::Sha256::digest(format!("{content}|{to}|{}", PIPELINE_VERSION).as_bytes());
+	let digest = sha2::Sha256::digest(format!("{content}|{to}|{glossary_fingerprint}|{}", PIPELINE_VERSION).as_bytes());
+	digest.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+pub fn glossary_fingerprint(rules: &[GlossaryRule]) -> String {
+	use sha2::Digest;
+	if rules.is_empty() {
+		return String::new();
+	}
+	let mut parts: Vec<&GlossaryRule> = rules.iter().collect();
+	parts.sort_by(|a, b| a.term.cmp(&b.term));
+	let joined: String = parts
+		.into_iter()
+		.map(|rule| format!("{}={};", rule.term, rule.meaning))
+		.collect();
+	let digest = sha2::Sha256::digest(joined.as_bytes());
 	digest.iter().map(|byte| format!("{byte:02x}")).collect()
 }

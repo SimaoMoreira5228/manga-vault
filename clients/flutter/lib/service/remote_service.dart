@@ -130,13 +130,53 @@ class RemoteService implements VaultService {
 	Future<void> clearTranslationProvider() => _send('DELETE', '/api/me/translation-settings');
 
 	@override
-	Future<String> translateChapter({required String chapterId, required String to}) async {
-		final response = await _send(
+	Future<Map<String, dynamic>> translateChapter({
+		required String chapterId,
+		required String to,
+		String? from,
+	}) async =>
+		await _send(
 			'POST',
 			'/api/chapters/$chapterId/translate',
-			body: jsonEncode({'to': to}),
+			body: jsonEncode({'to': to, if (from != null) 'from': from}),
+		) as Map<String, dynamic>;
+
+	@override
+	Future<List<Map<String, dynamic>>> glossaryForLanguage({required String language}) async {
+		final payload = await _send('GET', '/api/glossary?lang=$language');
+		return [for (final entry in payload as List) entry as Map<String, dynamic>];
+	}
+
+	@override
+	Future<void> createGlossaryEntry({
+		required String term,
+		required String language,
+		required String meaning,
+		String? romanization,
+	}) =>
+		_send(
+			'POST',
+			'/api/glossary',
+			body: jsonEncode({
+				'term': term,
+				'language': language,
+				'meaning': meaning,
+				if (romanization != null) 'romanization': romanization,
+			}),
 		);
-		return response['content'] as String;
+
+	@override
+	Future<void> addGlossaryMeaning({required String entryId, required String meaning}) => _send(
+		'POST',
+		'/api/glossary/$entryId/meanings',
+		body: jsonEncode({'meaning': meaning}),
+	);
+
+	@override
+	Future<bool> toggleGlossaryVote({required String meaningId}) async {
+		final response =
+			await _send('PUT', '/api/glossary/meanings/$meaningId/vote', body: 'null');
+		return response['voted'] as bool;
 	}
 
 	@override

@@ -4,6 +4,9 @@ pub mod prelude;
 
 pub mod categories;
 pub mod chapters;
+pub mod glossary_entries;
+pub mod glossary_meanings;
+pub mod glossary_votes;
 pub mod invite_codes;
 pub mod jobs;
 pub mod library_entries;

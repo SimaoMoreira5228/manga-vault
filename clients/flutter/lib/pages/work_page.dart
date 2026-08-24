@@ -289,6 +289,7 @@ class _ReaderPageState extends State<ReaderPage> {
 	late ChapterSummary current;
 	late ChapterBody? body;
 	String? translatedHtml;
+	List<Map<String, dynamic>> matches = const [];
 	String? translationMode;
 
 	@override
@@ -305,22 +306,87 @@ class _ReaderPageState extends State<ReaderPage> {
 	bool get _canTranslate => translatedHtml == null && translationMode != null && translationMode != 'off' && translationMode != 'unavailable';
 
 	Future<void> _translate() async {
-		final controller = TextEditingController(text: 'en');
-		final language = await showDialog<String>(
+		final target = TextEditingController(text: 'en');
+		final source = TextEditingController();
+		final confirmed = await showDialog<List<String>>(
 			context: context,
 			builder: (context) => AlertDialog(
-				title: const Text('Translate to'),
-				content: TextField(controller: controller, autofocus: true),
+				title: const Text('Translate'),
+				content: Column(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						TextField(controller: target, decoration: const InputDecoration(hintText: 'To (e.g. en)')),
+						const SizedBox(height: 12),
+						TextField(
+							controller: source,
+							decoration: const InputDecoration(hintText: 'From (optional, enables glossary)'),
+						),
+					],
+				),
 				actions: [
 					TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-					FilledButton(onPressed: () => Navigator.of(context).pop(controller.text.trim()), child: const Text('Translate')),
+					FilledButton(
+						onPressed: () => Navigator.of(context).pop([target.text.trim(), source.text.trim()]),
+						child: const Text('Translate'),
+					),
 				],
 			),
 		);
-		if (language == null || language.isEmpty) return;
-		final html = await widget.vault.translateChapter(chapterId: current.id, to: language);
+		if (confirmed == null || confirmed.first.isEmpty) return;
+		final result = await widget.vault.translateChapter(
+			chapterId: current.id,
+			to: confirmed.first,
+			from: confirmed.last.isEmpty ? null : confirmed.last,
+		);
 		if (!mounted) return;
-		setState(() => translatedHtml = html);
+		setState(() {
+			translatedHtml = result['content'] as String?;
+			matches = (result['matches'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+		});
+	}
+
+	void _showGlossary() {
+		showModalBottomSheet<void>(
+			context: context,
+			builder: (context) => SafeArea(
+				child: ListView(
+					padding: const EdgeInsets.all(16),
+					children: [
+						for (final entry in matches) ...[
+							Text(entry['term'] as String, style: Theme.of(context).textTheme.titleMedium),
+							if (entry['romanization'] != null)
+								Text(
+									entry['romanization'] as String,
+									style: Theme.of(context).textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+								),
+							for (final meaning in (entry['meanings'] as List).cast<Map<String, dynamic>>())
+								ListTile(
+									dense: true,
+									title: Text(meaning['meaning'] as String),
+									trailing: Row(
+										mainAxisSize: MainAxisSize.min,
+										children: [
+											Text('${meaning['votes']}'),
+											IconButton(
+												icon: Icon(
+													meaning['voted_by_me'] == true ? Icons.thumb_up : Icons.thumb_up_outlined,
+													size: 18,
+												),
+												onPressed: () async {
+													final voted = await widget.vault.toggleGlossaryVote(meaningId: meaning['id'] as String);
+													setState(() => meaning['voted_by_me'] = voted);
+													setState(() => meaning['votes'] = (meaning['votes'] as int) + (voted ? 1 : -1));
+												},
+											),
+										],
+									),
+								),
+							const Divider(),
+						],
+					],
+				),
+			),
+		);
 	}
 
 	Future<void> _load(String chapterId) async {
@@ -361,6 +427,8 @@ class _ReaderPageState extends State<ReaderPage> {
 				),
 				leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.of(context).pop()),
 				actions: [
+					if (matches.isNotEmpty)
+						IconButton(icon: const Icon(Icons.menu_book_outlined), onPressed: _showGlossary),
 					if (_canTranslate)
 						IconButton(icon: const Icon(Icons.translate), onPressed: _translate),
 					IconButton(icon: const Icon(Icons.skip_previous), onPressed: widget.index > 0 ? () => _go(-1) : null),

@@ -21,6 +21,11 @@ Future<LocalVault> start({
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>
 abstract class LocalVault implements RustOpaqueInterface {
+  Future<void> addGlossaryMeaning({
+    required String entryId,
+    required String meaning,
+  });
+
   Future<PluginRepo> addPluginRepo({required String url});
 
   Future<void> addToLibrary({required String workId});
@@ -33,6 +38,13 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<List<ContinueItem>> continueReading();
 
+  Future<void> createGlossaryEntry({
+    required String term,
+    required String language,
+    required String meaning,
+    String? romanization,
+  });
+
   Future<ProfileSummary> createProfile({required String name, String? pin});
 
   Future<void> downloadChapter({required String chapterId});
@@ -42,6 +54,8 @@ abstract class LocalVault implements RustOpaqueInterface {
   Future<String> exportSyncState();
 
   Future<WorkDetails> getWork({required String workId});
+
+  Future<String> glossaryForLanguage({required String language});
 
   Future<WorkDetails> importWork({
     required String sourceId,
@@ -91,9 +105,12 @@ abstract class LocalVault implements RustOpaqueInterface {
     String? model,
   });
 
+  Future<bool> toggleGlossaryVote({required String meaningId});
+
   Future<String> translateChapter({
     required String chapterId,
     required String to,
+    String? from,
   });
 
   Future<String> translationMode();

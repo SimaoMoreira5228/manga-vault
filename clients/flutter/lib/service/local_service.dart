@@ -94,8 +94,41 @@ class LocalService implements VaultService {
 	Future<void> clearTranslationProvider() => _vault.clearTranslationProvider();
 
 	@override
-	Future<String> translateChapter({required String chapterId, required String to}) =>
-		_vault.translateChapter(chapterId: chapterId, to: to);
+	Future<Map<String, dynamic>> translateChapter({
+		required String chapterId,
+		required String to,
+		String? from,
+	}) async {
+		final payload = await _vault.translateChapter(chapterId: chapterId, to: to, from: from);
+		return jsonDecode(payload) as Map<String, dynamic>;
+	}
+
+	@override
+	Future<List<Map<String, dynamic>>> glossaryForLanguage({required String language}) async =>
+		(jsonDecode(await _vault.glossaryForLanguage(language: language)) as List)
+			.cast<Map<String, dynamic>>();
+
+	@override
+	Future<void> createGlossaryEntry({
+		required String term,
+		required String language,
+		required String meaning,
+		String? romanization,
+	}) =>
+		_vault.createGlossaryEntry(
+			term: term,
+			language: language,
+			meaning: meaning,
+			romanization: romanization,
+		);
+
+	@override
+	Future<void> addGlossaryMeaning({required String entryId, required String meaning}) =>
+		_vault.addGlossaryMeaning(entryId: entryId, meaning: meaning);
+
+	@override
+	Future<bool> toggleGlossaryVote({required String meaningId}) =>
+		_vault.toggleGlossaryVote(meaningId: meaningId);
 
 	@override
 	Future<Map<String, dynamic>> exportSyncState() async =>
