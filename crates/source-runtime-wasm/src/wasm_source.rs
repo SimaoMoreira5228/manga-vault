@@ -173,6 +173,10 @@ impl Source for WasmSource {
 			.map(|lines| source_sdk::chapter_content(kind, lines))
 			.map_err(error_from_wit)
 	}
+
+	async fn remap_url(&self, url: &str) -> String {
+		source_sdk::remap_legacy_host(url, &self.manifest.legacy_urls, self.info.base_url.as_deref())
+	}
 }
 
 #[allow(unused)]

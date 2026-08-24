@@ -10,3 +10,4 @@ scraper = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 toml = { workspace = true }
+url = { workspace = true }

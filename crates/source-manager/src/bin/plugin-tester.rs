@@ -120,7 +120,7 @@ fn package_name(dir: &Path) -> anyhow::Result<String> {
 	text.lines()
 		.find_map(|line| line.trim_start().strip_prefix("name = \""))
 		.and_then(|rest| rest.split('"').next())
-		.map(str::to_owned)
+		.map(|name| name.replace('-', "_"))
 		.context("malformed package name")
 }
 

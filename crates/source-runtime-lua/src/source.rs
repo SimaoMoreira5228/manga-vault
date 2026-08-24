@@ -88,44 +88,7 @@ impl Source for LuaSource {
 		{
 			return remapped;
 		}
-		self.remap_legacy_host(url)
-	}
-}
-
-impl LuaSource {
-	fn remap_legacy_host(&self, url: &str) -> String {
-		if self.manifest.legacy_urls.is_empty() {
-			return url.to_owned();
-		}
-		let legacy_urls = &self.manifest.legacy_urls;
-		let Ok(parsed) = url::Url::parse(url) else {
-			return url.to_owned();
-		};
-		let Some(host) = parsed.host_str().map(|host| host.to_ascii_lowercase()) else {
-			return url.to_owned();
-		};
-		let is_legacy = legacy_urls.iter().any(|legacy| {
-			url::Url::parse(legacy)
-				.ok()
-				.and_then(|parsed| parsed.host_str().map(|host| host.to_ascii_lowercase()))
-				.is_some_and(|legacy_host| legacy_host == host)
-		});
-		if !is_legacy {
-			return url.to_owned();
-		}
-		let Some(base) = self.info.base_url.as_deref() else {
-			return url.to_owned();
-		};
-		let Ok(base) = url::Url::parse(base) else {
-			return url.to_owned();
-		};
-		let mut rebuilt = base.origin().ascii_serialization();
-		rebuilt.push_str(parsed.path());
-		if let Some(query) = parsed.query() {
-			rebuilt.push('?');
-			rebuilt.push_str(query);
-		}
-		rebuilt
+		source_sdk::remap_legacy_host(url, &self.manifest.legacy_urls, self.info.base_url.as_deref())
 	}
 }
 

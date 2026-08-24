@@ -3,8 +3,10 @@ mod source;
 mod types;
 
 pub mod cloudflare;
+pub mod legacy;
 pub mod selection;
 
+pub use legacy::remap_legacy_host;
 pub use manifest::{Backend, PluginManifest};
 pub use source::{Source, SourceError, SourceResult};
 pub use types::{RemoteChapter, RemoteWorkDetails, RemoteWorkSummary, SourceInfo, WorkKindTag, chapter_content};
