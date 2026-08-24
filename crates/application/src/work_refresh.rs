@@ -6,7 +6,20 @@ use uuid::Uuid;
 
 use crate::Vault;
 
-pub struct RefreshExecutor(pub Arc<Vault>);
+pub struct RefreshExecutor {
+	pub vault: Arc<Vault>,
+	pub events: Option<tokio::sync::broadcast::Sender<String>>,
+}
+
+fn publish_event(events: &Option<tokio::sync::broadcast::Sender<String>>, work_id: Uuid) {
+	if let Some(sender) = events
+		&& let Ok(payload) = serde_json::to_string(&serde_json::json!({
+			"type": "work_refreshed",
+			"work_id": work_id.to_string(),
+		})) {
+		let _ = sender.send(payload);
+	}
+}
 
 fn outcome(result: crate::VaultResult<()>) -> ExecutionOutcome {
 	match result {
@@ -26,7 +39,13 @@ impl JobExecutor for RefreshExecutor {
 	async fn execute(&self, job: &JobRow) -> ExecutionOutcome {
 		match persistence::JobKind::from_str(&job.kind) {
 			Some(persistence::JobKind::RefreshWork) => match Uuid::parse_str(&job.subject) {
-				Ok(work_id) => outcome(self.0.refresh_work(work_id).await.map(|_| ())),
+				Ok(work_id) => {
+					let result = self.vault.refresh_work(work_id).await;
+					if result.is_ok() {
+						publish_event(&self.events, work_id);
+					}
+					outcome(result.map(|_| ()))
+				}
 				Err(_) => ExecutionOutcome::Abandon(format!("job subject `{}` is not a work id", job.subject)),
 			},
 			Some(persistence::JobKind::CleanupExpiredData) | None => ExecutionOutcome::Success,

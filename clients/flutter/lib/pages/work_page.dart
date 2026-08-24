@@ -1,3 +1,4 @@
+import '../service/vault_events.dart';
 import '../service/sync_scheduler.dart';
 import 'dart:io';
 
@@ -21,15 +22,29 @@ class _WorkPageState extends State<WorkPage> {
 	Set<String> downloaded = {};
 	bool inLibrary = false;
 	bool refreshing = false;
+	bool freshChapters = false;
 
 	@override
 	void initState() {
 		super.initState();
+		VaultEvents.instance.subscribe(_onEvent);
 		_details = _load();
+	}
+
+	@override
+	void dispose() {
+		VaultEvents.instance.unsubscribe(_onEvent);
+		super.dispose();
+	}
+
+	void _onEvent(String workId) {
+		if (workId != widget.details.id || !mounted) return;
+		setState(() => freshChapters = true);
 	}
 
 	Future<WorkDetails> _load() async {
 		final fresh = await widget.vault.getWork(workId: widget.details.id);
+		freshChapters = false;
 		read = (await widget.vault.readChapters(workId: fresh.id)).toSet();
 		downloaded = (await widget.vault.downloadedChapters(workId: fresh.id).catchError((_) => <String>[])).toSet();
 		return fresh;
@@ -150,6 +165,17 @@ class _WorkPageState extends State<WorkPage> {
 									child: Text('Chapters', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.6)),
 								),
 							),
+							if (freshChapters)
+								SliverToBoxAdapter(
+									child: Padding(
+										padding: const EdgeInsets.symmetric(horizontal: 16),
+										child: OutlinedButton.icon(
+											icon: const Icon(Icons.new_releases_outlined),
+											label: const Text('New chapters available'),
+											onPressed: () => _refresh(),
+										),
+									),
+								),
 							SliverList(
 								delegate: SliverChildBuilderDelegate(
 									(context, index) {

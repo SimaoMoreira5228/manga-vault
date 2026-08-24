@@ -78,6 +78,7 @@ mlua = { version = "0.12", features = [
 wasmtime = "48"
 wasmtime-wasi = "48"
 futures = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
 dashmap = "6"
 parking_lot = "0.12"
 toml = "1.1"

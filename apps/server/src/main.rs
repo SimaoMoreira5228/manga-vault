@@ -12,6 +12,9 @@ use jobs::{Scheduler, SchedulerConfig};
 use source_manager::SourceManager;
 use state::AppState;
 
+static EVENT_FEED: std::sync::LazyLock<http::event_feed::EventFeed> =
+	std::sync::LazyLock::new(http::event_feed::EventFeed::new);
+
 fn image_cache() -> std::sync::Arc<moka::future::Cache<String, std::sync::Arc<http::proxy_handler::CachedResponse>>> {
 	let megabytes = std::env::var("IMAGE_CACHE_MB")
 		.ok()
@@ -72,7 +75,15 @@ async fn main() {
 	);
 	let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
 	tokio::spawn(async move {
-		scheduler.run(Arc::new(RefreshExecutor(scheduler_vault)), shutdown_rx).await;
+		scheduler
+			.run(
+				Arc::new(RefreshExecutor {
+					vault: scheduler_vault,
+					events: Some(EVENT_FEED.sender().clone()),
+				}),
+				shutdown_rx,
+			)
+			.await;
 	});
 
 	let ollama_translator = server_config.ollama_endpoint.clone().map(|endpoint| {
@@ -90,6 +101,7 @@ async fn main() {
 		secret_key: server_config.secret_key.clone(),
 		translation_enabled: server_config.translation_enabled,
 		image_cache: image_cache(),
+		events: EVENT_FEED.clone(),
 	});
 
 	let app = if server_config.cors_origins.is_empty() {

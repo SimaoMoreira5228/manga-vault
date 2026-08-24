@@ -14,6 +14,7 @@ import 'service/local_service.dart';
 import 'service/remote_service.dart';
 import 'service/sync_engine.dart';
 import 'service/sync_scheduler.dart';
+import 'service/vault_events.dart';
 import 'service/vault_service.dart';
 import 'src/rust/api/local.dart' as local;
 import 'src/rust/frb_generated.dart';
@@ -281,7 +282,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 		if (widget.isLocal && widget.linkedRemote != null) {
 			final remote = widget.linkedRemote!;
 			SyncScheduler.instance.start(() => SyncEngine(local: widget.service, remote: remote).synchronize());
+			VaultEvents.instance.start(baseUrl: remote.baseUrl, token: remote.token);
+			VaultEvents.instance.subscribe((_) => SyncScheduler.instance.nudge(delay: Duration.zero));
+		} else if (!widget.isLocal) {
+			final service = widget.service as RemoteService;
+			VaultEvents.instance.start(baseUrl: service.baseUrl, token: service.token);
 		} else {
+			VaultEvents.instance.stop();
 			SyncScheduler.instance.stop();
 		}
 	}

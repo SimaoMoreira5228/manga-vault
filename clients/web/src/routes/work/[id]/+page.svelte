@@ -1,6 +1,7 @@
 <script lang="ts">
 import { api, type Chapter, proxied, type Work } from '$lib/api';
 import ProgressBar from '$lib/components/ProgressBar.svelte';
+import { onWorkRefreshed } from '$lib/events.svelte';
 import IconArrowBack from '~icons/material-symbols/arrow-back';
 import IconBookmarkAdd from '~icons/material-symbols/bookmark-add';
 import IconBookmarkAdded from '~icons/material-symbols/bookmark-added';
@@ -18,6 +19,7 @@ let chapters = $state<Chapter[]>([]);
 let readIds = $state<Set<string>>(new Set());
 let inLibrary = $state<boolean | null>(null);
 let refreshQueued = $state(false);
+let freshChapters = $state(false);
 let expandedDescription = $state(false);
 let busy = $state<string | null>(null);
 
@@ -35,7 +37,14 @@ $effect(() => {
 	load(params.id);
 });
 
+$effect(() => {
+	return onWorkRefreshed((workId) => {
+		if (workId === params.id) freshChapters = true;
+	});
+});
+
 async function load(id: string) {
+	freshChapters = false;
 	const data = await api.getWork(id);
 	work = data.work;
 	chapters = data.chapters;
@@ -210,6 +219,16 @@ function chapterDate(chapter: Chapter): string {
 							<IconCheckCircle class="size-3.5" />
 							Queued
 						</p>
+					{/if}
+					{#if freshChapters}
+						<button
+							type="button"
+							class="label-caps mt-3 flex w-full items-center gap-1 rounded-card border border-secondary/60 px-3 py-2 text-secondary hover:border-secondary"
+							onclick={() => load(params.id)}
+						>
+							<IconCheckCircle class="size-3.5" />
+							New chapters available
+						</button>
 					{/if}
 				</div>
 			</aside>

@@ -1,6 +1,7 @@
 <script lang="ts">
 import { api, type LibraryEntry, type Work, type WorkKind } from '$lib/api';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
+import { onWorkRefreshed } from '$lib/events.svelte';
 
 let items = $state<[LibraryEntry, Work][]>([]);
 let filter = $state<'all' | WorkKind>('all');
@@ -15,6 +16,15 @@ $effect(() => {
 		.library()
 		.then((library) => (items = library.entries))
 		.finally(() => (loading = false));
+});
+
+$effect(() => {
+	return onWorkRefreshed(() => {
+		api
+			.library()
+			.then((library) => (items = library.entries))
+			.catch(() => undefined);
+	});
 });
 </script>
 

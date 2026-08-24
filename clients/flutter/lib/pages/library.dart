@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../service/sync_scheduler.dart';
+import '../service/vault_events.dart';
 import '../service/vault_service.dart';
 import 'continue_reading.dart';
 import 'work_page.dart';
@@ -20,6 +21,18 @@ class _LibraryPageState extends State<LibraryPage> {
 	@override
 	void initState() {
 		super.initState();
+		VaultEvents.instance.subscribe(_onEvent);
+		_load();
+	}
+
+	@override
+	void dispose() {
+		VaultEvents.instance.unsubscribe(_onEvent);
+		super.dispose();
+	}
+
+	void _onEvent(String workId) {
+		if (!mounted) return;
 		_load();
 	}
 

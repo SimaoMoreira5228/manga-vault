@@ -1,6 +1,7 @@
 mod auth_extractor;
 mod auth_handlers;
 mod error;
+pub mod event_feed;
 mod library_handlers;
 mod plugin_handlers;
 pub mod proxy_handler;
@@ -54,6 +55,7 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/plugins/catalog", get(plugin_handlers::catalog))
 		.route("/api/plugins/{plugin_id}/install", put(plugin_handlers::install))
 		.route("/api/plugins/{plugin_id}", delete(plugin_handlers::uninstall))
+		.route("/api/events", get(event_feed::events))
 		.route("/api/sync/state", get(sync_handlers::state))
 		.route("/api/sync/apply", post(sync_handlers::apply))
 		.route("/api/me/capabilities", get(translation_handlers::my_capabilities))
