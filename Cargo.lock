@@ -4429,10 +4429,13 @@ dependencies = [
 name = "source-manager"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "domain",
  "parking_lot",
  "source-runtime-lua",
  "source-runtime-wasm",
  "source-sdk",
+ "tokio",
  "tracing",
 ]
 

@@ -3,6 +3,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
+pub mod throttle;
+
 use source_runtime_lua::LuaRuntime;
 use source_runtime_wasm::WasmRuntime;
 use source_sdk::{Backend, PluginManifest, Source};
@@ -11,6 +13,7 @@ pub struct SourceManager {
 	lua: LuaRuntime,
 	wasm: WasmRuntime,
 	loaded: RwLock<HashMap<String, Arc<dyn Source>>>,
+	permits: RwLock<HashMap<String, Arc<tokio::sync::Semaphore>>>,
 }
 
 impl SourceManager {
@@ -19,6 +22,7 @@ impl SourceManager {
 			lua: LuaRuntime::new(flaresolverr_url.clone()),
 			wasm: WasmRuntime::new(flaresolverr_url)?,
 			loaded: RwLock::new(HashMap::new()),
+			permits: RwLock::new(HashMap::new()),
 		})
 	}
 
@@ -59,8 +63,10 @@ impl SourceManager {
 			Backend::Lua => Arc::new(self.lua.load(path).map_err(|e| e.to_string())?),
 			Backend::Wasm => Arc::new(self.wasm.load(path).await.map_err(|e| e.to_string())?),
 		};
-		let info = source.info().clone();
-		self.loaded.write().insert(manifest.id.clone(), source);
+		let (throttled, permits) = throttle::ThrottledSource::new(source);
+		let info = throttled.info().clone();
+		self.permits.write().insert(manifest.id.clone(), permits);
+		self.loaded.write().insert(manifest.id.clone(), Arc::new(throttled));
 		Ok(info)
 	}
 
