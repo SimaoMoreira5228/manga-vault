@@ -100,7 +100,8 @@ Tests = {
 	end,
 
 	Test_fail_not_found = function()
-		fetch_work("example://works/ghost")
-		error("fetch_work on unknown url must raise")
+		local ok, err = pcall(fetch_work, "example://works/ghost")
+		assert(not ok, "unknown work must raise")
+		assert(tostring(err):find("not_found") ~= nil, "must be a not_found error")
 	end,
 }

@@ -57,6 +57,7 @@ impl WasmRuntime {
 			wasmtime::component::Component::from_binary(&self.engine, &bytes).map_err(|e| LoadError(e.to_string()))?;
 
 		let mut linker = wasmtime::component::Linker::<host::WasmState>::new(&self.engine);
+		wasmtime_wasi::p2::add_to_linker_async(&mut linker).map_err(|e| LoadError(e.to_string()))?;
 		bindings::SourceWorld::add_to_linker::<host::WasmState, wasmtime::component::HasSelf<host::WasmState>>(
 			&mut linker,
 			|state| state,

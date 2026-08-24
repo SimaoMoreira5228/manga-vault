@@ -1,12 +1,31 @@
 use std::collections::HashMap;
 
 use source_sdk::cloudflare::looks_like_cloudflare_protection;
+use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi_io::IoView;
 
 use crate::bindings::manga_vault::source::{flare_solverr, html, http, types};
 
 pub struct WasmState {
+	pub table: wasmtime::component::ResourceTable,
+	pub wasi: WasiCtx,
 	pub client: reqwest::Client,
 	pub flaresolverr_url: Option<String>,
+}
+
+impl IoView for WasmState {
+	fn table(&mut self) -> &mut wasmtime::component::ResourceTable {
+		&mut self.table
+	}
+}
+
+impl WasiView for WasmState {
+	fn ctx(&mut self) -> wasmtime_wasi::WasiCtxView<'_> {
+		wasmtime_wasi::WasiCtxView {
+			ctx: &mut self.wasi,
+			table: &mut self.table,
+		}
+	}
 }
 
 impl WasmState {
@@ -17,6 +36,8 @@ impl WasmState {
 			.build()
 			.expect("reqwest client");
 		Self {
+			wasi: WasiCtxBuilder::new().inherit_stdio().build(),
+			table: Default::default(),
 			client,
 			flaresolverr_url,
 		}

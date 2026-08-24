@@ -1,0 +1,5 @@
+id = "example"
+backend = "wasm"
+entrypoint = "example.wasm"
+plugin_api = "1"
+capabilities = []
