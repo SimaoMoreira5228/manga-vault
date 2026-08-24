@@ -1,5 +1,12 @@
 <script lang="ts">
-import { api, type InviteInfo, type RegistrationMode, type Session } from '$lib/api';
+import {
+	api,
+	type InviteInfo,
+	type RegistrationMode,
+	type Session,
+	type TrackerAccount,
+	type TrackerInfo,
+} from '$lib/api';
 import { appearance, THEMES } from '$lib/appearance.svelte';
 import { auth } from '$lib/auth.svelte';
 import IconTranslate from '~icons/material-symbols/translate';
@@ -18,11 +25,24 @@ let translationModel = $state('');
 let translationBusy = $state(false);
 let translationMessage = $state('');
 
+let trackerRegistry = $state<TrackerInfo[]>([]);
+let trackerAccounts = $state<TrackerAccount[]>([]);
+let trackerTokens: Record<string, string> = $state({});
+let trackerBusy = $state(false);
+
 $effect(() => {
 	api
 		.sessions()
 		.then((result) => (sessions = result))
 		.finally(() => (loading = false));
+	api
+		.trackersRegistry()
+		.then((result) => (trackerRegistry = result.trackers))
+		.catch(() => {});
+	api
+		.myTrackerAccounts()
+		.then((accounts) => (trackerAccounts = accounts))
+		.catch(() => {});
 	api
 		.translationMode()
 		.then((mode) => (translationMode = mode))
@@ -61,6 +81,27 @@ async function addInvite() {
 async function revokeInvite(code: string) {
 	await api.deleteInvite(code);
 	invites = invites.filter((invite) => invite.code !== code);
+}
+
+async function linkTracker(id: string) {
+	trackerBusy = true;
+	try {
+		await api.linkTracker(id, trackerTokens[id]);
+		trackerAccounts = await api.myTrackerAccounts();
+		trackerTokens[id] = '';
+	} finally {
+		trackerBusy = false;
+	}
+}
+
+async function unlinkTracker(id: string) {
+	trackerBusy = true;
+	try {
+		await api.unlinkTracker(id);
+		trackerAccounts = trackerAccounts.filter((account) => account.tracker_id !== id);
+	} finally {
+		trackerBusy = false;
+	}
 }
 
 async function revoke(token: string) {
@@ -259,6 +300,65 @@ async function clearTranslationSettings() {
 			{#if translationMessage}
 				<p class="mono-label mt-2 text-secondary">{translationMessage}</p>
 			{/if}
+		{/if}
+	</section>
+
+	<section class="mt-12" aria-labelledby="trackers-heading">
+		<h2 id="trackers-heading" class="title-lg">Trackers</h2>
+		{#if trackerRegistry.length === 0}
+			<p class="body-md mt-2 text-on-surface-variant">No trackers available on this server.</p>
+		{:else}
+			<ul
+				class="mt-4 divide-y divide-outline-variant/20 rounded-card border border-outline-variant/40 bg-surface-low"
+			>
+				{#each trackerRegistry as tracker (tracker.id)}
+					{@const account = trackerAccounts.find((a) => a.tracker_id === tracker.id)}
+					<li class="px-4 py-3">
+						<div class="flex items-center justify-between gap-3">
+							<div>
+								<p class="body-md">{tracker.id}</p>
+								<p class="mono-label text-on-surface-variant">
+									{#if account}
+										{account.account_label ?? 'Linked'}
+									{:else}
+										auth: {tracker.auth}
+									{/if}
+								</p>
+							</div>
+							{#if account}
+								<button
+									type="button"
+									disabled={trackerBusy}
+									class="mono-label uppercase text-error hover:underline disabled:opacity-40"
+									onclick={() => unlinkTracker(tracker.id)}
+								>
+									Unlink
+								</button>
+							{:else if tracker.auth === 'paste'}
+								<div class="flex items-center gap-2">
+									<input
+										type="password"
+										bind:value={trackerTokens[tracker.id]}
+										placeholder="access token"
+										class="rounded-card border border-outline-variant/60 bg-surface-container px-3 py-1.5 outline-none focus:border-primary"
+									>
+									<button
+										type="button"
+										disabled={trackerBusy || !trackerTokens[tracker.id]}
+										class="label-caps rounded-card border border-primary/60 px-3 py-1.5 text-primary hover:border-primary disabled:opacity-40"
+										onclick={() => linkTracker(tracker.id)}
+									>
+										Link
+									</button>
+								</div>
+							{/if}
+						</div>
+					</li>
+				{/each}
+			</ul>
+			<p class="mono-label mt-2 text-on-surface-variant">
+				Tokens are stored encrypted and used only for your own requests.
+			</p>
 		{/if}
 	</section>
 

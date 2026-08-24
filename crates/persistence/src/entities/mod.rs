@@ -14,6 +14,8 @@ pub mod reading_progress;
 pub mod server_settings;
 pub mod sessions;
 pub mod sources;
+pub mod tracker_accounts;
+pub mod tracker_links;
 pub mod translation_cache;
 pub mod user_settings;
 pub mod users;

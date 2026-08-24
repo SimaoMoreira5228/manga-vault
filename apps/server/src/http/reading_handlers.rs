@@ -13,7 +13,44 @@ pub async fn mark_read(
 	auth: Authenticated,
 	Path(chapter_id): Path<Uuid>,
 ) -> ApiResult<ReadingProgress> {
-	Ok(Json(state.vault.mark_read(auth.user.id, chapter_id).await?))
+	let progress = state.vault.mark_read(auth.user.id, chapter_id).await?;
+	if let Ok(read) = state.vault.read_chapter_ids(auth.user.id, progress.work_id).await {
+		push_trackers(&state, auth.user.id, progress.work_id, read.len() as f64).await;
+	}
+	Ok(Json(progress))
+}
+
+async fn push_trackers(state: &AppState, user_id: Uuid, work_id: Uuid, chapters_read: f64) {
+	let Some(secret_key) = state.secret_key.as_deref() else {
+		return;
+	};
+	let links = match state.vault.tracker_links_for_work(user_id, work_id).await {
+		Ok(links) => links,
+		Err(_) => return,
+	};
+	for mut link in links {
+		if link.last_chapters_synced.is_some_and(|synced| synced >= chapters_read) {
+			continue;
+		}
+		link.last_chapters_synced = Some(chapters_read);
+		let account = state
+			.vault
+			.get_tracker_account(user_id, &link.tracker_id)
+			.await
+			.ok()
+			.flatten();
+		if let Err(error) =
+			crate::http::tracker_handlers::push_progress(state, user_id, &link, account.as_ref(), secret_key).await
+		{
+			tracing::warn!(
+				"tracker push failed for {} on {}: {error}",
+				link.tracker_id,
+				link.remote_title
+			);
+			continue;
+		}
+		let _ = state.vault.upsert_tracker_link(&link).await;
+	}
 }
 
 pub async fn mark_unread(

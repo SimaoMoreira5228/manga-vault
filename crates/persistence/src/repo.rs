@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::StoreResult;
 pub use crate::sea_store::glossary::{GlossaryEntryRecord, GlossaryMeaningRecord};
+pub use crate::sea_store::tracker::{TrackerAccountRecord, TrackerLinkRecord};
 pub use crate::sea_store::translation::UserSettingsRecord;
 
 #[derive(Debug, Clone)]
@@ -81,6 +82,18 @@ pub trait TranslationRepository: Send + Sync {
 	async fn save_user_settings(&self, settings: &UserSettingsRecord) -> StoreResult<()>;
 	async fn translation_cached(&self, key: &str) -> StoreResult<Option<String>>;
 	async fn translation_cache_put(&self, key: &str, content: &str) -> StoreResult<()>;
+}
+
+#[async_trait]
+pub trait TrackerRepository: Send + Sync {
+	async fn list_tracker_accounts(&self, user_id: UserId) -> StoreResult<Vec<TrackerAccountRecord>>;
+	async fn get_tracker_account(&self, user_id: UserId, tracker_id: &str) -> StoreResult<Option<TrackerAccountRecord>>;
+	async fn save_tracker_account(&self, account: &TrackerAccountRecord) -> StoreResult<()>;
+	async fn delete_tracker_account(&self, user_id: UserId, tracker_id: &str) -> StoreResult<bool>;
+	async fn tracker_links_for_work(&self, user_id: UserId, work_id: Uuid) -> StoreResult<Vec<TrackerLinkRecord>>;
+	async fn get_tracker_link(&self, user_id: UserId, link_id: Uuid) -> StoreResult<Option<TrackerLinkRecord>>;
+	async fn upsert_tracker_link(&self, link: &TrackerLinkRecord) -> StoreResult<TrackerLinkRecord>;
+	async fn delete_tracker_link(&self, user_id: UserId, link_id: Uuid) -> StoreResult<bool>;
 }
 
 #[async_trait]

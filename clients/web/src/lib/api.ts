@@ -106,6 +106,28 @@ export interface CatalogEntry {
 
 export type RegistrationMode = 'open' | 'closed' | 'invite';
 
+export interface TrackerInfo {
+	id: string;
+	auth: 'paste' | 'oauth' | 'credentials';
+}
+
+export interface TrackerAccount {
+	user_id: string;
+	tracker_id: string;
+	account_label: string | null;
+}
+
+export interface WorkTrackLink {
+	id: string;
+	work_id: string;
+	tracker_id: string;
+	remote_id: string;
+	remote_title: string;
+	remote_status: string | null;
+	score: number | null;
+	last_chapters_synced: number | null;
+}
+
 export interface GlossaryMeaning {
 	id: string;
 	meaning: string;
@@ -216,6 +238,21 @@ export const api = {
 			`/api/chapters/${chapterId}/translate`,
 			{ to, ...(from ? { from } : {}) },
 		),
+
+	trackersRegistry: () => get<{ trackers: TrackerInfo[] }>('/api/trackers'),
+	myTrackerAccounts: () => get<TrackerAccount[]>('/api/me/trackers'),
+	linkTracker: (id: string, token: string) => put(`/api/me/trackers/${id}`, { token }),
+	unlinkTracker: (id: string) => del(`/api/me/trackers/${id}`),
+
+	workTracks: (workId: string) => get<WorkTrackLink[]>(`/api/works/${workId}/track`),
+	bindWorkTrack: (workId: string, trackerId: string, remoteId: string) =>
+		post<WorkTrackLink>(`/api/works/${workId}/track`, {
+			tracker_id: trackerId,
+			remote_id: remoteId,
+		}),
+	deleteWorkTrack: (workId: string, linkId: string) => del(`/api/works/${workId}/track/${linkId}`),
+	refreshWorkTrack: (workId: string, linkId: string) =>
+		put<WorkTrackLink>(`/api/works/${workId}/track/${linkId}`, null),
 
 	glossaryForLanguage: (language: string) => get<GlossaryEntry[]>(`/api/glossary?lang=${language}`),
 	createGlossaryEntry: (payload: {

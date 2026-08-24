@@ -14,6 +14,7 @@ persistence = { workspace = true }
 jobs = { workspace = true }
 source-manager = { workspace = true }
 source-sdk = { workspace = true }
+trackers = { workspace = true }
 translation = { workspace = true }
 source-updater = { workspace = true }
 aes-gcm = { workspace = true }

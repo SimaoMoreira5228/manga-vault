@@ -31,16 +31,53 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
 	RemoteService? linked;
 	bool syncing = false;
+	List<Map<String, dynamic>> trackerRegistry = const [];
+	Set<String> linkedTrackerIds = {};
+	Map<String, TextEditingController> trackerTokenFields = {};
 
 	@override
 	void initState() {
 		super.initState();
-		_restoreLink();
+		_restoreLink().whenComplete(_loadTrackers);
 	}
 
 	Future<File> _linkFile() async {
 		final support = await getApplicationSupportDirectory();
 		return File('${support.path}/remote.json');
+	}
+
+	Future<void> _loadTrackers() async {
+		if (!widget.isLocal && widget.service is RemoteService) {
+			final service = widget.service as RemoteService;
+			try {
+				trackerRegistry = [for (final entry in await service.trackersRegistry()) entry];
+				linkedTrackerIds = (await service.myTrackerAccounts())
+					.map((account) => account['tracker_id'] as String)
+					.toSet();
+			} catch (_) {
+				trackerRegistry = const [];
+			}
+			if (mounted) setState(() {});
+		}
+	}
+
+	bool _trackerLinked(String id) => linkedTrackerIds.contains(id);
+
+	Future<void> _linkTracker(String id) async {
+		final controller = trackerTokenFields.putIfAbsent(id, TextEditingController.new);
+		final token = controller.text.trim();
+		if (token.isEmpty || widget.service is! RemoteService) return;
+		final remote = widget.service as RemoteService;
+		await remote.linkTracker(trackerId: id, token: token);
+		if (!mounted) return;
+		ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$id linked')));
+	}
+
+	Future<void> _unlinkTracker(String id) async {
+		if (widget.service is! RemoteService) return;
+		final remote = widget.service as RemoteService;
+		await remote.unlinkTracker(trackerId: id);
+		setState(() => linkedTrackerIds.remove(id));
 	}
 
 	Future<void> _restoreLink() async {
@@ -181,6 +218,45 @@ class _SettingsPageState extends State<SettingsPage> {
 										: IconButton(icon: const Icon(Icons.sync), onPressed: _syncNow),
 							),
 					],
+					if (!widget.isLocal)
+						const Padding(
+							padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+							child: Text('TRACKERS',
+								style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.6)),
+						),
+					if (!widget.isLocal)
+						for (final tracker in trackerRegistry)
+							ListTile(
+								title: Text(_trackerLinked(tracker['id'] as String) ? '${tracker['id']} (linked)' : tracker['id'] as String),
+								trailing: _trackerLinked(tracker['id'] as String)
+										? TextButton(
+											onPressed: () => _unlinkTracker(tracker['id'] as String),
+											child: const Text('Unlink'),
+										)
+										: null,
+								subtitle: _trackerLinked(tracker['id'] as String)
+										? null
+										: Row(
+											mainAxisSize: MainAxisSize.min,
+											children: [
+												SizedBox(
+													width: 200,
+													child: TextField(
+														controller: trackerTokenFields.putIfAbsent(
+															tracker['id'] as String,
+															TextEditingController.new,
+														),
+														obscureText: true,
+														decoration: const InputDecoration(hintText: 'access token'),
+													),
+												),
+												IconButton(
+													icon: const Icon(Icons.link),
+													onPressed: () => _linkTracker(tracker['id'] as String),
+												),
+											],
+										),
+							),
 					const Padding(
 						padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
 						child:

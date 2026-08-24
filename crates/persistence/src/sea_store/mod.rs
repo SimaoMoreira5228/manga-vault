@@ -2,6 +2,7 @@ pub mod glossary;
 mod jobs;
 mod library;
 mod registration;
+pub mod tracker;
 pub mod translation;
 mod users;
 mod works;

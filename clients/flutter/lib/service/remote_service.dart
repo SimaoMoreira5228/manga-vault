@@ -190,6 +190,58 @@ class RemoteService implements VaultService {
 	bool get supportsDownloads => false;
 
 	@override
+	bool get supportsTrackers => true;
+
+	@override
+	Future<List<Map<String, dynamic>>> trackersRegistry() async {
+		final payload = await _send('GET', '/api/trackers');
+		return [for (final entry in payload['trackers'] as List) entry as Map<String, dynamic>];
+	}
+
+	@override
+	Future<List<Map<String, dynamic>>> myTrackerAccounts() async {
+		final payload = await _send('GET', '/api/me/trackers');
+		return [for (final entry in payload['accounts'] as List) entry as Map<String, dynamic>];
+	}
+
+	@override
+	Future<void> linkTracker({required String trackerId, required String token}) => _send(
+		'PUT',
+		'/api/me/trackers/$trackerId',
+		body: jsonEncode({'token': token}),
+	);
+
+	@override
+	Future<void> unlinkTracker({required String trackerId}) =>
+		_send('DELETE', '/api/me/trackers/$trackerId');
+
+	@override
+	Future<List<Map<String, dynamic>>> workTracks({required String workId}) async {
+		final links = await _send('GET', '/api/works/$workId/track');
+		return [for (final link in links as List) link as Map<String, dynamic>];
+	}
+
+	@override
+	Future<Map<String, dynamic>> bindWorkTrack({
+		required String workId,
+		required String trackerId,
+		required String remoteId,
+	}) async =>
+		await _send(
+			'POST',
+			'/api/works/$workId/track',
+			body: jsonEncode({'tracker_id': trackerId, 'remote_id': remoteId}),
+		) as Map<String, dynamic>;
+
+	@override
+	Future<void> deleteWorkTrack({required String workId, required String linkId}) =>
+		_send('DELETE', '/api/works/$workId/track/$linkId');
+
+	@override
+	Future<Map<String, dynamic>> refreshWorkTrackLink({required String workId, required String linkId}) async =>
+		await _send('PUT', '/api/works/$workId/track/$linkId', body: 'null') as Map<String, dynamic>;
+
+	@override
 	Future<List<ContinueItem>> continueReading() async {
 		final payload = await _send('GET', '/api/me/continue-reading');
 		return [

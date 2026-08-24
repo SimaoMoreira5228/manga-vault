@@ -75,3 +75,9 @@ impl IntoResponse for ApiError {
 }
 
 pub type ApiResult<T> = Result<Json<T>, ApiError>;
+
+impl std::fmt::Display for ApiError {
+	fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(formatter, "{} {}", self.status, self.message)
+	}
+}

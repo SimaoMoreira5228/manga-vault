@@ -36,6 +36,19 @@ abstract class VaultService {
 	Future<Map<String, dynamic>> exportSyncState();
 	Future<void> applySyncState(Map<String, dynamic> state);
 	bool get supportsDownloads;
+	bool get supportsTrackers;
+	Future<List<Map<String, dynamic>>> trackersRegistry();
+	Future<List<Map<String, dynamic>>> myTrackerAccounts();
+	Future<void> linkTracker({required String trackerId, required String token});
+	Future<void> unlinkTracker({required String trackerId});
+	Future<List<Map<String, dynamic>>> workTracks({required String workId});
+	Future<Map<String, dynamic>> bindWorkTrack({
+		required String workId,
+		required String trackerId,
+		required String remoteId,
+	});
+	Future<void> deleteWorkTrack({required String workId, required String linkId});
+	Future<Map<String, dynamic>> refreshWorkTrackLink({required String workId, required String linkId});
 	Future<void> downloadChapter({required String chapterId});
 	Future<void> removeDownload({required String chapterId});
 	Future<List<String>> downloadedChapters({required String workId});

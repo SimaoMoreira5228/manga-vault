@@ -10,6 +10,7 @@ mod reading_handlers;
 mod registration_handlers;
 mod sources_handlers;
 mod sync_handlers;
+mod tracker_handlers;
 mod translation_handlers;
 mod works_handlers;
 
@@ -58,6 +59,20 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/plugins/{plugin_id}", delete(plugin_handlers::uninstall))
 		.route("/api/events", get(event_feed::events))
 		.route("/api/glossary", get(glossary_handlers::list).post(glossary_handlers::create))
+		.route("/api/trackers", get(tracker_handlers::registry))
+		.route("/api/me/trackers", get(tracker_handlers::my_trackers))
+		.route(
+			"/api/me/trackers/{tracker_id}",
+			put(tracker_handlers::link_account).delete(tracker_handlers::unlink_account),
+		)
+		.route(
+			"/api/works/{work_id}/track",
+			get(tracker_handlers::list_work_track).post(tracker_handlers::bind_work),
+		)
+		.route(
+			"/api/works/{work_id}/track/{link_id}",
+			delete(tracker_handlers::delete_link).put(tracker_handlers::refresh_link),
+		)
 		.route("/api/glossary/{entry_id}/meanings", post(glossary_handlers::add_meaning))
 		.route(
 			"/api/glossary/meanings/{meaning_id}/vote",

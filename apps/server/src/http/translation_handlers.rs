@@ -19,7 +19,25 @@ fn capabilities(state: &AppState, settings: Option<&UserSettingsRecord>) -> Valu
 	} else {
 		"unavailable"
 	};
-	json!({ "translation": { "mode": mode } })
+	let trackers: Vec<serde_json::Value> = trackers::registry()
+		.into_iter()
+		.filter_map(|id| {
+			trackers::provider_for(id).map(|provider| {
+				json!({
+					"id": provider.id(),
+					"auth": match provider.auth_kind() {
+						trackers::AuthKind::Paste => "paste",
+						trackers::AuthKind::OAuth => "oauth",
+						trackers::AuthKind::Credentials => "credentials",
+					},
+				})
+			})
+		})
+		.collect();
+	json!({
+		"translation": { "mode": mode },
+		"trackers": trackers,
+	})
 }
 
 pub async fn my_capabilities(State(state): State<AppState>, auth: Authenticated) -> ApiResult<Value> {

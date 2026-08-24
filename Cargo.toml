@@ -11,6 +11,7 @@ members = [
     "crates/source-updater",
     "crates/jobs",
     "crates/translation",
+    "crates/trackers",
     "crates/core-ffi",
     "apps/server",
     "tools/migrate",
@@ -32,6 +33,7 @@ source-updater = { path = "crates/source-updater" }
 jobs = { path = "crates/jobs" }
 core-ffi = { path = "crates/core-ffi" }
 translation = { path = "crates/translation" }
+trackers = { path = "crates/trackers" }
 
 axum = { version = "0.8", features = ["macros"] }
 serde = { version = "1", features = ["derive"] }
@@ -62,6 +64,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 argon2 = "0.5"
 aes-gcm = "0.11"
 rand = "0.9"
+urlencoding = "2"
 moka = { version = "0.12", features = ["future"] }
 bytes = "1"
 async-trait = "0.1"

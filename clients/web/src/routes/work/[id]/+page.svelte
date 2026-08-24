@@ -1,4 +1,5 @@
 <script lang="ts">
+import type { TrackerAccount, WorkTrackLink } from '$lib/api';
 import { api, type Chapter, proxied, type Work } from '$lib/api';
 import ProgressBar from '$lib/components/ProgressBar.svelte';
 import { onWorkRefreshed } from '$lib/events.svelte';
@@ -20,6 +21,12 @@ let readIds = $state<Set<string>>(new Set());
 let inLibrary = $state<boolean | null>(null);
 let refreshQueued = $state(false);
 let freshChapters = $state(false);
+let trackAccounts = $state<TrackerAccount[]>([]);
+let trackLinks = $state<WorkTrackLink[]>([]);
+let trackSearch = $state('');
+let trackHits = $state<{ remote_id: string; title: string }[]>([]);
+let trackPicked = $state<string>('');
+let trackBusy = $state(false);
 let expandedDescription = $state(false);
 let busy = $state<string | null>(null);
 
@@ -75,6 +82,32 @@ async function queueRefresh() {
 	await api.requestRefresh(work.id);
 	refreshQueued = true;
 	setTimeout(() => (refreshQueued = false), 4000);
+}
+
+async function bindTrack() {
+	if (!trackPicked.trim() || !trackAccounts[0]) return;
+	trackBusy = true;
+	try {
+		const link = await api.bindWorkTrack(
+			params.id,
+			trackAccounts[0].tracker_id,
+			trackPicked.trim(),
+		);
+		trackLinks = [...trackLinks, link];
+		trackPicked = '';
+	} finally {
+		trackBusy = false;
+	}
+}
+
+async function unbindTrack(linkId: string) {
+	await api.deleteWorkTrack(params.id, linkId);
+	trackLinks = trackLinks.filter((link) => link.id !== linkId);
+}
+
+async function refreshTrack(linkId: string) {
+	await api.refreshWorkTrack(params.id, linkId);
+	trackLinks = await api.workTracks(params.id);
 }
 
 function chapterDate(chapter: Chapter): string {
@@ -219,6 +252,52 @@ function chapterDate(chapter: Chapter): string {
 							<IconCheckCircle class="size-3.5" />
 							Queued
 						</p>
+					{/if}
+					{#if trackAccounts.length > 0}
+						<div class="mt-6 rounded-card border border-outline-variant/40 bg-surface-low p-4">
+							<h3 class="label-caps text-on-surface-variant">Tracking</h3>
+							<ul class="mt-3 space-y-2">
+								{#each trackLinks as link (link.id)}
+									<li class="flex items-center justify-between gap-2">
+										<span class="body-md">
+											{link.tracker_id}: ch. {link.last_chapters_synced ?? 0}
+										</span>
+										<span class="flex gap-2">
+											<button
+												type="button"
+												class="mono-label hover:text-primary"
+												onclick={() => refreshTrack(link.id)}
+											>
+												sync
+											</button>
+											<button
+												type="button"
+												class="mono-label uppercase text-error hover:underline"
+												onclick={() => unbindTrack(link.id)}
+											>
+												unbind
+											</button>
+										</span>
+									</li>
+								{/each}
+							</ul>
+							<label class="body-md mt-3 block text-on-surface-variant">
+								Bind remote media id ({trackAccounts.map((a) => a.tracker_id).join(', ')})
+								<input
+									bind:value={trackPicked}
+									placeholder="e.g. 30013"
+									class="mt-1 w-full rounded-card border border-outline-variant/60 bg-surface-container px-3 py-2 outline-none focus:border-primary"
+								>
+							</label>
+							<button
+								type="button"
+								disabled={trackBusy || !trackPicked.trim()}
+								class="label-caps mt-2 w-full rounded-card border border-primary/60 py-2 text-primary hover:border-primary disabled:opacity-40"
+								onclick={bindTrack}
+							>
+								Bind
+							</button>
+						</div>
 					{/if}
 					{#if freshChapters}
 						<button

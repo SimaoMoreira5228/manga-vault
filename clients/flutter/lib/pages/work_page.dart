@@ -23,11 +23,18 @@ class _WorkPageState extends State<WorkPage> {
 	bool inLibrary = false;
 	bool refreshing = false;
 	bool freshChapters = false;
+	List<Map<String, dynamic>> trackLinks = const [];
+	Set<String> linkedTrackerIds = {};
 
 	@override
 	void initState() {
 		super.initState();
 		VaultEvents.instance.subscribe(_onEvent);
+		widget.vault.myTrackerAccounts().then((accounts) {
+			if (!mounted) return;
+			setState(() => linkedTrackerIds = accounts.map((a) => a['tracker_id'] as String).toSet());
+			if (linkedTrackerIds.isNotEmpty) _loadTracks();
+		}).catchError((_) {});
 		_details = _load();
 	}
 
@@ -40,6 +47,87 @@ class _WorkPageState extends State<WorkPage> {
 	void _onEvent(String workId) {
 		if (workId != widget.details.id || !mounted) return;
 		setState(() => freshChapters = true);
+	}
+
+	Future<void> _loadTracks() async {
+		final links = await widget.vault.workTracks(workId: widget.details.id).catchError((_) => <Map<String, dynamic>>[]);
+		if (mounted) setState(() => trackLinks = links);
+	}
+
+	Future<void> _bindTrack(String trackerId, String remoteId) async {
+		await widget.vault.bindWorkTrack(
+			workId: widget.details.id,
+			trackerId: trackerId,
+			remoteId: remoteId,
+		);
+		await _loadTracks();
+	}
+
+	Future<void> _unbindTrack(String linkId) async {
+		await widget.vault.deleteWorkTrack(workId: widget.details.id, linkId: linkId);
+		await _loadTracks();
+	}
+
+	Future<void> _refreshTrack(String linkId) async {
+		await widget.vault.refreshWorkTrackLink(workId: widget.details.id, linkId: linkId);
+		await _loadTracks();
+	}
+
+	Future<void> _showTrackDialog() async {
+		final remoteId = TextEditingController();
+		await showDialog<void>(
+			context: context,
+			builder: (context) => AlertDialog(
+				title: Text('Track on ${linkedTrackerIds.first}'),
+				content: Column(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						for (final link in trackLinks)
+							ListTile(
+								dense: true,
+								title: Text('${link['remote_title']} (${link['tracker_id']})'),
+								subtitle: Text('ch. ${link['last_chapters_synced'] ?? 0}'),
+								trailing: Row(
+									mainAxisSize: MainAxisSize.min,
+									children: [
+										IconButton(
+											icon: const Icon(Icons.refresh, size: 20),
+											onPressed: () => _refreshTrack(link['id'] as String),
+										),
+										IconButton(
+											icon: const Icon(Icons.link_off, size: 20),
+											onPressed: () => _unbindTrack(link['id'] as String),
+										),
+									],
+								),
+							),
+						TextField(
+							controller: remoteId,
+							autofocus: true,
+							decoration: const InputDecoration(hintText: 'Remote media id (e.g. 30013)'),
+						),
+					],
+				),
+				actions: [
+					TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close')),
+					FilledButton(
+						onPressed: () async {
+							if (remoteId.text.trim().isEmpty) return;
+							try {
+								await _bindTrack(linkedTrackerIds.first, remoteId.text.trim());
+								if (!context.mounted) return;
+								Navigator.of(context).pop();
+							} catch (error) {
+								if (!context.mounted) return;
+								ScaffoldMessenger.of(context)
+									.showSnackBar(SnackBar(content: Text('Bind failed: $error')));
+							}
+						},
+						child: const Text('Bind'),
+					),
+				],
+			),
+		);
 	}
 
 	Future<WorkDetails> _load() async {
@@ -165,6 +253,19 @@ class _WorkPageState extends State<WorkPage> {
 									child: Text('Chapters', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.6)),
 								),
 							),
+							if (linkedTrackerIds.isNotEmpty)
+								SliverToBoxAdapter(
+									child: Padding(
+										padding: const EdgeInsets.symmetric(horizontal: 16),
+										child: OutlinedButton.icon(
+											icon: const Icon(Icons.auto_stories_outlined),
+											label: Text(trackLinks.isEmpty
+													? 'Track on ${linkedTrackerIds.first}'
+													: 'Tracking (${trackLinks.length})'),
+											onPressed: _showTrackDialog,
+										),
+									),
+								),
 							if (freshChapters)
 								SliverToBoxAdapter(
 									child: Padding(
