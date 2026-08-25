@@ -1,67 +1,103 @@
-[package]
-name = "manga-vault"
-version = "1.11.0"
+[workspace]
+resolver = "3"
+members = [
+    "crates/domain",
+    "crates/application",
+    "crates/persistence",
+    "crates/source-sdk",
+    "crates/source-runtime-lua",
+    "crates/source-runtime-wasm",
+    "crates/source-manager",
+    "crates/source-updater",
+    "crates/jobs",
+    "crates/translation",
+    "crates/trackers",
+    "crates/core-ffi",
+    "apps/server",
+    "tools/migrate",
+]
+
+[workspace.package]
+version = "0.1.0"
 edition = "2024"
 
-[[bin]]
-name = "manga-vault"
-path = "src/main.rs"
-
-[workspace]
-members = [
-	"apps/http/*",
-	"apps/manga_sync",
-	"apps/scheduler",
-	"apps/scheduler/queue",
-	"apps/website/server",
-	"config",
-	"config/derive",
-	"database/*",
-	"scrapers/*",
-]
-exclude = ["scrapers/manhuafast", "scrapers/natomanga", "scrapers/mangabuddy", "scrapers/mangakakalot"]
-resolver = "3"
-
 [workspace.dependencies]
-anyhow = "1"
-axum = { version = "0.8", features = ["http2"] }
-chrono = "0.4"
-config = { path = "config" }
-config-derive = { path = "config/derive" }
-database-connection = { path = "database/connection" }
-database-entities = { path = "database/entities" }
-database-migration = { path = "database/migration" }
-gql-api = { path = "apps/http/gql" }
-manga-sync = { path = "apps/manga_sync" }
-queue = { path = "apps/scheduler/queue" }
-rand = "0.9"
-regex = "1.12"
-reqwest = { version = "0.13", features = ["stream", "blocking", "json"] }
-rustls = "0.23"
-rustls-pemfile = "2.2"
-scheduler = { path = "apps/scheduler" }
-scraper_core = { path = "scrapers/scraper_core" }
-scraper_types = { path = "scrapers/scraper_types" }
-scuffle-http = { version = "0.3.2", features = ["http3", "http3-tls-rustls", "tls-rustls"] }
-sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-postgres", "sqlx-mysql", "runtime-tokio-native-tls", "macros", "with-chrono", "with-json", "with-uuid"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0"
-thiserror = "2"
-tokio = { version = "1", features = ["full"] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
-version-check = { path = "apps/http/version_check" }
-website-server = { path = "apps/website/server" }
-wit-bindgen = "0.58"
+domain = { path = "crates/domain" }
+application = { path = "crates/application" }
+persistence = { path = "crates/persistence" }
+source-sdk = { path = "crates/source-sdk" }
+source-runtime-lua = { path = "crates/source-runtime-lua" }
+source-runtime-wasm = { path = "crates/source-runtime-wasm" }
+source-manager = { path = "crates/source-manager" }
+source-updater = { path = "crates/source-updater" }
+jobs = { path = "crates/jobs" }
+core-ffi = { path = "crates/core-ffi" }
+translation = { path = "crates/translation" }
+trackers = { path = "crates/trackers" }
 
-[dependencies]
-config = { workspace = true }
-database-connection = { workspace = true }
-gql-api = { workspace = true }
-scheduler = { workspace = true }
-scraper_core = { workspace = true }
-tokio = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-version-check = { workspace = true }
-website-server = { workspace = true }
+axum = { version = "0.8", features = ["macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.7", features = ["cors"] }
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+url = "2"
+chrono = { version = "0.4", features = ["serde"] }
+sea-orm = { version = "2", features = [
+    "sqlx-sqlite",
+    "sqlx-postgres",
+    "sqlx-mysql",
+    "runtime-tokio-rustls",
+    "macros",
+    "with-chrono",
+    "with-json",
+    "with-uuid",
+] }
+sea-orm-migration = { version = "2", features = [
+    "sqlx-sqlite",
+    "sqlx-postgres",
+    "sqlx-mysql",
+    "runtime-tokio-rustls",
+] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+argon2 = "0.5"
+aes-gcm = "0.11"
+rand = "0.9"
+urlencoding = "2"
+moka = { version = "0.12", features = ["future"] }
+bytes = "1"
+async-trait = "0.1"
+reqwest = { version = "0.13", features = ["charset", "http2", "json", "rustls", "system-proxy", "form", "query"] }
+scraper = "0.27"
+mlua = { version = "0.12", features = [
+    "lua54",
+    "serde",
+    "async",
+    "vendored",
+    "send",
+    "error-send",
+] }
+wasmtime = "48"
+wasmtime-wasi = "48"
+wasmtime-wasi-io = "48"
+futures = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
+dashmap = "6"
+parking_lot = "0.12"
+toml = "1.1"
+sha2 = "0.11"
+flate2 = "1"
+tar = "0.4"
+semver = "1"
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite"] }
+
+[workspace.lints.clippy]
+all = { level = "warn" }
+pedantic = { level = "warn" }
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

@@ -1,0 +1,24 @@
+[package]
+name = "source-runtime-lua"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+source-sdk = { workspace = true }
+domain = { workspace = true }
+mlua = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+url = { workspace = true }
+
+[[bin]]
+name = "lua-tester"
+path = "src/bin/lua-tester.rs"
+
+[dev-dependencies]
+anyhow = "1"

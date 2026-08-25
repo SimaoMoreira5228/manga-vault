@@ -1,0 +1,109 @@
+package manga-vault:source@0.1.0;
+
+interface types {
+	enum work-kind {
+		manga,
+		novel
+	}
+
+	record work-summary {
+		title: string,
+		url: string,
+		cover-url: option<string>
+	}
+
+	record chapter {
+		title: string,
+		url: string,
+		date: option<string>,
+		scanlation-group: option<string>
+	}
+
+	record work-details {
+		title: string,
+		url: string,
+		cover-url: option<string>,
+		alternative-names: list<string>,
+		authors: list<string>,
+		artists: list<string>,
+		status: option<string>,
+		release-date: option<string>,
+		description: option<string>,
+		genres: list<string>,
+		chapters: list<chapter>,
+		content-html: option<string>
+	}
+
+	record source-info {
+		id: string,
+		name: string,
+		version: string,
+		kind: work-kind,
+		icon-url: option<string>,
+		referer-url: option<string>,
+		base-url: option<string>
+	}
+
+	variant source-error {
+		network(string),
+		parse(string),
+		not-found,
+		rate-limited,
+		capability(string),
+		internal(string)
+	}
+}
+
+interface http {
+	record header {
+		name: string,
+		value: string
+	}
+
+	record response {
+		status: u16,
+		headers: list<header>,
+		body: string
+	}
+
+	get: func(url: string, headers: option<list<header>>) -> result<option<response>, string>;
+	post: func(url: string, body: string, headers: option<list<header>>) -> result<option<response>, string>;
+	has-cloudflare-protection: func(text: string, status-code: option<u16>, headers: option<list<header>>) -> bool;
+}
+
+interface flare-solverr {
+	use http.{response};
+
+	get: func(url: string, session-id: option<string>) -> result<option<response>, string>;
+}
+
+interface html {
+	record element {
+		html: string,
+		selector: string
+	}
+
+	find: func(document: string, selector: string) -> list<element>;
+	find-one: func(document: string, selector: string) -> option<element>;
+	text: func(elem: element) -> string;
+	attr: func(elem: element, name: string) -> option<string>;
+}
+
+world source-world {
+	export source;
+
+	import http;
+	import flare-solverr;
+	import html;
+}
+
+interface source {
+	use types.{work-summary, work-details, chapter, source-info, source-error};
+
+	get-info: func() -> source-info;
+	search: func(query: string, page: u32) -> result<list<work-summary>, source-error>;
+	latest: func(page: u32) -> result<list<work-summary>, source-error>;
+	trending: func(page: u32) -> result<list<work-summary>, source-error>;
+	fetch-work: func(url: string) -> result<work-details, source-error>;
+	fetch-chapter: func(url: string) -> result<list<string>, source-error>;
+}

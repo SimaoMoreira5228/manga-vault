@@ -1,0 +1,17 @@
+[package]
+name = "trackers"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tokio = { workspace = true, features = ["sync", "time", "macros"] }
+source-sdk = { workspace = true }
+async-trait = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+urlencoding = { workspace = true }
+rand = { workspace = true }
+sha2 = { workspace = true }
+base64 = "0.23"

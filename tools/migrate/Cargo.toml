@@ -1,0 +1,20 @@
+[package]
+name = "manga-vault-migrate"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "manga-vault-migrate"
+path = "src/main.rs"
+
+[dependencies]
+persistence = { workspace = true }
+domain = { workspace = true }
+sea-orm = { workspace = true }
+tokio = { workspace = true }
+sqlx = { workspace = true, features = ["mysql", "chrono", "migrate", "derive"] }
+chrono = { workspace = true }
+uuid = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

@@ -1,0 +1,122 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/typography";
+
+@theme {
+	--color-surface: #1a120b;
+	--color-surface-dim: #1a120b;
+	--color-surface-bright: #42372f;
+	--color-surface-lowest: #150c06;
+	--color-surface-low: #231a13;
+	--color-surface-container: #271e16;
+	--color-surface-high: #322820;
+	--color-surface-highest: #3e332b;
+	--color-on-surface: #f2dfd3;
+	--color-on-surface-variant: #dbc2b0;
+	--color-outline: #a38c7c;
+	--color-outline-variant: #554336;
+	--color-primary: #ffb77d;
+	--color-on-primary: #4d2600;
+	--color-primary-container: #d97707;
+	--color-on-primary-container: #432100;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: rgba(68, 226, 205, 0.12);
+	--color-error: #ffb4ab;
+	--color-on-error: #690005;
+
+	--font-display: "Playfair Display", Georgia, serif;
+	--font-body: "Geist", ui-sans-serif, system-ui, sans-serif;
+
+	--radius-card: 0.5rem;
+}
+
+[data-theme="forest"] {
+	--color-surface: #111812;
+	--color-surface-dim: #111812;
+	--color-surface-bright: #33463a;
+	--color-surface-lowest: #0c110d;
+	--color-surface-low: #141c16;
+	--color-surface-container: #18231a;
+	--color-surface-high: #1e2c20;
+	--color-surface-highest: #253627;
+	--color-on-surface: #dcebdd;
+	--color-on-surface-variant: #b0c4af;
+	--color-outline: #8fa48c;
+	--color-outline-variant: #2c3f30;
+	--color-primary: #a8d5a2;
+	--color-on-primary: #0d2a13;
+	--color-primary-container: #63a86b;
+	--color-on-primary-container: #081508;
+}
+
+[data-theme="slate"] {
+	--color-surface: #0d1518;
+	--color-surface-dim: #0d1518;
+	--color-surface-bright: #2b4048;
+	--color-surface-lowest: #080f12;
+	--color-surface-low: #10191d;
+	--color-surface-container: #142024;
+	--color-surface-high: #19282d;
+	--color-surface-highest: #1f3238;
+	--color-on-surface: #d5e4e8;
+	--color-on-surface-variant: #adc0c7;
+	--color-outline: #8aa4aa;
+	--color-outline-variant: #23353b;
+	--color-primary: #80c8d4;
+	--color-on-primary: #00363d;
+	--color-primary-container: #56a9ba;
+	--color-on-primary-container: #03242a;
+}
+
+[data-pure-black] {
+	--color-surface: #000000;
+	--color-surface-dim: #000000;
+	--color-surface-lowest: #000000;
+}
+
+html {
+	background-color: var(--color-surface);
+	color: var(--color-on-surface);
+	font-family: var(--font-body);
+	color-scheme: dark;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+}
+
+@utility title-lg {
+	font-size: 1.25rem;
+	line-height: 1.75rem;
+	font-weight: 600;
+}
+
+@utility title-md {
+	font-size: 1rem;
+	line-height: 1.5rem;
+	font-weight: 600;
+}
+
+@utility body-lg {
+	font-size: 1rem;
+	line-height: 1.625rem;
+}
+
+@utility body-md {
+	font-size: 0.875rem;
+	line-height: 1.375rem;
+}
+
+.label-caps {
+	font-size: 0.75rem;
+	font-weight: 500;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.mono-label {
+	font-size: 0.6875rem;
+	line-height: 1rem;
+}

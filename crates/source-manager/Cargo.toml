@@ -1,0 +1,15 @@
+[package]
+name = "source-manager"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = "1"
+async-trait = { workspace = true }
+tokio = { workspace = true }
+domain = { workspace = true }
+parking_lot = { workspace = true }
+source-sdk = { workspace = true }
+source-runtime-lua = { workspace = true }
+source-runtime-wasm = { workspace = true }
+tracing = { workspace = true }

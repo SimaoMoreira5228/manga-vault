@@ -1,0 +1,41 @@
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://manga_vault:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/manga_vault
+      BIND_ADDR: 0.0.0.0:8080
+      PLUGINS_DIR: /plugins
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      TRANSLATION_ENABLED: ${TRANSLATION_ENABLED:-true}
+      IMAGE_CACHE_MB: ${IMAGE_CACHE_MB:-512}
+      FLARESOLVERR_URL: ${FLARESOLVERR_URL:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./plugins:/plugins:z
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: manga_vault
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: manga_vault
+    volumes:
+      - pgdata:/var/lib/postgresql/data:z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manga_vault"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  pgdata:

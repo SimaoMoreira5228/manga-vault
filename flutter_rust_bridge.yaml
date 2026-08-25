@@ -1,0 +1,5 @@
+base_dir: .
+rust_input: crate::api
+rust_root: crates/core-ffi/
+dart_root: clients/flutter
+dart_output: clients/flutter/lib/src/rust

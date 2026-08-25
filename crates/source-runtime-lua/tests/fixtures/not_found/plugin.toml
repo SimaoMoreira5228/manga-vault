@@ -1,0 +1,4 @@
+id = "fixture"
+backend = "lua"
+entrypoint = "init.lua"
+plugin_api = "1"

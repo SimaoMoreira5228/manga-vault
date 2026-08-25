@@ -1,0 +1,24 @@
+[package]
+name = "application"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+domain = { workspace = true }
+persistence = { workspace = true }
+source-sdk = { workspace = true }
+source-manager = { workspace = true }
+jobs = { workspace = true }
+argon2 = { workspace = true }
+reqwest = { workspace = true }
+rand_core = { version = "0.6", features = ["getrandom"] }
+bcrypt = "0.19"
+dashmap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }

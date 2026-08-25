@@ -1,0 +1,13 @@
+[package]
+name = "source-sdk"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+async-trait = { workspace = true }
+domain = { workspace = true }
+scraper = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+toml = { workspace = true }
+url = { workspace = true }
