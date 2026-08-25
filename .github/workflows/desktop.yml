@@ -1,0 +1,87 @@
+name: desktop
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: linux
+            build: linux
+          - os: macos-latest
+            artifact: macos
+            build: macos
+          - os: windows-latest
+            artifact: windows
+            build: windows
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: clients/flutter
+
+      - name: Build
+        run: flutter build ${{ matrix.build }} --release
+        working-directory: clients/flutter
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manga-vault-${{ matrix.artifact }}
+          path: |
+            clients/flutter/build/linux/x64/runner/bundle/**/*
+            clients/flutter/build/macos/Build/Products/Release/**/*
+            clients/flutter/build/windows/x64/runner/Release/**/*
+          if-no-files-found: warn
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Package Linux
+        run: |
+          cd artifacts/manga-vault-linux
+          tar -czf ../../manga-vault-linux.tar.gz .
+
+      - name: Package macOS
+        run: |
+          cd artifacts/manga-vault-macos
+          tar -czf ../../manga-vault-macos.tar.gz .
+
+      - name: Package Windows
+        run: |
+          cd artifacts/manga-vault-windows
+          7z a ../../manga-vault-windows.zip .
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            manga-vault-linux.tar.gz
+            manga-vault-macos.tar.gz
+            manga-vault-windows.zip
+          generate_release_notes: true
