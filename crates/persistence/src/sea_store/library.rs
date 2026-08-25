@@ -189,6 +189,31 @@ impl ProgressRepository for SeaStore {
 		Ok(models.iter().map(|p| p.chapter_id).collect())
 	}
 
+	async fn progress_counts_by_work(&self, user_id: uuid::Uuid) -> StoreResult<Vec<(uuid::Uuid, i64)>> {
+		let rows = reading_progress::Entity::find()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.all(&self.db)
+			.await?;
+		let mut counts: std::collections::HashMap<uuid::Uuid, i64> = std::collections::HashMap::new();
+		for row in rows {
+			*counts.entry(row.work_id).or_insert(0) += 1;
+		}
+		let mut pairs: Vec<(uuid::Uuid, i64)> = counts.into_iter().collect();
+		pairs.sort();
+		Ok(pairs)
+	}
+
+	async fn chapter_counts_by_work(&self) -> StoreResult<Vec<(uuid::Uuid, i64)>> {
+		let rows = chapters::Entity::find().all(&self.db).await?;
+		let mut counts: std::collections::HashMap<uuid::Uuid, i64> = std::collections::HashMap::new();
+		for row in rows {
+			*counts.entry(row.work_id).or_insert(0) += 1;
+		}
+		let mut pairs: Vec<(uuid::Uuid, i64)> = counts.into_iter().collect();
+		pairs.sort();
+		Ok(pairs)
+	}
+
 	async fn read_progress(&self, user_id: uuid::Uuid) -> StoreResult<Vec<domain::ReadingProgress>> {
 		Ok(reading_progress::Entity::find()
 			.filter(reading_progress::Column::UserId.eq(user_id))

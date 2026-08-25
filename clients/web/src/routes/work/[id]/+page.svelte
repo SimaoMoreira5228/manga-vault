@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { TrackerAccount, WorkTrackLink } from '$lib/api';
-import { api, type Chapter, proxied, type Work } from '$lib/api';
+import { api, type Chapter, proxied, type SourceInfo, type Work } from '$lib/api';
 import ProgressBar from '$lib/components/ProgressBar.svelte';
 import { onWorkRefreshed } from '$lib/events.svelte';
 import IconArrowBack from '~icons/material-symbols/arrow-back';
@@ -52,6 +52,14 @@ let trackPicked = $state<string>('');
 let trackBusy = $state(false);
 let expandedDescription = $state(false);
 let busy = $state<string | null>(null);
+
+let sources = $state<SourceInfo[]>([]);
+let showMigrate = $state(false);
+let migrateTarget = $state('');
+let migrateCandidates: { title: string; remote_url: string }[] = $state([]);
+let migratePicked = $state('');
+let migrateBusy = $state(false);
+let migrateMessage = $state<string | null>(null);
 
 const currentChapterIndex = $derived.by(() => {
 	for (let index = chapters.length - 1; index >= 0; index -= 1) {
@@ -221,6 +229,52 @@ async function markAllFiltered(read: boolean) {
 	}
 }
 
+async function openMigrate() {
+	showMigrate = true;
+	migrateTarget = '';
+	migrateCandidates = [];
+	migratePicked = '';
+	migrateMessage = null;
+	if (sources.length === 0) {
+		sources = await api.sources().catch(() => []);
+	}
+}
+
+async function findMigrateMatches() {
+	if (!migrateTarget || !work) return;
+	migrateBusy = true;
+	migrateMessage = null;
+	try {
+		const result = await api.migrationCandidates(work.id, migrateTarget);
+		migrateCandidates = result.candidates;
+		migratePicked = result.candidates[0]?.remote_url ?? '';
+		migrateMessage =
+			migrateCandidates.length > 0 ? `${migrateCandidates.length} matches found` : 'No matches on that source';
+	} catch (cause) {
+		migrateMessage = cause instanceof Error ? cause.message : 'search failed';
+	} finally {
+		migrateBusy = false;
+	}
+}
+
+async function applyMigrate() {
+	if (!work || !migratePicked) return;
+	migrateBusy = true;
+	try {
+		const result = await api.migrationApply(migrateTarget, [{ work_id: work.id, url: migratePicked }]);
+		const mapped = result.results.find((entry) => entry.from === work?.id);
+		if (mapped?.to) {
+			window.location.href = `/work/${mapped.to}`;
+			return;
+		}
+		migrateMessage = 'Migration failed for this work';
+	} catch (cause) {
+		migrateMessage = cause instanceof Error ? cause.message : 'migration failed';
+	} finally {
+		migrateBusy = false;
+	}
+}
+
 function chapterDate(chapter: Chapter): string {
 	return chapter.released_at ? new Date(chapter.released_at).toLocaleDateString() : '';
 }
@@ -357,6 +411,13 @@ function chapterDate(chapter: Chapter): string {
 						onclick={queueRefresh}
 					>
 						Check for updates
+					</button>
+					<button
+						type="button"
+						class="label-caps mt-2 w-full rounded-card border border-outline-variant/60 py-2.5 hover:border-outline"
+						onclick={openMigrate}
+					>
+						Migrate to another source
 					</button>
 					{#if refreshQueued}
 						<p class="label-caps mt-3 flex items-center gap-1 text-secondary">
@@ -556,5 +617,87 @@ function chapterDate(chapter: Chapter): string {
 				<div bind:this={sentinel} class="h-1" aria-hidden="true"></div>
 			{/if}
 		</section>
+	{/if}
+
+	{#if showMigrate && work}
+		<div
+			class="fixed inset-0 z-40 grid place-items-center bg-black/70 p-4"
+			role="presentation"
+			onclick={(event) => {
+				if (event.target === event.currentTarget) showMigrate = false;
+			}}
+		>
+			<div class="w-full max-w-xl rounded-xl border border-outline-variant/40 bg-surface-low p-6">
+				<h2 class="title-lg">Migrate “{work.title}”</h2>
+				<p class="body-md mt-1 text-on-surface-variant">
+					Pick a target source; read chapters carry over. The original entry is removed.
+				</p>
+
+				<div class="mt-5 flex flex-wrap gap-3">
+					<select
+						bind:value={migrateTarget}
+						class="min-w-0 flex-1 rounded-card border border-outline-variant/60 bg-surface-container px-3 py-2 outline-none focus:border-primary"
+					>
+						<option value="">target source…</option>
+						{#each sources.filter((source) => source.id !== work?.source_id) as source (source.id)}
+							<option value={source.id}>{source.name}</option>
+						{/each}
+					</select>
+					<button
+						type="button"
+						disabled={!migrateTarget || migrateBusy}
+						class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline disabled:opacity-40"
+						onclick={findMigrateMatches}
+					>
+						Find matches
+					</button>
+				</div>
+
+				{#if migrateCandidates.length > 0}
+					<ul class="mt-4 space-y-1.5">
+						{#each migrateCandidates as candidate (candidate.remote_url)}
+							<li>
+								<label
+									class="flex cursor-pointer items-center gap-3 rounded-card border px-3 py-2 {migratePicked ===
+									candidate.remote_url
+										? 'border-primary bg-surface-container'
+										: 'border-outline-variant/40 hover:border-outline'}"
+								>
+									<input
+										type="radio"
+										name="migration-candidate"
+										value={candidate.remote_url}
+										bind:group={migratePicked}
+									>
+									<span class="body-md min-w-0 flex-1 truncate">{candidate.title}</span>
+								</label>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+
+				{#if migrateMessage}
+					<p class="mono-label mt-3 text-on-surface-variant">{migrateMessage}</p>
+				{/if}
+
+				<div class="mt-6 flex justify-end gap-3">
+					<button
+						type="button"
+						class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline"
+						onclick={() => (showMigrate = false)}
+					>
+						Cancel
+					</button>
+					<button
+						type="button"
+						disabled={!migratePicked || migrateBusy}
+						class="label-caps rounded-card bg-primary-container px-5 py-2 font-semibold text-on-primary-container disabled:opacity-40"
+						onclick={applyMigrate}
+					>
+						{migrateBusy ? 'Migrating…' : 'Migrate'}
+					</button>
+				</div>
+			</div>
+		</div>
 	{/if}
 </div>

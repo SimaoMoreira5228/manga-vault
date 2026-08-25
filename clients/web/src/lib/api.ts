@@ -160,6 +160,15 @@ export class ApiError extends Error {
 }
 export const API_BASE = import.meta.env.PUBLIC_API_URL ?? '';
 
+const chapterContentCache = new Map<string, ChapterContent>();
+function stashContent(chapterId: string, content: ChapterContent) {
+	if (chapterContentCache.size >= 6) {
+		const oldest = chapterContentCache.keys().next().value;
+		if (oldest !== undefined) chapterContentCache.delete(oldest);
+	}
+	chapterContentCache.set(chapterId, content);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const response = await fetch(`${API_BASE}${path}`, {
 		credentials: 'include',
@@ -226,7 +235,20 @@ export const api = {
 	getWork: (workId: string) =>
 		get<{ work: Work; chapters: Chapter[]; read_chapter_ids: string[] }>(`/api/works/${workId}`),
 	requestRefresh: (workId: string) => post(`/api/works/${workId}/refresh`),
-	chapterContent: (chapterId: string) => get<ChapterContent>(`/api/chapters/${chapterId}`),
+	chapterContent: (chapterId: string) => {
+		const cached = chapterContentCache.get(chapterId);
+		if (cached) {
+			return Promise.resolve(cached);
+		}
+		return get<ChapterContent>(`/api/chapters/${chapterId}`).then((content) => {
+			stashContent(chapterId, content);
+			return content;
+		});
+	},
+	preloadChapter: (chapterId: string) => {
+		if (chapterContentCache.has(chapterId)) return;
+		api.chapterContent(chapterId).catch(() => undefined);
+	},
 
 	translationMode: () =>
 		get<{ translation: { mode: string } }>('/api/me/capabilities').then((r) => r.translation.mode),
@@ -284,6 +306,52 @@ export const api = {
 	continueReading: () => get<ContinueReadingItem[]>('/api/me/continue-reading'),
 
 	library: () => get<{ entries: [LibraryEntry, Work][]; categories: Category[] }>('/api/library'),
+	setEntryCategory: (entryId: string, categoryId: string | null) =>
+		put(`/api/library-entries/${entryId}/category`, { category_id: categoryId }),
+	createCategory: (name: string) => post<Category>('/api/categories', { name }),
+	deleteCategory: (categoryId: string) => del(`/api/categories/${categoryId}`),
+	refreshAllLibrary: () => post<{ queued: number }>('/api/me/library/refresh-all', null),
+	migrationPlan: (fromSource: string, toSource: string) =>
+		post<{
+			suggestions: {
+				work_id: string;
+				work_title: string;
+				candidates: { title: string; remote_url: string }[];
+			}[];
+		}>('/api/me/migration/plan', { from_source: fromSource, to_source: toSource }),
+	migrationApply: (
+		toSource: string,
+		pairs: { work_id: string; url: string }[],
+		categoryId?: string | null,
+	) =>
+		post<{ moved: number; results: { from: string; to: string | null }[] }>(
+			'/api/me/migration/apply',
+			{
+				to_source: toSource,
+				category_id: categoryId ?? null,
+				pairs,
+			},
+		),
+	migrationCandidates: (workId: string, toSource: string) =>
+		post<{ work_title: string; candidates: { title: string; remote_url: string }[] }>(
+			'/api/me/migration/candidates',
+			{ work_id: workId, to_source: toSource },
+		),
+	libraryOverview: () =>
+		get<{ overview: { work_id: string; chapters_read: number; chapters_total: number }[] }>(
+			'/api/me/library-overview',
+		),
+	history: (limit = 60) =>
+		get<{
+			history: {
+				read_at: string;
+				chapter_id: string;
+				chapter_title: string;
+				work_id: string;
+				work_title: string;
+				kind: string;
+			}[];
+		}>(`/api/me/history?limit=${limit}`),
 	addToLibrary: (workId: string) => put<LibraryEntry>('/api/library', { work_id: workId }),
 	removeFromLibrary: (workId: string) => del(`/api/library/${workId}`),
 

@@ -65,6 +65,42 @@ impl Vault {
 		Ok(self.db.read_chapter_ids(user_id, work_id).await?)
 	}
 
+	pub async fn library_overview(&self, user_id: UserId) -> VaultResult<Vec<(WorkId, i64, i64)>> {
+		let mut totals: std::collections::HashMap<WorkId, i64> = self
+			.db
+			.chapter_counts_by_work()
+			.await?
+			.into_iter()
+			.collect();
+		let read = self.db.progress_counts_by_work(user_id).await?;
+		let mut merged: Vec<(WorkId, i64, i64)> = Vec::new();
+		let work_ids: std::collections::HashSet<WorkId> = read.iter().map(|(id, _)| *id).collect();
+		for (work_id, read_count) in read {
+			merged.push((work_id, read_count, totals.remove(&work_id).unwrap_or(0)));
+		}
+		for work_id in totals.keys() {
+			if !work_ids.contains(work_id) {
+				continue;
+			}
+		}
+		Ok(merged)
+	}
+
+	pub async fn history(
+		&self,
+		user_id: UserId,
+		limit: u64,
+	) -> VaultResult<Vec<(domain::ReadingProgress, domain::Chapter, domain::Work)>> {
+		let recent = self.db.recent_progress(user_id, limit).await?;
+		let mut items = Vec::with_capacity(recent.len());
+		for (progress, chapter) in recent {
+			if let Some(work) = self.db.get_work(chapter.work_id).await? {
+				items.push((progress, chapter, work));
+			}
+		}
+		Ok(items)
+	}
+
 	pub async fn continue_reading(&self, user_id: UserId) -> VaultResult<Vec<ContinueReadingItem>> {
 		let recent = self.db.recent_progress(user_id, 12).await?;
 		let mut items = Vec::with_capacity(recent.len());

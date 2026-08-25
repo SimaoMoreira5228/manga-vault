@@ -154,6 +154,8 @@ pub trait ProgressRepository: Send + Sync {
 	async fn mark_many_read(&self, progresses: Vec<ReadingProgress>) -> StoreResult<()>;
 	async fn mark_many_unread(&self, user_id: UserId, chapter_ids: Vec<ChapterId>) -> StoreResult<()>;
 	async fn read_chapter_ids(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Vec<ChapterId>>;
+	async fn progress_counts_by_work(&self, user_id: UserId) -> StoreResult<Vec<(WorkId, i64)>>;
+	async fn chapter_counts_by_work(&self) -> StoreResult<Vec<(WorkId, i64)>>;
 	async fn read_progress(&self, user_id: UserId) -> StoreResult<Vec<ReadingProgress>>;
 	async fn recent_progress(&self, user_id: UserId, limit: u64) -> StoreResult<Vec<(ReadingProgress, Chapter)>>;
 }

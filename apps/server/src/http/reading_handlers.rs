@@ -20,6 +20,45 @@ pub async fn mark_read(
 	Ok(Json(progress))
 }
 
+pub async fn library_overview(State(state): State<AppState>, auth: Authenticated) -> ApiResult<serde_json::Value> {
+	let rows = state.vault.library_overview(auth.user.id).await?;
+	let entries: Vec<serde_json::Value> = rows
+		.into_iter()
+		.map(|(work_id, read, total)| {
+			json!({ "work_id": work_id, "chapters_read": read, "chapters_total": total })
+		})
+		.collect();
+	Ok(Json(json!({ "overview": entries })))
+}
+
+pub async fn history(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	axum::extract::Query(params): axum::extract::Query<HistoryQuery>,
+) -> ApiResult<serde_json::Value> {
+	let limit = params.limit.unwrap_or(60).min(200);
+	let items = state.vault.history(auth.user.id, limit).await?;
+	let entries: Vec<serde_json::Value> = items
+		.into_iter()
+		.map(|(progress, chapter, work)| {
+			json!({
+				"read_at": progress.read_at.to_rfc3339(),
+				"chapter_id": chapter.id,
+				"chapter_title": chapter.title,
+				"work_id": work.id,
+				"work_title": work.title,
+				"kind": work.kind,
+			})
+		})
+		.collect();
+	Ok(Json(json!({ "history": entries })))
+}
+
+#[derive(serde::Deserialize)]
+pub struct HistoryQuery {
+	limit: Option<u64>,
+}
+
 async fn push_trackers(state: &AppState, user_id: Uuid, work_id: Uuid, chapters_read: f64) {
 	let Some(secret_key) = state.secret_key.as_deref() else {
 		return;

@@ -7,6 +7,7 @@ import {
 	proxied,
 	type Work,
 } from '$lib/api';
+import { goto } from '$app/navigation';
 import IconMenu from '~icons/material-symbols/menu';
 
 let { params }: { params: { chapterId: string } } = $props();
@@ -16,6 +17,8 @@ let work = $state<Work | null>(null);
 let chapters = $state<Chapter[]>([]);
 let content = $state<ChapterContent | null>(null);
 let currentPage = $state(1);
+let resumePercent = $state<number | null>(null);
+let lastPositionSave = 0;
 
 let translationMode = $state<string>('unavailable');
 let translatedHtml = $state<string | null>(null);
@@ -38,17 +41,59 @@ function page_url_search(): string {
 	return typeof window === 'undefined' ? '' : window.location.search;
 }
 
+const positionKey = $derived(`mv-pos:${params.chapterId}`);
+
+function scrollFraction(): number {
+	const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+	return scrollable <= 0 ? 1 : Math.min(1, Math.max(0, window.scrollY / scrollable));
+}
+
 function trackCurrentPage() {
-	if (!images.length) return;
-	const middle = window.innerHeight / 2;
-	const nodes = Array.from(document.querySelectorAll<HTMLImageElement>('[data-page]'));
-	let current = 1;
-	for (const node of nodes) {
-		if (node.getBoundingClientRect().top < middle) {
-			current = Number(node.dataset.page);
+	if (images.length) {
+		const middle = window.innerHeight / 2;
+		const nodes = Array.from(document.querySelectorAll<HTMLImageElement>('[data-page]'));
+		let current = 1;
+		for (const node of nodes) {
+			if (node.getBoundingClientRect().top < middle) {
+				current = Number(node.dataset.page);
+			}
+		}
+		currentPage = current;
+	}
+
+	const fraction = scrollFraction();
+	const now = Date.now();
+	if (now - lastPositionSave > 400) {
+		lastPositionSave = now;
+		if (fraction >= 0.98) {
+			localStorage.removeItem(positionKey);
+		} else if (fraction > 0.01) {
+			localStorage.setItem(positionKey, String(fraction));
 		}
 	}
-	currentPage = current;
+
+	if (fraction > 0.8 && nextChapter) {
+		api.preloadChapter(nextChapter.id);
+	}
+}
+
+function onKeydown(event: KeyboardEvent) {
+	const target = event.target as HTMLElement | null;
+	if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+	if (event.key === 'Escape') {
+		goto(work ? `/work/${work.id}` : '/');
+	} else if (event.key === 'ArrowLeft' && nextChapter) {
+		goto(`/reader/${nextChapter.id}?work=${workId ?? ''}`);
+	} else if (event.key === 'ArrowRight' && previousChapter) {
+		goto(`/reader/${previousChapter.id}?work=${workId ?? ''}`);
+	}
+}
+
+function resumeSavedPosition() {
+	if (resumePercent === null) return;
+	const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+	window.scrollTo({ top: scrollable * resumePercent });
+	resumePercent = null;
 }
 
 async function markRead() {
@@ -88,10 +133,38 @@ async function load() {
 	if (content && 'Html' in content) {
 		await markRead();
 	}
+	requestAnimationFrame(() => {
+		const saved = Number(localStorage.getItem(positionKey) ?? '');
+		if (saved > 0.03 && saved < 0.97) {
+			resumePercent = saved;
+		}
+	});
 }
 </script>
 
-<svelte:window onscroll={trackCurrentPage} />
+<svelte:window onscroll={trackCurrentPage} onkeydown={onKeydown} />
+
+{#if resumePercent !== null}
+	<div class="fixed inset-x-0 bottom-6 z-20 flex items-center justify-center gap-2">
+		<button
+			type="button"
+			class="label-caps rounded-card bg-primary-container px-5 py-3 font-semibold text-on-primary-container shadow-elevated"
+			onclick={resumeSavedPosition}
+		>
+			Resume at {Math.round(resumePercent * 100)}%
+		</button>
+		<button
+			type="button"
+			class="label-caps rounded-card bg-surface-container px-4 py-3 text-on-surface-variant shadow-elevated hover:text-on-surface"
+			onclick={() => {
+				localStorage.removeItem(positionKey);
+				resumePercent = null;
+			}}
+		>
+			Dismiss
+		</button>
+	</div>
+{/if}
 
 <div class="flex h-dvh flex-col bg-black">
 	<header

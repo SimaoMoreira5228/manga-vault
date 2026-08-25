@@ -4,10 +4,12 @@ import { API_BASE,
 	type InviteInfo,
 	type RegistrationMode,
 	type Session,
+	type SourceInfo,
 	type TrackerAccount,
 	type TrackerInfo,
 } from '$lib/api';
 import { appearance, THEMES } from '$lib/appearance.svelte';
+import { chapterNotificationsEnabled, registerWorkTitles, setChapterNotifications } from '$lib/events.svelte';
 import { auth } from '$lib/auth.svelte';
 import IconTranslate from '~icons/material-symbols/translate';
 
@@ -27,7 +29,31 @@ let translationMessage = $state('');
 
 let trackerRegistry = $state<TrackerInfo[]>([]);
 let trackerAccounts = $state<TrackerAccount[]>([]);
+let sources = $state<SourceInfo[]>([]);
+let migrateFrom = $state('');
+let migrateTo = $state('');
+let migrationSuggestions: {
+	work_id: string;
+	work_title: string;
+	candidates: { title: string; remote_url: string }[];
+	picked?: string;
+}[] = $state([]);
+let migrationBusy = $state(false);
+let migrationMessage = $state<string | null>(null);
+let chapterNotifications = $state(false);
+let libraryTitles = $state<Record<string, string>>({});
 let trackerTokens: Record<string, string> = $state({});
+
+$effect(() => {
+	chapterNotifications = chapterNotificationsEnabled();
+	api
+		.library()
+		.then((library) => {
+			libraryTitles = Object.fromEntries(library.entries.map(([, work]) => [work.id, work.title]));
+		})
+		.catch(() => {});
+	registerWorkTitles((workId) => libraryTitles[workId]);
+});
 let trackerCredentials: Record<string, { username: string; password: string }> = $state({});
 let trackerBusy = $state(false);
 
@@ -36,6 +62,13 @@ $effect(() => {
 		.sessions()
 		.then((result) => (sessions = result))
 		.finally(() => (loading = false));
+	api
+		.sources()
+		.then((all) => {
+			sources = all;
+			migrateFrom ??= '';
+		})
+		.catch(() => {});
 	api
 		.trackersRegistry()
 		.then((result) => {
@@ -89,6 +122,49 @@ async function addInvite() {
 async function revokeInvite(code: string) {
 	await api.deleteInvite(code);
 	invites = invites.filter((invite) => invite.code !== code);
+}
+
+async function toggleChapterNotifications(enabled: boolean) {
+	const ok = await setChapterNotifications(enabled);
+	chapterNotifications = ok;
+}
+
+async function planMigration() {
+	if (!migrateFrom || !migrateTo || migrateFrom === migrateTo) return;
+	migrationBusy = true;
+	migrationMessage = null;
+	try {
+		const result = await api.migrationPlan(migrateFrom, migrateTo);
+		migrationSuggestions = result.suggestions.map((suggestion) => ({
+			...suggestion,
+			picked: suggestion.candidates[0]?.remote_url,
+		}));
+		migrationMessage =
+			migrationSuggestions.length > 0
+				? `${migrationSuggestions.length} works found on “${migrateFrom}”`
+				: 'Nothing to migrate from that source';
+	} catch (cause) {
+		migrationMessage = cause instanceof Error ? cause.message : 'planning failed';
+	} finally {
+		migrationBusy = false;
+	}
+}
+
+async function applyMigration() {
+	const pairs = migrationSuggestions
+		.filter((suggestion) => suggestion.picked)
+		.map((suggestion) => ({ work_id: suggestion.work_id, url: suggestion.picked as string }));
+	if (pairs.length === 0) return;
+	migrationBusy = true;
+	try {
+		const result = await api.migrationApply(migrateTo, pairs);
+		migrationMessage = `Migrated ${result.moved} of ${pairs.length} works`;
+		migrationSuggestions = [];
+	} catch (cause) {
+		migrationMessage = cause instanceof Error ? cause.message : 'migration failed';
+	} finally {
+		migrationBusy = false;
+	}
 }
 
 async function linkTracker(id: string, payload: { token?: string; username?: string; password?: string }) {
@@ -323,6 +399,18 @@ async function clearTranslationSettings() {
 		{/if}
 	</section>
 
+	<section class="mt-12 max-w-3xl" aria-labelledby="notifications-heading">
+		<h2 id="notifications-heading" class="title-lg">New chapter notifications</h2>
+		<label class="mt-3 flex items-center gap-3 body-md">
+			<input
+				type="checkbox"
+				checked={chapterNotifications}
+				onchange={(event) => toggleChapterNotifications(event.currentTarget.checked)}
+			>
+			Notify me when works in my library get new chapters
+		</label>
+	</section>
+
 	<section class="mt-12" aria-labelledby="trackers-heading">
 		<h2 id="trackers-heading" class="title-lg">Trackers</h2>
 		{#if trackerRegistry.length === 0}
@@ -419,6 +507,75 @@ async function clearTranslationSettings() {
 			<p class="mono-label mt-2 text-on-surface-variant">
 				Tokens are stored encrypted and used only for your own requests.
 			</p>
+		{/if}
+	</section>
+
+	<section class="mt-12 max-w-3xl" aria-labelledby="migration-heading">
+		<h2 id="migration-heading" class="title-lg">Source migration</h2>
+		<p class="body-md mt-1 text-on-surface-variant">
+			Move library works from one source to another, keeping read chapters.
+		</p>
+		<div class="mt-4 flex flex-wrap items-center gap-3">
+			<select
+				bind:value={migrateFrom}
+				class="rounded-card border border-outline-variant/60 bg-surface-container px-3 py-2 outline-none focus:border-primary"
+				aria-label="Migrate from source"
+			>
+				<option value="">from…</option>
+				{#each sources as source (source.id)}
+					<option value={source.id}>{source.name}</option>
+				{/each}
+			</select>
+			<span class="mono-label text-on-surface-variant">to</span>
+			<select
+				bind:value={migrateTo}
+				class="rounded-card border border-outline-variant/60 bg-surface-container px-3 py-2 outline-none focus:border-primary"
+				aria-label="Migrate to source"
+			>
+				<option value="">to…</option>
+				{#each sources as source (source.id)}
+					<option value={source.id}>{source.name}</option>
+				{/each}
+			</select>
+			<button
+				type="button"
+				disabled={migrationBusy || !migrateFrom || !migrateTo || migrateFrom === migrateTo}
+				class="label-caps rounded-card border border-primary/60 px-4 py-2 text-primary hover:border-primary disabled:opacity-40"
+				onclick={planMigration}
+			>
+				Find matches
+			</button>
+		</div>
+		{#if migrationMessage}
+			<p class="body-md mt-3 text-on-surface-variant">{migrationMessage}</p>
+		{/if}
+		{#if migrationSuggestions.length > 0}
+			<ul
+				class="mt-4 divide-y divide-outline-variant/20 rounded-card border border-outline-variant/40 bg-surface-low"
+			>
+				{#each migrationSuggestions as suggestion (suggestion.work_id)}
+					<li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+						<span class="title-md min-w-0 flex-1 truncate">{suggestion.work_title}</span>
+						<select
+							bind:value={suggestion.picked}
+							class="max-w-[50%] rounded-card border border-outline-variant/60 bg-surface-container px-3 py-1.5 mono-label outline-none focus:border-primary"
+						>
+							<option value="">skip</option>
+							{#each suggestion.candidates as candidate (candidate.remote_url)}
+								<option value={candidate.remote_url}>{candidate.title}</option>
+							{/each}
+						</select>
+					</li>
+				{/each}
+			</ul>
+			<button
+				type="button"
+				disabled={migrationBusy}
+				class="label-caps mt-4 rounded-card bg-primary-container px-6 py-3 font-semibold text-on-primary-container disabled:opacity-50"
+				onclick={applyMigration}
+			>
+				Apply migration
+			</button>
 		{/if}
 	</section>
 

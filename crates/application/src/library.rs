@@ -22,6 +22,17 @@ impl Vault {
 		Ok(self.db.remove_from_library(user_id, work_id).await?)
 	}
 
+	pub async fn refresh_all(&self, user_id: UserId) -> VaultResult<usize> {
+		let entries = self.library(user_id).await?;
+		let mut queued = 0;
+		for (_, work) in entries {
+			if self.request_refresh(work.id).await.is_ok() {
+				queued += 1;
+			}
+		}
+		Ok(queued)
+	}
+
 	pub async fn library(&self, user_id: UserId) -> VaultResult<Vec<(LibraryEntry, domain::Work)>> {
 		let entries = self.db.library_entries(user_id).await?;
 		let ids: Vec<WorkId> = entries.iter().map(|e| e.work_id).collect();

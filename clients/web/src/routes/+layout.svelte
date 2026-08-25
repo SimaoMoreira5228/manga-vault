@@ -5,6 +5,7 @@ import { goto } from '$app/navigation';
 import { page } from '$app/state';
 import favicon from '$lib/assets/favicon.svg';
 import { auth } from '$lib/auth.svelte';
+import IconHistory from '~icons/material-symbols/history';
 import IconClose from '~icons/material-symbols/close';
 import IconExplore from '~icons/material-symbols/explore';
 import IconExtension from '~icons/material-symbols/extension';
@@ -21,6 +22,7 @@ let mobileMenuOpen = $state(false);
 const navItems = [
 	{ href: '/library', label: 'Library', icon: IconLibrary },
 	{ href: '/updates', label: 'Updates', icon: IconUpdates },
+	{ href: '/history', label: 'History', icon: IconHistory },
 	{ href: '/', label: 'Explore', icon: IconExplore },
 	{ href: '/sources', label: 'Sources', icon: IconExtension },
 	{ href: '/settings', label: 'Settings', icon: IconSettings },

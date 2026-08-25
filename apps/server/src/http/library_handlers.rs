@@ -48,6 +48,29 @@ pub async fn remove(
 	Ok(Json(json!({ "ok": true })))
 }
 
+#[derive(Deserialize)]
+pub struct SetCategory {
+	pub category_id: Option<Uuid>,
+}
+
+pub async fn set_entry_category(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	Path(entry_id): Path<Uuid>,
+	Json(payload): Json<SetCategory>,
+) -> ApiResult<serde_json::Value> {
+	state
+		.vault
+		.set_entry_category(auth.user.id, entry_id, payload.category_id)
+		.await?;
+	Ok(Json(json!({ "ok": true })))
+}
+
+pub async fn refresh_all(State(state): State<AppState>, auth: Authenticated) -> ApiResult<serde_json::Value> {
+	let queued = state.vault.refresh_all(auth.user.id).await?;
+	Ok(Json(json!({ "queued": queued })))
+}
+
 pub async fn categories(State(state): State<AppState>, auth: Authenticated) -> ApiResult<Vec<Category>> {
 	Ok(Json(state.vault.categories(auth.user.id).await?))
 }

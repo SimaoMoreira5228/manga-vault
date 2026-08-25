@@ -6,6 +6,7 @@ mod glossary_handlers;
 mod library_handlers;
 mod plugin_handlers;
 pub mod proxy_handler;
+mod migration_handlers;
 mod reading_handlers;
 mod registration_handlers;
 mod sources_handlers;
@@ -26,6 +27,12 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/auth/logout", post(auth_handlers::logout))
 		.route("/api/me", get(auth_handlers::me))
 		.route("/api/me/continue-reading", get(reading_handlers::continue_reading))
+		.route("/api/me/history", get(reading_handlers::history))
+		.route("/api/me/library-overview", get(reading_handlers::library_overview))
+		.route(
+			"/api/me/library/refresh-all",
+			post(library_handlers::refresh_all),
+		)
 		.route("/api/proxy", get(proxy_handler::proxy))
 		.route("/api/me/sessions", get(auth_handlers::list_sessions))
 		.route("/api/me/sessions/{token}", delete(auth_handlers::revoke_session))
@@ -49,10 +56,26 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/library", get(library_handlers::list).put(library_handlers::add))
 		.route("/api/library/{work_id}", delete(library_handlers::remove))
 		.route(
+			"/api/library-entries/{entry_id}/category",
+			put(library_handlers::set_entry_category),
+		)
+		.route(
 			"/api/categories",
 			get(library_handlers::categories).post(library_handlers::create_category),
 		)
 		.route("/api/categories/{category_id}", delete(library_handlers::delete_category))
+		.route(
+			"/api/me/migration/plan",
+			post(migration_handlers::plan),
+		)
+		.route(
+			"/api/me/migration/apply",
+			post(migration_handlers::apply),
+		)
+		.route(
+			"/api/me/migration/candidates",
+			post(migration_handlers::candidates),
+		)
 		.route(
 			"/api/plugin-repos",
 			get(plugin_handlers::list_repos).post(plugin_handlers::add_repo),

@@ -7,11 +7,15 @@ let selected = $state<string | null>(null);
 let query = $state('');
 let page = $state(1);
 let results = $state<RemoteWorkSummary[]>([]);
+let grouped = $state<{ source: SourceInfo; hits: RemoteWorkSummary[] }[]>([]);
 let busy = $state<string | null>(null);
 let searched = $state(false);
+let searching = $state(false);
 let error = $state<string | null>(null);
 
+const isAllSources = $derived(selected === 'all');
 const selectedKind = $derived(sources.find((source) => source.id === selected)?.kind ?? null);
+const totalGroupedHits = $derived(grouped.reduce((sum, group) => sum + group.hits.length, 0));
 
 $effect(() => {
 	api.sources().then((all) => {
@@ -34,6 +38,30 @@ async function changePage(delta: number) {
 }
 
 async function runSearch() {
+	error = null;
+	searched = false;
+	const text = query.trim();
+	if (isAllSources) {
+		searching = true;
+		const settled = await Promise.allSettled(
+			sources.map(async (source) => ({
+				source,
+				hits: await api.searchSource(source.id, text, page),
+			})),
+		);
+		grouped = settled
+			.flatMap((entry) => (entry.status === 'fulfilled' ? [entry.value] : []))
+			.filter((group) => group.hits.length > 0)
+			.sort((a, b) => b.hits.length - a.hits.length);
+		results = [];
+		const failures = settled.filter((entry) => entry.status === 'rejected').length;
+		if (failures > 0 && grouped.length === 0) {
+			error = `all ${failures} sources failed to respond`;
+		}
+		searched = true;
+		searching = false;
+		return;
+	}
 	results = await api.searchSource(selected as string, query.trim(), page);
 	searched = true;
 }
@@ -43,7 +71,11 @@ async function importAndOpen(remoteUrl: string) {
 	busy = remoteUrl;
 	error = null;
 	try {
-		const work = await api.importWork(selected, remoteUrl);
+		const sourceId = isAllSources
+			? (grouped.find((group) => group.hits.some((hit) => hit.remote_url === remoteUrl))?.source.id ??
+				selected)
+			: selected;
+		const work = await api.importWork(sourceId as string, remoteUrl);
 		window.location.href = `/work/${work.id}`;
 	} catch (cause) {
 		error = cause instanceof Error ? cause.message : 'import failed';
@@ -67,6 +99,7 @@ async function importAndOpen(remoteUrl: string) {
 			bind:value={selected}
 			class="rounded-card border border-outline-variant/60 bg-surface-container px-4 py-3 outline-none focus:border-primary"
 		>
+			<option value="all">All sources</option>
 			{#each sources as source (source.id)}
 				<option value={source.id}>{source.name} · {source.kind}</option>
 			{/each}
@@ -79,44 +112,88 @@ async function importAndOpen(remoteUrl: string) {
 		</button>
 	</form>
 
+	{#if searching}
+		<p class="body-md mt-4 text-on-surface-variant" role="status">
+			Searching {sources.length} sources…
+		</p>
+	{/if}
+
 	{#if error}
 		<p class="body-md mt-4 text-error" role="alert">{error}</p>
 	{/if}
 
-	<div class="mt-8 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
-		{#each results as item (item.remote_url)}
-			<SeriesCard
-				work={{ id: '', title: item.title, cover_url: item.cover_url, source_id: selected ?? '' }}
-				kind={selectedKind}
-				label={busy === item.remote_url ? 'IMPORTING…' : 'IMPORT +'}
-				onclick={() => importAndOpen(item.remote_url)}
-			/>
+	{#if isAllSources}
+		{#each grouped as group (group.source.id)}
+			<section class="mt-10">
+				<h2 class="title-md flex items-center gap-3">
+					{group.source.name}
+					<span class="mono-label text-on-surface-variant">{group.hits.length} hits</span>
+					<button
+						type="button"
+						class="mono-label text-primary uppercase hover:underline"
+						onclick={() => {
+							selected = group.source.id;
+							page = 1;
+							runSearch();
+						}}
+					>
+						open source
+					</button>
+				</h2>
+				<div class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
+					{#each group.hits as item (item.remote_url)}
+						<SeriesCard
+							work={{ id: '', title: item.title, cover_url: item.cover_url, source_id: group.source.id }}
+							kind={group.source.kind}
+							label={busy === item.remote_url ? 'IMPORTING…' : 'IMPORT +'}
+							onclick={() => importAndOpen(item.remote_url)}
+						/>
+					{/each}
+				</div>
+			</section>
 		{:else}
-			{#if searched}
-				<p class="body-md col-span-full text-on-surface-variant">No results for “{query}”.</p>
+			{#if searched && !searching}
+				<p class="body-md mt-8 text-on-surface-variant">
+					No results for “{query}” across {sources.length} sources.
+				</p>
 			{/if}
 		{/each}
-	</div>
+	{:else}
+		<div class="mt-8 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
+			{#each results as item (item.remote_url)}
+				<SeriesCard
+					work={{ id: '', title: item.title, cover_url: item.cover_url, source_id: selected ?? '' }}
+					kind={selectedKind}
+					label={busy === item.remote_url ? 'IMPORTING…' : 'IMPORT +'}
+					onclick={() => importAndOpen(item.remote_url)}
+				/>
+			{:else}
+				{#if searched}
+					<p class="body-md col-span-full text-on-surface-variant">No results for “{query}”.</p>
+				{/if}
+			{/each}
+		</div>
 
-	{#if results.length > 0}
-		<nav class="mt-8 flex items-center gap-4" aria-label="Search pagination">
-			<button
-				type="button"
-				class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline disabled:opacity-40"
-				disabled={page <= 1}
-				onclick={() => changePage(-1)}
-			>
-				Previous
-			</button>
-			<span class="mono-label text-on-surface-variant">Page {page}</span>
-			<button
-				type="button"
-				class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline disabled:opacity-40"
-				disabled={results.length === 0}
-				onclick={() => changePage(1)}
-			>
-				Next
-			</button>
-		</nav>
+		{#if results.length > 0}
+			<nav class="mt-8 flex items-center gap-4" aria-label="Search pagination">
+				<button
+					type="button"
+					class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline disabled:opacity-40"
+					disabled={page <= 1}
+					onclick={() => changePage(-1)}
+				>
+					Previous
+				</button>
+				<span class="mono-label text-on-surface-variant">Page {page}</span>
+				<button
+					type="button"
+					class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline disabled:opacity-40"
+					disabled={results.length === 0}
+					onclick={() => changePage(1)}
+				>
+					Next
+				</button>
+			</nav>
+		{/if}
 	{/if}
 </div>
