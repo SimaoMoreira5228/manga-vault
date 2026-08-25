@@ -73,6 +73,32 @@ fn assemble(
 
 #[async_trait::async_trait]
 impl GlossaryRepository for crate::SeaStore {
+	async fn all_glossary_entries_for_user(&self, _user_id: UserId) -> StoreResult<Vec<GlossaryEntryRecord>> {
+		use sea_orm::EntityTrait;
+		let entry_models = glossary_entries::Entity::find().all(&self.db).await?;
+		let meaning_models = glossary_meanings::Entity::find().all(&self.db).await?;
+		let mut meanings_by_entry: std::collections::HashMap<Uuid, Vec<GlossaryMeaningRecord>> = std::collections::HashMap::new();
+		for model in meaning_models {
+			let record = GlossaryMeaningRecord {
+				voted_by_me: false,
+				votes: model.votes,
+				id: model.id,
+				meaning: model.meaning,
+			};
+			meanings_by_entry.entry(model.entry_id).or_default().push(record);
+		}
+		Ok(entry_models
+			.into_iter()
+			.map(|model| GlossaryEntryRecord {
+				id: model.id,
+				term: model.term,
+				romanization: model.romanization,
+				language: model.language,
+				meanings: meanings_by_entry.remove(&model.id).unwrap_or_default(),
+			})
+			.collect())
+	}
+
 	async fn glossary_for_language(&self, language: &str, viewer: UserId) -> StoreResult<Vec<GlossaryEntryRecord>> {
 		let entries = glossary_entries::Entity::find()
 			.filter(glossary_entries::Column::Language.eq(language))

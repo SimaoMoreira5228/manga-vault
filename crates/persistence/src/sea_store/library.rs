@@ -43,6 +43,22 @@ impl LibraryRepository for SeaStore {
 		Ok(())
 	}
 
+	async fn clear_user_library(&self, user_id: uuid::Uuid) -> StoreResult<()> {
+		library_entries::Entity::delete_many()
+			.filter(library_entries::Column::UserId.eq(user_id))
+			.exec(&self.db)
+			.await?;
+		categories::Entity::delete_many()
+			.filter(categories::Column::UserId.eq(user_id))
+			.exec(&self.db)
+			.await?;
+		reading_progress::Entity::delete_many()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.exec(&self.db)
+			.await?;
+		Ok(())
+	}
+
 	async fn library_entries(&self, user_id: uuid::Uuid) -> StoreResult<Vec<LibraryEntry>> {
 		let models = library_entries::Entity::find()
 			.filter(library_entries::Column::UserId.eq(user_id))
@@ -178,6 +194,27 @@ impl ProgressRepository for SeaStore {
 			.exec(&self.db)
 			.await?;
 		Ok(())
+	}
+
+	async fn reading_progress_for_works(&self, user_id: uuid::Uuid, work_ids: &[uuid::Uuid]) -> StoreResult<Vec<ReadingProgress>> {
+		if work_ids.is_empty() {
+			return Ok(Vec::new());
+		}
+		let rows = reading_progress::Entity::find()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.filter(reading_progress::Column::WorkId.is_in(work_ids.to_vec()))
+			.all(&self.db)
+			.await?;
+		Ok(rows
+			.into_iter()
+			.map(|row| ReadingProgress {
+				id: row.id,
+				user_id: row.user_id,
+				work_id: row.work_id,
+				chapter_id: row.chapter_id,
+				read_at: row.read_at.into(),
+			})
+			.collect())
 	}
 
 	async fn read_chapter_ids(&self, user_id: uuid::Uuid, work_id: uuid::Uuid) -> StoreResult<Vec<uuid::Uuid>> {

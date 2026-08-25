@@ -1,5 +1,6 @@
 mod auth_extractor;
 mod auth_handlers;
+mod backup_handlers;
 mod error;
 pub mod event_feed;
 mod glossary_handlers;
@@ -7,6 +8,7 @@ mod library_handlers;
 mod plugin_handlers;
 pub mod proxy_handler;
 mod migration_handlers;
+mod opds_handlers;
 mod reading_handlers;
 mod registration_handlers;
 mod sources_handlers;
@@ -34,6 +36,9 @@ pub fn router(state: AppState) -> Router {
 			post(library_handlers::refresh_all),
 		)
 		.route("/api/proxy", get(proxy_handler::proxy))
+		.route("/api/me/backup", get(backup_handlers::export_backup))
+		.route("/api/me/backup/import", post(backup_handlers::import_backup))
+		.route("/opds/catalog", get(opds_handlers::catalog))
 		.route("/api/me/sessions", get(auth_handlers::list_sessions))
 		.route("/api/me/sessions/{token}", delete(auth_handlers::revoke_session))
 		.route("/api/sources", get(sources_handlers::list))

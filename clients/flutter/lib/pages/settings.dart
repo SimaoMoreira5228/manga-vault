@@ -501,6 +501,26 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             },
           ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 24, 16, 4),
+            child: Text('DATA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, letterSpacing: 0.6)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.download),
+            title: const Text('Export backup'),
+            subtitle: const Text('Save all library data as a JSON file.'),
+            onTap: () async {
+              try {
+                final json = await widget.service.exportBackup();
+                final dir = await getApplicationDocumentsDirectory();
+                final file = File('${dir.path}/manga-vault-backup.json');
+                await file.writeAsString(json);
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved to ${file.path}')));
+              } catch (e) {
+                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+              }
+            },
+          ),
         ],
       ),
     );

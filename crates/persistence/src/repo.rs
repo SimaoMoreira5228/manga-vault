@@ -99,6 +99,7 @@ pub trait TrackerRepository: Send + Sync {
 #[async_trait]
 pub trait GlossaryRepository: Send + Sync {
 	async fn glossary_for_language(&self, language: &str, viewer: UserId) -> StoreResult<Vec<GlossaryEntryRecord>>;
+	async fn all_glossary_entries_for_user(&self, user_id: UserId) -> StoreResult<Vec<GlossaryEntryRecord>>;
 	async fn create_glossary_entry(
 		&self,
 		term: &str,
@@ -134,6 +135,7 @@ pub trait LibraryRepository: Send + Sync {
 		category_id: Option<uuid::Uuid>,
 	) -> StoreResult<LibraryEntry>;
 	async fn remove_from_library(&self, user_id: UserId, work_id: WorkId) -> StoreResult<()>;
+	async fn clear_user_library(&self, user_id: UserId) -> StoreResult<()>;
 	async fn library_entries(&self, user_id: UserId) -> StoreResult<Vec<LibraryEntry>>;
 	async fn set_entry_category(
 		&self,
@@ -154,6 +156,7 @@ pub trait ProgressRepository: Send + Sync {
 	async fn mark_many_read(&self, progresses: Vec<ReadingProgress>) -> StoreResult<()>;
 	async fn mark_many_unread(&self, user_id: UserId, chapter_ids: Vec<ChapterId>) -> StoreResult<()>;
 	async fn read_chapter_ids(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Vec<ChapterId>>;
+	async fn reading_progress_for_works(&self, user_id: UserId, work_ids: &[WorkId]) -> StoreResult<Vec<ReadingProgress>>;
 	async fn progress_counts_by_work(&self, user_id: UserId) -> StoreResult<Vec<(WorkId, i64)>>;
 	async fn chapter_counts_by_work(&self) -> StoreResult<Vec<(WorkId, i64)>>;
 	async fn read_progress(&self, user_id: UserId) -> StoreResult<Vec<ReadingProgress>>;

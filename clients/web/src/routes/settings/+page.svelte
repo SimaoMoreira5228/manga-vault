@@ -667,4 +667,43 @@ async function clearTranslationSettings() {
 			{/each}
 		</ul>
 	</section>
+
+	<section class="mt-10 max-w-3xl" aria-labelledby="data-heading">
+		<h2 id="data-heading" class="title-lg">Data</h2>
+		<div class="mt-3 flex flex-wrap gap-3">
+			<a
+				href={`${API_BASE}/api/me/backup`}
+				class="label-caps rounded-card border border-primary/60 px-4 py-2 text-primary hover:border-primary"
+			>
+				Export backup
+			</a>
+			<label class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline">
+				Import backup
+				<input
+					type="file"
+					accept=".json"
+					class="hidden"
+					onchange={async (event) => {
+						const file = event.currentTarget.files?.[0];
+						if (!file) return;
+						try {
+							const text = await file.text();
+							const data = JSON.parse(text);
+							await api.importBackup(data);
+							window.location.reload();
+						} catch (cause) {
+							alert(cause instanceof Error ? cause.message : 'Import failed');
+						}
+					}}
+				>
+			</label>
+			<a
+				href={`${API_BASE}/opds/catalog`}
+				target="_blank"
+				class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 text-on-surface-variant hover:border-outline"
+			>
+				OPDS catalog feed
+			</a>
+		</div>
+	</section>
 </div>

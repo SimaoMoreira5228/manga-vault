@@ -311,6 +311,7 @@ export const api = {
 	createCategory: (name: string) => post<Category>('/api/categories', { name }),
 	deleteCategory: (categoryId: string) => del(`/api/categories/${categoryId}`),
 	refreshAllLibrary: () => post<{ queued: number }>('/api/me/library/refresh-all', null),
+	importBackup: (data: Record<string, unknown>) => post<{ ok: boolean }>('/api/me/backup/import', data),
 	migrationPlan: (fromSource: string, toSource: string) =>
 		post<{
 			suggestions: {
