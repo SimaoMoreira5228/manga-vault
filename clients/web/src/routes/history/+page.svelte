@@ -23,7 +23,10 @@ $effect(() => {
 
 $effect(() => {
 	return onWorkRefreshed(() => {
-		api.history(120).then((result) => (entries = result.history)).catch(() => undefined);
+		api
+			.history(120)
+			.then((result) => (entries = result.history))
+			.catch(() => undefined);
 	});
 });
 
@@ -63,9 +66,11 @@ function timeLabel(readAt: string): string {
 					<p class="title-md truncate">{entry.work_title}</p>
 					<p class="body-md truncate text-on-surface-variant">{entry.chapter_title}</p>
 				</span>
-				<span class={`label-caps rounded px-2 py-0.5 uppercase ${entry.kind === 'novel'
+				<span
+					class={`label-caps rounded px-2 py-0.5 uppercase ${entry.kind === 'novel'
 					? 'bg-secondary-tint text-secondary'
-					: 'bg-primary/15 text-primary'}`}>
+					: 'bg-primary/15 text-primary'}`}
+				>
 					{entry.kind}
 				</span>
 			</a>

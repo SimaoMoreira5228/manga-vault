@@ -1,5 +1,6 @@
 <script lang="ts">
-import { API_BASE,
+import {
+	API_BASE,
 	api,
 	type InviteInfo,
 	type RegistrationMode,
@@ -9,8 +10,12 @@ import { API_BASE,
 	type TrackerInfo,
 } from '$lib/api';
 import { appearance, THEMES } from '$lib/appearance.svelte';
-import { chapterNotificationsEnabled, registerWorkTitles, setChapterNotifications } from '$lib/events.svelte';
 import { auth } from '$lib/auth.svelte';
+import {
+	chapterNotificationsEnabled,
+	registerWorkTitles,
+	setChapterNotifications,
+} from '$lib/events.svelte';
 import IconTranslate from '~icons/material-symbols/translate';
 
 let sessions = $state<Session[]>([]);
@@ -167,7 +172,10 @@ async function applyMigration() {
 	}
 }
 
-async function linkTracker(id: string, payload: { token?: string; username?: string; password?: string }) {
+async function linkTracker(
+	id: string,
+	payload: { token?: string; username?: string; password?: string },
+) {
 	trackerBusy = true;
 	try {
 		await api.linkTracker(id, payload);
@@ -475,11 +483,9 @@ async function clearTranslationSettings() {
 									>
 									<button
 										type="button"
-										disabled={
-											trackerBusy ||
+										disabled={trackerBusy ||
 											!trackerCredentials[tracker.id]?.username ||
-											!trackerCredentials[tracker.id]?.password
-										}
+											!trackerCredentials[tracker.id]?.password}
 										class="label-caps rounded-card border border-primary/60 px-3 py-1.5 text-primary hover:border-primary disabled:opacity-40"
 										onclick={() =>
 											linkTracker(tracker.id, {
@@ -677,7 +683,9 @@ async function clearTranslationSettings() {
 			>
 				Export backup
 			</a>
-			<label class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline">
+			<label
+				class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline"
+			>
 				Import backup
 				<input
 					type="file"

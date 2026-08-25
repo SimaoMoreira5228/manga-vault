@@ -15,7 +15,6 @@ let error = $state<string | null>(null);
 
 const isAllSources = $derived(selected === 'all');
 const selectedKind = $derived(sources.find((source) => source.id === selected)?.kind ?? null);
-const totalGroupedHits = $derived(grouped.reduce((sum, group) => sum + group.hits.length, 0));
 
 $effect(() => {
 	api.sources().then((all) => {
@@ -72,8 +71,8 @@ async function importAndOpen(remoteUrl: string) {
 	error = null;
 	try {
 		const sourceId = isAllSources
-			? (grouped.find((group) => group.hits.some((hit) => hit.remote_url === remoteUrl))?.source.id ??
-				selected)
+			? (grouped.find((group) => group.hits.some((hit) => hit.remote_url === remoteUrl))?.source
+					.id ?? selected)
 			: selected;
 		const work = await api.importWork(sourceId as string, remoteUrl);
 		window.location.href = `/work/${work.id}`;

@@ -84,12 +84,12 @@ abstract class VaultService {
     required String workId,
     required String toSource,
   });
-	Future<List<MigrationPairResult>> migrationApply({
-		required String toSource,
-		required List<(String, String)> pairs,
-	});
-	Future<String> exportBackup();
-	Future<void> importBackup(String json);
+  Future<List<MigrationPairResult>> migrationApply({
+    required String toSource,
+    required List<(String, String)> pairs,
+  });
+  Future<String> exportBackup();
+  Future<void> importBackup(String json);
   Future<void> markRead({required String chapterId});
   Future<int> markChapters({
     required String workId,

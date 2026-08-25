@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'pages/discover.dart';
 import 'pages/history.dart';
 import 'pages/library.dart';
+import 'pages/local_archive.dart';
 import 'service/app_prefs.dart';
 import 'pages/profile_picker.dart';
 import 'pages/settings.dart';
@@ -423,6 +424,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       const NavigationSection(icon: Icons.history, label: 'History'),
       const NavigationSection(icon: Icons.extension_outlined, label: 'Plugins'),
       if (widget.isLocal)
+        const NavigationSection(icon: Icons.folder_outlined, label: 'Local'),
+      if (widget.isLocal)
         const NavigationSection(
           icon: Icons.settings_outlined,
           label: 'Settings',
@@ -434,6 +437,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         1 => LibraryPage(vault: widget.service),
         2 => HistoryPage(vault: widget.service),
         3 => SourcesPage(vault: widget.service),
+        4 when widget.isLocal => const LocalArchivePage(),
         _ => SettingsPage(
           service: widget.service as LocalService,
           isLocal: widget.isLocal,

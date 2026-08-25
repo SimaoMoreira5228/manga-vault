@@ -44,7 +44,10 @@ async function load() {
 	items = library.entries;
 	categories = library.categories;
 	overview = Object.fromEntries(
-		counts.overview.map((row) => [row.work_id, { read: row.chapters_read, total: row.chapters_total }]),
+		counts.overview.map((row) => [
+			row.work_id,
+			{ read: row.chapters_read, total: row.chapters_total },
+		]),
 	);
 	loading = false;
 }

@@ -116,10 +116,12 @@ class LocalService implements VaultService {
   }) => throw UnsupportedError('migration requires a server');
 
   @override
-  Future<String> exportBackup() async => throw UnsupportedError('backup requires a server');
+  Future<String> exportBackup() async =>
+      throw UnsupportedError('backup requires a server');
 
   @override
-  Future<void> importBackup(String json) async => throw UnsupportedError('backup requires a server');
+  Future<void> importBackup(String json) async =>
+      throw UnsupportedError('backup requires a server');
 
   @override
   Future<List<MigrationPairResult>> migrationApply({

@@ -49,6 +49,7 @@ class _ContinueReadingRowState extends State<ContinueReadingRow> {
           vault: widget.vault,
           chapters: details.chapters,
           index: index,
+          workId: item.workId,
         ),
       ),
     );

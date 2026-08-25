@@ -1,4 +1,5 @@
 <script lang="ts">
+import { goto } from '$app/navigation';
 import {
 	api,
 	type Chapter,
@@ -7,8 +8,8 @@ import {
 	proxied,
 	type Work,
 } from '$lib/api';
-import { goto } from '$app/navigation';
 import IconMenu from '~icons/material-symbols/menu';
+import IconSettings from '~icons/material-symbols/settings';
 
 let { params }: { params: { chapterId: string } } = $props();
 
@@ -29,6 +30,12 @@ const languages = ['pt', 'es', 'en', 'fr', 'de', 'it', 'ja', 'ko', 'zh'];
 let matches = $state<GlossaryEntry[]>([]);
 const showGlossary = $derived(matches.length > 0);
 
+let fontSize = $state(16);
+let lineHeight = $state(1.6);
+let imageMargin = $state(0);
+let imageGap = $state(0);
+let showReaderSettings = $state(false);
+
 const images = $derived(content && 'Images' in content ? content.Images : []);
 const html = $derived(content && 'Html' in content ? content.Html : null);
 const chapterIndex = $derived(chapters.findIndex((chapter) => chapter.id === params.chapterId));
@@ -42,6 +49,41 @@ function page_url_search(): string {
 }
 
 const positionKey = $derived(`mv-pos:${params.chapterId}`);
+
+function readerKey(suffix: string): string {
+	return `mv-reader:${params.chapterId}:${suffix}`;
+}
+
+function loadReaderSettings() {
+	fontSize = Number(localStorage.getItem(readerKey('fontSize')) ?? '16');
+	lineHeight = Number(localStorage.getItem(readerKey('lineHeight')) ?? '1.6');
+	imageMargin = Number(localStorage.getItem(readerKey('imageMargin')) ?? '0');
+	imageGap = Number(localStorage.getItem(readerKey('imageGap')) ?? '0');
+}
+
+function saveReaderSetting(suffix: string, value: number) {
+	localStorage.setItem(readerKey(suffix), String(value));
+}
+
+function adjustFontSize(delta: number) {
+	fontSize = Math.min(32, Math.max(10, fontSize + delta));
+	saveReaderSetting('fontSize', fontSize);
+}
+
+function adjustLineHeight() {
+	lineHeight = lineHeight === 1.6 ? 2.2 : 1.6;
+	saveReaderSetting('lineHeight', lineHeight);
+}
+
+function adjustImageMargin(delta: number) {
+	imageMargin = Math.min(64, Math.max(0, imageMargin + delta));
+	saveReaderSetting('imageMargin', imageMargin);
+}
+
+function adjustImageGap(delta: number) {
+	imageGap = Math.min(32, Math.max(0, imageGap + delta));
+	saveReaderSetting('imageGap', imageGap);
+}
 
 function scrollFraction(): number {
 	const scrollable = document.documentElement.scrollHeight - window.innerHeight;
@@ -114,6 +156,7 @@ async function translate() {
 }
 
 $effect(() => {
+	loadReaderSettings();
 	load();
 });
 
@@ -166,6 +209,99 @@ async function load() {
 	</div>
 {/if}
 
+{#if showReaderSettings}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-30 bg-black/60"
+		tabindex="-1"
+		onclick={() => (showReaderSettings = false)}
+		onkeydown={(e) => { if (e.key === 'Escape') showReaderSettings = false; }}
+	>
+		<div
+			class="absolute bottom-20 left-1/2 w-80 -translate-x-1/2 rounded-xl border border-outline-variant/40 bg-surface-low p-5 shadow-elevated"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+			tabindex="-1"
+		>
+			<h2 class="title-md mb-4">Reader settings</h2>
+
+			<div class="mb-3 flex items-center justify-between">
+				<span class="body-md">Font size</span>
+				<div class="flex gap-2">
+					<button
+						type="button"
+						class="rounded-full border px-3 py-1"
+						onclick={() => adjustFontSize(-2)}
+					>
+						A−
+					</button>
+					<span class="mono-label w-10 text-center">{fontSize}</span>
+					<button
+						type="button"
+						class="rounded-full border px-3 py-1"
+						onclick={() => adjustFontSize(2)}
+					>
+						A+
+					</button>
+				</div>
+			</div>
+
+			<div class="mb-3 flex items-center justify-between">
+				<span class="body-md">Line spacing</span>
+				<button
+					type="button"
+					class="rounded-full border px-3 py-1 text-sm"
+					onclick={adjustLineHeight}
+				>
+					{lineHeight === 1.6 ? 'Compact' : 'Relaxed'}
+				</button>
+			</div>
+
+			<div class="mb-3 flex items-center justify-between">
+				<span class="body-md">Image margins</span>
+				<div class="flex gap-2">
+					<button
+						type="button"
+						class="rounded-full border px-3 py-1 text-sm"
+						onclick={() => adjustImageMargin(-4)}
+					>
+						−
+					</button>
+					<span class="mono-label w-10 text-center">{imageMargin}px</span>
+					<button
+						type="button"
+						class="rounded-full border px-3 py-1 text-sm"
+						onclick={() => adjustImageMargin(4)}
+					>
+						+
+					</button>
+				</div>
+			</div>
+
+			<div class="flex items-center justify-between">
+				<span class="body-md">Image gap</span>
+				<div class="flex gap-2">
+					<button
+						type="button"
+						class="rounded-full border px-3 py-1 text-sm"
+						onclick={() => adjustImageGap(-2)}
+					>
+						−
+					</button>
+					<span class="mono-label w-10 text-center">{imageGap}px</span>
+					<button
+						type="button"
+						class="rounded-full border px-3 py-1 text-sm"
+						onclick={() => adjustImageGap(2)}
+					>
+						+
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}
+
 <div class="flex h-dvh flex-col bg-black">
 	<header
 		class="fixed inset-x-0 top-0 z-10 flex items-center justify-between bg-black/80 px-4 py-2 text-on-surface"
@@ -179,20 +315,33 @@ async function load() {
 		<h1 class="truncate px-4 font-display text-base">
 			{work ? `${work.title}: ${chapterTitle}` : chapterTitle}
 		</h1>
-		<span class="mono-label shrink-0 text-secondary">
-			Ch. {chapterIndex + 1} / Pg. {currentPage}/{images.length || 1}
-		</span>
+		<div class="flex items-center gap-2">
+			<span class="mono-label shrink-0 text-secondary">
+				Ch. {chapterIndex + 1} / Pg. {currentPage}/{images.length || 1}
+			</span>
+			<button
+				type="button"
+				class="text-on-surface-variant hover:text-primary"
+				onclick={() => (showReaderSettings = !showReaderSettings)}
+			>
+				<IconSettings class="size-5" />
+			</button>
+		</div>
 	</header>
 
 	<div class="flex-1 overflow-y-auto pt-10">
 		{#if images.length > 0}
-			<div class="mx-auto max-w-4xl">
+			<div
+				class="mx-auto max-w-4xl"
+				style="padding-left: {imageMargin}px; padding-right: {imageMargin}px"
+			>
 				{#each images as url, index (url)}
 					<img
 						data-page={index + 1}
 						src={proxied(url)}
 						alt="Page {index + 1}"
 						class="mx-auto block w-full"
+						style={index > 0 ? 'margin-top: {imageGap}px' : ''}
 						onload={index === images.length - 1 ? markRead : undefined}
 					>
 				{/each}
@@ -280,7 +429,10 @@ async function load() {
 					</div>
 				{/if}
 			{/if}
-			<article class="prose prose-invert prose-p:leading-relaxed mx-auto max-w-3xl px-6 pb-24">
+			<article
+				class="prose prose-invert prose-p:leading-relaxed mx-auto max-w-3xl px-6 pb-24"
+				style="font-size: {fontSize}px; line-height: {lineHeight}"
+			>
 				{@html translatedHtml ?? html}
 			</article>
 		{:else}

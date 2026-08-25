@@ -263,10 +263,8 @@ export const api = {
 
 	trackersRegistry: () => get<{ trackers: TrackerInfo[] }>('/api/trackers'),
 	myTrackerAccounts: () => get<TrackerAccount[]>('/api/me/trackers'),
-	linkTracker: (
-		id: string,
-		payload: { token?: string; username?: string; password?: string },
-	) => put(`/api/me/trackers/${id}`, payload),
+	linkTracker: (id: string, payload: { token?: string; username?: string; password?: string }) =>
+		put(`/api/me/trackers/${id}`, payload),
 	unlinkTracker: (id: string) => del(`/api/me/trackers/${id}`),
 	startTrackerOauth: (id: string, redirectUri: string) =>
 		post<{ authorize_url: string }>(`/api/me/trackers/${id}/oauth/start`, {
@@ -311,7 +309,8 @@ export const api = {
 	createCategory: (name: string) => post<Category>('/api/categories', { name }),
 	deleteCategory: (categoryId: string) => del(`/api/categories/${categoryId}`),
 	refreshAllLibrary: () => post<{ queued: number }>('/api/me/library/refresh-all', null),
-	importBackup: (data: Record<string, unknown>) => post<{ ok: boolean }>('/api/me/backup/import', data),
+	importBackup: (data: Record<string, unknown>) =>
+		post<{ ok: boolean }>('/api/me/backup/import', data),
 	migrationPlan: (fromSource: string, toSource: string) =>
 		post<{
 			suggestions: {

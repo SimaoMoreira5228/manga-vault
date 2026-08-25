@@ -46,8 +46,6 @@ let refreshQueued = $state(false);
 let freshChapters = $state(false);
 let trackAccounts = $state<TrackerAccount[]>([]);
 let trackLinks = $state<WorkTrackLink[]>([]);
-let trackSearch = $state('');
-let trackHits = $state<{ remote_id: string; title: string }[]>([]);
 let trackPicked = $state<string>('');
 let trackBusy = $state(false);
 let expandedDescription = $state(false);
@@ -142,9 +140,7 @@ async function refreshTrack(linkId: string) {
 	trackLinks = await api.workTracks(params.id);
 }
 
-const orderedChapters = $derived(
-	newestFirst ? [...chapters].reverse() : chapters,
-);
+const orderedChapters = $derived(newestFirst ? [...chapters].reverse() : chapters);
 const filteredChapters = $derived(
 	unreadOnly ? orderedChapters.filter((chapter) => !readIds.has(chapter.id)) : orderedChapters,
 );
@@ -180,7 +176,8 @@ function setListPrefs(patch: { newestFirst?: boolean; unreadOnly?: boolean }) {
 function jumpToChapter(chapterId: string) {
 	const index = filteredChapters.findIndex((chapter) => chapter.id === chapterId);
 	if (index < 0) return;
-	if (index >= renderedCount) renderedCount = Math.min(filteredChapters.length, index + CHUNK_SIZE / 2);
+	if (index >= renderedCount)
+		renderedCount = Math.min(filteredChapters.length, index + CHUNK_SIZE / 2);
 	requestAnimationFrame(() => {
 		document.getElementById(`chapter-${chapterId}`)?.scrollIntoView({ block: 'center' });
 	});
@@ -190,27 +187,8 @@ async function markDirection(anchorIndex: number, read: boolean) {
 	const anchor = filteredChapters[anchorIndex];
 	if (!anchor) return;
 	const above = filteredChapters.slice(0, anchorIndex);
-	const pending = above.filter((chapter) => read === readIds.has(chapter.id)).map((chapter) => chapter.id);
-	if (pending.length === 0) return;
-	for (const id of pending) {
-		if (read) readIds.add(id);
-		else readIds.delete(id);
-	}
-	readIds = new Set(readIds);
-	try {
-		await api.markChapters(params.id, pending, read);
-	} catch {
-		for (const id of pending) {
-			if (read) readIds.delete(id);
-			else readIds.add(id);
-		}
-		readIds = new Set(readIds);
-	}
-}
-
-async function markAllFiltered(read: boolean) {
-	const pending = filteredChapters
-		.filter((chapter) => read === !readIds.has(chapter.id))
+	const pending = above
+		.filter((chapter) => read === readIds.has(chapter.id))
 		.map((chapter) => chapter.id);
 	if (pending.length === 0) return;
 	for (const id of pending) {
@@ -249,7 +227,9 @@ async function findMigrateMatches() {
 		migrateCandidates = result.candidates;
 		migratePicked = result.candidates[0]?.remote_url ?? '';
 		migrateMessage =
-			migrateCandidates.length > 0 ? `${migrateCandidates.length} matches found` : 'No matches on that source';
+			migrateCandidates.length > 0
+				? `${migrateCandidates.length} matches found`
+				: 'No matches on that source';
 	} catch (cause) {
 		migrateMessage = cause instanceof Error ? cause.message : 'search failed';
 	} finally {
@@ -261,7 +241,9 @@ async function applyMigrate() {
 	if (!work || !migratePicked) return;
 	migrateBusy = true;
 	try {
-		const result = await api.migrationApply(migrateTarget, [{ work_id: work.id, url: migratePicked }]);
+		const result = await api.migrationApply(migrateTarget, [
+			{ work_id: work.id, url: migratePicked },
+		]);
 		const mapped = result.results.find((entry) => entry.from === work?.id);
 		if (mapped?.to) {
 			window.location.href = `/work/${mapped.to}`;
@@ -537,8 +519,8 @@ function chapterDate(chapter: Chapter): string {
 			</div>
 			{#if renderedCount < chapters.length}
 				<p class="mono-label mt-2 text-on-surface-variant">
-					Showing {renderedCount} of {filteredChapters.length}{unreadOnly ? ' unread' : ''} — scroll for
-					more
+					Showing {renderedCount} of {filteredChapters.length}{unreadOnly ? ' unread' : ''}
+					— scroll for more
 				</p>
 			{/if}
 
@@ -622,10 +604,11 @@ function chapterDate(chapter: Chapter): string {
 	{#if showMigrate && work}
 		<div
 			class="fixed inset-0 z-40 grid place-items-center bg-black/70 p-4"
-			role="presentation"
+			tabindex="-1"
 			onclick={(event) => {
 				if (event.target === event.currentTarget) showMigrate = false;
 			}}
+			onkeydown={(e) => { if (e.key === 'Escape') showMigrate = false; }}
 		>
 			<div class="w-full max-w-xl rounded-xl border border-outline-variant/40 bg-surface-low p-6">
 				<h2 class="title-lg">Migrate “{work.title}”</h2>

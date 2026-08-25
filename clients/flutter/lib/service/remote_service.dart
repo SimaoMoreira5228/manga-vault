@@ -243,7 +243,8 @@ class RemoteService implements VaultService {
   }
 
   @override
-  Future<String> exportBackup() async => _send('GET', '/api/me/backup') as String;
+  Future<String> exportBackup() async =>
+      _send('GET', '/api/me/backup') as String;
 
   @override
   Future<void> importBackup(String json) async {

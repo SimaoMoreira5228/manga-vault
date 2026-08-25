@@ -209,6 +209,7 @@ class _WorkPageState extends State<WorkPage> {
               vault: widget.vault,
               chapters: chapters,
               index: index,
+              workId: widget.details.id,
             ),
           ),
         )
@@ -643,11 +644,13 @@ class ReaderPage extends StatefulWidget {
     required this.vault,
     required this.chapters,
     required this.index,
+    required this.workId,
   });
 
   final VaultService vault;
   final List<ChapterSummary> chapters;
   final int index;
+  final String workId;
 
   @override
   State<ReaderPage> createState() => _ReaderPageState();
@@ -660,6 +663,12 @@ class _ReaderPageState extends State<ReaderPage> {
   double? _resumeFraction;
   int _nextPreloaded = -1;
   int _lastSaveMs = 0;
+  double _fontSize = 16;
+  double _lineHeight = 1.6;
+  bool _pagedMode = false;
+  double _imageMargin = 0;
+  double _imageGap = 0;
+  String _workId = '';
 
   ChapterSummary? get _nextChapter {
     final next = widget.index - 1;
@@ -699,8 +708,10 @@ class _ReaderPageState extends State<ReaderPage> {
   void initState() {
     super.initState();
     current = widget.chapters[widget.index];
+    _workId = widget.workId;
     body = null;
     _scroll.addListener(_onScroll);
+    _loadSettings();
     _load(current.id);
     widget.vault
         .translationMode()
@@ -708,6 +719,18 @@ class _ReaderPageState extends State<ReaderPage> {
           if (mounted) setState(() => translationMode = mode);
         })
         .catchError((_) {});
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await AppPrefs.instance();
+    if (!mounted) return;
+    setState(() {
+      _fontSize = prefs.effectiveFontSize(_workId);
+      _lineHeight = prefs.effectiveLineHeight(_workId);
+      _pagedMode = prefs.effectivePagedMode(_workId);
+      _imageMargin = prefs.effectiveImageMargin(_workId);
+      _imageGap = prefs.effectiveImageGap(_workId);
+    });
   }
 
   bool get _canTranslate =>
@@ -766,6 +789,37 @@ class _ReaderPageState extends State<ReaderPage> {
           (result['matches'] as List?)?.cast<Map<String, dynamic>>() ??
           const [];
     });
+  }
+
+  void _handleReaderSetting(String action) async {
+    final prefs = await AppPrefs.instance();
+    switch (action) {
+      case 'font_up':
+        _fontSize = (_fontSize + 2).clamp(10, 32);
+        await prefs.setWorkReaderSetting(_workId, 'fontSize', _fontSize);
+      case 'font_down':
+        _fontSize = (_fontSize - 2).clamp(10, 32);
+        await prefs.setWorkReaderSetting(_workId, 'fontSize', _fontSize);
+      case 'spacing':
+        _lineHeight = _lineHeight == 1.6 ? 2.2 : 1.6;
+        await prefs.setWorkReaderSetting(_workId, 'lineHeight', _lineHeight);
+      case 'paged':
+        _pagedMode = !_pagedMode;
+        await prefs.setWorkReaderSetting(_workId, 'pagedMode', _pagedMode);
+      case 'margin_up':
+        _imageMargin = (_imageMargin + 4).clamp(0, 64);
+        await prefs.setWorkReaderSetting(_workId, 'imageMargin', _imageMargin);
+      case 'margin_down':
+        _imageMargin = (_imageMargin - 4).clamp(0, 64);
+        await prefs.setWorkReaderSetting(_workId, 'imageMargin', _imageMargin);
+      case 'gap_up':
+        _imageGap = (_imageGap + 2).clamp(0, 32);
+        await prefs.setWorkReaderSetting(_workId, 'imageGap', _imageGap);
+      case 'gap_down':
+        _imageGap = (_imageGap - 2).clamp(0, 32);
+        await prefs.setWorkReaderSetting(_workId, 'imageGap', _imageGap);
+    }
+    setState(() {});
   }
 
   void _showGlossary() {
@@ -900,6 +954,36 @@ class _ReaderPageState extends State<ReaderPage> {
               icon: const Icon(Icons.translate),
               onPressed: _translate,
             ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.tune),
+            onSelected: _handleReaderSetting,
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'font_up', child: Text('Larger text')),
+              PopupMenuItem(value: 'font_down', child: Text('Smaller text')),
+              PopupMenuItem(
+                value: 'spacing',
+                child: Text('Toggle line spacing'),
+              ),
+              PopupMenuItem(value: 'paged', child: Text('Toggle paged mode')),
+              PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'margin_up',
+                child: Text('Wider image margins'),
+              ),
+              PopupMenuItem(
+                value: 'margin_down',
+                child: Text('Narrower image margins'),
+              ),
+              PopupMenuItem(
+                value: 'gap_up',
+                child: Text('More gap between images'),
+              ),
+              PopupMenuItem(
+                value: 'gap_down',
+                child: Text('Less gap between images'),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.skip_previous),
             onPressed: widget.index > 0 ? () => _go(-1) : null,
@@ -914,18 +998,31 @@ class _ReaderPageState extends State<ReaderPage> {
       ),
       body: switch (body) {
         null => const Center(child: CircularProgressIndicator()),
-        ChapterBody_Images urls => InteractiveViewer(
-          child: ListView.builder(
-            controller: _scroll,
-            itemCount: urls.field0.length,
-            itemBuilder: (context, index) {
-              final page = urls.field0[index];
-              return page.startsWith('file://')
-                  ? Image.file(File.fromUri(Uri.parse(page)), fit: BoxFit.cover)
-                  : Image.network(page);
-            },
-          ),
-        ),
+        ChapterBody_Images urls =>
+          _pagedMode
+              ? _pagedImageBody(urls)
+              : InteractiveViewer(
+                  child: ListView.builder(
+                    controller: _scroll,
+                    padding: EdgeInsets.symmetric(horizontal: _imageMargin),
+                    itemExtent: null,
+                    itemBuilder: (context, index) {
+                      final page = urls.field0[index];
+                      final image = page.startsWith('file://')
+                          ? Image.file(
+                              File.fromUri(Uri.parse(page)),
+                              fit: BoxFit.fitWidth,
+                            )
+                          : Image.network(page, fit: BoxFit.fitWidth);
+                      return index > 0
+                          ? Padding(
+                              padding: EdgeInsets.only(top: _imageGap),
+                              child: image,
+                            )
+                          : image;
+                    },
+                  ),
+                ),
         ChapterBody_Html html => Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
@@ -934,7 +1031,8 @@ class _ReaderPageState extends State<ReaderPage> {
               padding: const EdgeInsets.all(24),
               child: Text(
                 _stripTags(translatedHtml ?? html.field0),
-                style: Theme.of(context).textTheme.bodyLarge,
+                style: Theme.of(context).textTheme.bodyLarge
+                    ?.copyWith(fontSize: _fontSize, height: _lineHeight),
               ),
             ),
           ),
@@ -946,5 +1044,29 @@ class _ReaderPageState extends State<ReaderPage> {
   String _stripTags(String html) {
     final text = html.replaceAll(RegExp(r'<[^>]*>'), ' ');
     return text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  Widget _pagedImageBody(ChapterBody_Images urls) {
+    return PageView.builder(
+      itemCount: urls.field0.length,
+      onPageChanged: (index) async {
+        final maxExtent = _scroll.position.maxScrollExtent;
+        final fraction = maxExtent > 0 ? index / urls.field0.length : 0.0;
+        await AppPrefs.instance().then(
+          (p) => p.setPosition(current.id, fraction),
+        );
+      },
+      itemBuilder: (context, index) {
+        final page = urls.field0[index];
+        return page.startsWith('file://')
+            ? Center(
+                child: Image.file(
+                  File.fromUri(Uri.parse(page)),
+                  fit: BoxFit.contain,
+                ),
+              )
+            : Center(child: Image.network(page, fit: BoxFit.contain));
+      },
+    );
   }
 }
