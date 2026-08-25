@@ -134,6 +134,43 @@ impl ProgressRepository for SeaStore {
 		Ok(true)
 	}
 
+	async fn mark_many_read(&self, progresses: Vec<ReadingProgress>) -> StoreResult<()> {
+		if progresses.is_empty() {
+			return Ok(());
+		}
+		let models = progresses
+			.into_iter()
+			.map(|progress| reading_progress::ActiveModel {
+				id: Set(progress.id),
+				user_id: Set(progress.user_id),
+				work_id: Set(progress.work_id),
+				chapter_id: Set(progress.chapter_id),
+				read_at: Set(utc_to_db(progress.read_at)),
+			})
+			.collect::<Vec<_>>();
+		let inserted = reading_progress::Entity::insert_many(models)
+			.on_conflict_do_nothing_on([
+				reading_progress::Column::UserId,
+				reading_progress::Column::ChapterId,
+			])
+			.exec_without_returning(&self.db)
+			.await?;
+		let _ = inserted;
+		Ok(())
+	}
+
+	async fn mark_many_unread(&self, user_id: uuid::Uuid, chapter_ids: Vec<uuid::Uuid>) -> StoreResult<()> {
+		if chapter_ids.is_empty() {
+			return Ok(());
+		}
+		reading_progress::Entity::delete_many()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.filter(reading_progress::Column::ChapterId.is_in(chapter_ids))
+			.exec(&self.db)
+			.await?;
+		Ok(())
+	}
+
 	async fn mark_unread(&self, user_id: uuid::Uuid, chapter_id: uuid::Uuid) -> StoreResult<()> {
 		reading_progress::Entity::delete_many()
 			.filter(reading_progress::Column::UserId.eq(user_id))

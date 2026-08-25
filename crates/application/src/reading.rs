@@ -35,6 +35,32 @@ impl Vault {
 		Ok(self.db.mark_unread(user_id, chapter_id).await?)
 	}
 
+	pub async fn mark_chapters(
+		&self,
+		user_id: UserId,
+		work_id: WorkId,
+		chapter_ids: Vec<ChapterId>,
+		read: bool,
+	) -> VaultResult<()> {
+		if read {
+			let now = chrono::Utc::now();
+			let progresses = chapter_ids
+				.into_iter()
+				.map(|chapter_id| ReadingProgress {
+					id: Uuid::now_v7(),
+					user_id,
+					work_id,
+					chapter_id,
+					read_at: now,
+				})
+				.collect();
+			self.db.mark_many_read(progresses).await?;
+		} else {
+			self.db.mark_many_unread(user_id, chapter_ids).await?;
+		}
+		Ok(())
+	}
+
 	pub async fn read_chapter_ids(&self, user_id: UserId, work_id: WorkId) -> VaultResult<Vec<ChapterId>> {
 		Ok(self.db.read_chapter_ids(user_id, work_id).await?)
 	}

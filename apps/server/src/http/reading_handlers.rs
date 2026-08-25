@@ -62,6 +62,32 @@ pub async fn mark_unread(
 	Ok(Json(json!({ "ok": true })))
 }
 
+#[derive(serde::Deserialize)]
+pub struct BulkMark {
+	pub chapter_ids: Vec<Uuid>,
+	pub read: bool,
+}
+
+pub async fn mark_bulk(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	Path(work_id): Path<Uuid>,
+	Json(payload): Json<BulkMark>,
+) -> ApiResult<serde_json::Value> {
+	state
+		.vault
+		.mark_chapters(auth.user.id, work_id, payload.chapter_ids, payload.read)
+		.await?;
+	let read_count = state
+		.vault
+		.read_chapter_ids(auth.user.id, work_id)
+		.await
+		.map(|ids| ids.len())
+		.unwrap_or(0);
+	push_trackers(&state, auth.user.id, work_id, read_count as f64).await;
+	Ok(Json(json!({ "ok": true, "chapters_read": read_count })))
+}
+
 pub async fn progress_for_work(
 	State(state): State<AppState>,
 	auth: Authenticated,

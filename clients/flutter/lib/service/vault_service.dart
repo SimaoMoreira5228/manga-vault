@@ -13,6 +13,11 @@ abstract class VaultService {
 	Future<void> removeFromLibrary({required String workId});
 	Future<List<LibraryItem>> listLibrary();
 	Future<void> markRead({required String chapterId});
+	Future<int> markChapters({
+		required String workId,
+		required List<String> chapterIds,
+		required bool read,
+	});
 	Future<List<String>> readChapters({required String workId});
 	Future<List<ContinueItem>> continueReading();
 	Future<void> refreshWork({required String workId});

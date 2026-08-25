@@ -19,6 +19,7 @@ class WorkPage extends StatefulWidget {
 class _WorkPageState extends State<WorkPage> {
 	late Future<WorkDetails> _details;
 	Set<String> read = {};
+	bool newestFirst = false;
 	Set<String> downloaded = {};
 	bool inLibrary = false;
 	bool refreshing = false;
@@ -147,6 +148,19 @@ class _WorkPageState extends State<WorkPage> {
 		setState(() => inLibrary = !inLibrary);
 	}
 
+	Future<void> _markPreviousRead(List<ChapterSummary> chapters, int index) async {
+		final workId = widget.details.id;
+		final pending = [
+			for (var i = 0; i <= index; i++)
+				if (!read.contains(chapters[i].id)) chapters[i].id,
+		];
+		if (pending.isEmpty) return;
+		await widget.vault.markChapters(workId: workId, chapterIds: pending, read: true);
+		if (!mounted) return;
+		setState(() => read.addAll(pending));
+		SyncScheduler.instance.nudge();
+	}
+
 	Future<void> _openChapter(List<ChapterSummary> chapters, int index) async {
 		final chapter = chapters[index];
 		if (!mounted) return;
@@ -214,7 +228,10 @@ class _WorkPageState extends State<WorkPage> {
 						return const Center(child: CircularProgressIndicator());
 					}
 					final details = snapshot.data ?? widget.details;
-					return CustomScrollView(
+				final orderedChapters = newestFirst
+				? details.chapters.reversed.toList()
+				: details.chapters;
+				return CustomScrollView(
 						slivers: [
 							SliverAppBar(
 								title: Text(details.title),
@@ -229,6 +246,11 @@ class _WorkPageState extends State<WorkPage> {
 												: const Icon(Icons.refresh),
 										onPressed: refreshing ? null : _refreshFromSource,
 										tooltip: 'Check for updates',
+									),
+									IconButton(
+										icon: const Icon(Icons.swap_vert),
+										onPressed: () => setState(() => newestFirst = !newestFirst),
+										tooltip: newestFirst ? 'Oldest first' : 'Newest first',
 									),
 									IconButton(
 										icon: Icon(inLibrary ? Icons.favorite : Icons.favorite_border),
@@ -280,7 +302,8 @@ class _WorkPageState extends State<WorkPage> {
 							SliverList(
 								delegate: SliverChildBuilderDelegate(
 									(context, index) {
-										final chapter = details.chapters[index];
+										final chapter = orderedChapters[index];
+										final canonicalIndex = details.chapters.indexOf(chapter);
 										final isRead = read.contains(chapter.id);
 										final isDownloaded = downloaded.contains(chapter.id);
 										return ListTile(
@@ -305,7 +328,25 @@ class _WorkPageState extends State<WorkPage> {
 														const Icon(Icons.chevron_right),
 												],
 											),
-											onTap: () => _openChapter(details.chapters, index),
+											onTap: () => _openChapter(details.chapters, canonicalIndex),
+											onLongPress: () => showModalBottomSheet<void>(
+												context: context,
+												builder: (sheetContext) => SafeArea(
+													child: Column(
+														mainAxisSize: MainAxisSize.min,
+														children: [
+															ListTile(
+																leading: const Icon(Icons.done_all),
+																title: Text('Mark previous ${canonicalIndex + 1} as read'),
+																onTap: () {
+																	Navigator.of(sheetContext).pop();
+																	_markPreviousRead(details.chapters, canonicalIndex);
+																},
+															),
+														],
+													),
+												),
+											),
 										);
 									},
 									childCount: details.chapters.length,

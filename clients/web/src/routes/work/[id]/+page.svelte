@@ -18,6 +18,29 @@ let { params }: { params: { id: string } } = $props();
 let work = $state<Work | null>(null);
 let chapters = $state<Chapter[]>([]);
 let readIds = $state<Set<string>>(new Set());
+const CHUNK_SIZE = 250;
+let renderedCount = $state(CHUNK_SIZE);
+let newestFirst = $state(false);
+let unreadOnly = $state(false);
+let sentinel: HTMLDivElement | undefined = $state();
+
+function persistListPrefs() {
+	try {
+		localStorage.setItem('mv-chapter-list', JSON.stringify({ newestFirst, unreadOnly }));
+	} catch {}
+}
+
+{
+	const saved = (() => {
+		try {
+			return JSON.parse(localStorage.getItem('mv-chapter-list') ?? '{}');
+		} catch {
+			return {};
+		}
+	})();
+	newestFirst = saved.newestFirst === true;
+	unreadOnly = saved.unreadOnly === true;
+}
 let inLibrary = $state<boolean | null>(null);
 let refreshQueued = $state(false);
 let freshChapters = $state(false);
@@ -56,6 +79,7 @@ async function load(id: string) {
 	work = data.work;
 	chapters = data.chapters;
 	readIds = new Set(data.read_chapter_ids);
+	renderedCount = CHUNK_SIZE;
 
 	const library = await api.library();
 	inLibrary = library.entries.some(([, entryWork]) => entryWork.id === id);
@@ -108,6 +132,93 @@ async function unbindTrack(linkId: string) {
 async function refreshTrack(linkId: string) {
 	await api.refreshWorkTrack(params.id, linkId);
 	trackLinks = await api.workTracks(params.id);
+}
+
+const orderedChapters = $derived(
+	newestFirst ? [...chapters].reverse() : chapters,
+);
+const filteredChapters = $derived(
+	unreadOnly ? orderedChapters.filter((chapter) => !readIds.has(chapter.id)) : orderedChapters,
+);
+const visibleChapters = $derived(filteredChapters.slice(0, renderedCount));
+const firstUnreadIndex = $derived(chapters.findIndex((chapter) => !readIds.has(chapter.id)));
+const unreadCount = $derived(chapters.length - readIds.size);
+
+function anchorHasWork(anchorIndex: number, read: boolean): boolean {
+	const anchor = filteredChapters[anchorIndex];
+	if (!anchor) return true;
+	return !filteredChapters
+		.slice(0, anchorIndex)
+		.some((chapter) => readIds.has(chapter.id) !== read);
+}
+
+$effect(() => {
+	if (!sentinel) return;
+	const observer = new IntersectionObserver((entries) => {
+		if (!entries[0]?.isIntersecting) return;
+		renderedCount = Math.min(filteredChapters.length, renderedCount + CHUNK_SIZE);
+	});
+	observer.observe(sentinel);
+	return () => observer.disconnect();
+});
+
+function setListPrefs(patch: { newestFirst?: boolean; unreadOnly?: boolean }) {
+	if (patch.newestFirst !== undefined) newestFirst = patch.newestFirst;
+	if (patch.unreadOnly !== undefined) unreadOnly = patch.unreadOnly;
+	renderedCount = CHUNK_SIZE;
+	persistListPrefs();
+}
+
+function jumpToChapter(chapterId: string) {
+	const index = filteredChapters.findIndex((chapter) => chapter.id === chapterId);
+	if (index < 0) return;
+	if (index >= renderedCount) renderedCount = Math.min(filteredChapters.length, index + CHUNK_SIZE / 2);
+	requestAnimationFrame(() => {
+		document.getElementById(`chapter-${chapterId}`)?.scrollIntoView({ block: 'center' });
+	});
+}
+
+async function markDirection(anchorIndex: number, read: boolean) {
+	const anchor = filteredChapters[anchorIndex];
+	if (!anchor) return;
+	const above = filteredChapters.slice(0, anchorIndex);
+	const pending = above.filter((chapter) => read === readIds.has(chapter.id)).map((chapter) => chapter.id);
+	if (pending.length === 0) return;
+	for (const id of pending) {
+		if (read) readIds.add(id);
+		else readIds.delete(id);
+	}
+	readIds = new Set(readIds);
+	try {
+		await api.markChapters(params.id, pending, read);
+	} catch {
+		for (const id of pending) {
+			if (read) readIds.delete(id);
+			else readIds.add(id);
+		}
+		readIds = new Set(readIds);
+	}
+}
+
+async function markAllFiltered(read: boolean) {
+	const pending = filteredChapters
+		.filter((chapter) => read === !readIds.has(chapter.id))
+		.map((chapter) => chapter.id);
+	if (pending.length === 0) return;
+	for (const id of pending) {
+		if (read) readIds.add(id);
+		else readIds.delete(id);
+	}
+	readIds = new Set(readIds);
+	try {
+		await api.markChapters(params.id, pending, read);
+	} catch {
+		for (const id of pending) {
+			if (read) readIds.delete(id);
+			else readIds.add(id);
+		}
+		readIds = new Set(readIds);
+	}
 }
 
 function chapterDate(chapter: Chapter): string {
@@ -314,18 +425,69 @@ function chapterDate(chapter: Chapter): string {
 		</div>
 
 		<section class="mt-12 max-w-3xl" aria-labelledby="chapters-heading">
-			<div class="flex items-baseline justify-between">
+			<div class="flex flex-wrap items-center justify-between gap-2">
 				<h2 id="chapters-heading" class="title-lg">
 					Chapters <span class="text-on-surface-variant">({chapters.length})</span>
+					{#if unreadCount > 0}
+						<span class="mono-label text-secondary">{unreadCount} unread</span>
+					{/if}
 				</h2>
+				<div class="flex flex-wrap items-center gap-2">
+					<button
+						type="button"
+						aria-pressed={newestFirst}
+						class="label-caps rounded-card border px-3 py-1.5 {newestFirst
+							? 'border-primary text-primary'
+							: 'border-outline-variant/60 text-on-surface-variant hover:border-outline'}"
+						onclick={() => setListPrefs({ newestFirst: !newestFirst })}
+					>
+						{newestFirst ? 'Newest first' : 'Oldest first'}
+					</button>
+					<button
+						type="button"
+						aria-pressed={unreadOnly}
+						class="label-caps rounded-card border px-3 py-1.5 {unreadOnly
+							? 'border-primary text-primary'
+							: 'border-outline-variant/60 text-on-surface-variant hover:border-outline'}"
+						onclick={() => setListPrefs({ unreadOnly: !unreadOnly })}
+					>
+						Unread only
+					</button>
+					{#if firstUnreadIndex >= 0}
+						<button
+							type="button"
+							class="label-caps rounded-card border border-primary/60 px-3 py-1.5 text-primary hover:border-primary"
+							onclick={() =>
+								jumpToChapter(
+									chapters[firstUnreadIndex]?.id ?? '',
+								)}
+						>
+							First unread
+						</button>
+					{/if}
+					<button
+						type="button"
+						class="label-caps rounded-card border border-outline-variant/60 px-3 py-1.5 text-on-surface-variant hover:border-outline"
+						onclick={() => jumpToChapter(filteredChapters[filteredChapters.length - 1]?.id ?? '')}
+					>
+						Latest
+					</button>
+				</div>
 			</div>
+			{#if renderedCount < chapters.length}
+				<p class="mono-label mt-2 text-on-surface-variant">
+					Showing {renderedCount} of {filteredChapters.length}{unreadOnly ? ' unread' : ''} — scroll for
+					more
+				</p>
+			{/if}
 
 			<ol
 				class="mt-4 divide-y divide-outline-variant/20 overflow-hidden rounded-card border border-outline-variant/40 bg-surface-low"
 			>
-				{#each chapters as chapter, index (chapter.id)}
+				{#each visibleChapters as chapter, index (chapter.id)}
 					<li
-						class="flex items-center gap-4 px-4 py-3 {index === currentChapterIndex + 1 && nextChapter?.id === chapter.id
+						id={`chapter-${chapter.id}`}
+						class="group flex items-center gap-4 px-4 py-3 {index === currentChapterIndex + 1 && nextChapter?.id === chapter.id
 							? 'bg-surface-container'
 							: ''}"
 					>
@@ -362,6 +524,26 @@ function chapterDate(chapter: Chapter): string {
 						{#if readIds.has(chapter.id)}
 							<ProgressBar value={1} max={1} />
 						{/if}
+						<span class="hidden shrink-0 gap-3 group-hover:flex">
+							<button
+								type="button"
+								title="Mark all chapters above as read"
+								class="mono-label items-center gap-1 text-primary uppercase hover:underline disabled:hidden"
+								disabled={anchorHasWork(index, true)}
+								onclick={() => markDirection(index, true)}
+							>
+								read ↑
+							</button>
+							<button
+								type="button"
+								title="Mark all chapters above as unread"
+								class="mono-label items-center gap-1 text-error uppercase hover:underline disabled:hidden"
+								disabled={anchorHasWork(index, false)}
+								onclick={() => markDirection(index, false)}
+							>
+								unread ↑
+							</button>
+						</span>
 						<span class="mono-label shrink-0 text-on-surface-variant">{chapterDate(chapter)}</span>
 					</li>
 				{:else}
@@ -370,6 +552,9 @@ function chapterDate(chapter: Chapter): string {
 					</li>
 				{/each}
 			</ol>
+			{#if renderedCount < filteredChapters.length}
+				<div bind:this={sentinel} class="h-1" aria-hidden="true"></div>
+			{/if}
 		</section>
 	{/if}
 </div>

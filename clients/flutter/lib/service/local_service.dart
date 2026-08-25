@@ -41,6 +41,23 @@ class LocalService implements VaultService {
 	Future<void> markRead({required String chapterId}) => _vault.markRead(chapterId: chapterId);
 
 	@override
+	Future<int> markChapters({
+		required String workId,
+		required List<String> chapterIds,
+		required bool read,
+	}) async {
+		if (!read) throw UnsupportedError('marking unread requires a server');
+		final alreadyRead = Set<String>.from(await _vault.readChapters(workId: workId));
+		var marked = 0;
+		for (final chapterId in chapterIds) {
+			if (alreadyRead.contains(chapterId)) continue;
+			await _vault.markRead(chapterId: chapterId);
+			marked++;
+		}
+		return marked;
+	}
+
+	@override
 	Future<List<String>> readChapters({required String workId}) => _vault.readChapters(workId: workId);
 
 	@override

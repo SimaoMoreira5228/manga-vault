@@ -275,6 +275,11 @@ export const api = {
 
 	markRead: (chapterId: string) => put<{ id: string }>(`/api/chapters/${chapterId}/read`),
 	markUnread: (chapterId: string) => del(`/api/chapters/${chapterId}/read`),
+	markChapters: (workId: string, chapterIds: string[], read: boolean) =>
+		post<{ ok: boolean; chapters_read: number }>(`/api/works/${workId}/chapters/read`, {
+			chapter_ids: chapterIds,
+			read,
+		}),
 
 	continueReading: () => get<ContinueReadingItem[]>('/api/me/continue-reading'),
 

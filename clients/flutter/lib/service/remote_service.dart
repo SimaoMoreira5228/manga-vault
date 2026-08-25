@@ -109,6 +109,20 @@ class RemoteService implements VaultService {
 	Future<void> markRead({required String chapterId}) => _send('PUT', '/api/chapters/$chapterId/read');
 
 	@override
+	Future<int> markChapters({
+		required String workId,
+		required List<String> chapterIds,
+		required bool read,
+	}) async {
+		final payload = await _send(
+			'POST',
+			'/api/works/$workId/chapters/read',
+			body: jsonEncode({'chapter_ids': chapterIds, 'read': read}),
+		);
+		return payload['chapters_read'] as int? ?? 0;
+	}
+
+	@override
 	Future<List<String>> readChapters({required String workId}) async {
 		final payload = await _send('GET', '/api/works/$workId/progress');
 		return [for (final id in payload['read_chapter_ids'] as List) id as String];

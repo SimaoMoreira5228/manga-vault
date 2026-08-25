@@ -115,6 +115,43 @@ async fn work_snapshot_upsert_keeps_chapter_ids_and_reorders() {
 }
 
 #[tokio::test]
+async fn bulk_mark_read_is_idempotent_and_unread_clears() {
+	let (store, _db_lock) = connect_store().await;
+	seed_source(&store).await;
+
+	let user: User = store.create_user("bulk", "argon-hash").await.unwrap();
+	let work_id = Uuid::now_v7();
+	let (work, chapters) = sample_work(work_id);
+	store.save_work_snapshot(&work, &chapters).await.unwrap();
+
+	let ids: Vec<Uuid> = chapters.iter().map(|chapter| chapter.id).collect();
+	let now = Utc::now();
+	let progresses: Vec<ReadingProgress> = ids
+		.iter()
+		.map(|chapter_id| ReadingProgress {
+			id: Uuid::now_v7(),
+			user_id: user.id,
+			work_id,
+			chapter_id: *chapter_id,
+			read_at: now,
+		})
+		.collect();
+
+	ProgressRepository::mark_many_read(&store, progresses.clone()).await.unwrap();
+	ProgressRepository::mark_many_read(&store, progresses).await.unwrap();
+	assert_eq!(
+		ProgressRepository::read_chapter_ids(&store, user.id, work_id).await.unwrap().len(),
+		ids.len()
+	);
+
+	ProgressRepository::mark_many_unread(&store, user.id, ids.clone()).await.unwrap();
+	assert!(ProgressRepository::read_chapter_ids(&store, user.id, work_id)
+		.await
+		.unwrap()
+		.is_empty());
+}
+
+#[tokio::test]
 async fn users_sessions_and_progress_roundtrip() {
 	let (store, _db_lock) = connect_store().await;
 	seed_source(&store).await;
