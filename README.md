@@ -68,6 +68,42 @@ pnpm install && pnpm build:cloudflare   # Cloudflare Pages (recommended)
 pnpm install && pnpm build:static       # any static host (nginx, Caddy, etc.)
 ```
 
+### Migrating from the old manga-vault
+
+If you have data in the old manga-vault (MySQL), there's a one-shot migration binary in `tools/migrate`. It reads from your legacy MySQL database and writes into a new SQLite or Postgres target.
+
+```bash
+# Build the tool
+cargo build -p manga-vault-migrate --release
+
+# Run the migration
+./target/release/manga-vault-migrate \
+  --from mysql://user:password@localhost:3306/old_vault \
+  --to sqlite://./manga-vault.db
+```
+
+What it migrates:
+
+- **Works** — manga and novels into a unified table, deduplicated by remote URL
+- **Chapters** — image and novel chapters sorted by original date, duplicate URLs collapsed
+- **Library entries** — favorites with category assignments carried over
+- **Reading progress** — which chapters each user has read, duplicates collapsed
+- **Users and categories** — carried over with new UUIDs
+
+After migration, the tool prints a verification table comparing row counts between the legacy and new databases. If counts don't match, the legacy database should be kept as a cold backup and investigated before retiring it.
+
+```bash
+# Example output:
+# entity                 legacy        new
+# works                       432         432  ok
+# chapters                  12847       12847  ok
+# library_entries             312         312  ok
+# reading_progress           8102        8102  ok
+# users                         3           3  ok
+```
+
+The legacy source must be MySQL (the old manga-vault supported MySQL). The target can be either SQLite or Postgres, use Postgres if you plan to run the new server in hosted mode.
+
 ---
 
 ## Plugins
