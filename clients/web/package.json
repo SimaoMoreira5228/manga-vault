@@ -5,20 +5,21 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build --config vite.config.cloudflare.ts",
+    "build": "wrangler types --check && vite build --config vite.config.cloudflare.ts",
     "build:static": "vite build",
-    "build:cloudflare": "vite build --config vite.config.cloudflare.ts",
-    "preview": "vite preview",
+    "build:cloudflare": "wrangler types --check && vite build --config vite.config.cloudflare.ts",
+    "preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
     "prepare": "svelte-kit sync || echo \"\"",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check": "wrangler types --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "gen": "wrangler types"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.10",
     "@iconify-json/material-symbols": "^1.2.89",
-    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/adapter-cloudflare": "^7.2.8",
     "@sveltejs/kit": "^2.63.0",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tailwindcss/forms": "^0.5.11",
@@ -31,6 +32,6 @@
     "typescript": "^6.0.3",
     "unplugin-icons": "^23.0.1",
     "vite": "^8.0.16",
-    "@sveltejs/adapter-cloudflare": "^7.2.9"
+    "wrangler": "^4.97.0"
   }
 }
