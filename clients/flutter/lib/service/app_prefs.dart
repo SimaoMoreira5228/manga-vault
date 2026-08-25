@@ -142,4 +142,6 @@ class AppPrefs {
       globalImageMargin;
   double effectiveImageGap(String workId) =>
       workReaderSettings(workId)?['imageGap']?.toDouble() ?? globalImageGap;
+  bool effectiveRtlMode(String workId) =>
+      workReaderSettings(workId)?['rtlMode'] as bool? ?? rtlMode;
 }

@@ -668,6 +668,7 @@ class _ReaderPageState extends State<ReaderPage> {
   bool _pagedMode = false;
   double _imageMargin = 0;
   double _imageGap = 0;
+  bool _rtlMode = false;
   String _workId = '';
 
   ChapterSummary? get _nextChapter {
@@ -730,6 +731,7 @@ class _ReaderPageState extends State<ReaderPage> {
       _pagedMode = prefs.effectivePagedMode(_workId);
       _imageMargin = prefs.effectiveImageMargin(_workId);
       _imageGap = prefs.effectiveImageGap(_workId);
+      _rtlMode = prefs.effectiveRtlMode(_workId);
     });
   }
 
@@ -818,6 +820,9 @@ class _ReaderPageState extends State<ReaderPage> {
       case 'gap_down':
         _imageGap = (_imageGap - 2).clamp(0, 32);
         await prefs.setWorkReaderSetting(_workId, 'imageGap', _imageGap);
+      case 'rtl':
+        _rtlMode = !_rtlMode;
+        await prefs.setWorkReaderSetting(_workId, 'rtlMode', _rtlMode);
     }
     setState(() {});
   }
@@ -957,7 +962,7 @@ class _ReaderPageState extends State<ReaderPage> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.tune),
             onSelected: _handleReaderSetting,
-            itemBuilder: (_) => const [
+            itemBuilder: (_) => [
               PopupMenuItem(value: 'font_up', child: Text('Larger text')),
               PopupMenuItem(value: 'font_down', child: Text('Smaller text')),
               PopupMenuItem(
@@ -982,6 +987,11 @@ class _ReaderPageState extends State<ReaderPage> {
                 value: 'gap_down',
                 child: Text('Less gap between images'),
               ),
+              PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'rtl',
+                child: Text(_rtlMode ? 'Switch to LTR' : 'Switch to RTL'),
+              ),
             ],
           ),
           IconButton(
@@ -996,48 +1006,51 @@ class _ReaderPageState extends State<ReaderPage> {
           ),
         ],
       ),
-      body: switch (body) {
-        null => const Center(child: CircularProgressIndicator()),
-        ChapterBody_Images urls =>
-          _pagedMode
-              ? _pagedImageBody(urls)
-              : InteractiveViewer(
-                  child: ListView.builder(
-                    controller: _scroll,
-                    padding: EdgeInsets.symmetric(horizontal: _imageMargin),
-                    itemExtent: null,
-                    itemBuilder: (context, index) {
-                      final page = urls.field0[index];
-                      final image = page.startsWith('file://')
-                          ? Image.file(
-                              File.fromUri(Uri.parse(page)),
-                              fit: BoxFit.fitWidth,
-                            )
-                          : Image.network(page, fit: BoxFit.fitWidth);
-                      return index > 0
-                          ? Padding(
-                              padding: EdgeInsets.only(top: _imageGap),
-                              child: image,
-                            )
-                          : image;
-                    },
+      body: Directionality(
+        textDirection: _rtlMode ? TextDirection.rtl : TextDirection.ltr,
+        child: switch (body) {
+          null => const Center(child: CircularProgressIndicator()),
+          ChapterBody_Images urls =>
+            _pagedMode
+                ? _pagedImageBody(urls)
+                : InteractiveViewer(
+                    child: ListView.builder(
+                      controller: _scroll,
+                      padding: EdgeInsets.symmetric(horizontal: _imageMargin),
+                      itemExtent: null,
+                      itemBuilder: (context, index) {
+                        final page = urls.field0[index];
+                        final image = page.startsWith('file://')
+                            ? Image.file(
+                                File.fromUri(Uri.parse(page)),
+                                fit: BoxFit.fitWidth,
+                              )
+                            : Image.network(page, fit: BoxFit.fitWidth);
+                        return index > 0
+                            ? Padding(
+                                padding: EdgeInsets.only(top: _imageGap),
+                                child: image,
+                              )
+                            : image;
+                      },
+                    ),
                   ),
+          ChapterBody_Html html => Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: SingleChildScrollView(
+                controller: _scroll,
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  _stripTags(translatedHtml ?? html.field0),
+                  style: Theme.of(context).textTheme.bodyLarge
+                      ?.copyWith(fontSize: _fontSize, height: _lineHeight),
                 ),
-        ChapterBody_Html html => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: SingleChildScrollView(
-              controller: _scroll,
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                _stripTags(translatedHtml ?? html.field0),
-                style: Theme.of(context).textTheme.bodyLarge
-                    ?.copyWith(fontSize: _fontSize, height: _lineHeight),
               ),
             ),
           ),
-        ),
-      },
+        },
+      ),
     );
   }
 

@@ -8,6 +8,14 @@ use uuid::Uuid;
 
 use crate::StoreResult;
 pub use crate::sea_store::glossary::{GlossaryEntryRecord, GlossaryMeaningRecord};
+
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct ReadingStats {
+	pub total_read: i64,
+	pub daily_counts: Vec<(String, i64)>,
+	pub streak: i64,
+	pub works_started: i64,
+}
 pub use crate::sea_store::tracker::{TrackerAccountRecord, TrackerLinkRecord};
 pub use crate::sea_store::translation::UserSettingsRecord;
 
@@ -157,6 +165,7 @@ pub trait ProgressRepository: Send + Sync {
 	async fn mark_many_unread(&self, user_id: UserId, chapter_ids: Vec<ChapterId>) -> StoreResult<()>;
 	async fn read_chapter_ids(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Vec<ChapterId>>;
 	async fn reading_progress_for_works(&self, user_id: UserId, work_ids: &[WorkId]) -> StoreResult<Vec<ReadingProgress>>;
+	async fn reading_stats(&self, user_id: UserId) -> StoreResult<ReadingStats>;
 	async fn progress_counts_by_work(&self, user_id: UserId) -> StoreResult<Vec<(WorkId, i64)>>;
 	async fn chapter_counts_by_work(&self) -> StoreResult<Vec<(WorkId, i64)>>;
 	async fn read_progress(&self, user_id: UserId) -> StoreResult<Vec<ReadingProgress>>;

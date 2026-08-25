@@ -352,6 +352,13 @@ export const api = {
 				kind: string;
 			}[];
 		}>(`/api/me/history?limit=${limit}`),
+	readingStats: () =>
+		get<{
+			total_read: number;
+			daily_counts: [string, number][];
+			streak: number;
+			works_started: number;
+		}>('/api/me/stats'),
 	addToLibrary: (workId: string) => put<LibraryEntry>('/api/library', { work_id: workId }),
 	removeFromLibrary: (workId: string) => del(`/api/library/${workId}`),
 

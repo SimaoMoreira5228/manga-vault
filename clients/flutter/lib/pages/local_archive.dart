@@ -3,10 +3,14 @@ import 'package:file_picker/file_picker.dart';
 
 import '../models/local_source.dart';
 import '../service/app_prefs.dart';
+import '../service/vault_service.dart';
+import 'downloads.dart';
 import 'local_reader.dart';
 
 class LocalArchivePage extends StatefulWidget {
-  const LocalArchivePage({super.key});
+  const LocalArchivePage({super.key, this.vault});
+
+  final VaultService? vault;
 
   @override
   State<LocalArchivePage> createState() => _LocalArchivePageState();
@@ -69,6 +73,17 @@ class _LocalArchivePageState extends State<LocalArchivePage> {
       appBar: AppBar(
         title: const Text('Local Library'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.cloud_download),
+            onPressed: widget.vault != null
+                ? () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DownloadsPage(vault: widget.vault!),
+                    ),
+                  )
+                : null,
+            tooltip: 'Downloads',
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: _addPath,

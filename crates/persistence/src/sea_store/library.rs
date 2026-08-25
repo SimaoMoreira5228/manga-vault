@@ -217,6 +217,45 @@ impl ProgressRepository for SeaStore {
 			.collect())
 	}
 
+	async fn reading_stats(&self, user_id: uuid::Uuid) -> StoreResult<crate::repo::ReadingStats> {
+		use sea_orm::EntityTrait;
+		let rows = reading_progress::Entity::find()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.all(&self.db)
+			.await?;
+		let total = rows.len() as i64;
+		let works: std::collections::HashSet<uuid::Uuid> = rows.iter().map(|r| r.work_id).collect();
+		let works_started = works.len() as i64;
+
+		let mut daily: std::collections::BTreeMap<String, i64> = std::collections::BTreeMap::new();
+		for row in &rows {
+			let date = row.read_at.format("%Y-%m-%d").to_string();
+			*daily.entry(date).or_insert(0) += 1;
+		}
+
+		let today = Utc::now().format("%Y-%m-%d").to_string();
+		let daily_counts: Vec<(String, i64)> = daily.into_iter().rev().take(30).collect();
+
+		let mut streak: i64 = 0;
+		let mut check_date = Utc::now().naive_utc().date();
+		for _ in 0..365 {
+			let date_str = check_date.format("%Y-%m-%d").to_string();
+			if daily_counts.iter().any(|(d, _)| *d == date_str) || date_str == today {
+				streak += 1;
+				check_date -= chrono::Duration::days(1);
+			} else {
+				break;
+			}
+		}
+
+		Ok(crate::repo::ReadingStats {
+			total_read: total,
+			daily_counts,
+			streak,
+			works_started,
+		})
+	}
+
 	async fn read_chapter_ids(&self, user_id: uuid::Uuid, work_id: uuid::Uuid) -> StoreResult<Vec<uuid::Uuid>> {
 		let models = reading_progress::Entity::find()
 			.filter(reading_progress::Column::UserId.eq(user_id))

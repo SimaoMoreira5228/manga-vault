@@ -65,6 +65,10 @@ impl Vault {
 		Ok(self.db.read_chapter_ids(user_id, work_id).await?)
 	}
 
+	pub async fn reading_stats(&self, user_id: UserId) -> VaultResult<persistence::ReadingStats> {
+		Ok(self.db.reading_stats(user_id).await?)
+	}
+
 	pub async fn library_overview(&self, user_id: UserId) -> VaultResult<Vec<(WorkId, i64, i64)>> {
 		let mut totals: std::collections::HashMap<WorkId, i64> = self
 			.db

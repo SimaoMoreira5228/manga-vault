@@ -34,6 +34,7 @@ let fontSize = $state(16);
 let lineHeight = $state(1.6);
 let imageMargin = $state(0);
 let imageGap = $state(0);
+let rtlMode = $state(false);
 let showReaderSettings = $state(false);
 
 const images = $derived(content && 'Images' in content ? content.Images : []);
@@ -59,6 +60,7 @@ function loadReaderSettings() {
 	lineHeight = Number(localStorage.getItem(readerKey('lineHeight')) ?? '1.6');
 	imageMargin = Number(localStorage.getItem(readerKey('imageMargin')) ?? '0');
 	imageGap = Number(localStorage.getItem(readerKey('imageGap')) ?? '0');
+	rtlMode = localStorage.getItem(readerKey('rtl')) === 'true';
 }
 
 function saveReaderSetting(suffix: string, value: number) {
@@ -83,6 +85,11 @@ function adjustImageMargin(delta: number) {
 function adjustImageGap(delta: number) {
 	imageGap = Math.min(32, Math.max(0, imageGap + delta));
 	saveReaderSetting('imageGap', imageGap);
+}
+
+function toggleRtl() {
+	rtlMode = !rtlMode;
+	localStorage.setItem(readerKey('rtl'), String(rtlMode));
 }
 
 function scrollFraction(): number {
@@ -298,6 +305,17 @@ async function load() {
 					</button>
 				</div>
 			</div>
+
+			<div class="mt-2 flex items-center justify-between">
+				<span class="body-md">RTL</span>
+				<button
+					type="button"
+					class="rounded-full border px-3 py-1 text-sm {rtlMode ? 'border-primary text-primary' : ''}"
+					onclick={toggleRtl}
+				>
+					{rtlMode ? 'On' : 'Off'}
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}
@@ -431,6 +449,7 @@ async function load() {
 			{/if}
 			<article
 				class="prose prose-invert prose-p:leading-relaxed mx-auto max-w-3xl px-6 pb-24"
+				dir={rtlMode ? 'rtl' : undefined}
 				style="font-size: {fontSize}px; line-height: {lineHeight}"
 			>
 				{@html translatedHtml ?? html}

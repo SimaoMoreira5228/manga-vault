@@ -9,6 +9,7 @@ import IconClose from '~icons/material-symbols/close';
 import IconExplore from '~icons/material-symbols/explore';
 import IconExtension from '~icons/material-symbols/extension';
 import IconHistory from '~icons/material-symbols/history';
+import IconStats from '~icons/material-symbols/bar-chart';
 import IconLogout from '~icons/material-symbols/logout';
 import IconMenu from '~icons/material-symbols/menu';
 import IconLibrary from '~icons/material-symbols/menu-book';
@@ -23,6 +24,7 @@ const navItems = [
 	{ href: '/library', label: 'Library', icon: IconLibrary },
 	{ href: '/updates', label: 'Updates', icon: IconUpdates },
 	{ href: '/history', label: 'History', icon: IconHistory },
+	{ href: '/stats', label: 'Stats', icon: IconStats },
 	{ href: '/', label: 'Explore', icon: IconExplore },
 	{ href: '/sources', label: 'Sources', icon: IconExtension },
 	{ href: '/settings', label: 'Settings', icon: IconSettings },

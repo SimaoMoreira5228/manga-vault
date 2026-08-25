@@ -5,7 +5,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::http::auth_extractor::Authenticated;
-use crate::http::error::ApiResult;
+use crate::http::error::{ApiError, ApiResult};
 use crate::state::AppState;
 
 pub async fn mark_read(
@@ -18,6 +18,11 @@ pub async fn mark_read(
 		push_trackers(&state, auth.user.id, progress.work_id, read.len() as f64).await;
 	}
 	Ok(Json(progress))
+}
+
+pub async fn reading_stats(State(state): State<AppState>, auth: Authenticated) -> ApiResult<serde_json::Value> {
+	let stats = state.vault.reading_stats(auth.user.id).await?;
+	Ok(Json(serde_json::to_value(&stats).map_err(|e| ApiError::bad_request(e.to_string()))?))
 }
 
 pub async fn library_overview(State(state): State<AppState>, auth: Authenticated) -> ApiResult<serde_json::Value> {

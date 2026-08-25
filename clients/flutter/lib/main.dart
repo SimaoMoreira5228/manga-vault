@@ -437,7 +437,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         1 => LibraryPage(vault: widget.service),
         2 => HistoryPage(vault: widget.service),
         3 => SourcesPage(vault: widget.service),
-        4 when widget.isLocal => const LocalArchivePage(),
+        4 when widget.isLocal => LocalArchivePage(vault: widget.service),
         _ => SettingsPage(
           service: widget.service as LocalService,
           isLocal: widget.isLocal,

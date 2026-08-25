@@ -30,6 +30,7 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/me", get(auth_handlers::me))
 		.route("/api/me/continue-reading", get(reading_handlers::continue_reading))
 		.route("/api/me/history", get(reading_handlers::history))
+		.route("/api/me/stats", get(reading_handlers::reading_stats))
 		.route("/api/me/library-overview", get(reading_handlers::library_overview))
 		.route(
 			"/api/me/library/refresh-all",
