@@ -140,7 +140,7 @@ $effect(() => {
 				{/each}
 			</nav>
 		{:else}
-			<div class="grid min-h-dvh place-items-center">
+			<div class="grid min-h-dvh w-full place-items-center px-4 py-8 sm:px-6">
 				{@render children()}
 			</div>
 		{/if}

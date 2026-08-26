@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use axum::extract::{Query, State};
@@ -26,12 +26,18 @@ pub fn new_image_cache(max_megabytes: u64) -> Cache<String, Arc<CachedResponse>>
 		.build()
 }
 
-fn shared_client() -> reqwest::Client {
-	reqwest::Client::builder()
-		.user_agent(source_sdk::BROWSER_USER_AGENT)
-		.timeout(Duration::from_secs(20))
-		.build()
-		.expect("proxy http client")
+fn shared_client() -> &'static reqwest::Client {
+	static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+	CLIENT.get_or_init(|| {
+		reqwest::Client::builder()
+			.user_agent(
+				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+			)
+			.timeout(Duration::from_secs(20))
+			.pool_max_idle_per_host(10)
+			.build()
+			.expect("proxy http client")
+	})
 }
 
 #[derive(Deserialize)]
@@ -56,6 +62,12 @@ fn host_of(raw: Option<&str>) -> Option<String> {
 	Url::parse(raw?).ok()?.host_str().map(|host| host.to_ascii_lowercase())
 }
 
+fn host_matches(target: &str, allowed: &str) -> bool {
+	let target = target.strip_prefix("www.").unwrap_or(target);
+	let allowed = allowed.strip_prefix("www.").unwrap_or(allowed);
+	target == allowed || target.strip_suffix(allowed).is_some_and(|prefix| prefix.ends_with('.'))
+}
+
 async fn fetch_upstream(
 	target: Url,
 	referer_url: &str,
@@ -65,6 +77,21 @@ async fn fetch_upstream(
 	let client = shared_client();
 	let upstream = client
 		.get(target)
+		.header(
+			header::ACCEPT,
+			"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+		)
+		.header(header::ACCEPT_ENCODING, "gzip, deflate, br, zstd")
+		.header(header::ACCEPT_LANGUAGE, "en-US,en;q=0.9")
+		.header(
+			"sec-ch-ua",
+			r#""Not-A.Brand";v="99", "Chromium";v="124", "Google Chrome";v="124""#,
+		)
+		.header("sec-ch-ua-mobile", "?0")
+		.header("sec-ch-ua-platform", r#""macOS""#)
+		.header("sec-fetch-dest", "image")
+		.header("sec-fetch-mode", "no-cors")
+		.header("sec-fetch-site", "cross-site")
 		.header(header::REFERER, referer_url)
 		.send()
 		.await
@@ -72,6 +99,12 @@ async fn fetch_upstream(
 			status: axum::http::StatusCode::BAD_GATEWAY,
 			message: e.to_string(),
 		})?;
+	if !upstream.status().is_success() {
+		return Err(ApiError {
+			status: axum::http::StatusCode::BAD_GATEWAY,
+			message: format!("upstream returned {}", upstream.status()),
+		});
+	}
 
 	let content_type = upstream
 		.headers()
@@ -79,6 +112,12 @@ async fn fetch_upstream(
 		.and_then(|value| value.to_str().ok())
 		.unwrap_or("application/octet-stream")
 		.to_owned();
+	if !content_type.starts_with("image/") {
+		return Err(ApiError {
+			status: axum::http::StatusCode::BAD_GATEWAY,
+			message: "upstream did not return an image".into(),
+		});
+	}
 	let bytes = upstream.bytes().await.map_err(|e| ApiError {
 		status: axum::http::StatusCode::BAD_GATEWAY,
 		message: e.to_string(),
@@ -109,7 +148,10 @@ pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery
 		});
 	};
 
-	let referer = allowed_hosts(&state).get(&host).cloned().flatten();
+	let referer = allowed_hosts(&state)
+		.into_iter()
+		.find(|(allowed_host, _)| host_matches(&host, allowed_host))
+		.and_then(|(_, referer)| referer);
 	let Some(referer_url) = referer.or_else(|| state.vault.sources.list().first().and_then(|info| info.base_url.clone()))
 	else {
 		return Err(ApiError {
@@ -141,6 +183,13 @@ pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn matches_www_and_source_subdomains() {
+		assert!(host_matches("www.example.com", "example.com"));
+		assert!(host_matches("cdn.example.com", "example.com"));
+		assert!(!host_matches("example.com.evil.test", "example.com"));
+	}
 
 	#[tokio::test]
 	async fn try_get_with_collapses_concurrent_loads_into_one_fetch() {

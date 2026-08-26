@@ -38,7 +38,7 @@ async function submit(event: SubmitEvent) {
 }
 </script>
 
-<div class="w-full max-w-sm px-6">
+<div class="mx-auto w-full max-w-md rounded-card border border-outline-variant/40 bg-surface-low p-6 shadow-lg sm:p-8">
 	<h1 class="font-display text-4xl font-bold text-primary">Manga Vault</h1>
 	<p class="label-caps mt-2 mb-10 text-outline-variant">Private Archive</p>
 
