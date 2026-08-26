@@ -31,6 +31,20 @@ const navItems = [
 ];
 
 const isReader = $derived(page.url.pathname.startsWith('/reader/'));
+const pageTitle = $derived(
+	({
+		'/': 'Explore',
+		'/library': 'Library',
+		'/updates': 'Updates',
+		'/history': 'History',
+		'/stats': 'Statistics',
+		'/search': 'Search',
+		'/sources': 'Sources',
+		'/settings': 'Settings',
+		'/login': 'Sign in',
+	} as Record<string, string>)[page.url.pathname] ??
+		(page.url.pathname.startsWith('/reader/') ? 'Reader' : page.url.pathname.startsWith('/work/') ? 'Work' : 'Manga Vault'),
+);
 
 $effect(() => {
 	auth.init().then(() => {
@@ -41,7 +55,10 @@ $effect(() => {
 });
 </script>
 
-<svelte:head><link rel="icon" href={favicon}></svelte:head>
+<svelte:head>
+	<title>{pageTitle} - Manga Vault</title>
+	<link rel="icon" href={favicon}>
+</svelte:head>
 
 {#if !auth.ready || (auth.user && !isReader) || (!auth.user && page.url.pathname === '/login')}
 	<div class="flex min-h-dvh flex-col md:flex-row">
