@@ -196,6 +196,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			.fetch_all(&legacy)
 			.await?;
 
+	tracing::info!(
+		"Loaded {} users, {} categories, {} mangas, {} novels, {} manga chapters, {} novel chapters",
+		users.len(), categories.len(), mangas.len(), novels.len(), manga_chapters.len(), novel_chapters.len()
+	);
+
 	let mut maps = Mappings {
 		users: HashMap::new(),
 		categories: HashMap::new(),
@@ -306,7 +311,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	insert_works(&txn, &mangas, &mut maps, WorkKind::Manga).await?;
+	tracing::info!("Inserted {} mangas", mangas.len());
 	insert_works(&txn, &novels, &mut maps, WorkKind::Novel).await?;
+	tracing::info!("Inserted {} novels", novels.len());
 
 	let mut chapter_rows: Vec<(i32, Chapter)> = Vec::new();
 	let mut sink = ChapterSink {
@@ -320,7 +327,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	let mut ordered_manga = manga_chapters.clone();
 	ordered_manga.sort_by_key(|c| (c.created_at, c.id));
-	for chapter in ordered_manga.iter() {
+	for (idx, chapter) in ordered_manga.iter().enumerate() {
+		if idx > 0 && idx % 5000 == 0 {
+			tracing::info!("Processing manga chapters... {}/{}", idx, ordered_manga.len());
+		}
 		let Some(work_id) = maps.works.get(&chapter.manga_id).copied() else {
 			continue;
 		};
@@ -336,7 +346,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	}
 	let mut ordered_novel = novel_chapters.clone();
 	ordered_novel.sort_by_key(|c| (c.created_at, c.id));
-	for chapter in ordered_novel.iter() {
+	for (idx, chapter) in ordered_novel.iter().enumerate() {
+		if idx > 0 && idx % 5000 == 0 {
+			tracing::info!("Processing novel chapters... {}/{}", idx, ordered_novel.len());
+		}
 		let Some(work_id) = maps.works.get(&chapter.novel_id).copied() else {
 			continue;
 		};
@@ -356,7 +369,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		..
 	} = sink;
 	tracing::info!("{duplicate_chapters} duplicate chapter rows collapsed onto their first occurrence");
-	for (_, chapter) in &chapter_rows {
+	tracing::info!("Inserting {} chapters into target database...", chapter_rows.len());
+	for (idx, (_, chapter)) in chapter_rows.iter().enumerate() {
+		if idx > 0 && idx % 5000 == 0 {
+			tracing::info!("Inserted chapters {}/{}", idx, chapter_rows.len());
+		}
 		persistence::entities::chapters::ActiveModel {
 			id: Set(chapter.id),
 			work_id: Set(chapter.work_id),

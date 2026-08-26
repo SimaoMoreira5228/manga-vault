@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "web",
+	"name": "manga-vault",
 	"compatibility_date": "2026-08-25",
 	"compatibility_flags": [
 		"nodejs_als"
@@ -10,6 +10,21 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
 	},
-	"workers_dev": true,
-	"preview_urls": true
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1,
+		"redact_query_string": false,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"persist": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": false,
+			"persist": true,
+			"head_sampling_rate": 1
+		}
+	},
+	"workers_dev": true
 }

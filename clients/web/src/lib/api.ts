@@ -1,3 +1,5 @@
+import { PUBLIC_API_URL } from '$env/static/public';
+
 export type WorkKind = 'manga' | 'novel';
 export type ChapterContentKind = 'images' | 'html';
 
@@ -158,7 +160,7 @@ export class ApiError extends Error {
 		super(message);
 	}
 }
-export const API_BASE = import.meta.env.PUBLIC_API_URL ?? '';
+export const API_BASE = PUBLIC_API_URL;
 
 const chapterContentCache = new Map<string, ChapterContent>();
 function stashContent(chapterId: string, content: ChapterContent) {
