@@ -70,10 +70,18 @@ impl Vault {
 			.ok_or(VaultError::NotFound("work", work_id.to_string()))?;
 		let source = self.resolve(&existing.source_id)?;
 		let fetch_url: String = source.remap_url(&existing.remote_url).await;
+		let started = std::time::Instant::now();
 		let details = source
 			.fetch_work(&fetch_url)
 			.await
 			.map_err(|e| VaultError::Source(existing.source_id.clone(), e))?;
+		tracing::info!(
+			work_id = %work_id,
+			source = %existing.source_id,
+			chapters = details.chapters.len(),
+			elapsed_ms = started.elapsed().as_millis() as u64,
+			"source work fetch completed",
+		);
 
 		let mut refreshed = self.build_work(source.info(), &details);
 		refreshed.id = existing.id;
@@ -93,9 +101,11 @@ impl Vault {
 	}
 
 	pub async fn request_refresh(&self, work_id: WorkId) -> VaultResult<()> {
-		self.db
+		let queued = self
+			.db
 			.enqueue(persistence::JobKind::RefreshWork, &work_id.to_string(), chrono::Utc::now())
 			.await?;
+		tracing::info!(%work_id, queued, "refresh requested");
 		Ok(())
 	}
 

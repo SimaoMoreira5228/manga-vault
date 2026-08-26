@@ -178,7 +178,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 		headers: { 'content-type': 'application/json', ...init?.headers },
 	});
 	if (!response.ok) {
-		const body = await response.json().catch(() => ({ error: response.statusText }));
+		const body = (await response.json().catch(() => ({ error: response.statusText }))) as { error?: string };
 		throw new ApiError(response.status, body.error ?? 'request failed');
 	}
 	if (response.status === 204) return undefined as T;

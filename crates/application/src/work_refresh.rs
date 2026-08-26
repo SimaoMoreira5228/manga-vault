@@ -40,9 +40,13 @@ impl JobExecutor for RefreshExecutor {
 		match persistence::JobKind::from_str(&job.kind) {
 			Some(persistence::JobKind::RefreshWork) => match Uuid::parse_str(&job.subject) {
 				Ok(work_id) => {
+					tracing::info!(%work_id, job_id = %job.id, "refresh started");
 					let result = self.vault.refresh_work(work_id).await;
 					if result.is_ok() {
+						tracing::info!(%work_id, job_id = %job.id, "refresh completed");
 						publish_event(&self.events, work_id);
+					} else if let Err(error) = &result {
+						tracing::warn!(%work_id, job_id = %job.id, %error, "refresh failed");
 					}
 					outcome(result.map(|_| ()))
 				}

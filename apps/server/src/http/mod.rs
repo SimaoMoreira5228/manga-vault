@@ -19,6 +19,7 @@ mod works_handlers;
 
 use axum::Router;
 use axum::routing::{delete, get, post, put};
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 
 use crate::state::AppState;
 
@@ -141,6 +142,11 @@ pub fn router(state: AppState) -> Router {
 		.route(
 			"/api/registration/invites/{code}",
 			delete(registration_handlers::delete_invite),
+		)
+		.layer(
+			TraceLayer::new_for_http()
+				.make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
+				.on_response(DefaultOnResponse::new().level(tracing::Level::INFO)),
 		)
 		.with_state(state)
 }

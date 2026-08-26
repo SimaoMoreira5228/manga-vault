@@ -26,7 +26,12 @@ fn image_cache() -> std::sync::Arc<moka::future::Cache<String, std::sync::Arc<ht
 #[tokio::main]
 async fn main() {
 	tracing_subscriber::fmt()
-		.with_env_filter(tracing_subscriber::EnvFilter::from_default_env().add_directive("info".parse().unwrap()))
+		.with_env_filter(
+			tracing_subscriber::EnvFilter::from_default_env()
+				.add_directive("info".parse().unwrap())
+				.add_directive("sqlx=warn".parse().unwrap())
+				.add_directive("sea_orm=warn".parse().unwrap()),
+		)
 		.init();
 
 	let server_config = config::ServerConfig::from_env();

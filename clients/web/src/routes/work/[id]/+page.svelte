@@ -74,7 +74,9 @@ $effect(() => {
 
 $effect(() => {
 	return onWorkRefreshed((workId) => {
-		if (workId === params.id) freshChapters = true;
+		if (workId !== params.id) return;
+		freshChapters = true;
+		load(params.id).catch(() => undefined);
 	});
 });
 
@@ -602,6 +604,9 @@ function chapterDate(chapter: Chapter): string {
 	{#if showMigrate && work}
 		<div
 			class="fixed inset-0 z-40 grid place-items-center bg-black/70 p-4"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="migration-title"
 			tabindex="-1"
 			onclick={(event) => {
 				if (event.target === event.currentTarget) showMigrate = false;
@@ -609,7 +614,7 @@ function chapterDate(chapter: Chapter): string {
 			onkeydown={(e) => { if (e.key === 'Escape') showMigrate = false; }}
 		>
 			<div class="w-full max-w-xl rounded-xl border border-outline-variant/40 bg-surface-low p-6">
-				<h2 class="title-lg">Migrate “{work.title}”</h2>
+				<h2 id="migration-title" class="title-lg">Migrate “{work.title}”</h2>
 				<p class="body-md mt-1 text-on-surface-variant">
 					Pick a target source; read chapters carry over. The original entry is removed.
 				</p>

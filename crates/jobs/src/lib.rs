@@ -68,14 +68,20 @@ impl<S: JobRepository + WorkRepository + 'static> Scheduler<S> {
 		let cutoff = Utc::now() - Duration::from_std(self.config.stale_after).unwrap_or(Duration::hours(1));
 		match self.store.stale_work_ids(cutoff, self.config.stale_batch_limit).await {
 			Ok(ids) => {
+				let mut queued = 0;
 				for id in ids {
-					if let Err(error) = self
+					match self
 						.store
 						.enqueue(persistence::JobKind::RefreshWork, &id.to_string(), Utc::now())
 						.await
 					{
-						tracing::warn!("enqueue refresh for {id} failed: {error}");
+						Ok(true) => queued += 1,
+						Ok(false) => {}
+						Err(error) => tracing::warn!("enqueue refresh for {id} failed: {error}"),
 					}
+				}
+				if queued > 0 {
+					tracing::info!(queued, "enqueued stale work refreshes");
 				}
 			}
 			Err(error) => tracing::error!("stale work scan failed: {error}"),
@@ -83,13 +89,17 @@ impl<S: JobRepository + WorkRepository + 'static> Scheduler<S> {
 	}
 
 	async fn drain_due<E: JobExecutor + 'static>(&self, executor: &Arc<E>) {
-		let Ok(due) = self.store.claim_due(Utc::now(), self.config.batch_size).await else {
-			tracing::error!("job claim failed");
-			return;
+		let due = match self.store.claim_due(Utc::now(), self.config.batch_size).await {
+			Ok(due) => due,
+			Err(error) => {
+				tracing::error!(%error, "job claim failed");
+				return;
+			}
 		};
 		if due.is_empty() {
 			return;
 		}
+		tracing::info!(count = due.len(), "claimed jobs");
 
 		let permits = Arc::new(Semaphore::new(self.config.workers.max(1)));
 		let mut running: JoinSet<(JobRow, ExecutionOutcome)> = JoinSet::new();
@@ -108,7 +118,13 @@ impl<S: JobRepository + WorkRepository + 'static> Scheduler<S> {
 		while let Some(finished) = running.join_next().await {
 			let Ok((job_row, outcome)) = finished else { continue };
 			let result = match outcome {
-				ExecutionOutcome::Success => self.store.complete(job_row.id).await,
+				ExecutionOutcome::Success => {
+					let result = self.store.complete(job_row.id).await;
+					if result.is_ok() {
+						tracing::debug!(job_id = %job_row.id, "job completed");
+					}
+					result
+				}
 				ExecutionOutcome::Retry(reason) if job_row.attempts + 1 >= self.config.max_attempts => {
 					tracing::error!("job {} exhausted retries: {reason}", job_row.id);
 					self.store.fail(job_row, &reason, None).await
@@ -129,6 +145,7 @@ impl<S: JobRepository + WorkRepository + 'static> Scheduler<S> {
 	}
 
 	pub async fn run<E: JobExecutor + 'static>(&self, executor: Arc<E>, mut shutdown: tokio::sync::watch::Receiver<bool>) {
+		tracing::info!(workers = self.config.workers, "job scheduler started");
 		loop {
 			if *shutdown.borrow_and_update() {
 				return;
@@ -139,6 +156,7 @@ impl<S: JobRepository + WorkRepository + 'static> Scheduler<S> {
 				_ = tokio::time::sleep(self.config.poll_interval) => {}
 				result = shutdown.changed() => {
 					if result.is_err() || *shutdown.borrow() {
+						tracing::info!("job scheduler stopped");
 						return;
 					}
 				}
