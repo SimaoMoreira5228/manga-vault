@@ -1,3 +1,5 @@
+import { API_BASE } from '$lib/api';
+
 type RefreshListener = (workId: string) => void;
 
 const listeners = new Set<RefreshListener>();
@@ -5,7 +7,7 @@ let source: EventSource | null = null;
 
 function ensureSource() {
 	if (source || typeof window === 'undefined') return;
-	source = new EventSource('/api/events');
+	source = new EventSource(`${API_BASE}/api/events`);
 	source.onmessage = (message) => {
 		try {
 			const event = JSON.parse(message.data) as { type?: string; work_id?: string };

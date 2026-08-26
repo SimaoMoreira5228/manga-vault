@@ -205,7 +205,7 @@ function del<T>(path: string) {
 }
 
 export function proxied(url: string): string {
-	return `/api/proxy?url=${encodeURIComponent(url)}`;
+	return `${API_BASE}/api/proxy?url=${encodeURIComponent(url)}`;
 }
 
 export const api = {
