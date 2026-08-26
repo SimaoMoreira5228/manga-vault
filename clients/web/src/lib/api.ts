@@ -236,7 +236,7 @@ export const api = {
 		post<Work>('/api/works', { source_id: sourceId, remote_url: remoteUrl }),
 	getWork: (workId: string) =>
 		get<{ work: Work; chapters: Chapter[]; read_chapter_ids: string[] }>(`/api/works/${workId}`),
-	requestRefresh: (workId: string) => post(`/api/works/${workId}/refresh`),
+	requestRefresh: (workId: string) => post<{ queued: boolean }>(`/api/works/${workId}/refresh`),
 	chapterContent: (chapterId: string) => {
 		const cached = chapterContentCache.get(chapterId);
 		if (cached) {

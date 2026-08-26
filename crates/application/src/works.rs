@@ -100,13 +100,13 @@ impl Vault {
 		Ok(saved)
 	}
 
-	pub async fn request_refresh(&self, work_id: WorkId) -> VaultResult<()> {
+	pub async fn request_refresh(&self, work_id: WorkId) -> VaultResult<bool> {
 		let queued = self
 			.db
 			.enqueue(persistence::JobKind::RefreshWork, &work_id.to_string(), chrono::Utc::now())
 			.await?;
 		tracing::info!(%work_id, queued, "refresh requested");
-		Ok(())
+		Ok(queued)
 	}
 
 	pub async fn get_work(&self, work_id: WorkId) -> VaultResult<(Work, Vec<Chapter>)> {

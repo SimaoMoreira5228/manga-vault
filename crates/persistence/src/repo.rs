@@ -35,7 +35,7 @@ pub struct JobRow {
 	pub id: uuid::Uuid,
 	pub kind: String,
 	pub subject: String,
-	pub attempts: i64,
+	pub attempts: i32,
 }
 
 #[async_trait]

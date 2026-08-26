@@ -11,7 +11,7 @@ pub struct Model {
 	pub kind: String,
 	pub subject: String,
 	pub status: String,
-	pub attempts: i64,
+	pub attempts: i32,
 	pub next_attempt_at: DateTimeWithTimeZone,
 	#[sea_orm(column_type = "Text", nullable)]
 	pub last_error: Option<String>,

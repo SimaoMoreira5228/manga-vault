@@ -11,7 +11,7 @@ pub struct SchedulerConfig {
 	pub workers: usize,
 	pub batch_size: u64,
 	pub poll_interval: StdDuration,
-	pub max_attempts: i64,
+	pub max_attempts: i32,
 	pub base_backoff: StdDuration,
 	pub max_backoff: StdDuration,
 	pub stale_after: StdDuration,

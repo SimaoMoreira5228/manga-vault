@@ -33,8 +33,8 @@ pub async fn get_work(State(state): State<AppState>, Path(work_id): Path<Uuid>, 
 }
 
 pub async fn request_refresh(State(state): State<AppState>, Path(work_id): Path<Uuid>) -> Result<Response, ApiError> {
-	state.vault.request_refresh(work_id).await?;
-	Ok((StatusCode::ACCEPTED, Json(json!({ "queued": true }))).into_response())
+	let queued = state.vault.request_refresh(work_id).await?;
+	Ok((StatusCode::ACCEPTED, Json(json!({ "queued": queued }))).into_response())
 }
 
 pub async fn chapter_content(
