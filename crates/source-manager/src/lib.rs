@@ -75,7 +75,15 @@ impl SourceManager {
 	}
 
 	pub fn get(&self, id: &str) -> Option<Arc<dyn Source>> {
-		self.loaded.read().get(id).cloned()
+		let loaded = self.loaded.read();
+		loaded.get(id).cloned().or_else(|| {
+			let normalized = normalize_id(id);
+			let mut matches = loaded
+				.iter()
+				.filter(|(installed_id, _)| normalize_id(installed_id) == normalized);
+			let (_, source) = matches.next()?;
+			matches.next().is_none().then(|| source.clone())
+		})
 	}
 
 	pub fn list(&self) -> Vec<source_sdk::SourceInfo> {
@@ -86,5 +94,17 @@ impl SourceManager {
 
 	pub fn disable(&self, id: &str) {
 		self.loaded.write().remove(id);
+	}
+}
+
+fn normalize_id(id: &str) -> String {
+	id.replace('-', "_")
+}
+
+#[cfg(test)]
+mod tests {
+	#[test]
+	fn source_id_compatibility_covers_hyphen_to_underscore_renames() {
+		assert_eq!(super::normalize_id("mangaread-org"), super::normalize_id("mangaread_org"));
 	}
 }

@@ -8,7 +8,7 @@ let categories = $state<Category[]>([]);
 let overview = $state<Record<string, { read: number; total: number }>>({});
 let filter = $state<'all' | WorkKind>('all');
 let categoryFilter = $state<string | null>(null);
-let sort = $state<'updated' | 'title' | 'added'>('updated');
+let sort = $state<'updated' | 'title' | 'added' | 'unread-desc' | 'unread-asc'>('updated');
 let textQuery = $state('');
 let loading = $state(true);
 let newCategoryName = $state('');
@@ -25,6 +25,15 @@ const filtered = $derived.by(() => {
 	rows = [...rows].sort((a, b) => {
 		if (sort === 'title') return a[1].title.localeCompare(b[1].title);
 		if (sort === 'added') return b[0].created_at.localeCompare(a[0].created_at);
+		if (sort === 'unread-desc' || sort === 'unread-asc') {
+			const aUnread = unreadOf(a[1].id);
+			const bUnread = unreadOf(b[1].id);
+			if (aUnread === null && bUnread !== null) return 1;
+			if (aUnread !== null && bUnread === null) return -1;
+			if (aUnread !== null && bUnread !== null && aUnread !== bUnread) {
+				return sort === 'unread-desc' ? bUnread - aUnread : aUnread - bUnread;
+			}
+		}
 		return b[1].updated_at.localeCompare(a[1].updated_at);
 	});
 	return rows;
@@ -181,6 +190,8 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 				<option value="updated">Recently updated</option>
 				<option value="added">Recently added</option>
 				<option value="title">Title A-Z</option>
+				<option value="unread-desc">Most unread chapters</option>
+				<option value="unread-asc">Fewest unread chapters</option>
 			</select>
 		</div>
 	{/if}

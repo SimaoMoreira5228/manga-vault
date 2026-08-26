@@ -126,7 +126,10 @@ impl Vault {
 
 	pub async fn chapter_content_cached(&self, chapter_id: domain::ChapterId) -> VaultResult<(ChapterContent, bool)> {
 		if self.downloads.is_downloaded(chapter_id) {
-			return Ok((self.downloads.read_content(chapter_id)?, true));
+			return Ok((match self.downloads.read_content(chapter_id)? {
+				ChapterContent::Html(html) => ChapterContent::Html(source_sdk::sanitize_html(&html)),
+				ChapterContent::Images(images) => ChapterContent::Images(images),
+			}, true));
 		}
 		let content = self.chapter_content(chapter_id).await?;
 		Ok((content, false))

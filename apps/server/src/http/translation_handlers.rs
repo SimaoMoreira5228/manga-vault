@@ -165,7 +165,7 @@ pub async fn translate_chapter(
 	let key = translation::sha256_key(&html, &payload.to, &fingerprint);
 	if let Some(cached) = state.vault.translation_cached(&key).await? {
 		return Ok(Json(json!({
-			"content": cached,
+			"content": source_sdk::sanitize_html(&cached),
 			"cached": true,
 			"target": payload.to,
 			"matches": matches,
@@ -182,6 +182,7 @@ pub async fn translate_chapter(
 		.translate(&input)
 		.await
 		.map_err(|error| ApiError::bad_request(error.to_string()))?;
+	let translated = source_sdk::sanitize_html(&translated);
 	state.vault.translation_cache_put(&key, &translated).await?;
 
 	Ok(Json(json!({

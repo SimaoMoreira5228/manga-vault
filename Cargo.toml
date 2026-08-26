@@ -22,6 +22,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
+ammonia = "4.1"
 domain = { path = "crates/domain" }
 application = { path = "crates/application" }
 persistence = { path = "crates/persistence" }

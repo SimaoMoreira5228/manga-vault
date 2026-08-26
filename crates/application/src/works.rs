@@ -125,10 +125,15 @@ impl Vault {
 
 		let key = format!("chapter:{}:{chapter_id}", work.id);
 		let ttl = std::time::Duration::from_secs(self.cache_config.chapter_ttl_secs);
-		self.cache
+		let content = self
+			.cache
 			.get_or_insert(&key, ttl, || async { source.fetch_chapter(&fetch_url).await })
 			.await
-			.map_err(|e| VaultError::Source(work.source_id.clone(), e))
+			.map_err(|e| VaultError::Source(work.source_id.clone(), e))?;
+		Ok(match content {
+			domain::ChapterContent::Html(html) => domain::ChapterContent::Html(source_sdk::sanitize_html(&html)),
+			domain::ChapterContent::Images(images) => domain::ChapterContent::Images(images),
+		})
 	}
 
 	fn build_work(&self, info: &source_sdk::SourceInfo, details: &RemoteWorkDetails) -> Work {

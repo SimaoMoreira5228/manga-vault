@@ -48,11 +48,12 @@ pub struct ProxyQuery {
 fn allowed_hosts(state: &AppState) -> HashMap<String, Option<String>> {
 	let mut map = HashMap::new();
 	for info in state.vault.sources.list() {
+		let referer = info.referer_url.clone().or_else(|| info.base_url.clone());
 		if let Some(host) = host_of(info.base_url.as_deref()) {
-			map.insert(host, info.referer_url.clone());
+			map.insert(host, referer.clone());
 		}
 		if let Some(host) = host_of(info.referer_url.as_deref()) {
-			map.entry(host).or_insert(info.referer_url.clone());
+			map.entry(host).or_insert(referer);
 		}
 	}
 	map
@@ -66,6 +67,12 @@ fn host_matches(target: &str, allowed: &str) -> bool {
 	let target = target.strip_prefix("www.").unwrap_or(target);
 	let allowed = allowed.strip_prefix("www.").unwrap_or(allowed);
 	target == allowed || target.strip_suffix(allowed).is_some_and(|prefix| prefix.ends_with('.'))
+}
+
+fn normalize_target(mut target: Url) -> Url {
+	let path = target.path().replace("//", "/");
+	target.set_path(&path);
+	target
 }
 
 async fn fetch_upstream(
@@ -135,6 +142,7 @@ pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery
 		status: axum::http::StatusCode::BAD_REQUEST,
 		message: "invalid url".into(),
 	})?;
+	let target = normalize_target(target);
 	if !matches!(target.scheme(), "http" | "https") {
 		return Err(ApiError {
 			status: axum::http::StatusCode::BAD_REQUEST,
@@ -152,15 +160,14 @@ pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery
 		.into_iter()
 		.find(|(allowed_host, _)| host_matches(&host, allowed_host))
 		.and_then(|(_, referer)| referer);
-	let Some(referer_url) = referer.or_else(|| state.vault.sources.list().first().and_then(|info| info.base_url.clone()))
-	else {
+	let Some(referer_url) = referer else {
 		return Err(ApiError {
 			status: axum::http::StatusCode::FORBIDDEN,
 			message: "host is not associated with any loaded source".into(),
 		});
 	};
 
-	let key = format!("{}/{}", referer_url, query.url);
+	let key = format!("{}/{}", referer_url, target);
 	let cached = match state
 		.image_cache
 		.try_get_with(key.clone(), fetch_upstream(target, &referer_url, &state.image_cache, &key))
@@ -189,6 +196,14 @@ mod tests {
 		assert!(host_matches("www.example.com", "example.com"));
 		assert!(host_matches("cdn.example.com", "example.com"));
 		assert!(!host_matches("example.com.evil.test", "example.com"));
+	}
+
+	#[test]
+	fn normalizes_duplicate_path_slashes() {
+		assert_eq!(
+			normalize_target(Url::parse("https://cdn.example.test//thumb/a.webp").unwrap()).as_str(),
+			"https://cdn.example.test/thumb/a.webp"
+		);
 	}
 
 	#[tokio::test]

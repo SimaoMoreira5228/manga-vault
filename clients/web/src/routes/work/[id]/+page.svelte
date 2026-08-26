@@ -1,7 +1,6 @@
 <script lang="ts">
 import type { TrackerAccount, WorkTrackLink } from '$lib/api';
 import { api, type Chapter, proxied, type SourceInfo, type Work } from '$lib/api';
-import ProgressBar from '$lib/components/ProgressBar.svelte';
 import { onWorkRefreshed } from '$lib/events.svelte';
 import IconArrowBack from '~icons/material-symbols/arrow-back';
 import IconBookmarkAdd from '~icons/material-symbols/bookmark-add';
@@ -538,7 +537,8 @@ function chapterDate(chapter: Chapter): string {
 							<input
 								type="checkbox"
 								checked={readIds.has(chapter.id)}
-								class="peer h-full w-full appearance-none"
+								aria-label={`${readIds.has(chapter.id) ? 'Mark as unread' : 'Mark as read'}: ${chapter.title}`}
+								class="peer size-5 appearance-none rounded-full border border-outline-variant/60 checked:border-primary checked:bg-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
 								onchange={async (event) => {
 									if (event.currentTarget.checked) {
 										readIds.add(chapter.id);
@@ -550,23 +550,22 @@ function chapterDate(chapter: Chapter): string {
 								}}
 							>
 							<IconCheckCircle
-								class="pointer-events-none absolute inset-0 hidden size-5 peer-checked:block text-primary"
+								class="pointer-events-none absolute inset-0 hidden size-5 text-on-primary peer-checked:block"
 							/>
-							<span
-								class="pointer-events-none absolute inset-0 rounded-full border border-outline-variant/60 peer-checked:hidden"
-							></span>
 						</span>
 						<a
 							href="/reader/{chapter.id}?work={work.id}"
-							class="min-w-0 flex-1 truncate body-md hover:text-primary"
+							class="min-w-0 flex-1 hover:text-primary"
 						>
-							{index === currentChapterIndex + 1 && nextChapter?.id === chapter.id
-								? `Ch. ${chapter.sort_index + 1}: ${chapter.title}`
-								: chapter.title}
+							<span class="block truncate body-md">
+								{chapter.title}
+							</span>
+							{#if chapter.scanlation_group || chapterDate(chapter)}
+								<span class="mono-label block truncate text-on-surface-variant">
+									{[chapter.scanlation_group, chapterDate(chapter)].filter(Boolean).join(' · ')}
+								</span>
+							{/if}
 						</a>
-						{#if readIds.has(chapter.id)}
-							<ProgressBar value={1} max={1} />
-						{/if}
 						<span class="hidden shrink-0 gap-3 group-hover:flex">
 							<button
 								type="button"
@@ -587,7 +586,6 @@ function chapterDate(chapter: Chapter): string {
 								unread ↑
 							</button>
 						</span>
-						<span class="mono-label shrink-0 text-on-surface-variant">{chapterDate(chapter)}</span>
 					</li>
 				{:else}
 					<li class="mono-label px-4 py-6 text-center text-on-surface-variant">

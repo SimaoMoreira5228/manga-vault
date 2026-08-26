@@ -448,7 +448,7 @@ async function load() {
 				{/if}
 			{/if}
 			<article
-				class="prose prose-invert prose-p:leading-relaxed mx-auto max-w-3xl px-6 pb-24"
+				class="prose prose-invert prose-p:leading-relaxed whitespace-pre-wrap mx-auto max-w-3xl px-6 pb-24"
 				dir={rtlMode ? 'rtl' : undefined}
 				style="font-size: {fontSize}px; line-height: {lineHeight}"
 			>

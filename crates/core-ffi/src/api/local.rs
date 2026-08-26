@@ -274,7 +274,7 @@ impl LocalVault {
 		let fingerprint = translation::glossary_fingerprint(&rules);
 		let key = translation::sha256_key(&html, &to, &fingerprint);
 		if let Some(cached) = self.vault.translation_cached(&key).await? {
-			return Ok(cached);
+			return Ok(source_sdk::sanitize_html(&cached));
 		}
 
 		let input = translation::TranslationInput {
@@ -283,7 +283,7 @@ impl LocalVault {
 			to,
 			glossary: rules,
 		};
-		let translated = translator.translate(&input).await?;
+		let translated = source_sdk::sanitize_html(&translator.translate(&input).await?);
 		self.vault.translation_cache_put(&key, &translated).await?;
 
 		Ok(serde_json::json!({ "content": translated, "matches": matches }).to_string())
