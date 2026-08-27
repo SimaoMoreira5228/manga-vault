@@ -22,16 +22,16 @@ pub async fn mark_read(
 
 pub async fn reading_stats(State(state): State<AppState>, auth: Authenticated) -> ApiResult<serde_json::Value> {
 	let stats = state.vault.reading_stats(auth.user.id).await?;
-	Ok(Json(serde_json::to_value(&stats).map_err(|e| ApiError::bad_request(e.to_string()))?))
+	Ok(Json(
+		serde_json::to_value(&stats).map_err(|e| ApiError::bad_request(e.to_string()))?,
+	))
 }
 
 pub async fn library_overview(State(state): State<AppState>, auth: Authenticated) -> ApiResult<serde_json::Value> {
 	let rows = state.vault.library_overview(auth.user.id).await?;
 	let entries: Vec<serde_json::Value> = rows
 		.into_iter()
-		.map(|(work_id, read, total)| {
-			json!({ "work_id": work_id, "chapters_read": read, "chapters_total": total })
-		})
+		.map(|(work_id, read, total)| json!({ "work_id": work_id, "chapters_read": read, "chapters_total": total }))
 		.collect();
 	Ok(Json(json!({ "overview": entries })))
 }

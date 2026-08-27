@@ -10,7 +10,9 @@ pub fn select_all(document: &str, selector: &str) -> Vec<String> {
 
 pub fn fragment_text(raw: &str) -> String {
 	let mut separated = raw.to_owned();
-	for tag in ["</p>", "</div>", "</h1>", "</h2>", "</h3>", "</h4>", "</h5>", "</h6>", "<br>", "<br/>", "<br />"] {
+	for tag in [
+		"</p>", "</div>", "</h1>", "</h2>", "</h3>", "</h4>", "</h5>", "</h6>", "<br>", "<br/>", "<br />",
+	] {
 		separated = separated.replace(tag, "\n\n");
 	}
 

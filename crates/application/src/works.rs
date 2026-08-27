@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use domain::{Chapter, ChapterId, Work, WorkId};
 use persistence::{JobRepository, WorkRepository};
 use source_sdk::RemoteWorkDetails;
@@ -148,6 +150,7 @@ impl Vault {
 
 	fn build_work(&self, info: &source_sdk::SourceInfo, details: &RemoteWorkDetails) -> Work {
 		let now = chrono::Utc::now();
+		let mut seen_genres = HashSet::new();
 		Work {
 			id: uuid::Uuid::now_v7(),
 			kind: info.kind.into(),
@@ -161,7 +164,12 @@ impl Vault {
 			status: details.status.clone(),
 			release_date: details.release_date.clone(),
 			description: details.description.clone(),
-			genres: details.genres.clone(),
+			genres: details
+				.genres
+				.iter()
+				.filter(|genre| seen_genres.insert(genre.as_str()))
+				.cloned()
+				.collect(),
 			created_at: now,
 			updated_at: now,
 		}

@@ -165,10 +165,7 @@ impl ProgressRepository for SeaStore {
 			})
 			.collect::<Vec<_>>();
 		let inserted = reading_progress::Entity::insert_many(models)
-			.on_conflict_do_nothing_on([
-				reading_progress::Column::UserId,
-				reading_progress::Column::ChapterId,
-			])
+			.on_conflict_do_nothing_on([reading_progress::Column::UserId, reading_progress::Column::ChapterId])
 			.exec_without_returning(&self.db)
 			.await?;
 		let _ = inserted;
@@ -196,7 +193,11 @@ impl ProgressRepository for SeaStore {
 		Ok(())
 	}
 
-	async fn reading_progress_for_works(&self, user_id: uuid::Uuid, work_ids: &[uuid::Uuid]) -> StoreResult<Vec<ReadingProgress>> {
+	async fn reading_progress_for_works(
+		&self,
+		user_id: uuid::Uuid,
+		work_ids: &[uuid::Uuid],
+	) -> StoreResult<Vec<ReadingProgress>> {
 		if work_ids.is_empty() {
 			return Ok(Vec::new());
 		}

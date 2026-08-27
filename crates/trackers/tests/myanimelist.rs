@@ -15,7 +15,11 @@ fn serve(responder: impl Fn(&str, &str) -> String + Send + 'static) -> String {
 			let request = String::from_utf8_lossy(&buffer[..read]).into_owned();
 			let (head, body) = request.split_once("\r\n\r\n").unwrap_or((&request, ""));
 			let response_body = responder(head, body);
-			let status = if response_body == "UNAUTHORIZED" { "401 Unauthorized" } else { "200 OK" };
+			let status = if response_body == "UNAUTHORIZED" {
+				"401 Unauthorized"
+			} else {
+				"200 OK"
+			};
 			let response = format!(
 				"HTTP/1.1 {status}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{response_body}",
 				response_body.len()
@@ -93,7 +97,7 @@ async fn search_maps_hits_and_filters_novels() {
 			{"node":{"id":1,"title":"Vinland Saga","media_type":"manga","num_chapters":218,"main_picture":{"large":"c.png"}}},
 			{"node":{"id":2,"title":"Some Novel","media_type":"novel","num_chapters":9}}
 		]}"#
-			.into()
+		.into()
 	});
 
 	let provider = provider_for_base(server.clone(), server);
@@ -140,7 +144,8 @@ async fn track_state_reads_my_list_status_when_present() {
 #[tokio::test]
 async fn progress_marks_completed_at_final_chapter_and_keeps_existing_status() {
 	let calls = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
-	let state_response = r#"{"id":1,"num_chapters":100,"my_list_status":{"status":"on_hold","score":0,"num_chapters_read":10}}"#;
+	let state_response =
+		r#"{"id":1,"num_chapters":100,"my_list_status":{"status":"on_hold","score":0,"num_chapters_read":10}}"#;
 
 	let listener_calls = calls.clone();
 	let server = serve(move |head, body| {

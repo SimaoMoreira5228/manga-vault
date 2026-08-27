@@ -70,12 +70,8 @@ impl Vault {
 	}
 
 	pub async fn library_overview(&self, user_id: UserId) -> VaultResult<Vec<(WorkId, i64, i64)>> {
-		let mut totals: std::collections::HashMap<WorkId, i64> = self
-			.db
-			.chapter_counts_by_work()
-			.await?
-			.into_iter()
-			.collect();
+		let mut totals: std::collections::HashMap<WorkId, i64> =
+			self.db.chapter_counts_by_work().await?.into_iter().collect();
 		let read = self.db.progress_counts_by_work(user_id).await?;
 		let mut merged: Vec<(WorkId, i64, i64)> = Vec::new();
 		let work_ids: std::collections::HashSet<WorkId> = read.iter().map(|(id, _)| *id).collect();

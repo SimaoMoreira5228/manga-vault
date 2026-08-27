@@ -3,7 +3,6 @@ import '../routes/layout.css';
 import type { Snippet } from 'svelte';
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
-import favicon from '$lib/assets/favicon.svg';
 import { auth } from '$lib/auth.svelte';
 import IconClose from '~icons/material-symbols/close';
 import IconExplore from '~icons/material-symbols/explore';
@@ -57,7 +56,6 @@ $effect(() => {
 
 <svelte:head>
 	<title>{pageTitle} - Manga Vault</title>
-	<link rel="icon" href={favicon}>
 </svelte:head>
 
 {#if !auth.ready || (auth.user && !isReader) || (!auth.user && page.url.pathname === '/login')}

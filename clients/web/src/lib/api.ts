@@ -204,8 +204,10 @@ function del<T>(path: string) {
 	return request<T>(path, { method: 'DELETE' });
 }
 
-export function proxied(url: string): string {
-	return `${API_BASE}/api/proxy?url=${encodeURIComponent(url)}`;
+export function proxied(url: string, referer?: string): string {
+	const query = new URLSearchParams({ url });
+	if (referer) query.set('referer', referer);
+	return `${API_BASE}/api/proxy?${query}`;
 }
 
 export const api = {

@@ -50,10 +50,7 @@ pub async fn candidates(
 	_auth: Authenticated,
 	Json(payload): Json<MigrationCandidatesRequest>,
 ) -> ApiResult<serde_json::Value> {
-	let (work_title, candidates) = state
-		.vault
-		.migration_candidates(payload.work_id, &payload.to_source)
-		.await?;
+	let (work_title, candidates) = state.vault.migration_candidates(payload.work_id, &payload.to_source).await?;
 	Ok(Json(json!({ "work_title": work_title, "candidates": candidates })))
 }
 
@@ -62,11 +59,7 @@ pub async fn apply(
 	auth: Authenticated,
 	Json(payload): Json<MigrationApplyRequest>,
 ) -> ApiResult<serde_json::Value> {
-	let pairs = payload
-		.pairs
-		.into_iter()
-		.map(|pair| (pair.work_id, pair.url))
-		.collect();
+	let pairs = payload.pairs.into_iter().map(|pair| (pair.work_id, pair.url)).collect();
 	let results = state
 		.vault
 		.migration_apply(auth.user.id, &payload.to_source, payload.category_id, pairs)

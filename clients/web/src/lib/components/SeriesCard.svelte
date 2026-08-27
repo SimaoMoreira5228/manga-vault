@@ -9,7 +9,7 @@ let {
 	progress = null,
 	onclick = undefined,
 }: {
-	work: Pick<import('$lib/api').Work, 'id' | 'title' | 'cover_url' | 'source_id'>;
+	work: Pick<import('$lib/api').Work, 'id' | 'title' | 'cover_url' | 'source_id' | 'remote_url'>;
 	label?: string | null;
 	kind?: WorkKind | null;
 	progress?: { read: number; total: number } | null;
@@ -21,13 +21,13 @@ let {
 	<div
 		class="overflow-hidden rounded-card border border-outline-variant/40 transition-colors hover:border-outline"
 	>
-		<div class="relative aspect-2/3 w-full overflow-hidden bg-surface-high">
+		<div class="relative aspect-[2/3] w-full overflow-hidden bg-surface-high">
 			{#if work.cover_url}
 				<img
-					src={proxied(work.cover_url)}
+					src={proxied(work.cover_url, work.remote_url)}
 					alt={work.title}
 					loading="lazy"
-					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+					class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
 				>
 			{:else}
 				<div
@@ -53,7 +53,7 @@ let {
 				</span>
 			{/if}
 		</div>
-		<h3 class="title-md mt-2 line-clamp-2 px-1">{work.title}</h3>
+		<h3 class="title-md mt-2 min-h-12 line-clamp-2 px-1">{work.title}</h3>
 		<p class="mono-label px-1 pb-1 text-outline uppercase">{work.source_id}</p>
 		{#if progress}
 			<div class="mt-1 flex items-center gap-2 px-1 pb-1">

@@ -3,9 +3,9 @@ pub mod kitsu;
 pub mod myanimelist;
 
 pub use anilist::AniListProvider;
+use async_trait::async_trait;
 pub use kitsu::KitsuProvider;
 pub use myanimelist::MyAnimeListProvider;
-use async_trait::async_trait;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "lowercase")]

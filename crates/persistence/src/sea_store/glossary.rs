@@ -77,7 +77,8 @@ impl GlossaryRepository for crate::SeaStore {
 		use sea_orm::EntityTrait;
 		let entry_models = glossary_entries::Entity::find().all(&self.db).await?;
 		let meaning_models = glossary_meanings::Entity::find().all(&self.db).await?;
-		let mut meanings_by_entry: std::collections::HashMap<Uuid, Vec<GlossaryMeaningRecord>> = std::collections::HashMap::new();
+		let mut meanings_by_entry: std::collections::HashMap<Uuid, Vec<GlossaryMeaningRecord>> =
+			std::collections::HashMap::new();
 		for model in meaning_models {
 			let record = GlossaryMeaningRecord {
 				voted_by_me: false,

@@ -140,15 +140,22 @@ async fn bulk_mark_read_is_idempotent_and_unread_clears() {
 	ProgressRepository::mark_many_read(&store, progresses.clone()).await.unwrap();
 	ProgressRepository::mark_many_read(&store, progresses).await.unwrap();
 	assert_eq!(
-		ProgressRepository::read_chapter_ids(&store, user.id, work_id).await.unwrap().len(),
+		ProgressRepository::read_chapter_ids(&store, user.id, work_id)
+			.await
+			.unwrap()
+			.len(),
 		ids.len()
 	);
 
-	ProgressRepository::mark_many_unread(&store, user.id, ids.clone()).await.unwrap();
-	assert!(ProgressRepository::read_chapter_ids(&store, user.id, work_id)
+	ProgressRepository::mark_many_unread(&store, user.id, ids.clone())
 		.await
-		.unwrap()
-		.is_empty());
+		.unwrap();
+	assert!(
+		ProgressRepository::read_chapter_ids(&store, user.id, work_id)
+			.await
+			.unwrap()
+			.is_empty()
+	);
 }
 
 #[tokio::test]

@@ -4426,6 +4426,7 @@ dependencies = [
  "async-trait",
  "domain",
  "parking_lot",
+ "reqwest",
  "source-runtime-lua",
  "source-runtime-wasm",
  "source-sdk",

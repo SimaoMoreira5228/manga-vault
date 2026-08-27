@@ -101,7 +101,7 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 								<div class="relative aspect-2/3 bg-surface-high">
 									{#if entry.work.cover_url}
 										<img
-											src={proxied(entry.work.cover_url)}
+											src={proxied(entry.work.cover_url, entry.work.remote_url)}
 											alt={entry.work.title}
 											class="h-full w-full object-cover"
 										>
@@ -150,6 +150,7 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 										id: '',
 										title: item.title,
 										cover_url: item.cover_url,
+										remote_url: item.remote_url,
 										source_id: group.sourceName,
 									}}
 									kind={group.kind}

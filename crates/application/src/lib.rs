@@ -1,10 +1,10 @@
 mod auth;
-mod cache;
 pub mod backup;
-pub mod migration;
+mod cache;
 pub mod downloads;
 pub mod glossary;
 mod library;
+pub mod migration;
 pub mod profiles;
 pub mod reading;
 pub mod registration;

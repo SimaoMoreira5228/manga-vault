@@ -82,7 +82,13 @@ mod tests {
 			remap_legacy_host("https://old.example.com/a", &urls(&["old.example.com"]), None),
 			"https://old.example.com/a"
 		);
-		assert_eq!(remap_legacy_host("not a url", &urls(&["old.example.com"]), Some("https://current.example.net")), "not a url");
-		assert_eq!(remap_legacy_host("https://old.example.com/a", &urls(&[]), Some("https://current.example.net")), "https://old.example.com/a");
+		assert_eq!(
+			remap_legacy_host("not a url", &urls(&["old.example.com"]), Some("https://current.example.net")),
+			"not a url"
+		);
+		assert_eq!(
+			remap_legacy_host("https://old.example.com/a", &urls(&[]), Some("https://current.example.net")),
+			"https://old.example.com/a"
+		);
 	}
 }

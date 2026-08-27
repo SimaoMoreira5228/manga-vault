@@ -61,10 +61,8 @@ pub async fn link_account(
 		(Some(token), _, _) => Credentials::Paste { token },
 		(_, Some(username), Some(password)) => Credentials::UsernamePassword { username, password },
 		_ => {
-			return Err(ApiError::bad_request(
-				"linking requires `token` or `username` + `password`",
-			));
-		},
+			return Err(ApiError::bad_request("linking requires `token` or `username` + `password`"));
+		}
 	};
 
 	let tokens = provider
@@ -285,7 +283,7 @@ async fn bind_with_tokens(
 				.track_state(&refreshed, &remote_id)
 				.await
 				.map_err(|error| ApiError::bad_request(error.to_string()))?
-		},
+		}
 		Err(error) => return Err(ApiError::bad_request(error.to_string())),
 	};
 
@@ -367,7 +365,7 @@ pub(crate) async fn push_progress(
 		.update_progress(&tokens, &link.remote_id, link.last_chapters_synced.unwrap_or(0.0))
 		.await
 	{
-		Ok(()) => {},
+		Ok(()) => {}
 		Err(trackers::TrackerError::Unauthorized(reason)) => {
 			let refreshed = provider
 				.refresh(&tokens)
@@ -378,7 +376,7 @@ pub(crate) async fn push_progress(
 				.update_progress(&refreshed, &link.remote_id, link.last_chapters_synced.unwrap_or(0.0))
 				.await
 				.map_err(|error| ApiError::bad_request(error.to_string()))?;
-		},
+		}
 		Err(error) => return Err(ApiError::bad_request(error.to_string())),
 	}
 	Ok(())

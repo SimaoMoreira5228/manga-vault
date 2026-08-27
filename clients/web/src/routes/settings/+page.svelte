@@ -49,6 +49,10 @@ let chapterNotifications = $state(false);
 let libraryTitles = $state<Record<string, string>>({});
 let trackerTokens: Record<string, string> = $state({});
 
+function sourceKind(sourceId: string): SourceInfo['kind'] | undefined {
+	return sources.find((source) => source.id === sourceId)?.kind;
+}
+
 $effect(() => {
 	chapterNotifications = chapterNotificationsEnabled();
 	api
@@ -539,13 +543,13 @@ async function clearTranslationSettings() {
 				aria-label="Migrate to source"
 			>
 				<option value="">to…</option>
-				{#each sources as source (source.id)}
+				{#each sources.filter((source) => !migrateFrom || source.kind === sourceKind(migrateFrom)) as source (source.id)}
 					<option value={source.id}>{source.name}</option>
 				{/each}
 			</select>
 			<button
 				type="button"
-				disabled={migrationBusy || !migrateFrom || !migrateTo || migrateFrom === migrateTo}
+				disabled={migrationBusy || !migrateFrom || !migrateTo || migrateFrom === migrateTo || sourceKind(migrateFrom) !== sourceKind(migrateTo)}
 				class="label-caps rounded-card border border-primary/60 px-4 py-2 text-primary hover:border-primary disabled:opacity-40"
 				onclick={planMigration}
 			>

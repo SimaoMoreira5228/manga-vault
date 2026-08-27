@@ -4,9 +4,7 @@ use async_trait::async_trait;
 use source_sdk::BROWSER_USER_AGENT;
 use tokio::sync::Mutex;
 
-use crate::{
-	Credentials, RemoteTrackState, Tokens, TrackSearchHit, TrackerError, TrackerProvider, TrackerResult,
-};
+use crate::{Credentials, RemoteTrackState, Tokens, TrackSearchHit, TrackerError, TrackerProvider, TrackerResult};
 
 pub const OAUTH_BASE: &str = "https://myanimelist.net/v1/oauth2";
 pub const API_BASE: &str = "https://api.myanimelist.net/v2";
@@ -29,11 +27,7 @@ impl Default for MyAnimeListProvider {
 
 impl MyAnimeListProvider {
 	pub fn from_env(oauth_base: impl Into<String>, api_base: impl Into<String>) -> Self {
-		Self::new(
-			oauth_base,
-			api_base,
-			std::env::var("MAL_CLIENT_ID").unwrap_or_default(),
-		)
+		Self::new(oauth_base, api_base, std::env::var("MAL_CLIENT_ID").unwrap_or_default())
 	}
 
 	pub fn new(oauth_base: impl Into<String>, api_base: impl Into<String>, client_id: impl Into<String>) -> Self {
@@ -61,10 +55,7 @@ impl MyAnimeListProvider {
 	}
 
 	async fn token_exchange(&self, form: &[(&str, &str)], bearer: Option<&str>) -> TrackerResult<serde_json::Value> {
-		let mut request = self
-			.http
-			.post(format!("{}/token", self.oauth_base))
-			.form(form);
+		let mut request = self.http.post(format!("{}/token", self.oauth_base)).form(form);
 		if let Some(token) = bearer {
 			request = request.bearer_auth(token);
 		}
@@ -75,9 +66,7 @@ impl MyAnimeListProvider {
 			return Err(TrackerError::Unauthorized("myanimelist token rejected".into()));
 		}
 		if !status.is_success() {
-			return Err(TrackerError::Provider(format!(
-				"myanimelist token exchange failed: {status}"
-			)));
+			return Err(TrackerError::Provider(format!("myanimelist token exchange failed: {status}")));
 		}
 		Ok(body)
 	}

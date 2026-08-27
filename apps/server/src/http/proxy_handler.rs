@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
@@ -31,9 +30,6 @@ fn shared_client() -> &'static reqwest::Client {
 	static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 	CLIENT.get_or_init(|| {
 		reqwest::Client::builder()
-			.user_agent(
-				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-			)
 			.timeout(Duration::from_secs(20))
 			.pool_max_idle_per_host(10)
 			.build()
@@ -44,20 +40,18 @@ fn shared_client() -> &'static reqwest::Client {
 #[derive(Deserialize)]
 pub struct ProxyQuery {
 	url: String,
+	referer: Option<String>,
 }
 
-fn allowed_hosts(state: &AppState) -> HashMap<String, Option<String>> {
-	let mut map = HashMap::new();
+fn plugin_referer(state: &AppState, raw: Option<&str>) -> Option<String> {
+	let host = Url::parse(raw?).ok()?.host_str()?.to_ascii_lowercase();
 	for info in state.vault.sources.list() {
-		let referer = info.referer_url.clone().or_else(|| info.base_url.clone());
-		if let Some(host) = host_of(info.base_url.as_deref()) {
-			map.insert(host, referer.clone());
-		}
-		if let Some(host) = host_of(info.referer_url.as_deref()) {
-			map.entry(host).or_insert(referer);
+		let declared = info.referer_url;
+		if host_of(declared.as_deref()).is_some_and(|source_host| host_matches(&host, &source_host)) {
+			return declared;
 		}
 	}
-	map
+	None
 }
 
 fn host_of(raw: Option<&str>) -> Option<String> {
@@ -82,39 +76,47 @@ async fn is_public_host(target: &Url) -> bool {
 	let addresses = if let Ok(ip) = host.parse::<IpAddr>() {
 		vec![ip]
 	} else {
-		let Ok(addresses) = tokio::net::lookup_host((host, port)).await else { return false };
+		let Ok(addresses) = tokio::net::lookup_host((host, port)).await else {
+			return false;
+		};
 		addresses.map(|address| address.ip()).collect()
 	};
-	!addresses.is_empty() && addresses.iter().all(|ip| match ip {
-		IpAddr::V4(ip) => !ip.is_private() && !ip.is_loopback() && !ip.is_link_local() && !ip.is_unspecified() && !ip.is_broadcast(),
-		IpAddr::V6(ip) => !ip.is_loopback() && !ip.is_unique_local() && !ip.is_unicast_link_local() && !ip.is_unspecified() && !ip.is_multicast(),
-	})
+	!addresses.is_empty()
+		&& addresses.iter().all(|ip| match ip {
+			IpAddr::V4(ip) => {
+				!ip.is_private() && !ip.is_loopback() && !ip.is_link_local() && !ip.is_unspecified() && !ip.is_broadcast()
+			}
+			IpAddr::V6(ip) => {
+				!ip.is_loopback()
+					&& !ip.is_unique_local()
+					&& !ip.is_unicast_link_local()
+					&& !ip.is_unspecified()
+					&& !ip.is_multicast()
+			}
+		})
 }
 
-async fn fetch_upstream(
-	target: Url,
-	referer_url: &str,
-	cache: &Cache<String, Arc<CachedResponse>>,
-	key: &str,
-) -> Result<Arc<CachedResponse>, ApiError> {
+async fn fetch_upstream(target: Url, referer_url: &str) -> Result<Arc<CachedResponse>, ApiError> {
 	let client = shared_client();
 	let upstream = client
 		.get(target)
+		.header(header::USER_AGENT, source_sdk::BROWSER_USER_AGENT)
 		.header(
 			header::ACCEPT,
 			"image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
 		)
-		.header(header::ACCEPT_ENCODING, "gzip, deflate, br, zstd")
 		.header(header::ACCEPT_LANGUAGE, "en-US,en;q=0.9")
 		.header(
 			"sec-ch-ua",
-			r#""Not-A.Brand";v="99", "Chromium";v="124", "Google Chrome";v="124""#,
+			r#""Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122""#,
 		)
 		.header("sec-ch-ua-mobile", "?0")
-		.header("sec-ch-ua-platform", r#""macOS""#)
+		.header("sec-ch-ua-platform", r#""Windows""#)
 		.header("sec-fetch-dest", "image")
 		.header("sec-fetch-mode", "no-cors")
 		.header("sec-fetch-site", "cross-site")
+		.header("sec-fetch-storage-access", "none")
+		.header("sec-gpc", "1")
 		.header(header::REFERER, referer_url)
 		.send()
 		.await
@@ -146,31 +148,27 @@ async fn fetch_upstream(
 		message: e.to_string(),
 	})?;
 
-	let cached = Arc::new(CachedResponse { bytes, content_type });
-	if cached.bytes.len() <= MAX_ENTRY_BYTES {
-		cache.insert(key.to_owned(), cached.clone()).await;
+	if bytes.len() > MAX_ENTRY_BYTES {
+		return Err(ApiError {
+			status: axum::http::StatusCode::BAD_GATEWAY,
+			message: "image exceeds max allowable size".into(),
+		});
 	}
-	Ok(cached)
+
+	Ok(Arc::new(CachedResponse { bytes, content_type }))
 }
 
 pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery>) -> Result<Response, ApiError> {
-	let target = Url::parse(&query.url).map_err(|_| ApiError {
+	let target = normalize_target(Url::parse(&query.url).map_err(|_| ApiError {
 		status: axum::http::StatusCode::BAD_REQUEST,
 		message: "invalid url".into(),
-	})?;
-	let target = normalize_target(target);
-	if !matches!(target.scheme(), "http" | "https") {
+	})?);
+	if !matches!(target.scheme(), "http" | "https") || target.host_str().is_none() {
 		return Err(ApiError {
 			status: axum::http::StatusCode::BAD_REQUEST,
-			message: "only http(s) urls are proxied".into(),
+			message: "only valid http(s) urls are proxied".into(),
 		});
 	}
-	let Some(host) = target.host_str().map(|h| h.to_ascii_lowercase()) else {
-		return Err(ApiError {
-			status: axum::http::StatusCode::BAD_REQUEST,
-			message: "url has no host".into(),
-		});
-	};
 	if !is_public_host(&target).await {
 		return Err(ApiError {
 			status: axum::http::StatusCode::FORBIDDEN,
@@ -178,32 +176,21 @@ pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery
 		});
 	}
 
-	let referer = allowed_hosts(&state)
-		.into_iter()
-		.find(|(allowed_host, _)| host_matches(&host, allowed_host))
-		.and_then(|(_, referer)| referer)
-		.or_else(|| state.vault.sources.list().into_iter().find_map(|info| info.referer_url.or(info.base_url)));
-	let Some(referer_url) = referer else {
-		return Err(ApiError {
-			status: axum::http::StatusCode::BAD_REQUEST,
-			message: "no source referer is available".into(),
-		});
-	};
-
-	let key = format!("{}/{}", referer_url, target);
-	let cached = match state
+	let referer = plugin_referer(&state, query.referer.as_deref()).ok_or_else(|| ApiError {
+		status: axum::http::StatusCode::BAD_REQUEST,
+		message: "no plugin referer matches the request".into(),
+	})?;
+	let cache_key = format!("{referer}|{target}");
+	let cached = state
 		.image_cache
-		.try_get_with(key.clone(), fetch_upstream(target, &referer_url, &state.image_cache, &key))
+		.try_get_with(cache_key, fetch_upstream(target, &referer))
 		.await
-	{
-		Ok(cached) => cached,
-		Err(error) => return Err(Arc::unwrap_or_clone(error)),
-	};
+		.map_err(Arc::unwrap_or_clone)?;
 
 	Ok((
 		[
 			(header::CONTENT_TYPE, cached.content_type.clone()),
-			(header::CACHE_CONTROL, "public, max-age=3600".to_owned()),
+			(header::CACHE_CONTROL, "public, max-age=86400".to_owned()),
 		],
 		cached.bytes.clone(),
 	)

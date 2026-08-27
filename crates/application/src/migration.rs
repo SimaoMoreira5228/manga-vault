@@ -68,12 +68,22 @@ fn chapter_number(title: &str) -> Option<f64> {
 }
 
 impl Vault {
+	fn ensure_migration_kinds(&self, from_source_id: &str, to_source_id: &str) -> VaultResult<()> {
+		let from = self.resolve(from_source_id)?.info().kind;
+		let to = self.resolve(to_source_id)?.info().kind;
+		if from != to {
+			return Err(VaultError::Conflict("manga and novel sources cannot be mixed".into()));
+		}
+		Ok(())
+	}
+
 	pub async fn migration_plan(
 		&self,
 		user_id: UserId,
 		from_source_id: &str,
 		to_source_id: &str,
 	) -> VaultResult<Vec<MigrationSuggestion>> {
+		self.ensure_migration_kinds(from_source_id, to_source_id)?;
 		let entries = self.library(user_id).await?;
 		let mut suggestions = Vec::new();
 		for (_, work) in entries.into_iter().filter(|(_, work)| work.source_id == from_source_id) {
@@ -107,6 +117,9 @@ impl Vault {
 		to_source_id: &str,
 	) -> VaultResult<(String, Vec<MigrationCandidate>)> {
 		let (work, _) = self.get_work(work_id).await?;
+		if work.kind != self.resolve(to_source_id)?.info().kind.into() {
+			return Err(VaultError::Conflict("manga and novel sources cannot be mixed".into()));
+		}
 		let hits = self.search_source(to_source_id, &work.title, 1).await.unwrap_or_default();
 		let mut scored: Vec<(i64, MigrationCandidate)> = hits
 			.into_iter()
@@ -160,6 +173,9 @@ impl Vault {
 		fallback_category: Option<Uuid>,
 	) -> VaultResult<Option<WorkId>> {
 		let (old_work, old_chapters) = self.get_work(old_work_id).await?;
+		if old_work.kind != self.resolve(to_source_id)?.info().kind.into() {
+			return Err(VaultError::Conflict("manga and novel sources cannot be mixed".into()));
+		}
 		let entries = self.library(user_id).await?;
 		let entry = entries
 			.iter()
@@ -176,8 +192,7 @@ impl Vault {
 			return Ok(None);
 		}
 
-		let read_ids: HashSet<ChapterId> =
-			self.db.read_chapter_ids(user_id, old_work_id).await?.into_iter().collect();
+		let read_ids: HashSet<ChapterId> = self.db.read_chapter_ids(user_id, old_work_id).await?.into_iter().collect();
 
 		let mut progresses = Vec::new();
 		for old_chapter in &old_chapters {

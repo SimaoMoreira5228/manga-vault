@@ -40,7 +40,7 @@ $effect(() => {
 						class="flex items-center gap-4 px-4 py-3 hover:bg-surface-container"
 					>
 						{#if work.cover_url}
-							<img src={proxied(work.cover_url)} alt="" class="h-16 w-11 rounded object-cover">
+							<img src={proxied(work.cover_url, work.remote_url)} alt="" class="h-16 w-11 rounded object-cover">
 						{/if}
 						<div class="min-w-0 flex-1">
 							<p class="truncate title-md">{work.title}</p>

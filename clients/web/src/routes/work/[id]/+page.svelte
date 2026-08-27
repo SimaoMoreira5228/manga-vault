@@ -58,15 +58,8 @@ let migratePicked = $state('');
 let migrateBusy = $state(false);
 let migrateMessage = $state<string | null>(null);
 
-const currentChapterIndex = $derived.by(() => {
-	for (let index = chapters.length - 1; index >= 0; index -= 1) {
-		if (readIds.has(chapters[index].id)) return index;
-	}
-	return -1;
-});
-const nextChapter = $derived(
-	currentChapterIndex >= 0 ? (chapters[currentChapterIndex - 1] ?? null) : (chapters[0] ?? null),
-);
+const nextChapter = $derived(chapters.find((chapter) => !readIds.has(chapter.id)) ?? null);
+const uniqueGenres = $derived([...new Set(work?.genres ?? [])]);
 
 $effect(() => {
 	load(params.id);
@@ -270,11 +263,11 @@ function chapterDate(chapter: Chapter): string {
 	</a>
 
 	{#if work}
-		<div class="mt-8 grid gap-8 lg:grid-cols-[16rem_1fr] xl:grid-cols-[18rem_1fr_20rem]">
-			<div class="overflow-hidden rounded-xl border border-outline-variant/40">
+		<div class="mt-8 grid items-start gap-8 lg:grid-cols-[16rem_1fr] xl:grid-cols-[18rem_1fr_20rem]">
+			<div class="self-start overflow-hidden rounded-xl border border-outline-variant/40">
 				{#if work.cover_url}
 					<img
-						src={proxied(work.cover_url)}
+						src={proxied(work.cover_url, work.remote_url)}
 						alt={work.title}
 						class="aspect-2/3 w-full object-cover"
 					>
@@ -334,6 +327,15 @@ function chapterDate(chapter: Chapter): string {
 							<IconMenuBook class="size-5" />
 							Read Chapter {nextChapter.sort_index + 1}
 						</a>
+					{:else if chapters.length > 0}
+						<button
+							type="button"
+							disabled
+							class="label-caps flex items-center gap-2 rounded-card border border-outline-variant/40 px-6 py-3.5 text-on-surface-variant opacity-70"
+						>
+							<IconCheckCircle class="size-5" />
+							All chapters read
+						</button>
 					{/if}
 					<button
 						type="button"
@@ -350,9 +352,9 @@ function chapterDate(chapter: Chapter): string {
 					</button>
 				</div>
 
-				{#if work.genres.length > 0}
+				{#if uniqueGenres.length > 0}
 					<ul class="mt-6 flex flex-wrap gap-2">
-						{#each work.genres as genre, index (index)}
+						{#each uniqueGenres as genre}
 							<li
 								class="mono-label rounded-full border border-outline-variant/60 px-3 py-1.5 uppercase"
 							>
@@ -531,7 +533,7 @@ function chapterDate(chapter: Chapter): string {
 				{#each visibleChapters as chapter, index (chapter.id)}
 					<li
 						id={`chapter-${chapter.id}`}
-						class="group flex items-center gap-4 px-4 py-3 {index === currentChapterIndex + 1 && nextChapter?.id === chapter.id
+					class="group flex items-center gap-4 px-4 py-3 {index === firstUnreadIndex && nextChapter?.id === chapter.id
 							? 'bg-surface-container'
 							: ''}"
 					>

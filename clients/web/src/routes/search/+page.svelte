@@ -142,7 +142,7 @@ async function importAndOpen(remoteUrl: string) {
 				<div class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
 					{#each group.hits as item (item.remote_url)}
 						<SeriesCard
-							work={{ id: '', title: item.title, cover_url: item.cover_url, source_id: group.source.id }}
+							work={{ id: '', title: item.title, cover_url: item.cover_url, remote_url: item.remote_url, source_id: group.source.id }}
 							kind={group.source.kind}
 							label={busy === item.remote_url ? 'IMPORTING…' : 'IMPORT +'}
 							onclick={() => importAndOpen(item.remote_url)}
@@ -161,7 +161,7 @@ async function importAndOpen(remoteUrl: string) {
 		<div class="mt-8 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
 			{#each results as item (item.remote_url)}
 				<SeriesCard
-					work={{ id: '', title: item.title, cover_url: item.cover_url, source_id: selected ?? '' }}
+					work={{ id: '', title: item.title, cover_url: item.cover_url, remote_url: item.remote_url, source_id: selected ?? '' }}
 					kind={selectedKind}
 					label={busy === item.remote_url ? 'IMPORTING…' : 'IMPORT +'}
 					onclick={() => importAndOpen(item.remote_url)}

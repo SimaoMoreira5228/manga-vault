@@ -198,7 +198,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	tracing::info!(
 		"Loaded {} users, {} categories, {} mangas, {} novels, {} manga chapters, {} novel chapters",
-		users.len(), categories.len(), mangas.len(), novels.len(), manga_chapters.len(), novel_chapters.len()
+		users.len(),
+		categories.len(),
+		mangas.len(),
+		novels.len(),
+		manga_chapters.len(),
+		novel_chapters.len()
 	);
 
 	let mut maps = Mappings {

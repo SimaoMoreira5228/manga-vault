@@ -1,6 +1,5 @@
 use axum::extract::State;
-use axum::http::{StatusCode, header};
-use axum::http::Response;
+use axum::http::{Response, StatusCode, header};
 
 use crate::http::auth_extractor::Authenticated;
 use crate::http::error::ApiError;

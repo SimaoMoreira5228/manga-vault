@@ -20,6 +20,9 @@ let content = $state<ChapterContent | null>(null);
 let currentPage = $state(1);
 let resumePercent = $state<number | null>(null);
 let lastPositionSave = 0;
+let contentReady = $state(false);
+let readMarked = false;
+const loadedImageIndexes = new Set<number>();
 
 let translationMode = $state<string>('unavailable');
 let translatedHtml = $state<string | null>(null);
@@ -124,6 +127,13 @@ function trackCurrentPage() {
 	if (fraction > 0.8 && nextChapter) {
 		api.preloadChapter(nextChapter.id);
 	}
+	if (contentReady && fraction >= 0.9) markRead();
+}
+
+async function openChapter(event: MouseEvent, chapter: Chapter) {
+	event.preventDefault();
+	await goto(`/reader/${chapter.id}?work=${workId ?? ''}`);
+	requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }));
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -146,7 +156,17 @@ function resumeSavedPosition() {
 }
 
 async function markRead() {
+	if (readMarked) return;
+	readMarked = true;
 	await api.markRead(params.chapterId).catch(() => undefined);
+}
+
+function imageLoaded(index: number) {
+	loadedImageIndexes.add(index);
+	if (loadedImageIndexes.size === images.length) {
+		contentReady = true;
+		requestAnimationFrame(trackCurrentPage);
+	}
 }
 
 async function translate() {
@@ -168,6 +188,9 @@ $effect(() => {
 });
 
 async function load() {
+	contentReady = false;
+	readMarked = false;
+	loadedImageIndexes.clear();
 	content = await api.chapterContent(params.chapterId);
 	workId = new URLSearchParams(window.location.search).get('work');
 	translatedHtml = null;
@@ -181,9 +204,13 @@ async function load() {
 		chapters = data.chapters;
 	}
 	if (content && 'Html' in content) {
-		await markRead();
+		requestAnimationFrame(() => {
+			contentReady = true;
+			trackCurrentPage();
+		});
 	}
 	requestAnimationFrame(() => {
+		window.scrollTo({ top: 0, behavior: 'auto' });
 		const saved = Number(localStorage.getItem(positionKey) ?? '');
 		if (saved > 0.03 && saved < 0.97) {
 			resumePercent = saved;
@@ -356,11 +383,11 @@ async function load() {
 				{#each images as url, index (url)}
 					<img
 						data-page={index + 1}
-						src={proxied(url)}
+						src={proxied(url, chapters[chapterIndex]?.remote_url)}
 						alt="Page {index + 1}"
 						class="mx-auto block w-full"
 						style={index > 0 ? 'margin-top: {imageGap}px' : ''}
-						onload={index === images.length - 1 ? markRead : undefined}
+						onload={() => imageLoaded(index)}
 					>
 				{/each}
 			</div>
@@ -466,6 +493,7 @@ async function load() {
 				{#if nextChapter}
 					<a
 						href="/reader/{nextChapter.id}?work={work.id}"
+						onclick={(event) => openChapter(event, nextChapter)}
 						class="label-caps rounded-card border border-outline-variant/60 px-5 py-3 hover:border-outline"
 					>
 						Previous chapter
@@ -475,6 +503,7 @@ async function load() {
 				{#if previousChapter}
 					<a
 						href="/reader/{previousChapter.id}?work={work.id}"
+						onclick={(event) => openChapter(event, previousChapter)}
 						class="label-caps rounded-card border border-outline-variant/60 px-5 py-3 hover:border-outline"
 					>
 						Next chapter

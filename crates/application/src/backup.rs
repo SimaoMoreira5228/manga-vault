@@ -1,9 +1,8 @@
 use chrono::Utc;
 use domain::{LibraryEntry, ReadingProgress, UserId, WorkId};
-use persistence::{
-	GlossaryRepository, LibraryRepository, ProgressRepository, TrackerRepository, WorkRepository,
-};
+use persistence::{GlossaryRepository, LibraryRepository, ProgressRepository, TrackerRepository, WorkRepository};
 use serde::{Deserialize, Serialize};
+
 use crate::{Vault, VaultResult};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -99,7 +98,13 @@ impl Vault {
 			};
 			if let Ok(record) = self
 				.db
-				.create_glossary_entry(&entry.term, &entry.language, entry.romanization.as_deref(), first_meaning, user_id)
+				.create_glossary_entry(
+					&entry.term,
+					&entry.language,
+					entry.romanization.as_deref(),
+					first_meaning,
+					user_id,
+				)
 				.await
 			{
 				for meaning in entry.meanings.iter().skip(1) {

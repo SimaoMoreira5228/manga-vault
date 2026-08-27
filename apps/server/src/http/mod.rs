@@ -5,10 +5,10 @@ mod error;
 pub mod event_feed;
 mod glossary_handlers;
 mod library_handlers;
-mod plugin_handlers;
-pub mod proxy_handler;
 mod migration_handlers;
 mod opds_handlers;
+mod plugin_handlers;
+pub mod proxy_handler;
 mod reading_handlers;
 mod registration_handlers;
 mod sources_handlers;
@@ -33,10 +33,7 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/me/history", get(reading_handlers::history))
 		.route("/api/me/stats", get(reading_handlers::reading_stats))
 		.route("/api/me/library-overview", get(reading_handlers::library_overview))
-		.route(
-			"/api/me/library/refresh-all",
-			post(library_handlers::refresh_all),
-		)
+		.route("/api/me/library/refresh-all", post(library_handlers::refresh_all))
 		.route("/api/proxy", get(proxy_handler::proxy))
 		.route("/api/me/backup", get(backup_handlers::export_backup))
 		.route("/api/me/backup/import", post(backup_handlers::import_backup))
@@ -56,10 +53,7 @@ pub fn router(state: AppState) -> Router {
 			put(reading_handlers::mark_read).delete(reading_handlers::mark_unread),
 		)
 		.route("/api/works/{work_id}/progress", get(reading_handlers::progress_for_work))
-		.route(
-			"/api/works/{work_id}/chapters/read",
-			post(reading_handlers::mark_bulk),
-		)
+		.route("/api/works/{work_id}/chapters/read", post(reading_handlers::mark_bulk))
 		.route("/api/library", get(library_handlers::list).put(library_handlers::add))
 		.route("/api/library/{work_id}", delete(library_handlers::remove))
 		.route(
@@ -71,18 +65,9 @@ pub fn router(state: AppState) -> Router {
 			get(library_handlers::categories).post(library_handlers::create_category),
 		)
 		.route("/api/categories/{category_id}", delete(library_handlers::delete_category))
-		.route(
-			"/api/me/migration/plan",
-			post(migration_handlers::plan),
-		)
-		.route(
-			"/api/me/migration/apply",
-			post(migration_handlers::apply),
-		)
-		.route(
-			"/api/me/migration/candidates",
-			post(migration_handlers::candidates),
-		)
+		.route("/api/me/migration/plan", post(migration_handlers::plan))
+		.route("/api/me/migration/apply", post(migration_handlers::apply))
+		.route("/api/me/migration/candidates", post(migration_handlers::candidates))
 		.route(
 			"/api/plugin-repos",
 			get(plugin_handlers::list_repos).post(plugin_handlers::add_repo),
