@@ -40,29 +40,36 @@ async function runSearch() {
 	error = null;
 	searched = false;
 	const text = query.trim();
-	if (isAllSources) {
-		searching = true;
-		const settled = await Promise.allSettled(
-			sources.map(async (source) => ({
-				source,
-				hits: await api.searchSource(source.id, text, page),
-			})),
-		);
-		grouped = settled
-			.flatMap((entry) => (entry.status === 'fulfilled' ? [entry.value] : []))
-			.filter((group) => group.hits.length > 0)
-			.sort((a, b) => b.hits.length - a.hits.length);
-		results = [];
-		const failures = settled.filter((entry) => entry.status === 'rejected').length;
-		if (failures > 0 && grouped.length === 0) {
-			error = `all ${failures} sources failed to respond`;
+	searching = true;
+	try {
+		if (isAllSources) {
+			const settled = await Promise.allSettled(
+				sources.map(async (source) => ({
+					source,
+					hits: await api.searchSource(source.id, text, page),
+				})),
+			);
+			grouped = settled
+				.flatMap((entry) => (entry.status === 'fulfilled' ? [entry.value] : []))
+				.filter((group) => group.hits.length > 0)
+				.sort((a, b) => b.hits.length - a.hits.length);
+			results = [];
+			const failures = settled.filter((entry) => entry.status === 'rejected').length;
+			if (failures > 0 && grouped.length === 0) {
+				error = `all ${failures} sources failed to respond`;
+			}
+			searched = true;
+			return;
 		}
+		results = await api.searchSource(selected as string, query.trim(), page);
 		searched = true;
+	} catch (cause) {
+		results = [];
+		error = cause instanceof Error ? cause.message : 'search failed';
+		searched = true;
+	} finally {
 		searching = false;
-		return;
 	}
-	results = await api.searchSource(selected as string, query.trim(), page);
-	searched = true;
 }
 
 async function importAndOpen(remoteUrl: string) {
