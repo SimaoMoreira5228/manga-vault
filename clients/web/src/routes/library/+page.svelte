@@ -196,7 +196,12 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 		</div>
 	{/if}
 
-	{#if !loading}
+	{#if loading}
+		<div class="mt-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant" role="status">
+			<span class="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary"></span>
+			<span class="body-md">Loading your library…</span>
+		</div>
+	{:else}
 		<div class="mt-8 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
 			{#each filtered as [entry, work] (entry.id)}
 				{@const unread = unreadOf(work.id)}
