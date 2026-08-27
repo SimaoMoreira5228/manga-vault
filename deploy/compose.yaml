@@ -13,11 +13,24 @@ services:
       OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-}
       TRANSLATION_ENABLED: ${TRANSLATION_ENABLED:-true}
       IMAGE_CACHE_MB: ${IMAGE_CACHE_MB:-512}
-      FLARESOLVERR_URL: ${FLARESOLVERR_URL:-}
+      FLARESOLVERR_URL: ${FLARESOLVERR_URL:-http://127.0.0.1:8191/v1}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-}
     volumes:
       - plugins-data:/plugins
+
+  flaresolverr:
+    image: ghcr.io/thephaseless/byparr:latest
+    container_name: byparr-container
+    environment:
+      LOG_LEVEL: info
+    ports:
+      - "8191:8191"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
   postgres:
     image: postgres:16-alpine
