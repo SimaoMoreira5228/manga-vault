@@ -352,7 +352,7 @@ function chapterDate(chapter: Chapter): string {
 
 				{#if work.genres.length > 0}
 					<ul class="mt-6 flex flex-wrap gap-2">
-						{#each work.genres as genre (genre)}
+						{#each work.genres as genre, index (index)}
 							<li
 								class="mono-label rounded-full border border-outline-variant/60 px-3 py-1.5 uppercase"
 							>
