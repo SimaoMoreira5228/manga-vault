@@ -101,7 +101,9 @@ async fn load_plugin(args: &Args) -> anyhow::Result<Box<dyn Source>> {
 
 fn ensure_wasm_built(dir: &Path) -> anyhow::Result<()> {
 	let manifest = manifest_of(dir)?;
-	if dir.join(&manifest.entrypoint).is_file() {
+	let entrypoint = dir.join(&manifest.entrypoint);
+	let source = dir.join("src/lib.rs");
+	if entrypoint.is_file() && entrypoint.metadata()?.modified()? >= source.metadata()?.modified()? {
 		return Ok(());
 	}
 
@@ -119,8 +121,7 @@ fn ensure_wasm_built(dir: &Path) -> anyhow::Result<()> {
 		.join(WASM_TARGET)
 		.join("release")
 		.join(format!("{package}.wasm"));
-	std::fs::copy(&built, dir.join(&manifest.entrypoint))
-		.with_context(|| format!("copying {} into bundle", built.display()))?;
+	std::fs::copy(&built, &entrypoint).with_context(|| format!("copying {} into bundle", built.display()))?;
 	println!("built {}", manifest.entrypoint);
 	Ok(())
 }
@@ -177,7 +178,10 @@ async fn smoke(args: &Args) -> anyhow::Result<()> {
 	probe(args, "latest", async {
 		let hits = source.latest(1).await?;
 		if probe_url.is_none() {
-			probe_url = hits.first().map(|hit| hit.remote_url.clone());
+			if let Some(hit) = hits.first() {
+				probe_url = Some(hit.remote_url.clone());
+				cover_probe = hit.cover_url.clone();
+			}
 		}
 		Ok(format!("{} works", hits.len()))
 	})
@@ -192,7 +196,10 @@ async fn smoke(args: &Args) -> anyhow::Result<()> {
 	probe(args, "search", async {
 		let hits = source.search(&args.query, 1).await?;
 		if probe_url.is_none() {
-			probe_url = hits.first().map(|hit| hit.remote_url.clone());
+			if let Some(hit) = hits.first() {
+				probe_url = Some(hit.remote_url.clone());
+				cover_probe = hit.cover_url.clone();
+			}
 		}
 		Ok(format!("{} hits for `{}`", hits.len(), args.query))
 	})
@@ -204,7 +211,9 @@ async fn smoke(args: &Args) -> anyhow::Result<()> {
 
 	probe(args, "work", async {
 		let details = source.fetch_work(&probe_url).await?;
-		cover_probe = details.cover_url.clone();
+		if details.cover_url.is_some() {
+			cover_probe = details.cover_url.clone();
+		}
 		if let Some(last) = details.chapters.last() {
 			chapter_probe = Some(last.remote_url.clone());
 		}
