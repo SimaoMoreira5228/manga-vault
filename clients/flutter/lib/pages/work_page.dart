@@ -1025,7 +1025,10 @@ class _ReaderPageState extends State<ReaderPage> {
                                 File.fromUri(Uri.parse(page)),
                                 fit: BoxFit.fitWidth,
                               )
-                            : Image.network(page, fit: BoxFit.fitWidth);
+                            : Image.network(
+                                widget.vault.imageUrl(page),
+                                fit: BoxFit.fitWidth,
+                              );
                         return index > 0
                             ? Padding(
                                 padding: EdgeInsets.only(top: _imageGap),
@@ -1078,7 +1081,12 @@ class _ReaderPageState extends State<ReaderPage> {
                   fit: BoxFit.contain,
                 ),
               )
-            : Center(child: Image.network(page, fit: BoxFit.contain));
+            : Center(
+                child: Image.network(
+                  widget.vault.imageUrl(page),
+                  fit: BoxFit.contain,
+                ),
+              );
       },
     );
   }

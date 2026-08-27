@@ -8,6 +8,9 @@ class LocalService implements VaultService {
   final LocalVault _vault;
 
   @override
+  String imageUrl(String url) => url;
+
+  @override
   Future<List<SourceSummary>> listSources() => _vault.listSources();
 
   @override

@@ -16,6 +16,7 @@ struct Args {
 	flaresolverr: Option<String>,
 	only: Option<String>,
 	query: String,
+	work_url: Option<String>,
 }
 
 fn parse_args() -> anyhow::Result<Args> {
@@ -28,12 +29,14 @@ fn parse_args() -> anyhow::Result<Args> {
 		flaresolverr: None,
 		only: None,
 		query: "solo leveling".to_string(),
+		work_url: None,
 	};
 	while let Some(arg) = args.next() {
 		match arg.as_str() {
 			"--flaresolverr" => parsed.flaresolverr = Some(args.next().expect("--flaresolverr needs a value")),
 			"--only" => parsed.only = Some(args.next().expect("--only needs a value")),
 			"--query" => parsed.query = args.next().expect("--query needs a value"),
+			"--url" => parsed.work_url = Some(args.next().expect("--url needs a value")),
 			other => bail!("unknown argument: {other}"),
 		}
 	}
@@ -43,7 +46,7 @@ fn parse_args() -> anyhow::Result<Args> {
 
 fn usage() -> ! {
 	eprintln!(
-		"usage: plugin-tester <smoke|tests> <plugin-dir> [--only <step>] [--query <text>] [--flaresolverr <url>]\n\
+		"usage: plugin-tester <smoke|tests> <plugin-dir> [--only <step>] [--query <text>] [--url <work-url>] [--flaresolverr <url>]\n\
 		 smoke   live probe: info, latest, trending, search, work details, chapter content\n\
 		 tests   lua plugins: run the declared Tests table"
 	);
@@ -159,7 +162,7 @@ async fn smoke(args: &Args) -> anyhow::Result<()> {
 		}
 	);
 
-	let mut probe_url: Option<String> = None;
+	let mut probe_url = args.work_url.clone();
 	let mut chapter_probe: Option<String> = None;
 
 	probe(
@@ -167,7 +170,9 @@ async fn smoke(args: &Args) -> anyhow::Result<()> {
 		"latest",
 		async {
 			let hits = source.latest(1).await?;
-			probe_url = hits.first().map(|hit| hit.remote_url.clone());
+			if probe_url.is_none() {
+				probe_url = hits.first().map(|hit| hit.remote_url.clone());
+			}
 			Ok(format!("{} works", hits.len()))
 		},
 	)
@@ -209,9 +214,11 @@ async fn smoke(args: &Args) -> anyhow::Result<()> {
 				chapter_probe = Some(last.remote_url.clone());
 			}
 			Ok(format!(
-				"`{}` with {} chapters{}",
+				"`{}` with {} chapters (first: {}; last: {}){}",
 				details.title,
 				details.chapters.len(),
+				details.chapters.first().map(|chapter| chapter.title.as_str()).unwrap_or("-"),
+				details.chapters.last().map(|chapter| chapter.title.as_str()).unwrap_or("-"),
 				details
 					.status
 					.as_deref()

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
@@ -73,6 +74,21 @@ fn normalize_target(mut target: Url) -> Url {
 	let path = target.path().replace("//", "/");
 	target.set_path(&path);
 	target
+}
+
+async fn is_public_host(target: &Url) -> bool {
+	let Some(host) = target.host_str() else { return false };
+	let port = target.port_or_known_default().unwrap_or(443);
+	let addresses = if let Ok(ip) = host.parse::<IpAddr>() {
+		vec![ip]
+	} else {
+		let Ok(addresses) = tokio::net::lookup_host((host, port)).await else { return false };
+		addresses.map(|address| address.ip()).collect()
+	};
+	!addresses.is_empty() && addresses.iter().all(|ip| match ip {
+		IpAddr::V4(ip) => !ip.is_private() && !ip.is_loopback() && !ip.is_link_local() && !ip.is_unspecified() && !ip.is_broadcast(),
+		IpAddr::V6(ip) => !ip.is_loopback() && !ip.is_unique_local() && !ip.is_unicast_link_local() && !ip.is_unspecified() && !ip.is_multicast(),
+	})
 }
 
 async fn fetch_upstream(
@@ -155,15 +171,22 @@ pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery
 			message: "url has no host".into(),
 		});
 	};
+	if !is_public_host(&target).await {
+		return Err(ApiError {
+			status: axum::http::StatusCode::FORBIDDEN,
+			message: "private or unresolved hosts are not proxied".into(),
+		});
+	}
 
 	let referer = allowed_hosts(&state)
 		.into_iter()
 		.find(|(allowed_host, _)| host_matches(&host, allowed_host))
-		.and_then(|(_, referer)| referer);
+		.and_then(|(_, referer)| referer)
+		.or_else(|| state.vault.sources.list().into_iter().find_map(|info| info.referer_url.or(info.base_url)));
 	let Some(referer_url) = referer else {
 		return Err(ApiError {
-			status: axum::http::StatusCode::FORBIDDEN,
-			message: "host is not associated with any loaded source".into(),
+			status: axum::http::StatusCode::BAD_REQUEST,
+			message: "no source referer is available".into(),
 		});
 	};
 
