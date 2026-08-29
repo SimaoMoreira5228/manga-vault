@@ -17,11 +17,19 @@ import IconVerified from '~icons/material-symbols/verified';
 let continueReading = $state<ContinueReadingItem[]>([]);
 let sources = $state<SourceInfo[]>([]);
 let latest = $state<
-	{ sourceId: string; sourceName: string; kind: WorkKind; items: RemoteWorkSummary[] }[]
+	{
+		sourceId: string;
+		sourceName: string;
+		kind: WorkKind;
+		items: RemoteWorkSummary[];
+		status: 'loading' | 'ready' | 'error';
+	}[]
 >([]);
 let trendingSourceId = $state<string | null>(null);
 let trending = $state<{ rank: number; item: RemoteWorkSummary }[]>([]);
 let loading = $state(true);
+let trendingStatus = $state<'loading' | 'ready' | 'error'>('loading');
+let sourcesError = $state(false);
 
 const trendingSource = $derived(sources.find((source) => source.id === trendingSourceId) ?? null);
 
@@ -30,40 +38,66 @@ $effect(() => {
 });
 
 async function load() {
-	const [shelf, allSources] = await Promise.all([api.continueReading(), api.sources()]);
-	continueReading = shelf;
-	sources = allSources;
-	trendingSourceId ??= allSources[0]?.id ?? null;
-
-	const [latestResults, trendingResults] = await Promise.all([
-		Promise.allSettled(allSources.map((source) => api.latestFromSource(source.id))),
-		trendingSourceId
-			? api.trendingFromSource(trendingSourceId).catch(() => [])
-			: Promise.resolve([]),
+	loading = true;
+	sourcesError = false;
+	const [shelfResult, sourcesResult] = await Promise.allSettled([
+		api.continueReading(),
+		api.sources(),
 	]);
-	latest = latestResults.map((result, index) => ({
-		sourceId: allSources[index].id,
-		sourceName: allSources[index].name,
-		kind: allSources[index].kind,
-		items: result.status === 'fulfilled' ? result.value : [],
-	}));
-	trending = (trendingResults as RemoteWorkSummary[]).slice(0, 5).map((item, index) => ({
-		rank: index + 1,
-		item,
+	continueReading = shelfResult.status === 'fulfilled' ? shelfResult.value : [];
+	if (sourcesResult.status !== 'fulfilled') {
+		sourcesError = true;
+		loading = false;
+		return;
+	}
+
+	sources = sourcesResult.value;
+	trendingSourceId ??= sourcesResult.value[0]?.id ?? null;
+	latest = sourcesResult.value.map((source) => ({
+		sourceId: source.id,
+		sourceName: source.name,
+		kind: source.kind,
+		items: [],
+		status: 'loading',
 	}));
 	loading = false;
+
+	for (const [index, source] of sourcesResult.value.entries()) {
+		api.latestFromSource(source.id).then(
+			(items) => (latest[index] = { ...latest[index], items, status: 'ready' }),
+			() => (latest[index] = { ...latest[index], status: 'error' }),
+		);
+	}
+	if (trendingSourceId) loadTrending(trendingSourceId);
+}
+
+async function loadTrending(sourceId: string) {
+	trendingStatus = 'loading';
+	trending = [];
+	try {
+		const results = await api.trendingFromSource(sourceId);
+		if (trendingSourceId !== sourceId) return;
+		trending = results.slice(0, 5).map((item, index) => ({ rank: index + 1, item }));
+		trendingStatus = 'ready';
+	} catch {
+		if (trendingSourceId === sourceId) trendingStatus = 'error';
+	}
 }
 
 async function switchTrending(sourceId: string) {
 	if (!sourceId || trendingSourceId === sourceId) return;
 	trendingSourceId = sourceId;
-	trending = [];
-	try {
-		const results = await api.trendingFromSource(sourceId);
-		trending = results.slice(0, 5).map((item, index) => ({ rank: index + 1, item }));
-	} catch {
-		trending = [];
-	}
+	await loadTrending(sourceId);
+}
+
+function retryLatest(sourceId: string) {
+	const index = latest.findIndex((group) => group.sourceId === sourceId);
+	if (index < 0) return;
+	latest[index] = { ...latest[index], status: 'loading' };
+	api.latestFromSource(sourceId).then(
+		(items) => (latest[index] = { ...latest[index], items, status: 'ready' }),
+		() => (latest[index] = { ...latest[index], status: 'error' }),
+	);
 }
 
 async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
@@ -84,7 +118,15 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 		</a>
 	</header>
 
-	{#if !loading}
+	{#if loading}
+		<p class="body-md mt-10 text-on-surface-variant" role="status">Loading your archive…</p>
+	{:else}
+		{#if sourcesError}
+			<p class="body-md mt-10 text-error" role="alert">
+				Could not load sources.
+				<button type="button" class="ml-2 text-primary hover:underline" onclick={load}>retry</button>
+			</p>
+		{/if}
 		{#if continueReading.length > 0}
 			<section class="mt-10" aria-labelledby="continue-heading">
 				<h2 id="continue-heading" class="title-lg mb-4 flex items-center gap-2">
@@ -135,7 +177,18 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 					Latest from Sources
 				</h2>
 				{#each latest as group (group.sourceId)}
-					{#if group.items.length > 0}
+					{#if group.status === 'loading'}
+						<p class="body-md mt-6 text-on-surface-variant" role="status">
+							{group.sourceName} <span class="animate-pulse">· loading</span>
+						</p>
+					{:else if group.status === 'error'}
+						<p class="body-md mt-6 text-error" role="alert">
+							{group.sourceName} · failed to load
+							<button type="button" class="ml-2 text-primary hover:underline" onclick={() => retryLatest(group.sourceId)}>
+								retry
+							</button>
+						</p>
+					{:else if group.items.length > 0}
 						<a
 							href="/sources"
 							class="label-caps mt-6 mb-3 block first:mt-0 text-outline hover:text-primary"
@@ -187,25 +240,34 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 					{/each}
 				</div>
 				<ol class="mt-4 space-y-4">
-					{#each trending as entry (entry.item.remote_url)}
-						<li class="flex items-center gap-3">
-							<span class="w-6 text-center font-display text-xl text-outline">{entry.rank}</span>
-							<button
-								type="button"
-								class="min-w-0 text-left"
-								onclick={() => {
-									if (trendingSource) importFrom(trendingSource.id, entry.item.remote_url);
-								}}
-							>
-								<p class="truncate title-md hover:text-primary">{entry.item.title}</p>
-								{#if trendingSource}
-									<p class="mono-label text-on-surface-variant">{trendingSource.kind}</p>
-								{/if}
-							</button>
+					{#if trending.length > 0}
+						{#each trending as entry (entry.item.remote_url)}
+							<li class="flex items-center gap-3">
+								<span class="w-6 text-center font-display text-xl text-outline">{entry.rank}</span>
+								<button
+									type="button"
+									class="min-w-0 text-left"
+									onclick={() => {
+										if (trendingSource) importFrom(trendingSource.id, entry.item.remote_url);
+									}}
+								>
+									<p class="truncate title-md hover:text-primary">{entry.item.title}</p>
+									{#if trendingSource}
+										<p class="mono-label text-on-surface-variant">{trendingSource.kind}</p>
+									{/if}
+								</button>
+							</li>
+						{/each}
+					{:else if trendingStatus === 'loading'}
+						<li class="mono-label text-on-surface-variant animate-pulse" role="status">Loading…</li>
+					{:else if trendingStatus === 'error'}
+						<li class="mono-label text-error">
+							Could not load trending
+							<button type="button" class="ml-2 text-primary hover:underline" onclick={() => trendingSourceId && loadTrending(trendingSourceId)}>retry</button>
 						</li>
 					{:else}
 						<li class="mono-label text-on-surface-variant">Nothing trending yet</li>
-					{/each}
+					{/if}
 				</ol>
 			</aside>
 		</section>
