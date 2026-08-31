@@ -20,10 +20,11 @@ services:
       - plugins-data:/plugins
 
   flaresolverr:
-    image: ghcr.io/thephaseless/byparr:latest
-    container_name: byparr-container
+    image: flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
     environment:
-      LOG_LEVEL: info
+      - LOG_LEVEL=info
+      - CAPTCHA_SOLVER=none
     ports:
       - "8191:8191"
     restart: unless-stopped
@@ -35,7 +36,7 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
-    profiles: [postgres]
+    profiles: [ postgres ]
     ports:
       - "5433:5432"
     environment:
@@ -45,7 +46,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U manga_vault"]
+      test: [ "CMD-SHELL", "pg_isready -U manga_vault" ]
       interval: 5s
       timeout: 3s
       retries: 12
