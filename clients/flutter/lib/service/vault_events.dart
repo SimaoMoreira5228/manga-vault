@@ -14,18 +14,21 @@ class VaultEvents {
   String? _baseUrl;
   String? _token;
   var _generation = 0;
+  var _active = false;
 
-  bool get isActive => _subscription != null || _retry != null;
+  bool get isActive => _active;
 
   void start({required String baseUrl, required String token}) {
     if (isActive && _baseUrl == baseUrl && _token == token) return;
     stop();
     _baseUrl = baseUrl;
     _token = token;
+    _active = true;
     _loop();
   }
 
   void stop() {
+    _active = false;
     _generation += 1;
     _retry?.cancel();
     _retry = null;
@@ -45,8 +48,10 @@ class VaultEvents {
     final generation = ++_generation;
     final client = HttpClient();
     _client = client;
+    var backoff = const Duration(seconds: 1);
+    const maxBackoff = Duration(seconds: 30);
     try {
-      while (isActive && generation == _generation) {
+      while (_active && generation == _generation) {
         try {
           final request = await client
               .openUrl('GET', Uri.parse('$_baseUrl/api/events'))
@@ -62,6 +67,7 @@ class VaultEvents {
               'event stream refused (${response.statusCode})',
             );
           }
+          backoff = const Duration(seconds: 1);
           _subscription = response
               .transform(utf8.decoder)
               .transform(const LineSplitter())
@@ -73,12 +79,17 @@ class VaultEvents {
         } catch (_) {
           // dropped or refused: fall through to the retry delay
         }
-        if (!isActive || generation != _generation) break;
-        await Future<void>.delayed(const Duration(seconds: 5));
+        _subscription = null;
+        if (!_active || generation != _generation) break;
+        _retry = Timer(backoff, () {});
+        await Future<void>.delayed(backoff);
+        _retry = null;
+        backoff = backoff * 2 > maxBackoff ? maxBackoff : backoff * 2;
       }
     } finally {
-      client.close();
+      _subscription = null;
       if (_client == client) _client = null;
+      client.close();
     }
   }
 

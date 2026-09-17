@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -16,6 +15,7 @@ import 'pages/sources.dart';
 import 'pages/work_page.dart';
 import 'service/local_service.dart';
 import 'service/remote_service.dart';
+import 'service/session_store.dart';
 import 'service/sync_engine.dart';
 import 'service/sync_scheduler.dart';
 import 'service/vault_events.dart';
@@ -53,11 +53,6 @@ class _MangaVaultAppState extends State<MangaVaultApp> {
   }
 }
 
-Future<File> _stateFile() async {
-  final support = await getApplicationSupportDirectory();
-  return File('${support.path}/remote.json');
-}
-
 typedef RestartSession = void Function();
 
 class BootstrapPage extends StatefulWidget {
@@ -83,24 +78,22 @@ class _BootstrapPageState extends State<BootstrapPage> {
 
   Future<void> _restore() async {
     try {
-      final file = await _stateFile();
-      if (!file.existsSync()) {
-        setState(() => busy = false);
-        return;
-      }
-      final saved = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final saved = await SessionStore.read();
       switch (saved['kind']) {
         case 'local':
           await _enterLocal();
         case 'link':
           await _startLinked(saved);
+        case 'remote':
+          final baseUrl = saved['base_url'] as String?;
+          final token = saved['token'] as String?;
+          if (baseUrl == null || token == null) {
+            setState(() => busy = false);
+            return;
+          }
+          await _enterRemote(RemoteService(baseUrl: baseUrl, token: token));
         default:
-          await _enterRemote(
-            RemoteService(
-              baseUrl: saved['base_url'] as String,
-              token: saved['token'] as String,
-            ),
-          );
+          setState(() => busy = false);
       }
     } catch (_) {
       setState(() => busy = false);
@@ -166,19 +159,11 @@ class _BootstrapPageState extends State<BootstrapPage> {
         builder: (_) => HomePage(
           service: service,
           isLocal: isLocal,
+          linkedRemote: remote,
           restartSession: widget.onSessionEnded,
         ),
       ),
     );
-  }
-
-  Future<void> _saveKind(String kind) async {
-    final file = await _stateFile();
-    final existing = file.existsSync()
-        ? jsonDecode(file.readAsStringSync()) as Map<String, dynamic>
-        : <String, dynamic>{};
-    existing['kind'] = kind;
-    await file.writeAsString(jsonEncode(existing));
   }
 
   Future<void> _startFreshLocal() async {
@@ -187,7 +172,7 @@ class _BootstrapPageState extends State<BootstrapPage> {
       error = null;
     });
     try {
-      await _saveKind('local');
+      await SessionStore.saveLocal();
       await _enterLocal();
     } catch (e) {
       setState(() {
@@ -238,7 +223,10 @@ class _BootstrapPageState extends State<BootstrapPage> {
                   username: username.text,
                   password: password.text,
                 );
-                await _saveKind('remote');
+                await SessionStore.saveRemote(
+                  baseUrl: service.baseUrl,
+                  token: service.token,
+                );
                 if (!context.mounted) return;
                 Navigator.of(context).pop();
                 await _enterRemote(service);
@@ -265,7 +253,7 @@ class _BootstrapPageState extends State<BootstrapPage> {
         profiles: pendingProfiles,
         onSelected: (profile) async {
           final vault = pendingVault!;
-          await _saveKind('local');
+          await SessionStore.saveLocal();
           SyncScheduler.instance.stop();
           await _enterLocalAs(vault, profile);
         },
@@ -404,6 +392,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    VaultEvents.instance.unsubscribe(_onEvent);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -425,11 +414,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       const NavigationSection(icon: Icons.extension_outlined, label: 'Plugins'),
       if (widget.isLocal)
         const NavigationSection(icon: Icons.folder_outlined, label: 'Local'),
-      if (widget.isLocal)
-        const NavigationSection(
-          icon: Icons.settings_outlined,
-          label: 'Settings',
-        ),
+      const NavigationSection(
+        icon: Icons.settings_outlined,
+        label: 'Settings',
+      ),
     ];
     return Scaffold(
       body: switch (tab) {
@@ -439,7 +427,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         3 => SourcesPage(vault: widget.service),
         4 when widget.isLocal => LocalArchivePage(vault: widget.service),
         _ => SettingsPage(
-          service: widget.service as LocalService,
+          service: widget.service,
           isLocal: widget.isLocal,
           restartSession: widget.restartSession,
         ),

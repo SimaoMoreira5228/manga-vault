@@ -20,11 +20,11 @@ class _LibraryPageState extends State<LibraryPage> {
   List<LibraryItem>? items;
   Map<String, ChapterProgressStats> overview = {};
   List<CategoryInfo> categories = [];
-  String sort = 'updated';
+  String sort = 'added';
   String textQuery = '';
   String kindFilter = 'all';
-  String? categoryFilter;
   bool refreshBusy = false;
+  String? error;
 
   bool get isRemote => widget.vault is RemoteService;
 
@@ -35,19 +35,18 @@ class _LibraryPageState extends State<LibraryPage> {
     } else if (kindFilter == 'novel') {
       result = result.where((item) => item.work.kind == 'Novel').toList();
     }
-    if (categoryFilter != null) {
-      result = result.where((item) => item.entryId == categoryFilter).toList();
-    }
     final text = textQuery.toLowerCase().trim();
     if (text.isNotEmpty) {
       result = result
           .where((item) => item.work.title.toLowerCase().contains(text))
           .toList();
     }
-    result.sort((a, b) {
-      if (sort == 'title') return a.work.title.compareTo(b.work.title);
-      return b.entryId.compareTo(a.entryId);
-    });
+    if (sort == 'title') {
+      result.sort(
+        (a, b) =>
+            a.work.title.toLowerCase().compareTo(b.work.title.toLowerCase()),
+      );
+    }
     return result;
   }
 
@@ -77,21 +76,27 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   Future<void> _load() async {
-    final loaded = await widget.vault.listLibrary();
-    final counts = await widget.vault.libraryOverview().catchError(
-      (_) => <String, ChapterProgressStats>{},
-    );
-    final cats = isRemote
-        ? await widget.vault.listCategories().catchError(
-            (_) => <CategoryInfo>[],
-          )
-        : <CategoryInfo>[];
-    if (!mounted) return;
-    setState(() {
-      items = loaded;
-      overview = counts;
-      categories = cats;
-    });
+    try {
+      final loaded = await widget.vault.listLibrary();
+      final counts = await widget.vault.libraryOverview().catchError(
+        (_) => <String, ChapterProgressStats>{},
+      );
+      final cats = isRemote
+          ? await widget.vault.listCategories().catchError(
+              (_) => <CategoryInfo>[],
+            )
+          : <CategoryInfo>[];
+      if (!mounted) return;
+      setState(() {
+        items = loaded;
+        overview = counts;
+        categories = cats;
+        error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => error = e.toString());
+    }
   }
 
   Future<void> _open(LibraryItem item) async {
@@ -178,7 +183,33 @@ class _LibraryPageState extends State<LibraryPage> {
             IconButton(icon: const Icon(Icons.sync), onPressed: _refreshAll),
         ],
       ),
-      body: shown == null
+      body: error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Failed to load library',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      error!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _load,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : shown == null
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: () async {
@@ -207,23 +238,6 @@ class _LibraryPageState extends State<LibraryPage> {
                               selected: kindFilter == kind,
                               onSelected: (_) =>
                                   setState(() => kindFilter = kind),
-                            ),
-                          const SizedBox(width: 8),
-                          ChoiceChip(
-                            label: const Text('All categories'),
-                            selected: categoryFilter == null,
-                            onSelected: (_) =>
-                                setState(() => categoryFilter = null),
-                          ),
-                          for (final cat in categories)
-                            ChoiceChip(
-                              label: Text(cat.name),
-                              selected: categoryFilter == cat.id,
-                              onSelected: (_) => setState(
-                                () => categoryFilter = categoryFilter == cat.id
-                                    ? null
-                                    : cat.id,
-                              ),
                             ),
                         ],
                       ),

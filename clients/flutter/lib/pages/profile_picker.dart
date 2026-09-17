@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../src/rust/api/local.dart' as local;
-import '../service/local_service.dart';
 
 class ProfilePickerPage extends StatefulWidget {
   const ProfilePickerPage({
@@ -182,5 +181,3 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
     );
   }
 }
-
-typedef LocalServiceReady = void Function(LocalService service);

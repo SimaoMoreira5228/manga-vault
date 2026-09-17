@@ -13,6 +13,7 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   List<HistoryEntry>? entries;
+  String? error;
 
   @override
   void initState() {
@@ -21,9 +22,18 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _load() async {
-    final result = await widget.vault.history(limit: 100);
-    if (!mounted) return;
-    setState(() => entries = result);
+    setState(() {
+      entries = null;
+      error = null;
+    });
+    try {
+      final result = await widget.vault.history(limit: 100);
+      if (!mounted) return;
+      setState(() => entries = result);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => error = e.toString());
+    }
   }
 
   String _dayLabel(DateTime date) {
@@ -41,7 +51,9 @@ class _HistoryPageState extends State<HistoryPage> {
     final shown = entries;
     return Scaffold(
       appBar: AppBar(title: const Text('History')),
-      body: shown == null
+      body: error != null
+          ? _ErrorBody(message: error!, onRetry: _load)
+          : shown == null
           ? const Center(child: CircularProgressIndicator())
           : shown.isEmpty
           ? const Center(child: Text('Nothing read yet'))
@@ -49,10 +61,12 @@ class _HistoryPageState extends State<HistoryPage> {
               itemCount: shown.length,
               itemBuilder: (context, index) {
                 final entry = shown[index];
+                final readAt = entry.readAt;
+                final previous = index == 0 ? null : shown[index - 1].readAt;
                 final showDay =
-                    index == 0 ||
-                    _dayLabel(shown[index - 1].readAt) !=
-                        _dayLabel(entry.readAt);
+                    readAt != null &&
+                    (previous == null ||
+                        _dayLabel(previous) != _dayLabel(readAt));
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -60,7 +74,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                         child: Text(
-                          _dayLabel(entry.readAt),
+                          _dayLabel(readAt),
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                       ),
@@ -70,19 +84,54 @@ class _HistoryPageState extends State<HistoryPage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        entry.chapterTitle,
+                        entry.chapterTitle ?? entry.chapterId,
                         overflow: TextOverflow.ellipsis,
                       ),
                       leading: const Icon(Icons.history),
-                      trailing: Text(
-                        '${entry.readAt.hour.toString().padLeft(2, '0')}:${entry.readAt.minute.toString().padLeft(2, '0')}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
+                      trailing: readAt == null
+                          ? null
+                          : Text(
+                              '${readAt.hour.toString().padLeft(2, '0')}:${readAt.minute.toString().padLeft(2, '0')}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                     ),
                   ],
                 );
               },
             ),
+    );
+  }
+}
+
+class _ErrorBody extends StatelessWidget {
+  const _ErrorBody({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Failed to load history',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 16),
+            FilledButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
+        ),
+      ),
     );
   }
 }

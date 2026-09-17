@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../service/remote_service.dart';
 import '../service/vault_service.dart';
 
 class SourcesPage extends StatefulWidget {
@@ -14,6 +15,8 @@ class SourcesPage extends StatefulWidget {
 class _SourcesPageState extends State<SourcesPage> {
   List<PluginRepo>? repos;
   List<CatalogItem>? catalog;
+  String? error;
+  bool operatorManaged = false;
 
   @override
   void initState() {
@@ -22,15 +25,38 @@ class _SourcesPageState extends State<SourcesPage> {
   }
 
   Future<void> _load() async {
-    final loadedRepos = await widget.vault.pluginRepos();
-    final loadedCatalog = await widget.vault.pluginCatalog().catchError(
-      (_) => <CatalogItem>[],
-    );
-    if (!mounted) return;
     setState(() {
-      repos = loadedRepos;
-      catalog = loadedCatalog;
+      repos = null;
+      catalog = null;
+      error = null;
     });
+    try {
+      final loadedRepos = await widget.vault.pluginRepos();
+      final loadedCatalog = await widget.vault.pluginCatalog().catchError(
+        (_) => <CatalogItem>[],
+      );
+      if (!mounted) return;
+      setState(() {
+        repos = loadedRepos;
+        catalog = loadedCatalog;
+        operatorManaged = false;
+      });
+    } on RemoteApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        repos = const [];
+        catalog = const [];
+        operatorManaged = e.statusCode == 403;
+        error = e.statusCode == 403 ? null : e.toString();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        repos = const [];
+        catalog = const [];
+        error = e.toString();
+      });
+    }
   }
 
   Future<void> _addRepo() async {
@@ -68,40 +94,78 @@ class _SourcesPageState extends State<SourcesPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Plugins'),
-        actions: [IconButton(icon: const Icon(Icons.add), onPressed: _addRepo)],
-      ),
-      body: CustomScrollView(
-        slivers: [
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'REPOSITORIES',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ),
-          ),
-          _buildRepos(),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'CATALOG',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ),
-          ),
-          _buildCatalog(),
+        actions: [
+          if (!operatorManaged)
+            IconButton(icon: const Icon(Icons.add), onPressed: _addRepo),
         ],
       ),
+      body: error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Failed to load plugins',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      error!,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _load,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : CustomScrollView(
+              slivers: [
+                if (operatorManaged)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text(
+                        'Plugins are managed by this server\'s operator.',
+                      ),
+                    ),
+                  ),
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Text(
+                      'REPOSITORIES',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ),
+                ),
+                _buildRepos(),
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Text(
+                      'CATALOG',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                  ),
+                ),
+                _buildCatalog(),
+              ],
+            ),
     );
   }
 
@@ -176,7 +240,7 @@ class _SourcesPageState extends State<SourcesPage> {
     if (item.installedVersion != null && !item.updateAvailable) {
       await widget.vault.uninstallPlugin(pluginId: item.id);
     } else {
-      await widget.vault.installPlugin(pluginId: item.id);
+      await widget.vault.installPlugin(pluginId: item.id, repoId: item.repoId);
     }
     await _load();
   }

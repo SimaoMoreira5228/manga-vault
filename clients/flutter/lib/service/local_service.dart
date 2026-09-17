@@ -68,17 +68,29 @@ class LocalService implements VaultService {
   @override
   Future<List<HistoryEntry>> history({int limit = 60}) async {
     final items = await _vault.continueReading();
-    return [
-      for (final item in items)
-        if (item.chapterId != null)
-          HistoryEntry(
-            readAt: DateTime.now(),
-            chapterId: item.chapterId!,
-            chapterTitle: item.title,
-            workId: item.workId,
-            workTitle: item.title,
-          ),
-    ];
+    final entries = <HistoryEntry>[];
+    for (final item in items.take(limit)) {
+      final chapterId = item.chapterId;
+      if (chapterId == null) continue;
+      String? chapterTitle;
+      try {
+        final details = await _vault.getWork(workId: item.workId);
+        chapterTitle = details.chapters
+            .where((chapter) => chapter.id == chapterId)
+            .map((chapter) => chapter.title)
+            .firstOrNull;
+      } catch (_) {}
+      entries.add(
+        HistoryEntry(
+          readAt: null,
+          chapterId: chapterId,
+          chapterTitle: chapterTitle,
+          workId: item.workId,
+          workTitle: item.title,
+        ),
+      );
+    }
+    return entries;
   }
 
   @override
@@ -247,7 +259,7 @@ class LocalService implements VaultService {
   Future<List<CatalogItem>> pluginCatalog() => _vault.pluginCatalog();
 
   @override
-  Future<void> installPlugin({required String pluginId}) =>
+  Future<void> installPlugin({required String pluginId, String? repoId}) =>
       _vault.installPlugin(pluginId: pluginId);
 
   @override

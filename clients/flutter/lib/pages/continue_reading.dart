@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../service/vault_service.dart';
-import 'work_page.dart';
+import 'reader_page.dart';
 
 class ContinueReadingRow extends StatefulWidget {
   const ContinueReadingRow({
@@ -97,7 +97,7 @@ class _ContinueReadingRowState extends State<ContinueReadingRow> {
                             width: 100,
                             child: item.coverUrl != null
                                 ? Image.network(
-                                    item.coverUrl!,
+                                    widget.vault.imageUrl(item.coverUrl!),
                                     fit: BoxFit.cover,
                                   )
                                 : const ColoredBox(

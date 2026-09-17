@@ -46,12 +46,6 @@ class _LocalArchivePageState extends State<LocalArchivePage> {
     await _load();
   }
 
-  Future<void> _removePath(String path) async {
-    final prefs = await AppPrefs.instance();
-    await prefs.removeLocalLibraryPath(path);
-    await _load();
-  }
-
   void _openWork(LocalWork work) {
     final chapters = chaptersForWork(work);
     if (chapters.isEmpty) {

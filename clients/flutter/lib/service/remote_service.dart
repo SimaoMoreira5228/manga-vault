@@ -4,6 +4,16 @@ import 'dart:io';
 
 import 'vault_service.dart';
 
+class RemoteApiException implements Exception {
+  RemoteApiException(this.statusCode, this.message);
+
+  final int statusCode;
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class RemoteService implements VaultService {
   RemoteService({required this.baseUrl, required this.token});
 
@@ -32,6 +42,8 @@ class RemoteService implements VaultService {
     );
     return RemoteService(baseUrl: baseUrl, token: response['token'] as String);
   }
+
+  Future<void> logout() => _send('POST', '/api/auth/logout');
 
   Future<dynamic> _send(String method, String path, {String? body}) =>
       _requestJson(
@@ -63,7 +75,8 @@ class RemoteService implements VaultService {
       );
       final text = await utf8.decodeStream(response);
       if (response.statusCode >= 400)
-        throw HttpException(
+        throw RemoteApiException(
+          response.statusCode,
           '$method $url failed (${response.statusCode}): $text',
         );
       return text.isEmpty ? null : jsonDecode(text);
@@ -119,7 +132,6 @@ class RemoteService implements VaultService {
   Future<WorkDetails> getWork({required String workId}) async =>
       WorkDetailsMapper.fromPayload(await _send('GET', '/api/works/$workId'));
 
-  @override
   @override
   Future<ChapterBody> chapterContent({required String chapterId}) async {
     final cached = cachedChapterContent(chapterId);
@@ -248,7 +260,7 @@ class RemoteService implements VaultService {
 
   @override
   Future<String> exportBackup() async =>
-      _send('GET', '/api/me/backup') as String;
+      jsonEncode(await _send('GET', '/api/me/backup'));
 
   @override
   Future<void> importBackup(String json) async {
@@ -552,8 +564,12 @@ class RemoteService implements VaultService {
   );
 
   @override
-  Future<void> installPlugin({required String pluginId}) =>
-      _send('PUT', '/api/plugins/$pluginId/install', body: 'null');
+  Future<void> installPlugin({required String pluginId, String? repoId}) =>
+      _send(
+        'PUT',
+        '/api/plugins/$pluginId/install',
+        body: repoId == null ? 'null' : jsonEncode({'repo_id': repoId}),
+      );
 
   @override
   Future<bool> uninstallPlugin({required String pluginId}) async {

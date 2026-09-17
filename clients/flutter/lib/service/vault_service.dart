@@ -28,9 +28,9 @@ class HistoryEntry {
     required this.workId,
     required this.workTitle,
   });
-  final DateTime readAt;
+  final DateTime? readAt;
   final String chapterId;
-  final String chapterTitle;
+  final String? chapterTitle;
   final String workId;
   final String workTitle;
 }
@@ -165,6 +165,6 @@ abstract class VaultService {
   Future<PluginRepo> addPluginRepo({required String url});
   Future<void> removePluginRepo({required String repoId});
   Future<List<CatalogItem>> pluginCatalog();
-  Future<void> installPlugin({required String pluginId});
+  Future<void> installPlugin({required String pluginId, String? repoId});
   Future<bool> uninstallPlugin({required String pluginId});
 }

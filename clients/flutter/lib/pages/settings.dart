@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../service/app_prefs.dart';
 import '../service/local_service.dart';
 import '../service/remote_service.dart';
+import '../service/session_store.dart';
 import '../service/sync_engine.dart';
 import '../service/vault_service.dart';
 
@@ -42,11 +42,6 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _restoreLink().whenComplete(_loadTrackers);
-  }
-
-  Future<File> _linkFile() async {
-    final support = await getApplicationSupportDirectory();
-    return File('${support.path}/remote.json');
   }
 
   Future<void> _loadTrackers() async {
@@ -145,26 +140,15 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _restoreLink() async {
     try {
-      final file = await _linkFile();
-      if (!file.existsSync()) return;
-      final saved = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+      final saved = await SessionStore.read();
       if (saved['kind'] != 'link') return;
+      final baseUrl = saved['base_url'] as String?;
+      final token = saved['token'] as String?;
+      if (baseUrl == null || token == null) return;
       setState(
-        () => linked = RemoteService(
-          baseUrl: saved['base_url'] as String,
-          token: saved['token'] as String,
-        ),
+        () => linked = RemoteService(baseUrl: baseUrl, token: token),
       );
     } catch (_) {}
-  }
-
-  Future<void> _saveKind(String kind) async {
-    final file = await _linkFile();
-    final existing = file.existsSync()
-        ? jsonDecode(file.readAsStringSync()) as Map<String, dynamic>
-        : <String, dynamic>{};
-    existing['kind'] = kind;
-    await file.writeAsString(jsonEncode(existing));
   }
 
   Future<void> _link() async {
@@ -203,12 +187,15 @@ class _SettingsPageState extends State<SettingsPage> {
           FilledButton(
             onPressed: () async {
               try {
-                await RemoteService.login(
+                final service = await RemoteService.login(
                   baseUrl: baseUrl.text.trim(),
                   username: username.text,
                   password: password.text,
                 );
-                await _saveKind('link');
+                await SessionStore.saveLink(
+                  baseUrl: service.baseUrl,
+                  token: service.token,
+                );
                 if (!context.mounted) return;
                 Navigator.of(context).pop();
                 widget.restartSession();
@@ -226,17 +213,18 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _unlink() async {
-    final file = await _linkFile();
-    if (file.existsSync()) {
-      final saved = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      saved['kind'] = 'local';
-      await file.writeAsString(jsonEncode(saved));
-    }
+    await SessionStore.saveLocal();
     widget.restartSession();
   }
 
-  Future<void> _switchToLocalDevice() async {
-    await _saveKind('local');
+  Future<void> _signOut() async {
+    final service = widget.service;
+    if (service is RemoteService) {
+      try {
+        await service.logout();
+      } catch (_) {}
+    }
+    await SessionStore.saveLocal();
     widget.restartSession();
   }
 
@@ -284,8 +272,8 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('Server account'),
               subtitle: const Text('Library and progress live on the server.'),
               trailing: FilledButton(
-                onPressed: _switchToLocalDevice,
-                child: const Text('Use this device'),
+                onPressed: _signOut,
+                child: const Text('Sign out'),
               ),
             ),
           if (widget.isLocal) ...[
@@ -444,7 +432,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 value: prefs?.chapterNotifications ?? false,
                 onChanged: prefs == null
                     ? null
-                    : (value) => prefs.setChapterNotifications(value),
+                    : (value) async {
+                        await prefs.setChapterNotifications(value);
+                        if (mounted) setState(() {});
+                      },
               );
             },
           ),
@@ -501,24 +492,26 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             },
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 24, 16, 4),
-            child: Text(
-              'DATA',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.6,
+          if (widget.service is RemoteService)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 24, 16, 4),
+              child: Text(
+                'DATA',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.6,
+                ),
               ),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.download),
-            title: const Text('Export backup'),
-            subtitle: const Text('Save all library data as a JSON file.'),
-            onTap: () async {
-              try {
-                final json = await widget.service.exportBackup();
+          if (widget.service is RemoteService)
+            ListTile(
+              leading: const Icon(Icons.download),
+              title: const Text('Export backup'),
+              subtitle: const Text('Save all library data as a JSON file.'),
+              onTap: () async {
+                try {
+                  final json = await widget.service.exportBackup();
                 final dir = await getApplicationDocumentsDirectory();
                 final file = File('${dir.path}/manga-vault-backup.json');
                 await file.writeAsString(json);

@@ -15,6 +15,8 @@ class DiscoverPage extends StatefulWidget {
 class _DiscoverPageState extends State<DiscoverPage> {
   List<SourceSummary> sources = [];
   int tabIndex = 0;
+  bool loading = true;
+  String? error;
 
   String? get selectedSource => tabIndex == 0 ? null : sources[tabIndex - 1].id;
 
@@ -25,8 +27,24 @@ class _DiscoverPageState extends State<DiscoverPage> {
   }
 
   Future<void> _loadSources() async {
-    sources = await widget.vault.listSources();
-    if (mounted) setState(() {});
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final loaded = await widget.vault.listSources();
+      if (!mounted) return;
+      setState(() {
+        sources = loaded;
+        loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        error = e.toString();
+        loading = false;
+      });
+    }
   }
 
   Future<void> _open(String sourceId, WorkSummary work) async {
@@ -44,6 +62,41 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Discover')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Failed to load sources',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  error!,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: _loadSources,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return DefaultTabController(
       length: sources.length + 1,
       child: Scaffold(
@@ -197,6 +250,7 @@ class _AggregatedSearchState extends State<AggregatedSearch> {
                           ),
                       itemCount: group.hits.length,
                       itemBuilder: (context, index) => WorkCard(
+                        vault: widget.vault,
                         work: group.hits[index],
                         onOpen: () =>
                             widget.onOpen(group.sourceId, group.hits[index]),
@@ -299,6 +353,7 @@ class _SourceResultsState extends State<SourceResults> {
                   ),
                   itemCount: shown.length,
                   itemBuilder: (context, index) => WorkCard(
+                    vault: widget.vault,
                     work: shown[index],
                     onOpen: () => widget.onOpen(shown[index]),
                   ),
@@ -310,8 +365,14 @@ class _SourceResultsState extends State<SourceResults> {
 }
 
 class WorkCard extends StatelessWidget {
-  const WorkCard({super.key, required this.work, required this.onOpen});
+  const WorkCard({
+    super.key,
+    required this.vault,
+    required this.work,
+    required this.onOpen,
+  });
 
+  final VaultService vault;
   final WorkSummary work;
   final VoidCallback onOpen;
 
@@ -326,7 +387,10 @@ class WorkCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             work.coverUrl != null
-                ? Image.network(work.coverUrl!, fit: BoxFit.cover)
+                ? Image.network(
+                    vault.imageUrl(work.coverUrl!),
+                    fit: BoxFit.cover,
+                  )
                 : const ColoredBox(
                     color: Color(0xFF322820),
                     child: Icon(Icons.menu_book),
