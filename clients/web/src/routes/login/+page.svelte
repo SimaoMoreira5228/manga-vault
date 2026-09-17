@@ -1,4 +1,5 @@
 <script lang="ts">
+import { goto } from '$app/navigation';
 import { api, type RegistrationMode } from '$lib/api';
 import { auth } from '$lib/auth.svelte';
 
@@ -29,7 +30,7 @@ async function submit(event: SubmitEvent) {
 		} else {
 			await auth.register(username, password, inviteCode.trim() || undefined);
 		}
-		window.location.href = '/';
+		await goto('/');
 	} catch (cause) {
 		error = cause instanceof Error ? cause.message : 'failed';
 	} finally {
@@ -38,7 +39,9 @@ async function submit(event: SubmitEvent) {
 }
 </script>
 
-<div class="mx-auto w-full max-w-md rounded-card border border-outline-variant/40 bg-surface-low p-6 shadow-lg sm:p-8">
+<div
+	class="mx-auto w-full max-w-md rounded-card border border-outline-variant/40 bg-surface-low p-6 shadow-lg sm:p-8"
+>
 	<h1 class="font-display text-4xl font-bold text-primary">Manga Vault</h1>
 	<p class="label-caps mt-2 mb-10 text-outline-variant">Private Archive</p>
 

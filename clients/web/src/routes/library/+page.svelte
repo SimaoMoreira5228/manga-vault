@@ -11,6 +11,7 @@ let categoryFilter = $state<string | null>(null);
 let sort = $state<'updated' | 'title' | 'added' | 'unread-desc' | 'unread-asc'>('updated');
 let textQuery = $state('');
 let loading = $state(true);
+let loadError = $state<string | null>(null);
 let newCategoryName = $state('');
 let refreshBusy = $state(false);
 
@@ -46,19 +47,25 @@ function unreadOf(workId: string): number | null {
 }
 
 async function load() {
-	const [library, counts] = await Promise.all([
-		api.library(),
-		api.libraryOverview().catch(() => ({ overview: [] })),
-	]);
-	items = library.entries;
-	categories = library.categories;
-	overview = Object.fromEntries(
-		counts.overview.map((row) => [
-			row.work_id,
-			{ read: row.chapters_read, total: row.chapters_total },
-		]),
-	);
-	loading = false;
+	loadError = null;
+	try {
+		const [library, counts] = await Promise.all([
+			api.library(),
+			api.libraryOverview().catch(() => ({ overview: [] })),
+		]);
+		items = library.entries;
+		categories = library.categories;
+		overview = Object.fromEntries(
+			counts.overview.map((row) => [
+				row.work_id,
+				{ read: row.chapters_read, total: row.chapters_total },
+			]),
+		);
+	} catch (cause) {
+		loadError = cause instanceof Error ? cause.message : 'Failed to load library';
+	} finally {
+		loading = false;
+	}
 }
 
 $effect(() => {
@@ -86,7 +93,7 @@ async function addCategory(event: SubmitEvent) {
 	if (!name) return;
 	await api.createCategory(name);
 	newCategoryName = '';
-	categories = (await api.library()).categories;
+	categories = await api.categories();
 }
 
 async function removeCategory(categoryId: string) {
@@ -197,9 +204,26 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 	{/if}
 
 	{#if loading}
-		<div class="mt-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant" role="status">
-			<span class="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary"></span>
+		<div
+			class="mt-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant"
+			role="status"
+		>
+			<span
+				class="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
+			></span>
 			<span class="body-md">Loading your library…</span>
+		</div>
+	{:else if loadError}
+		<div class="mt-16 text-center" role="alert">
+			<p class="title-md text-error">Could not load your library</p>
+			<p class="body-md mt-2 text-on-surface-variant">{loadError}</p>
+			<button
+				type="button"
+				class="label-caps mt-4 rounded-card border border-primary/60 px-5 py-2.5 text-primary hover:border-primary"
+				onclick={load}
+			>
+				Retry
+			</button>
 		</div>
 	{:else}
 		<div class="mt-8 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">

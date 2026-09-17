@@ -11,9 +11,6 @@
 		"sourceMap": true,
 		"strict": true,
 		"moduleResolution": "bundler",
-		"types": [
-			"unplugin-icons/types/svelte",
-			"./worker-configuration.d.ts"
-		]
+		"types": ["unplugin-icons/types/svelte", "./worker-configuration.d.ts"]
 	}
 }

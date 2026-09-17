@@ -4,11 +4,11 @@ import type { Snippet } from 'svelte';
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
 import { auth } from '$lib/auth.svelte';
+import IconStats from '~icons/material-symbols/bar-chart';
 import IconClose from '~icons/material-symbols/close';
 import IconExplore from '~icons/material-symbols/explore';
 import IconExtension from '~icons/material-symbols/extension';
 import IconHistory from '~icons/material-symbols/history';
-import IconStats from '~icons/material-symbols/bar-chart';
 import IconLogout from '~icons/material-symbols/logout';
 import IconMenu from '~icons/material-symbols/menu';
 import IconLibrary from '~icons/material-symbols/menu-book';
@@ -29,28 +29,43 @@ const navItems = [
 	{ href: '/settings', label: 'Settings', icon: IconSettings },
 ];
 
+const bottomNavItems = navItems.filter((item) =>
+	['/library', '/updates', '/history', '/', '/settings'].includes(item.href),
+);
+
 const isReader = $derived(page.url.pathname.startsWith('/reader/'));
 const pageTitle = $derived(
-	({
-		'/': 'Explore',
-		'/library': 'Library',
-		'/updates': 'Updates',
-		'/history': 'History',
-		'/stats': 'Statistics',
-		'/search': 'Search',
-		'/sources': 'Sources',
-		'/settings': 'Settings',
-		'/login': 'Sign in',
-	} as Record<string, string>)[page.url.pathname] ??
-		(page.url.pathname.startsWith('/reader/') ? 'Reader' : page.url.pathname.startsWith('/work/') ? 'Work' : 'Manga Vault'),
+	(
+		{
+			'/': 'Explore',
+			'/library': 'Library',
+			'/updates': 'Updates',
+			'/history': 'History',
+			'/stats': 'Statistics',
+			'/search': 'Search',
+			'/sources': 'Sources',
+			'/settings': 'Settings',
+			'/login': 'Sign in',
+		} as Record<string, string>
+	)[page.url.pathname] ??
+		(page.url.pathname.startsWith('/reader/')
+			? 'Reader'
+			: page.url.pathname.startsWith('/work/')
+				? 'Work'
+				: 'Manga Vault'),
 );
 
 $effect(() => {
-	auth.init().then(() => {
-		if (!auth.user && page.url.pathname !== '/login') {
-			goto('/login');
-		}
-	});
+	auth.init();
+});
+
+$effect(() => {
+	if (!auth.ready) return;
+	if (!auth.user && page.url.pathname !== '/login') {
+		goto('/login');
+	} else if (auth.user && page.url.pathname === '/login') {
+		goto('/');
+	}
 });
 </script>
 
@@ -58,7 +73,13 @@ $effect(() => {
 	<title>{pageTitle} - Manga Vault</title>
 </svelte:head>
 
-{#if !auth.ready || (auth.user && !isReader) || (!auth.user && page.url.pathname === '/login')}
+{#if !auth.ready}
+	<div class="grid min-h-dvh place-items-center">
+		<div
+			class="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
+		></div>
+	</div>
+{:else if (auth.user && !isReader) || (!auth.user && page.url.pathname === '/login')}
 	<div class="flex min-h-dvh flex-col md:flex-row">
 		{#if auth.user}
 			<aside
@@ -142,7 +163,7 @@ $effect(() => {
 				class="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-outline-variant/30 bg-surface-low md:hidden"
 				aria-label="Primary"
 			>
-				{#each navItems as item (item.href)}
+				{#each bottomNavItems as item (item.href)}
 					{@const active = page.url.pathname === item.href}
 					<a
 						href={item.href}

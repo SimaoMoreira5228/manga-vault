@@ -1,4 +1,5 @@
 <script lang="ts">
+import { goto } from '$app/navigation';
 import { api, type RemoteWorkSummary, type SourceInfo } from '$lib/api';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
 
@@ -82,7 +83,7 @@ async function importAndOpen(remoteUrl: string) {
 					.id ?? selected)
 			: selected;
 		const work = await api.importWork(sourceId as string, remoteUrl);
-		window.location.href = `/work/${work.id}`;
+		await goto(`/work/${work.id}`);
 	} catch (cause) {
 		error = cause instanceof Error ? cause.message : 'import failed';
 	} finally {

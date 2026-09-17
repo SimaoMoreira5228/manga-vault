@@ -6,6 +6,15 @@
 		"useIgnoreFile": true,
 		"root": "../../"
 	},
+	"files": {
+		"includes": [
+			"**",
+			"!worker-configuration.d.ts",
+			"!wrangler.jsonc",
+			"!**/.svelte-kit",
+			"!**/build"
+		]
+	},
 	"formatter": {
 		"lineWidth": 100
 	},

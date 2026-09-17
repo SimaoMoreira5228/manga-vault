@@ -207,26 +207,28 @@ async function uninstall(pluginId: string) {
 						</div>
 						{#if entry.installed_version !== null && !entry.update_available}
 							<span class="mono-label text-secondary">INSTALLED</span>
-						{:else if entry.update_available}
-							<span class="mono-label rounded bg-secondary-tint px-2 py-0.5 text-secondary">
-								v{entry.installed_version}
-								→ v{entry.available_version}
-							</span>
+						{:else}
+							{#if entry.update_available}
+								<span class="mono-label rounded bg-secondary-tint px-2 py-0.5 text-secondary">
+									v{entry.installed_version}
+									→ v{entry.available_version}
+								</span>
+							{/if}
+							<button
+								type="button"
+								class="label-caps flex items-center gap-1.5 rounded-card border px-3 py-2 transition-colors {entry
+								.update_available
+								? 'border-primary text-primary'
+								: 'border-outline-variant/60 hover:border-outline'} {busyPlugin === entry.id
+								? 'opacity-40'
+								: ''}"
+								disabled={busyPlugin !== null}
+								onclick={() => install(entry.id, entry.repo_id)}
+							>
+								<IconDownload class="size-4" />
+								{entry.update_available ? 'Update' : 'Install'}
+							</button>
 						{/if}
-						<button
-							type="button"
-							class="label-caps flex items-center gap-1.5 rounded-card border px-3 py-2 transition-colors {entry
-							.update_available
-							? 'border-primary text-primary'
-							: 'border-outline-variant/60 hover:border-outline'} {busyPlugin === entry.id
-							? 'opacity-40'
-							: ''}"
-							disabled={busyPlugin !== null}
-							onclick={() => install(entry.id, entry.repo_id)}
-						>
-							<IconDownload class="size-4" />
-							{entry.installed_version === null ? 'Install' : entry.update_available ? 'Update' : ''}
-						</button>
 					</li>
 				{:else}
 					<li class="mono-label px-4 py-6 text-center text-on-surface-variant">

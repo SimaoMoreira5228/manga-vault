@@ -1,10 +1,21 @@
-import { api, type PublicUser } from './api';
+import { api, type PublicUser, setUnauthorizedHandler } from './api';
 
 class AuthState {
 	user = $state<PublicUser | null>(null);
 	ready = $state(false);
+	private registered = false;
+
+	get isAdmin() {
+		return this.user?.is_admin ?? false;
+	}
 
 	async init() {
+		if (!this.registered) {
+			setUnauthorizedHandler(() => {
+				this.user = null;
+			});
+			this.registered = true;
+		}
 		if (this.ready) return;
 		try {
 			this.user = await api.me();

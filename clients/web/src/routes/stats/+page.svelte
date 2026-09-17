@@ -9,11 +9,23 @@ type Stats = {
 };
 
 let stats = $state<Stats | null>(null);
+let loading = $state(true);
+let loadError = $state<string | null>(null);
+
+async function load() {
+	loadError = null;
+	loading = true;
+	try {
+		stats = await api.readingStats();
+	} catch (cause) {
+		loadError = cause instanceof Error ? cause.message : 'Failed to load statistics';
+	} finally {
+		loading = false;
+	}
+}
 
 $effect(() => {
-	api
-		.readingStats()
-		.then((result) => (stats = result));
+	load();
 });
 
 function maxDaily(): number {
@@ -25,7 +37,26 @@ function maxDaily(): number {
 <div class="px-4 py-6 md:px-10 md:py-10">
 	<h1 class="font-display text-3xl font-bold md:text-4xl">Statistics</h1>
 
-	{#if stats}
+	{#if loading}
+		<div class="mt-16 flex flex-col items-center gap-4 text-on-surface-variant" role="status">
+			<span
+				class="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
+			></span>
+			<span class="body-md">Loading statistics…</span>
+		</div>
+	{:else if loadError}
+		<div class="mt-16 text-center" role="alert">
+			<p class="title-md text-error">Could not load statistics</p>
+			<p class="body-md mt-2 text-on-surface-variant">{loadError}</p>
+			<button
+				type="button"
+				class="label-caps mt-4 rounded-card border border-primary/60 px-5 py-2.5 text-primary hover:border-primary"
+				onclick={load}
+			>
+				Retry
+			</button>
+		</div>
+	{:else if stats}
 		<div class="mt-6 grid gap-4 sm:grid-cols-3">
 			<div class="rounded-xl border border-outline-variant/40 bg-surface-low p-5">
 				<p class="mono-label text-on-surface-variant">Chapters read</p>

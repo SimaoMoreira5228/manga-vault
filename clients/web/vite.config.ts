@@ -14,7 +14,7 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
 				experimental: {
 					async: true,
-				}
+				},
 			},
 			adapter: adapter({ fallback: 'index.html', strict: false }),
 		}),

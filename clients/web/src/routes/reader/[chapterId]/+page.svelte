@@ -13,7 +13,7 @@ import IconSettings from '~icons/material-symbols/settings';
 
 let { params }: { params: { chapterId: string } } = $props();
 
-let workId = $derived(new URLSearchParams(page_url_search()).get('work'));
+let workId = $state<string | null>(null);
 let work = $state<Work | null>(null);
 let chapters = $state<Chapter[]>([]);
 let content = $state<ChapterContent | null>(null);
@@ -22,11 +22,13 @@ let resumePercent = $state<number | null>(null);
 let lastPositionSave = 0;
 let contentReady = $state(false);
 let readMarked = false;
+let loadError = $state<string | null>(null);
 const loadedImageIndexes = new Set<number>();
 
 let translationMode = $state<string>('unavailable');
 let translatedHtml = $state<string | null>(null);
 let translating = $state(false);
+let translationError = $state<string | null>(null);
 let language = $state('en');
 let sourceLanguage = $state('');
 const languages = ['pt', 'es', 'en', 'fr', 'de', 'it', 'ja', 'ko', 'zh'];
@@ -44,13 +46,9 @@ const images = $derived(content && 'Images' in content ? content.Images : []);
 const html = $derived(content && 'Html' in content ? content.Html : null);
 const chapterIndex = $derived(chapters.findIndex((chapter) => chapter.id === params.chapterId));
 const chapterTitle = $derived(chapters[chapterIndex]?.title ?? '');
-const previousChapter = $derived(chapterIndex >= 0 ? (chapters[chapterIndex + 1] ?? null) : null);
-const nextChapter = $derived(chapterIndex >= 0 ? (chapters[chapterIndex - 1] ?? null) : null);
+const previousChapter = $derived(chapterIndex > 0 ? (chapters[chapterIndex - 1] ?? null) : null);
+const nextChapter = $derived(chapterIndex >= 0 ? (chapters[chapterIndex + 1] ?? null) : null);
 const canTranslate = $derived(html !== null && !translating && translationMode !== 'unavailable');
-
-function page_url_search(): string {
-	return typeof window === 'undefined' ? '' : window.location.search;
-}
 
 const positionKey = $derived(`mv-pos:${params.chapterId}`);
 
@@ -140,11 +138,15 @@ function onKeydown(event: KeyboardEvent) {
 	const target = event.target as HTMLElement | null;
 	if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
 	if (event.key === 'Escape') {
+		if (showReaderSettings) {
+			showReaderSettings = false;
+			return;
+		}
 		goto(work ? `/work/${work.id}` : '/');
-	} else if (event.key === 'ArrowLeft' && nextChapter) {
-		goto(`/reader/${nextChapter.id}?work=${workId ?? ''}`);
-	} else if (event.key === 'ArrowRight' && previousChapter) {
+	} else if (event.key === 'ArrowLeft' && previousChapter) {
 		goto(`/reader/${previousChapter.id}?work=${workId ?? ''}`);
+	} else if (event.key === 'ArrowRight' && nextChapter) {
+		goto(`/reader/${nextChapter.id}?work=${workId ?? ''}`);
 	}
 }
 
@@ -171,12 +173,19 @@ function imageLoaded(index: number) {
 
 async function translate() {
 	translating = true;
+	translationError = null;
 	try {
-		const result = await api.translateChapter(params.chapterId, language);
+		const result = await api.translateChapter(
+			params.chapterId,
+			language,
+			sourceLanguage.trim() || undefined,
+		);
 		translatedHtml = result.content;
+		matches = result.matches ?? [];
 	} catch (error) {
 		translatedHtml = null;
-		console.error('translation failed', error);
+		matches = [];
+		translationError = error instanceof Error ? error.message : 'Translation failed';
 	} finally {
 		translating = false;
 	}
@@ -190,18 +199,26 @@ $effect(() => {
 async function load() {
 	contentReady = false;
 	readMarked = false;
-	loadedImageIndexes.clear();
-	content = await api.chapterContent(params.chapterId);
-	workId = new URLSearchParams(window.location.search).get('work');
+	loadError = null;
+	translationError = null;
 	translatedHtml = null;
-	api
-		.translationMode()
-		.then((mode) => (translationMode = mode))
-		.catch(() => (translationMode = 'unavailable'));
-	if (workId) {
-		const data = await api.getWork(workId);
-		work = data.work;
-		chapters = data.chapters;
+	matches = [];
+	loadedImageIndexes.clear();
+	try {
+		content = await api.chapterContent(params.chapterId);
+		workId = new URLSearchParams(window.location.search).get('work');
+		api
+			.translationMode()
+			.then((mode) => (translationMode = mode))
+			.catch(() => (translationMode = 'unavailable'));
+		if (workId) {
+			const data = await api.getWork(workId);
+			work = data.work;
+			chapters = data.chapters;
+		}
+	} catch (cause) {
+		loadError = cause instanceof Error ? cause.message : 'Failed to load chapter';
+		return;
 	}
 	if (content && 'Html' in content) {
 		requestAnimationFrame(() => {
@@ -244,18 +261,15 @@ async function load() {
 {/if}
 
 {#if showReaderSettings}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="fixed inset-0 z-30 bg-black/60"
-		tabindex="-1"
-		onclick={() => (showReaderSettings = false)}
-		onkeydown={(e) => { if (e.key === 'Escape') showReaderSettings = false; }}
-	>
+	<div class="fixed inset-0 z-30">
+		<button
+			type="button"
+			aria-label="Close reader settings"
+			class="absolute inset-0 h-full w-full bg-black/60"
+			onclick={() => (showReaderSettings = false)}
+		></button>
 		<div
 			class="absolute bottom-20 left-1/2 w-80 -translate-x-1/2 rounded-xl border border-outline-variant/40 bg-surface-low p-5 shadow-elevated"
-			onclick={(e) => e.stopPropagation()}
-			onkeydown={(e) => e.stopPropagation()}
-			tabindex="-1"
 		>
 			<h2 class="title-md mb-4">Reader settings</h2>
 
@@ -375,7 +389,27 @@ async function load() {
 	</header>
 
 	<div class="flex-1 overflow-y-auto pt-10">
-		{#if images.length > 0}
+		{#if loadError}
+			<div class="mx-auto mt-20 max-w-md px-6 text-center" role="alert">
+				<p class="title-md text-error">Could not load this chapter</p>
+				<p class="body-md mt-2 text-on-surface-variant">{loadError}</p>
+				<div class="mt-5 flex justify-center gap-3">
+					<button
+						type="button"
+						class="label-caps rounded-card border border-primary/60 px-5 py-2.5 text-primary hover:border-primary"
+						onclick={() => load()}
+					>
+						Retry
+					</button>
+					<a
+						href={work ? `/work/${work.id}` : '/'}
+						class="label-caps rounded-card border border-outline-variant/60 px-5 py-2.5 hover:border-outline"
+					>
+						Back
+					</a>
+				</div>
+			</div>
+		{:else if images.length > 0}
 			<div
 				class="mx-auto max-w-4xl"
 				style="padding-left: {imageMargin}px; padding-right: {imageMargin}px"
@@ -429,6 +463,11 @@ async function load() {
 						{translating ? 'Translating…' : 'Translate'}
 					</button>
 				</div>
+				{#if translationError}
+					<p class="mx-auto max-w-3xl px-6 pt-2 text-right mono-label text-error" role="alert">
+						{translationError}
+					</p>
+				{/if}
 				{#if showGlossary}
 					<div class="mx-auto max-w-3xl space-y-2 px-6 pb-2">
 						{#each matches as entry (entry.id)}
@@ -490,20 +529,20 @@ async function load() {
 				class="mx-auto flex max-w-md items-center justify-between gap-4 px-6 py-10"
 				aria-label="Chapter navigation"
 			>
-				{#if nextChapter}
+				{#if previousChapter}
 					<a
-						href="/reader/{nextChapter.id}?work={work.id}"
-						onclick={(event) => openChapter(event, nextChapter)}
+						href="/reader/{previousChapter.id}?work={work.id}"
+						onclick={(event) => openChapter(event, previousChapter)}
 						class="label-caps rounded-card border border-outline-variant/60 px-5 py-3 hover:border-outline"
 					>
 						Previous chapter
 					</a>
 				{/if}
 				<a href={work ? `/work/${work.id}` : '/'} class="mono-label text-outline">All chapters</a>
-				{#if previousChapter}
+				{#if nextChapter}
 					<a
-						href="/reader/{previousChapter.id}?work={work.id}"
-						onclick={(event) => openChapter(event, previousChapter)}
+						href="/reader/{nextChapter.id}?work={work.id}"
+						onclick={(event) => openChapter(event, nextChapter)}
 						class="label-caps rounded-card border border-outline-variant/60 px-5 py-3 hover:border-outline"
 					>
 						Next chapter

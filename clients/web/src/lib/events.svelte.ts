@@ -30,7 +30,13 @@ export function onWorkRefreshed(listener: RefreshListener): () => void {
 	if (typeof window === 'undefined') return () => {};
 	ensureSource();
 	listeners.add(listener);
-	return () => listeners.delete(listener);
+	return () => {
+		listeners.delete(listener);
+		if (listeners.size === 0) {
+			source?.close();
+			source = null;
+		}
+	};
 }
 
 const NOTIFICATIONS_KEY = 'mv-chapter-notifications';

@@ -10,20 +10,21 @@ export default defineConfig({
 		Icons({ compiler: 'svelte' }),
 		sveltekit({
 			compilerOptions: {
-				runes: ({ filename }) => filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
+				runes: ({ filename }) =>
+					filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
 				experimental: {
 					async: true,
-				}
+				},
 			},
-			adapter: adapter()
-		})
+			adapter: adapter({ fallback: 'spa' }),
+		}),
 	],
 	server: {
 		proxy: {
 			'/api': {
 				target: process.env.MV_API_URL ?? 'http://127.0.0.1:18080',
-				changeOrigin: true
-			}
-		}
-	}
+				changeOrigin: true,
+			},
+		},
+	},
 });

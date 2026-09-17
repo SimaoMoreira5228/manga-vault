@@ -1,4 +1,5 @@
 <script lang="ts">
+import { goto } from '$app/navigation';
 import {
 	API_BASE,
 	api,
@@ -46,6 +47,7 @@ let migrationSuggestions: {
 let migrationBusy = $state(false);
 let migrationMessage = $state<string | null>(null);
 let chapterNotifications = $state(false);
+let dataMessage = $state('');
 let libraryTitles = $state<Record<string, string>>({});
 let trackerTokens: Record<string, string> = $state({});
 
@@ -97,13 +99,15 @@ $effect(() => {
 		.translationMode()
 		.then((mode) => (translationMode = mode))
 		.catch(() => (translationMode = 'unavailable'));
-	api
-		.registrationAdminView()
-		.then((view) => {
-			registrationMode = view.mode;
-			invites = view.invites;
-		})
-		.catch(() => {});
+	if (auth.isAdmin) {
+		api
+			.registrationAdminView()
+			.then((view) => {
+				registrationMode = view.mode;
+				invites = view.invites;
+			})
+			.catch(() => {});
+	}
 });
 
 async function changeMode(event: Event) {
@@ -327,7 +331,7 @@ async function clearTranslationSettings() {
 			type="button"
 			class="label-caps mt-4 rounded-card border border-outline-variant/60 px-5 py-3 hover:border-outline"
 			onclick={() => {
-				auth.logout().then(() => (window.location.href = '/login'));
+				auth.logout().then(() => goto('/login'));
 			}}
 		>
 			Sign out
@@ -590,60 +594,60 @@ async function clearTranslationSettings() {
 	</section>
 
 	<section class="mt-12" aria-labelledby="registration-heading">
-		<h2 id="registration-heading" class="title-lg">Registration</h2>
-		{#if registrationMode !== null}
-			<div class="mt-4 flex flex-wrap items-center gap-3">
-				<select
-					value={registrationMode}
-					onchange={changeMode}
-					disabled={inviteBusy}
-					class="rounded-card border border-outline-variant/60 bg-surface-container px-4 py-2.5 outline-none focus:border-primary"
-					aria-label="Registration mode"
+		{#if auth.isAdmin}
+			<h2 id="registration-heading" class="title-lg">Registration</h2>
+			{#if registrationMode !== null}
+				<div class="mt-4 flex flex-wrap items-center gap-3">
+					<select
+						value={registrationMode}
+						onchange={changeMode}
+						disabled={inviteBusy}
+						class="rounded-card border border-outline-variant/60 bg-surface-container px-4 py-2.5 outline-none focus:border-primary"
+						aria-label="Registration mode"
+					>
+						<option value="open">Open: anyone can register</option>
+						<option value="closed">Closed: no new accounts</option>
+						<option value="invite">Invite codes only</option>
+					</select>
+					<button
+						type="button"
+						disabled={inviteBusy || registrationMode !== 'invite'}
+						class="label-caps rounded-card border border-outline-variant/60 px-4 py-2.5 hover:border-outline disabled:opacity-40"
+						onclick={addInvite}
+					>
+						Generate invite
+					</button>
+				</div>
+				<ul
+					class="mt-4 divide-y divide-outline-variant/20 rounded-card border border-outline-variant/40 bg-surface-low"
 				>
-					<option value="open">Open: anyone can register</option>
-					<option value="closed">Closed: no new accounts</option>
-					<option value="invite">Invite codes only</option>
-				</select>
-				<button
-					type="button"
-					disabled={inviteBusy || registrationMode !== 'invite'}
-					class="label-caps rounded-card border border-outline-variant/60 px-4 py-2.5 hover:border-outline disabled:opacity-40"
-					onclick={addInvite}
-				>
-					Generate invite
-				</button>
-			</div>
-			<ul
-				class="mt-4 divide-y divide-outline-variant/20 rounded-card border border-outline-variant/40 bg-surface-low"
-			>
-				{#each invites as invite (invite.code)}
-					<li class="flex items-center gap-4 px-4 py-3">
-						<code class="min-w-0 flex-1 truncate mono-label text-on-surface">{invite.code}</code>
-						{#if invite.used_by}
-							<span class="mono-label text-secondary">used by {invite.used_by}</span>
-						{:else}
-							<span class="mono-label text-outline">unused</span>
-						{/if}
-						{#if !invite.used_by}
-							<button
-								type="button"
-								class="mono-label text-error uppercase hover:underline"
-								onclick={() => revokeInvite(invite.code)}
-							>
-								Revoke
-							</button>
-						{/if}
-					</li>
-				{:else}
-					<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
-						No invite codes generated.
-					</li>
-				{/each}
-			</ul>
-		{:else}
-			<p class="body-md mt-2 text-on-surface-variant">
-				Registration is managed by the server operator.
-			</p>
+					{#each invites as invite (invite.code)}
+						<li class="flex items-center gap-4 px-4 py-3">
+							<code class="min-w-0 flex-1 truncate mono-label text-on-surface">{invite.code}</code>
+							{#if invite.used_by}
+								<span class="mono-label text-secondary">used by {invite.used_by}</span>
+							{:else}
+								<span class="mono-label text-outline">unused</span>
+							{/if}
+							{#if !invite.used_by}
+								<button
+									type="button"
+									class="mono-label text-error uppercase hover:underline"
+									onclick={() => revokeInvite(invite.code)}
+								>
+									Revoke
+								</button>
+							{/if}
+						</li>
+					{:else}
+						<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
+							No invite codes generated.
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="body-md mt-2 text-on-surface-variant">Loading registration settings…</p>
+			{/if}
 		{/if}
 	</section>
 
@@ -698,13 +702,15 @@ async function clearTranslationSettings() {
 					onchange={async (event) => {
 						const file = event.currentTarget.files?.[0];
 						if (!file) return;
+						dataMessage = '';
 						try {
 							const text = await file.text();
 							const data = JSON.parse(text);
 							await api.importBackup(data);
+							dataMessage = 'Backup imported. Reloading…';
 							window.location.reload();
 						} catch (cause) {
-							alert(cause instanceof Error ? cause.message : 'Import failed');
+							dataMessage = cause instanceof Error ? cause.message : 'Import failed';
 						}
 					}}
 				>
@@ -717,5 +723,8 @@ async function clearTranslationSettings() {
 				OPDS catalog feed
 			</a>
 		</div>
+		{#if dataMessage}
+			<p class="body-md mt-3 text-secondary">{dataMessage}</p>
+		{/if}
 	</section>
 </div>

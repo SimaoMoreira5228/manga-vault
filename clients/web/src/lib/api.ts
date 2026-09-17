@@ -1,5 +1,3 @@
-import { PUBLIC_API_URL } from '$env/static/public';
-
 export type WorkKind = 'manga' | 'novel';
 export type ChapterContentKind = 'images' | 'html';
 
@@ -53,6 +51,7 @@ export interface PublicUser {
 	id: string;
 	username: string;
 	created_at: string;
+	is_admin: boolean;
 }
 
 export interface Session {
@@ -160,7 +159,13 @@ export class ApiError extends Error {
 		super(message);
 	}
 }
-export const API_BASE = PUBLIC_API_URL;
+
+export const API_BASE = (import.meta.env.PUBLIC_API_URL as string | undefined) ?? '';
+
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: () => void) {
+	onUnauthorized = handler;
+}
 
 const chapterContentCache = new Map<string, ChapterContent>();
 function stashContent(chapterId: string, content: ChapterContent) {
@@ -172,13 +177,20 @@ function stashContent(chapterId: string, content: ChapterContent) {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+	const headers = new Headers(init?.headers);
+	if (init?.body !== undefined && !headers.has('content-type')) {
+		headers.set('content-type', 'application/json');
+	}
 	const response = await fetch(`${API_BASE}${path}`, {
 		credentials: 'include',
 		...init,
-		headers: { 'content-type': 'application/json', ...init?.headers },
+		headers,
 	});
 	if (!response.ok) {
-		const body = (await response.json().catch(() => ({ error: response.statusText }))) as { error?: string };
+		const body = (await response.json().catch(() => ({ error: response.statusText }))) as {
+			error?: string;
+		};
+		if (response.status === 401 && !path.startsWith('/api/auth/')) onUnauthorized?.();
 		throw new ApiError(response.status, body.error ?? 'request failed');
 	}
 	if (response.status === 204) return undefined as T;
@@ -312,6 +324,7 @@ export const api = {
 		put(`/api/library-entries/${entryId}/category`, { category_id: categoryId }),
 	createCategory: (name: string) => post<Category>('/api/categories', { name }),
 	deleteCategory: (categoryId: string) => del(`/api/categories/${categoryId}`),
+	categories: () => get<Category[]>('/api/categories'),
 	refreshAllLibrary: () => post<{ queued: number }>('/api/me/library/refresh-all', null),
 	importBackup: (data: Record<string, unknown>) =>
 		post<{ ok: boolean }>('/api/me/backup/import', data),

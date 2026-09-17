@@ -1,4 +1,5 @@
 <script lang="ts">
+import { goto } from '$app/navigation';
 import {
 	api,
 	type ContinueReadingItem,
@@ -7,6 +8,7 @@ import {
 	type SourceInfo,
 	type WorkKind,
 } from '$lib/api';
+import { auth } from '$lib/auth.svelte';
 import ProgressBar from '$lib/components/ProgressBar.svelte';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
 import IconHistory from '~icons/material-symbols/history';
@@ -30,6 +32,7 @@ let trending = $state<{ rank: number; item: RemoteWorkSummary }[]>([]);
 let loading = $state(true);
 let trendingStatus = $state<'loading' | 'ready' | 'error'>('loading');
 let sourcesError = $state(false);
+let importError = $state<string | null>(null);
 
 const trendingSource = $derived(sources.find((source) => source.id === trendingSourceId) ?? null);
 
@@ -101,14 +104,21 @@ function retryLatest(sourceId: string) {
 }
 
 async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
-	const work = await api.importWork(sourceId, remoteUrl);
-	window.location.href = `/work/${work.id}`;
+	importError = null;
+	try {
+		const work = await api.importWork(sourceId, remoteUrl);
+		await goto(`/work/${work.id}`);
+	} catch (cause) {
+		importError = cause instanceof Error ? cause.message : 'Import failed';
+	}
 }
 </script>
 
 <div class="px-4 py-6 md:px-10 md:py-10">
 	<header class="flex flex-wrap items-center justify-between gap-4">
-		<h1 class="font-display text-3xl font-bold md:text-4xl">Welcome back, Reader</h1>
+		<h1 class="font-display text-3xl font-bold md:text-4xl">
+			Welcome back, {auth.user?.username ?? 'Reader'}
+		</h1>
 		<a
 			href="/search"
 			class="flex items-center gap-2 rounded-card border border-outline-variant/50 px-4 py-2.5 text-on-surface-variant hover:border-outline"
@@ -121,10 +131,20 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 	{#if loading}
 		<p class="body-md mt-10 text-on-surface-variant" role="status">Loading your archive…</p>
 	{:else}
+		{#if importError}
+			<p
+				class="body-md mt-6 rounded-card border border-error/40 bg-surface-low px-4 py-3 text-error"
+				role="alert"
+			>
+				{importError}
+			</p>
+		{/if}
 		{#if sourcesError}
 			<p class="body-md mt-10 text-error" role="alert">
 				Could not load sources.
-				<button type="button" class="ml-2 text-primary hover:underline" onclick={load}>retry</button>
+				<button type="button" class="ml-2 text-primary hover:underline" onclick={load}>
+					retry
+				</button>
 			</p>
 		{/if}
 		{#if continueReading.length > 0}
@@ -183,8 +203,13 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 						</p>
 					{:else if group.status === 'error'}
 						<p class="body-md mt-6 text-error" role="alert">
-							{group.sourceName} · failed to load
-							<button type="button" class="ml-2 text-primary hover:underline" onclick={() => retryLatest(group.sourceId)}>
+							{group.sourceName}
+							· failed to load
+							<button
+								type="button"
+								class="ml-2 text-primary hover:underline"
+								onclick={() => retryLatest(group.sourceId)}
+							>
 								retry
 							</button>
 						</p>
@@ -263,7 +288,13 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 					{:else if trendingStatus === 'error'}
 						<li class="mono-label text-error">
 							Could not load trending
-							<button type="button" class="ml-2 text-primary hover:underline" onclick={() => trendingSourceId && loadTrending(trendingSourceId)}>retry</button>
+							<button
+								type="button"
+								class="ml-2 text-primary hover:underline"
+								onclick={() => trendingSourceId && loadTrending(trendingSourceId)}
+							>
+								retry
+							</button>
 						</li>
 					{:else}
 						<li class="mono-label text-on-surface-variant">Nothing trending yet</li>

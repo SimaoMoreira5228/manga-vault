@@ -45,7 +45,7 @@ let {
 					{kind}
 				</span>
 			{/if}
-			{#if label && work.cover_url}
+			{#if label}
 				<span
 					class="mono-label absolute right-2 bottom-2 rounded bg-black/70 px-1.5 py-0.5 text-on-surface"
 				>

@@ -1,4 +1,5 @@
 <script lang="ts">
+import { goto } from '$app/navigation';
 import type { TrackerAccount, WorkTrackLink } from '$lib/api';
 import { api, type Chapter, proxied, type SourceInfo, type Work } from '$lib/api';
 import { onWorkRefreshed } from '$lib/events.svelte';
@@ -46,9 +47,11 @@ let freshChapters = $state(false);
 let trackAccounts = $state<TrackerAccount[]>([]);
 let trackLinks = $state<WorkTrackLink[]>([]);
 let trackPicked = $state<string>('');
+let trackTrackerId = $state<string>('');
 let trackBusy = $state(false);
 let expandedDescription = $state(false);
 let busy = $state<string | null>(null);
+let loadError = $state<string | null>(null);
 
 let sources = $state<SourceInfo[]>([]);
 let showMigrate = $state(false);
@@ -75,14 +78,26 @@ $effect(() => {
 
 async function load(id: string) {
 	freshChapters = false;
-	const data = await api.getWork(id);
-	work = data.work;
-	chapters = data.chapters;
-	readIds = new Set(data.read_chapter_ids);
-	renderedCount = CHUNK_SIZE;
+	loadError = null;
+	try {
+		const data = await api.getWork(id);
+		work = data.work;
+		chapters = data.chapters;
+		readIds = new Set(data.read_chapter_ids);
+		renderedCount = CHUNK_SIZE;
 
-	const library = await api.library();
-	inLibrary = library.entries.some(([, entryWork]) => entryWork.id === id);
+		const [library, accounts, links] = await Promise.all([
+			api.library(),
+			api.myTrackerAccounts().catch(() => [] as TrackerAccount[]),
+			api.workTracks(id).catch(() => [] as WorkTrackLink[]),
+		]);
+		inLibrary = library.entries.some(([, entryWork]) => entryWork.id === id);
+		trackAccounts = accounts;
+		trackLinks = links;
+		trackTrackerId ||= accounts[0]?.tracker_id ?? '';
+	} catch (cause) {
+		loadError = cause instanceof Error ? cause.message : 'Failed to load this work';
+	}
 }
 
 async function toggleLibrary() {
@@ -109,14 +124,10 @@ async function queueRefresh() {
 }
 
 async function bindTrack() {
-	if (!trackPicked.trim() || !trackAccounts[0]) return;
+	if (!trackPicked.trim() || !trackTrackerId) return;
 	trackBusy = true;
 	try {
-		const link = await api.bindWorkTrack(
-			params.id,
-			trackAccounts[0].tracker_id,
-			trackPicked.trim(),
-		);
+		const link = await api.bindWorkTrack(params.id, trackTrackerId, trackPicked.trim());
 		trackLinks = [...trackLinks, link];
 		trackPicked = '';
 	} finally {
@@ -240,7 +251,7 @@ async function applyMigrate() {
 		]);
 		const mapped = result.results.find((entry) => entry.from === work?.id);
 		if (mapped?.to) {
-			window.location.href = `/work/${mapped.to}`;
+			goto(`/work/${mapped.to}`);
 			return;
 		}
 		migrateMessage = 'Migration failed for this work';
@@ -262,8 +273,22 @@ function chapterDate(chapter: Chapter): string {
 		Back to Explore
 	</a>
 
-	{#if work}
-		<div class="mt-8 grid items-start gap-8 lg:grid-cols-[16rem_1fr] xl:grid-cols-[18rem_1fr_20rem]">
+	{#if loadError}
+		<div class="mt-8 rounded-xl border border-error/40 bg-surface-low p-6 text-center" role="alert">
+			<p class="title-md text-error">Could not load this work</p>
+			<p class="body-md mt-2 text-on-surface-variant">{loadError}</p>
+			<button
+				type="button"
+				class="label-caps mt-4 rounded-card border border-primary/60 px-5 py-2.5 text-primary hover:border-primary"
+				onclick={() => load(params.id)}
+			>
+				Retry
+			</button>
+		</div>
+	{:else if work}
+		<div
+			class="mt-8 grid items-start gap-8 lg:grid-cols-[16rem_1fr] xl:grid-cols-[18rem_1fr_20rem]"
+		>
 			<div class="self-start overflow-hidden rounded-xl border border-outline-variant/40">
 				{#if work.cover_url}
 					<img
@@ -325,7 +350,7 @@ function chapterDate(chapter: Chapter): string {
 							class="label-caps flex items-center gap-2 rounded-card bg-primary-container px-6 py-3.5 font-semibold text-on-primary-container"
 						>
 							<IconMenuBook class="size-5" />
-							Read Chapter {nextChapter.sort_index + 1}
+							Read Chapter {chapters.findIndex((chapter) => chapter.id === nextChapter.id) + 1}
 						</a>
 					{:else if chapters.length > 0}
 						<button
@@ -354,7 +379,7 @@ function chapterDate(chapter: Chapter): string {
 
 				{#if uniqueGenres.length > 0}
 					<ul class="mt-6 flex flex-wrap gap-2">
-						{#each uniqueGenres as genre}
+						{#each uniqueGenres as genre (genre)}
 							<li
 								class="mono-label rounded-full border border-outline-variant/60 px-3 py-1.5 uppercase"
 							>
@@ -410,36 +435,57 @@ function chapterDate(chapter: Chapter): string {
 							Queued
 						</p>
 					{/if}
-					{#if trackAccounts.length > 0}
-						<div class="mt-6 rounded-card border border-outline-variant/40 bg-surface-low p-4">
-							<h3 class="label-caps text-on-surface-variant">Tracking</h3>
-							<ul class="mt-3 space-y-2">
-								{#each trackLinks as link (link.id)}
-									<li class="flex items-center justify-between gap-2">
-										<span class="body-md">
-											{link.tracker_id}: ch. {link.last_chapters_synced ?? 0}
-										</span>
-										<span class="flex gap-2">
-											<button
-												type="button"
-												class="mono-label hover:text-primary"
-												onclick={() => refreshTrack(link.id)}
-											>
-												sync
-											</button>
-											<button
-												type="button"
-												class="mono-label uppercase text-error hover:underline"
-												onclick={() => unbindTrack(link.id)}
-											>
-												unbind
-											</button>
-										</span>
-									</li>
-								{/each}
-							</ul>
+					<div class="mt-6 rounded-card border border-outline-variant/40 bg-surface-low p-4">
+						<h3 class="label-caps text-on-surface-variant">Tracking</h3>
+						{#if trackAccounts.length === 0}
+							<p class="body-md mt-3 text-on-surface-variant">
+								No trackers linked. Link one in
+								<a href="/settings" class="text-primary hover:underline">Settings</a>.
+							</p>
+						{:else}
+							{#if trackLinks.length === 0}
+								<p class="body-md mt-3 text-on-surface-variant">Not tracked on any service yet.</p>
+							{:else}
+								<ul class="mt-3 space-y-2">
+									{#each trackLinks as link (link.id)}
+										<li class="flex items-center justify-between gap-2">
+											<span class="body-md">
+												{link.tracker_id}: {link.remote_title}
+												· ch. {link.last_chapters_synced ?? 0}
+											</span>
+											<span class="flex gap-2">
+												<button
+													type="button"
+													class="mono-label hover:text-primary"
+													onclick={() => refreshTrack(link.id)}
+												>
+													sync
+												</button>
+												<button
+													type="button"
+													class="mono-label uppercase text-error hover:underline"
+													onclick={() => unbindTrack(link.id)}
+												>
+													unbind
+												</button>
+											</span>
+										</li>
+									{/each}
+								</ul>
+							{/if}
 							<label class="body-md mt-3 block text-on-surface-variant">
-								Bind remote media id ({trackAccounts.map((a) => a.tracker_id).join(', ')})
+								Tracker
+								<select
+									bind:value={trackTrackerId}
+									class="mt-1 w-full rounded-card border border-outline-variant/60 bg-surface-container px-3 py-2 outline-none focus:border-primary"
+								>
+									{#each trackAccounts as account (account.tracker_id)}
+										<option value={account.tracker_id}>{account.tracker_id}</option>
+									{/each}
+								</select>
+							</label>
+							<label class="body-md mt-3 block text-on-surface-variant">
+								Remote media id
 								<input
 									bind:value={trackPicked}
 									placeholder="e.g. 30013"
@@ -448,14 +494,14 @@ function chapterDate(chapter: Chapter): string {
 							</label>
 							<button
 								type="button"
-								disabled={trackBusy || !trackPicked.trim()}
+								disabled={trackBusy || !trackPicked.trim() || !trackTrackerId}
 								class="label-caps mt-2 w-full rounded-card border border-primary/60 py-2 text-primary hover:border-primary disabled:opacity-40"
 								onclick={bindTrack}
 							>
 								Bind
 							</button>
-						</div>
-					{/if}
+						{/if}
+					</div>
 					{#if freshChapters}
 						<button
 							type="button"
@@ -533,7 +579,7 @@ function chapterDate(chapter: Chapter): string {
 				{#each visibleChapters as chapter, index (chapter.id)}
 					<li
 						id={`chapter-${chapter.id}`}
-					class="group flex items-center gap-4 px-4 py-3 {index === firstUnreadIndex && nextChapter?.id === chapter.id
+						class="group flex items-center gap-4 px-4 py-3 {index === firstUnreadIndex && nextChapter?.id === chapter.id
 							? 'bg-surface-container'
 							: ''}"
 					>
@@ -557,10 +603,7 @@ function chapterDate(chapter: Chapter): string {
 								class="pointer-events-none absolute inset-0 hidden size-5 text-on-primary peer-checked:block"
 							/>
 						</span>
-						<a
-							href="/reader/{chapter.id}?work={work.id}"
-							class="min-w-0 flex-1 hover:text-primary"
-						>
+						<a href="/reader/{chapter.id}?work={work.id}" class="min-w-0 flex-1 hover:text-primary">
 							<span class="block truncate body-md">
 								{chapter.title}
 							</span>

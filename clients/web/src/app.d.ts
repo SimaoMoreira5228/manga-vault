@@ -6,7 +6,7 @@ declare global {
 			env: Env;
 			ctx: ExecutionContext;
 			caches: CacheStorage;
-			cf?: IncomingRequestCfProperties
+			cf?: IncomingRequestCfProperties;
 		}
 
 		// interface Error {}
@@ -14,10 +14,14 @@ declare global {
 		// interface PageData {}
 		// interface PageState {}
 	}
-}
 
-declare module '$env/static/public' {
-	export const PUBLIC_API_URL: string;
+	interface ImportMetaEnv {
+		readonly PUBLIC_API_URL?: string;
+	}
+
+	interface ImportMeta {
+		readonly env: ImportMetaEnv;
+	}
 }
 
 export {};

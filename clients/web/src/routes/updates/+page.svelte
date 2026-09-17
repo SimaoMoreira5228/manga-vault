@@ -3,6 +3,7 @@ import { api, type LibraryEntry, proxied, type Work } from '$lib/api';
 
 let items = $state<[LibraryEntry, Work][]>([]);
 let loading = $state(true);
+let loadError = $state<string | null>(null);
 
 const updates = $derived(
 	[...items].sort(([, a], [, b]) => Date.parse(b.updated_at) - Date.parse(a.updated_at)),
@@ -15,11 +16,20 @@ function ago(iso: string): string {
 	return `${Math.floor(seconds / 86400)}d ago`;
 }
 
+async function load() {
+	loadError = null;
+	loading = true;
+	try {
+		items = (await api.library()).entries;
+	} catch (cause) {
+		loadError = cause instanceof Error ? cause.message : 'Failed to load updates';
+	} finally {
+		loading = false;
+	}
+}
+
 $effect(() => {
-	api
-		.library()
-		.then((library) => (items = library.entries))
-		.finally(() => (loading = false));
+	load();
 });
 </script>
 
@@ -29,7 +39,26 @@ $effect(() => {
 		Works in your library, newest source activity first.
 	</p>
 
-	{#if !loading}
+	{#if loading}
+		<div class="mt-16 flex flex-col items-center gap-4 text-on-surface-variant" role="status">
+			<span
+				class="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
+			></span>
+			<span class="body-md">Loading updates…</span>
+		</div>
+	{:else if loadError}
+		<div class="mt-16 text-center" role="alert">
+			<p class="title-md text-error">Could not load updates</p>
+			<p class="body-md mt-2 text-on-surface-variant">{loadError}</p>
+			<button
+				type="button"
+				class="label-caps mt-4 rounded-card border border-primary/60 px-5 py-2.5 text-primary hover:border-primary"
+				onclick={load}
+			>
+				Retry
+			</button>
+		</div>
+	{:else}
 		<ul
 			class="mt-8 max-w-3xl divide-y divide-outline-variant/20 rounded-card border border-outline-variant/40 bg-surface-low"
 		>
@@ -40,7 +69,11 @@ $effect(() => {
 						class="flex items-center gap-4 px-4 py-3 hover:bg-surface-container"
 					>
 						{#if work.cover_url}
-							<img src={proxied(work.cover_url, work.remote_url)} alt="" class="h-16 w-11 rounded object-cover">
+							<img
+								src={proxied(work.cover_url, work.remote_url)}
+								alt=""
+								class="h-16 w-11 rounded object-cover"
+							>
 						{/if}
 						<div class="min-w-0 flex-1">
 							<p class="truncate title-md">{work.title}</p>
