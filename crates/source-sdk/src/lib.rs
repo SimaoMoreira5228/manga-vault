@@ -56,6 +56,12 @@ pub fn sanitize_html(raw: &str) -> String {
 		.to_string()
 }
 
+pub const WORK_KIND_MANGA: &str = "manga";
+pub const WORK_KIND_NOVEL: &str = "novel";
+pub const PLUGIN_API_MAJOR: u64 = 1;
+
+pub const BROWSER_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0";
+
 #[cfg(test)]
 mod tests {
 	#[test]
@@ -66,9 +72,3 @@ mod tests {
 		);
 	}
 }
-
-pub const WORK_KIND_MANGA: &str = "manga";
-pub const WORK_KIND_NOVEL: &str = "novel";
-pub const PLUGIN_API_MAJOR: u64 = 1;
-
-pub const BROWSER_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:143.0) Gecko/20100101 Firefox/143.0";

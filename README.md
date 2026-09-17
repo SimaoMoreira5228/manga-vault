@@ -162,17 +162,20 @@ cargo component build --target wasm32-wasip2 --release
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `DATABASE_URL` | `sqlite://manga-vault.db` | SQLite or Postgres connection |
-| `BIND_ADDR` | `127.0.0.1:18080` | API listen address |
+| `DATABASE_URL` | `sqlite://./data/manga-vault.db` | SQLite or Postgres connection |
+| `BIND_ADDR` | `127.0.0.1:8080` | API listen address |
+| `DATA_DIR` | `./data` | Local data directory (downloads, repos) |
 | `SECRET_KEY` | — | Encrypts tracker/translation credentials |
-| `ADMIN_USERNAME` | — | Grants plugin management access |
+| `ADMIN_USERNAME` | — | Grants admin access (plugin + registration management) |
+| `REGISTRATION_MODE` | `open` | `open`, `closed`, or `invite` |
 | `OLLAMA_ENDPOINT` | — | Instance-wide translation via Ollama |
+| `OLLAMA_MODEL` | `qwen2.5:7b` | Model used for Ollama translation |
 | `TRANSLATION_ENABLED` | `true` | Kill switch for translation |
 | `PLUGINS_DIR` | `./plugins` | Plugin storage path |
 | `IMAGE_CACHE_MB` | `512` | Proxy cache size for images |
-| `FLARESOLVERR_URL` | — | Byparr / FlareSolverr for Cloudflare sources |
-| `CORS_ORIGINS` | — | Allowed cross-origin origins |
-| `PUBLIC_API_URL` | `` | API URL for the web UI |
+| `FLARESOLVERR_URL` | — | FlareSolverr for Cloudflare sources |
+| `CORS_ORIGINS` | — | Comma-separated allowed origins. Setting this also marks the session cookie `SameSite=None; Secure` for cross-site (e.g. Cloudflare Pages) deployments |
+| `PUBLIC_API_URL` | `` | API URL for the web UI, baked in at build time (empty = same origin) |
 
 ---
 

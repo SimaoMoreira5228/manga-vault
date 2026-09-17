@@ -106,6 +106,7 @@ async fn main() {
 		ollama_translator,
 		secret_key: server_config.secret_key.clone(),
 		translation_enabled: server_config.translation_enabled,
+		secure_cookies: !server_config.cors_origins.is_empty(),
 		image_cache: image_cache(),
 		events: EVENT_FEED.clone(),
 	});

@@ -177,11 +177,11 @@ async fn smoke(args: &Args) -> anyhow::Result<()> {
 
 	probe(args, "latest", async {
 		let hits = source.latest(1).await?;
-		if probe_url.is_none() {
-			if let Some(hit) = hits.first() {
-				probe_url = Some(hit.remote_url.clone());
-				cover_probe = hit.cover_url.clone();
-			}
+		if probe_url.is_none()
+			&& let Some(hit) = hits.first()
+		{
+			probe_url = Some(hit.remote_url.clone());
+			cover_probe = hit.cover_url.clone();
 		}
 		Ok(format!("{} works", hits.len()))
 	})
@@ -195,11 +195,11 @@ async fn smoke(args: &Args) -> anyhow::Result<()> {
 
 	probe(args, "search", async {
 		let hits = source.search(&args.query, 1).await?;
-		if probe_url.is_none() {
-			if let Some(hit) = hits.first() {
-				probe_url = Some(hit.remote_url.clone());
-				cover_probe = hit.cover_url.clone();
-			}
+		if probe_url.is_none()
+			&& let Some(hit) = hits.first()
+		{
+			probe_url = Some(hit.remote_url.clone());
+			cover_probe = hit.cover_url.clone();
 		}
 		Ok(format!("{} hits for `{}`", hits.len(), args.query))
 	})
