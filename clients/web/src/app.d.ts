@@ -14,14 +14,10 @@ declare global {
 		// interface PageData {}
 		// interface PageState {}
 	}
+}
 
-	interface ImportMetaEnv {
-		readonly PUBLIC_API_URL?: string;
-	}
-
-	interface ImportMeta {
-		readonly env: ImportMetaEnv;
-	}
+declare module '$env/static/public' {
+	export const PUBLIC_API_URL: string;
 }
 
 export {};
