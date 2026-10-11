@@ -67,6 +67,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CatalogItem dco_decode_catalog_item(dynamic raw);
 
   @protected
+  CategorySummary dco_decode_category_summary(dynamic raw);
+
+  @protected
   ChapterBody dco_decode_chapter_body(dynamic raw);
 
   @protected
@@ -74,6 +77,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ContinueItem dco_decode_continue_item(dynamic raw);
+
+  @protected
+  DailyReadCount dco_decode_daily_read_count(dynamic raw);
+
+  @protected
+  HistoryItem dco_decode_history_item(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
@@ -88,10 +97,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<CatalogItem> dco_decode_list_catalog_item(dynamic raw);
 
   @protected
+  List<CategorySummary> dco_decode_list_category_summary(dynamic raw);
+
+  @protected
   List<ChapterSummary> dco_decode_list_chapter_summary(dynamic raw);
 
   @protected
   List<ContinueItem> dco_decode_list_continue_item(dynamic raw);
+
+  @protected
+  List<DailyReadCount> dco_decode_list_daily_read_count(dynamic raw);
+
+  @protected
+  List<HistoryItem> dco_decode_list_history_item(dynamic raw);
 
   @protected
   List<LibraryItem> dco_decode_list_library_item(dynamic raw);
@@ -112,6 +130,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<SourceSummary> dco_decode_list_source_summary(dynamic raw);
 
   @protected
+  List<WorkOverview> dco_decode_list_work_overview(dynamic raw);
+
+  @protected
   List<WorkSummary> dco_decode_list_work_summary(dynamic raw);
 
   @protected
@@ -130,6 +151,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ReadingPosition dco_decode_reading_position(dynamic raw);
 
   @protected
+  ReadingStats dco_decode_reading_stats(dynamic raw);
+
+  @protected
   SourceSummary dco_decode_source_summary(dynamic raw);
 
   @protected
@@ -146,6 +170,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WorkDetails dco_decode_work_details(dynamic raw);
+
+  @protected
+  WorkOverview dco_decode_work_overview(dynamic raw);
 
   @protected
   WorkSummary dco_decode_work_summary(dynamic raw);
@@ -190,6 +217,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   CatalogItem sse_decode_catalog_item(SseDeserializer deserializer);
 
   @protected
+  CategorySummary sse_decode_category_summary(SseDeserializer deserializer);
+
+  @protected
   ChapterBody sse_decode_chapter_body(SseDeserializer deserializer);
 
   @protected
@@ -197,6 +227,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   ContinueItem sse_decode_continue_item(SseDeserializer deserializer);
+
+  @protected
+  DailyReadCount sse_decode_daily_read_count(SseDeserializer deserializer);
+
+  @protected
+  HistoryItem sse_decode_history_item(SseDeserializer deserializer);
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
@@ -211,6 +247,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<CatalogItem> sse_decode_list_catalog_item(SseDeserializer deserializer);
 
   @protected
+  List<CategorySummary> sse_decode_list_category_summary(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<ChapterSummary> sse_decode_list_chapter_summary(
     SseDeserializer deserializer,
   );
@@ -219,6 +260,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ContinueItem> sse_decode_list_continue_item(
     SseDeserializer deserializer,
   );
+
+  @protected
+  List<DailyReadCount> sse_decode_list_daily_read_count(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  List<HistoryItem> sse_decode_list_history_item(SseDeserializer deserializer);
 
   @protected
   List<LibraryItem> sse_decode_list_library_item(SseDeserializer deserializer);
@@ -245,6 +294,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<WorkOverview> sse_decode_list_work_overview(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<WorkSummary> sse_decode_list_work_summary(SseDeserializer deserializer);
 
   @protected
@@ -263,6 +317,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   ReadingPosition sse_decode_reading_position(SseDeserializer deserializer);
 
   @protected
+  ReadingStats sse_decode_reading_stats(SseDeserializer deserializer);
+
+  @protected
   SourceSummary sse_decode_source_summary(SseDeserializer deserializer);
 
   @protected
@@ -279,6 +336,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   WorkDetails sse_decode_work_details(SseDeserializer deserializer);
+
+  @protected
+  WorkOverview sse_decode_work_overview(SseDeserializer deserializer);
 
   @protected
   WorkSummary sse_decode_work_summary(SseDeserializer deserializer);
@@ -333,6 +393,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_catalog_item(CatalogItem self, SseSerializer serializer);
 
   @protected
+  void sse_encode_category_summary(
+    CategorySummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_chapter_body(ChapterBody self, SseSerializer serializer);
 
   @protected
@@ -343,6 +409,15 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_continue_item(ContinueItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_daily_read_count(
+    DailyReadCount self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_history_item(HistoryItem self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
@@ -360,6 +435,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_category_summary(
+    List<CategorySummary> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_chapter_summary(
     List<ChapterSummary> self,
     SseSerializer serializer,
@@ -368,6 +449,18 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   void sse_encode_list_continue_item(
     List<ContinueItem> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_daily_read_count(
+    List<DailyReadCount> self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_list_history_item(
+    List<HistoryItem> self,
     SseSerializer serializer,
   );
 
@@ -408,6 +501,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_work_overview(
+    List<WorkOverview> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_work_summary(
     List<WorkSummary> self,
     SseSerializer serializer,
@@ -435,6 +534,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_reading_stats(ReadingStats self, SseSerializer serializer);
+
+  @protected
   void sse_encode_source_summary(SourceSummary self, SseSerializer serializer);
 
   @protected
@@ -451,6 +553,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_work_details(WorkDetails self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_work_overview(WorkOverview self, SseSerializer serializer);
 
   @protected
   void sse_encode_work_summary(WorkSummary self, SseSerializer serializer);

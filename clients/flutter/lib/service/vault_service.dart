@@ -20,6 +20,19 @@ class ChapterProgressStats {
   final int total;
 }
 
+class ReadingStatsSummary {
+  const ReadingStatsSummary({
+    required this.totalRead,
+    required this.streak,
+    required this.worksStarted,
+    required this.daily,
+  });
+  final int totalRead;
+  final int streak;
+  final int worksStarted;
+  final Map<String, int> daily;
+}
+
 class HistoryEntry {
   const HistoryEntry({
     required this.readAt,
@@ -53,6 +66,17 @@ class MigrationPairResult {
   final String? toWorkId;
 }
 
+class SessionInfo {
+  const SessionInfo({
+    required this.token,
+    required this.deviceLabel,
+    required this.lastSeenAt,
+  });
+  final String token;
+  final String? deviceLabel;
+  final DateTime lastSeenAt;
+}
+
 abstract class VaultService {
   String imageUrl(String url);
 
@@ -68,6 +92,10 @@ abstract class VaultService {
     required String sourceId,
     required int page,
   });
+  Future<List<WorkSummary>> trendingSource({
+    required String sourceId,
+    required int page,
+  });
   Future<WorkDetails> importWork({
     required String sourceId,
     required String remoteUrl,
@@ -79,6 +107,7 @@ abstract class VaultService {
   Future<List<LibraryItem>> listLibrary();
   Future<Map<String, ChapterProgressStats>> libraryOverview();
   Future<List<HistoryEntry>> history({int limit});
+  Future<ReadingStatsSummary> readingStats();
   Future<int> refreshAllLibrary();
   Future<List<CategoryInfo>> listCategories();
   Future<void> createCategory({required String name});
@@ -95,6 +124,7 @@ abstract class VaultService {
   Future<String> exportBackup();
   Future<void> importBackup(String json);
   Future<void> markRead({required String chapterId});
+  Future<void> markUnread({required String chapterId});
   Future<int> markChapters({
     required String workId,
     required List<String> chapterIds,

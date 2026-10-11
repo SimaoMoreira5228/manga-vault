@@ -137,6 +137,40 @@ async fn local_mode_imports_reads_and_tracks() {
 	assert_eq!(history[0].work_id, imported.id, "history names the work");
 	assert!(history.iter().all(|entry| entry.kind == "manga" || entry.kind == "novel"));
 
+	let category = vault.create_category("Reading".to_owned()).await.unwrap();
+	assert_eq!(category.name, "Reading");
+	let categories = vault.list_categories().await.unwrap();
+	assert_eq!(categories.len(), 1);
+
+	let entry_id = vault.list_library().await.unwrap()[0].entry_id.clone();
+	vault
+		.set_entry_category(entry_id.clone(), Some(category.id.clone()))
+		.await
+		.unwrap();
+	assert_eq!(
+		vault.library_overview().await.unwrap().len(),
+		1,
+		"the imported work is in the library"
+	);
+
+	let stats = vault.reading_stats().await.unwrap();
+	assert_eq!(stats.total_read, 1, "one chapter was marked read");
+	assert!(stats.works_started >= 1);
+
+	vault.mark_unread(imported.chapters[0].id.clone()).await.unwrap();
+	assert_eq!(vault.read_chapters(imported.id.clone()).await.unwrap().len(), 0);
+	vault
+		.mark_chapters(imported.id.clone(), vec![imported.chapters[0].id.clone()], true)
+		.await
+		.unwrap();
+	assert_eq!(vault.read_chapters(imported.id.clone()).await.unwrap().len(), 1);
+	assert_eq!(vault.reading_stats().await.unwrap().total_read, 1, "re-reading counts once");
+
+	let backup = vault.export_backup().await.unwrap();
+	assert!(backup.contains("library_entries"));
+	vault.delete_category(category.id.clone()).await.unwrap();
+	assert!(vault.list_categories().await.unwrap().is_empty());
+
 	let imported_id = imported.id.clone();
 	vault.remove_from_library(imported_id.clone()).await.unwrap();
 	assert!(vault.list_library().await.unwrap().is_empty());

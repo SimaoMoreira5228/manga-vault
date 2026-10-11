@@ -86,9 +86,11 @@ class _DownloadsPageState extends State<DownloadsPage> {
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: () => _clearWork(work.id),
-                          child: const Text(
+                          child: Text(
                             'Clear all',
-                            style: TextStyle(color: Colors.red),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                           ),
                         ),
                       ),

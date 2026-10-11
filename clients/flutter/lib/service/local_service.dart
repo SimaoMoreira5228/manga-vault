@@ -30,6 +30,12 @@ class LocalService implements VaultService {
   }) => _vault.latestSource(sourceId: sourceId, page: page);
 
   @override
+  Future<List<WorkSummary>> trendingSource({
+    required String sourceId,
+    required int page,
+  }) => _vault.trendingSource(sourceId: sourceId, page: page);
+
+  @override
   Future<WorkDetails> importWork({
     required String sourceId,
     required String remoteUrl,
@@ -56,16 +62,14 @@ class LocalService implements VaultService {
 
   @override
   Future<Map<String, ChapterProgressStats>> libraryOverview() async {
-    final items = await _vault.listLibrary();
-    final stats = <String, ChapterProgressStats>{};
-    for (final item in items) {
-      final read = await _vault.readChapters(workId: item.work.id);
-      stats[item.work.id] = ChapterProgressStats(
-        read: read.length,
-        total: item.work.chapters.length,
-      );
-    }
-    return stats;
+    final rows = await _vault.libraryOverview();
+    return {
+      for (final row in rows)
+        row.workId: ChapterProgressStats(
+          read: row.chaptersRead.toInt(),
+          total: row.chaptersTotal.toInt(),
+        ),
+    };
   }
 
   @override
@@ -97,6 +101,17 @@ class LocalService implements VaultService {
   }
 
   @override
+  Future<ReadingStatsSummary> readingStats() async {
+    final stats = await _vault.readingStats();
+    return ReadingStatsSummary(
+      totalRead: stats.totalRead.toInt(),
+      streak: stats.streak.toInt(),
+      worksStarted: stats.worksStarted.toInt(),
+      daily: {for (final row in stats.daily) row.day: row.count.toInt()},
+    );
+  }
+
+  @override
   Future<int> refreshAllLibrary() async {
     final items = await _vault.listLibrary();
     var queued = 0;
@@ -110,22 +125,25 @@ class LocalService implements VaultService {
   }
 
   @override
-  Future<List<CategoryInfo>> listCategories() =>
-      throw UnsupportedError('categories require a server');
+  Future<List<CategoryInfo>> listCategories() async => [
+    for (final category in await _vault.listCategories())
+      CategoryInfo(id: category.id, name: category.name),
+  ];
 
   @override
-  Future<void> createCategory({required String name}) =>
-      throw UnsupportedError('categories require a server');
+  Future<void> createCategory({required String name}) async {
+    await _vault.createCategory(name: name);
+  }
 
   @override
   Future<void> deleteCategory({required String categoryId}) =>
-      throw UnsupportedError('categories require a server');
+      _vault.deleteCategory(categoryId: categoryId);
 
   @override
   Future<void> setEntryCategory({
     required String entryId,
     String? categoryId,
-  }) => throw UnsupportedError('categories require a server');
+  }) => _vault.setEntryCategory(entryId: entryId, categoryId: categoryId);
 
   @override
   Future<List<MigrationCandidateInfo>> migrationCandidates({
@@ -134,12 +152,11 @@ class LocalService implements VaultService {
   }) => throw UnsupportedError('migration requires a server');
 
   @override
-  Future<String> exportBackup() async =>
-      throw UnsupportedError('backup requires a server');
+  Future<String> exportBackup() => _vault.exportBackup();
 
   @override
-  Future<void> importBackup(String json) async =>
-      throw UnsupportedError('backup requires a server');
+  Future<void> importBackup(String json) =>
+      _vault.importBackup(backupJson: json);
 
   @override
   Future<List<MigrationPairResult>> migrationApply({
@@ -152,22 +169,21 @@ class LocalService implements VaultService {
       _vault.markRead(chapterId: chapterId);
 
   @override
+  Future<void> markUnread({required String chapterId}) =>
+      _vault.markUnread(chapterId: chapterId);
+
+  @override
   Future<int> markChapters({
     required String workId,
     required List<String> chapterIds,
     required bool read,
   }) async {
-    if (!read) throw UnsupportedError('marking unread requires a server');
-    final alreadyRead = Set<String>.from(
-      await _vault.readChapters(workId: workId),
+    await _vault.markChapters(
+      workId: workId,
+      chapterIds: chapterIds,
+      read: read,
     );
-    var marked = 0;
-    for (final chapterId in chapterIds) {
-      if (alreadyRead.contains(chapterId)) continue;
-      await _vault.markRead(chapterId: chapterId);
-      marked++;
-    }
-    return marked;
+    return (await _vault.readChapters(workId: workId)).length;
   }
 
   @override

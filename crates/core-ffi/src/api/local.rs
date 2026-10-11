@@ -43,9 +43,34 @@ pub struct SourceSummary {
 
 pub struct WorkSummary {
 	pub id: Option<String>,
+	pub source_id: String,
 	pub title: String,
 	pub remote_url: String,
 	pub cover_url: Option<String>,
+}
+
+pub struct ReadingStats {
+	pub total_read: i64,
+	pub streak: i64,
+	pub works_started: i64,
+	pub daily: Vec<DailyReadCount>,
+}
+
+pub struct DailyReadCount {
+	pub day: String,
+	pub count: i64,
+}
+
+pub struct WorkOverview {
+	pub work_id: String,
+	pub chapters_read: i64,
+	pub chapters_total: i64,
+}
+
+pub struct CategorySummary {
+	pub id: String,
+	pub name: String,
+	pub created_at: String,
 }
 
 pub struct ChapterSummary {
@@ -56,6 +81,8 @@ pub struct ChapterSummary {
 
 pub struct WorkDetails {
 	pub id: String,
+	pub source_id: String,
+	pub remote_url: String,
 	pub kind: String,
 	pub title: String,
 	pub cover_url: Option<String>,
@@ -100,6 +127,8 @@ impl LocalVault {
 	fn work_details(work: &domain::Work, chapters: &[domain::Chapter]) -> WorkDetails {
 		WorkDetails {
 			id: work.id.to_string(),
+			source_id: work.source_id.clone(),
+			remote_url: work.remote_url.clone(),
 			kind: match work.kind {
 				domain::WorkKind::Manga => "manga".into(),
 				domain::WorkKind::Novel => "novel".into(),
@@ -124,6 +153,7 @@ impl LocalVault {
 			.into_iter()
 			.map(|work| WorkSummary {
 				id: None,
+				source_id: source_id.clone(),
 				title: work.title,
 				remote_url: work.remote_url,
 				cover_url: work.cover_url,
@@ -137,11 +167,114 @@ impl LocalVault {
 			.into_iter()
 			.map(|work| WorkSummary {
 				id: None,
+				source_id: source_id.clone(),
 				title: work.title,
 				remote_url: work.remote_url,
 				cover_url: work.cover_url,
 			})
 			.collect())
+	}
+
+	pub async fn trending_source(&self, source_id: String, page: u32) -> anyhow::Result<Vec<WorkSummary>> {
+		let works = self.vault.trending_page(&source_id, page).await?;
+		Ok(works
+			.into_iter()
+			.map(|work| WorkSummary {
+				id: None,
+				source_id: source_id.clone(),
+				title: work.title,
+				remote_url: work.remote_url,
+				cover_url: work.cover_url,
+			})
+			.collect())
+	}
+
+	pub async fn mark_unread(&self, chapter_id: String) -> anyhow::Result<()> {
+		self.vault.mark_unread(self.user_id, chapter_id.parse()?).await?;
+		Ok(())
+	}
+
+	pub async fn mark_chapters(&self, work_id: String, chapter_ids: Vec<String>, read: bool) -> anyhow::Result<()> {
+		let mut ids = Vec::with_capacity(chapter_ids.len());
+		for chapter_id in &chapter_ids {
+			ids.push(chapter_id.parse()?);
+		}
+		self.vault.mark_chapters(self.user_id, work_id.parse()?, ids, read).await?;
+		Ok(())
+	}
+
+	pub async fn reading_stats(&self) -> anyhow::Result<ReadingStats> {
+		let stats = self.vault.reading_stats(self.user_id).await?;
+		Ok(ReadingStats {
+			total_read: stats.total_read,
+			streak: stats.streak,
+			works_started: stats.works_started,
+			daily: stats
+				.daily_counts
+				.into_iter()
+				.map(|(day, count)| DailyReadCount { day, count })
+				.collect(),
+		})
+	}
+
+	pub async fn library_overview(&self) -> anyhow::Result<Vec<WorkOverview>> {
+		Ok(self
+			.vault
+			.library_overview(self.user_id)
+			.await?
+			.into_iter()
+			.map(|(work_id, chapters_read, chapters_total)| WorkOverview {
+				work_id: work_id.to_string(),
+				chapters_read,
+				chapters_total,
+			})
+			.collect())
+	}
+
+	pub async fn list_categories(&self) -> anyhow::Result<Vec<CategorySummary>> {
+		Ok(self
+			.vault
+			.categories(self.user_id)
+			.await?
+			.into_iter()
+			.map(|category| CategorySummary {
+				id: category.id.to_string(),
+				name: category.name,
+				created_at: category.created_at.to_rfc3339(),
+			})
+			.collect())
+	}
+
+	pub async fn create_category(&self, name: String) -> anyhow::Result<CategorySummary> {
+		let category = self.vault.create_category(self.user_id, &name).await?;
+		Ok(CategorySummary {
+			id: category.id.to_string(),
+			name: category.name,
+			created_at: category.created_at.to_rfc3339(),
+		})
+	}
+
+	pub async fn delete_category(&self, category_id: String) -> anyhow::Result<()> {
+		self.vault.delete_category(self.user_id, category_id.parse()?).await?;
+		Ok(())
+	}
+
+	pub async fn set_entry_category(&self, entry_id: String, category_id: Option<String>) -> anyhow::Result<()> {
+		let category_id = category_id.map(|id| id.parse()).transpose()?;
+		self.vault
+			.set_entry_category(self.user_id, entry_id.parse()?, category_id)
+			.await?;
+		Ok(())
+	}
+
+	pub async fn export_backup(&self) -> anyhow::Result<String> {
+		Ok(serde_json::to_string(&self.vault.export_backup(self.user_id).await?)?)
+	}
+
+	pub async fn import_backup(&self, backup_json: String) -> anyhow::Result<()> {
+		let data: application::backup::BackupData = serde_json::from_str(&backup_json)?;
+		self.vault.import_backup(self.user_id, data).await?;
+		Ok(())
 	}
 
 	pub async fn import_work(&self, source_id: String, remote_url: String) -> anyhow::Result<WorkDetails> {

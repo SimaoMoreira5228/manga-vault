@@ -102,9 +102,11 @@ class _ContinueReadingRowState extends State<ContinueReadingRow> {
                                     headers: widget.vault.imageHeaders,
                                     fit: BoxFit.cover,
                                   )
-                                : const ColoredBox(
-                                    color: Color(0xFF322820),
-                                    child: Icon(Icons.menu_book),
+                                : ColoredBox(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHigh,
+                                    child: const Icon(Icons.menu_book),
                                   ),
                           ),
                         ),

@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 
+import '../service/remote_service.dart';
 import '../service/vault_events.dart';
 import '../service/sync_scheduler.dart';
 import '../service/vault_service.dart';
+import 'chapter_actions.dart';
 import 'reader_page.dart';
+
 class WorkPage extends StatefulWidget {
-  const WorkPage({super.key, required this.vault, required this.details});
+  const WorkPage({
+    super.key,
+    required this.vault,
+    required this.details,
+    this.remote,
+  });
 
   final VaultService vault;
   final WorkDetails details;
+  final RemoteService? remote;
 
   @override
   State<WorkPage> createState() => _WorkPageState();
@@ -25,23 +34,34 @@ class _WorkPageState extends State<WorkPage> {
   List<Map<String, dynamic>> trackLinks = const [];
   Set<String> linkedTrackerIds = {};
 
+  RemoteService? get _account {
+    final linked = widget.remote;
+    if (linked != null) return linked;
+    final vault = widget.vault;
+    return vault is RemoteService ? vault : null;
+  }
+
   @override
   void initState() {
     super.initState();
     VaultEvents.instance.subscribe(_onEvent);
-    widget.vault
-        .myTrackerAccounts()
-        .then((accounts) {
-          if (!mounted) return;
-          setState(
-            () => linkedTrackerIds = accounts
-                .map((a) => a['tracker_id'] as String)
-                .toSet(),
-          );
-          if (linkedTrackerIds.isNotEmpty) _loadTracks();
-        })
-        .catchError((_) {});
+    _loadLinkedTrackers();
     _details = _load();
+  }
+
+  Future<void> _loadLinkedTrackers() async {
+    final account = _account;
+    if (account == null || !account.supportsTrackers) return;
+    final accounts = await account.myTrackerAccounts().catchError(
+      (_) => <Map<String, dynamic>>[],
+    );
+    if (!mounted) return;
+    setState(
+      () => linkedTrackerIds = {
+        for (final entry in accounts) entry['tracker_id'] as String,
+      },
+    );
+    if (linkedTrackerIds.isNotEmpty) await _loadTracks();
   }
 
   @override
@@ -56,14 +76,18 @@ class _WorkPageState extends State<WorkPage> {
   }
 
   Future<void> _loadTracks() async {
-    final links = await widget.vault
+    final account = _account;
+    if (account == null) return;
+    final links = await account
         .workTracks(workId: widget.details.id)
         .catchError((_) => <Map<String, dynamic>>[]);
     if (mounted) setState(() => trackLinks = links);
   }
 
   Future<void> _bindTrack(String trackerId, String remoteId) async {
-    await widget.vault.bindWorkTrack(
+    final account = _account;
+    if (account == null) return;
+    await account.bindWorkTrack(
       workId: widget.details.id,
       trackerId: trackerId,
       remoteId: remoteId,
@@ -72,15 +96,16 @@ class _WorkPageState extends State<WorkPage> {
   }
 
   Future<void> _unbindTrack(String linkId) async {
-    await widget.vault.deleteWorkTrack(
-      workId: widget.details.id,
-      linkId: linkId,
-    );
+    final account = _account;
+    if (account == null) return;
+    await account.deleteWorkTrack(workId: widget.details.id, linkId: linkId);
     await _loadTracks();
   }
 
   Future<void> _refreshTrack(String linkId) async {
-    await widget.vault.refreshWorkTrackLink(
+    final account = _account;
+    if (account == null) return;
+    await account.refreshWorkTrackLink(
       workId: widget.details.id,
       linkId: linkId,
     );
@@ -171,26 +196,6 @@ class _WorkPageState extends State<WorkPage> {
     setState(() => inLibrary = !inLibrary);
   }
 
-  Future<void> _markPreviousRead(
-    List<ChapterSummary> chapters,
-    int index,
-  ) async {
-    final workId = widget.details.id;
-    final pending = [
-      for (var i = 0; i <= index; i++)
-        if (!read.contains(chapters[i].id)) chapters[i].id,
-    ];
-    if (pending.isEmpty) return;
-    await widget.vault.markChapters(
-      workId: workId,
-      chapterIds: pending,
-      read: true,
-    );
-    if (!mounted) return;
-    setState(() => read.addAll(pending));
-    SyncScheduler.instance.nudge();
-  }
-
   Future<void> _openChapter(List<ChapterSummary> chapters, int index) async {
     final chapter = chapters[index];
     if (!mounted) return;
@@ -233,6 +238,7 @@ class _WorkPageState extends State<WorkPage> {
   }
 
   Future<void> _refresh() async {
+    if (!mounted) return;
     final reload = _load();
     setState(() {
       _details = reload;
@@ -346,6 +352,7 @@ class _WorkPageState extends State<WorkPage> {
                               MaterialPageRoute(
                                 builder: (_) => WorkPage(
                                   vault: widget.vault,
+                                  remote: widget.remote,
                                   details: newDetails,
                                 ),
                               ),
@@ -536,28 +543,13 @@ class _WorkPageState extends State<WorkPage> {
                       ],
                     ),
                     onTap: () => _openChapter(details.chapters, canonicalIndex),
-                    onLongPress: () => showModalBottomSheet<void>(
-                      context: context,
-                      builder: (sheetContext) => SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.done_all),
-                              title: Text(
-                                'Mark previous ${canonicalIndex + 1} as read',
-                              ),
-                              onTap: () {
-                                Navigator.of(sheetContext).pop();
-                                _markPreviousRead(
-                                  details.chapters,
-                                  canonicalIndex,
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
+                    onLongPress: () => showChapterActions(
+                      context,
+                      vault: widget.vault,
+                      workId: details.id,
+                      chapters: details.chapters,
+                      index: canonicalIndex,
+                      onChanged: _refresh,
                     ),
                   );
                 }, childCount: details.chapters.length),

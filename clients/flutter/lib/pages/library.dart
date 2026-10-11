@@ -8,9 +8,10 @@ import 'continue_reading.dart';
 import 'work_page.dart';
 
 class LibraryPage extends StatefulWidget {
-  const LibraryPage({super.key, required this.vault});
+  const LibraryPage({super.key, required this.vault, this.remote});
 
   final VaultService vault;
+  final RemoteService? remote;
 
   @override
   State<LibraryPage> createState() => _LibraryPageState();
@@ -25,8 +26,6 @@ class _LibraryPageState extends State<LibraryPage> {
   String kindFilter = 'all';
   bool refreshBusy = false;
   String? error;
-
-  bool get isRemote => widget.vault is RemoteService;
 
   List<LibraryItem> get filtered {
     var result = items ?? [];
@@ -81,11 +80,9 @@ class _LibraryPageState extends State<LibraryPage> {
       final counts = await widget.vault.libraryOverview().catchError(
         (_) => <String, ChapterProgressStats>{},
       );
-      final cats = isRemote
-          ? await widget.vault.listCategories().catchError(
-              (_) => <CategoryInfo>[],
-            )
-          : <CategoryInfo>[];
+      final cats = await widget.vault.listCategories().catchError(
+        (_) => <CategoryInfo>[],
+      );
       if (!mounted) return;
       setState(() {
         items = loaded;
@@ -102,7 +99,11 @@ class _LibraryPageState extends State<LibraryPage> {
   Future<void> _open(LibraryItem item) async {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => WorkPage(vault: widget.vault, details: item.work),
+        builder: (_) => WorkPage(
+          vault: widget.vault,
+          remote: widget.remote,
+          details: item.work,
+        ),
       ),
     );
     await _load();
@@ -122,7 +123,6 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   Future<void> _assignCategory(LibraryItem item) async {
-    if (!isRemote) return;
     final picked = await showModalBottomSheet<String?>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -152,7 +152,6 @@ class _LibraryPageState extends State<LibraryPage> {
       ),
     );
     if (picked == null && !mounted) return;
-    if (!isRemote) return;
     try {
       await widget.vault.setEntryCategory(
         entryId: item.entryId,
@@ -201,10 +200,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: _load,
-                      child: const Text('Retry'),
-                    ),
+                    FilledButton(onPressed: _load, child: const Text('Retry')),
                   ],
                 ),
               ),
@@ -313,8 +309,10 @@ class _LibraryPageState extends State<LibraryPage> {
                                   ),
                                   child: Text(
                                     '$unread new',
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSecondary,
                                       fontSize: 11,
                                     ),
                                   ),

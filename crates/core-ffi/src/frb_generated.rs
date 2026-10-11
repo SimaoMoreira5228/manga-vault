@@ -40,7 +40,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
 	default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.12.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1493537578;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 1829122452;
 
 // Section: executor
 
@@ -366,6 +366,51 @@ fn wire__crate__api__local__LocalVault_continue_reading_impl(
 		},
 	)
 }
+fn wire__crate__api__local__LocalVault_create_category_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_create_category",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			let api_name = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok = crate::api::local::LocalVault::create_category(&*api_that_guard, api_name).await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
 fn wire__crate__api__local__LocalVault_create_glossary_entry_impl(
 	port_: flutter_rust_bridge::for_generated::MessagePort,
 	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -468,6 +513,52 @@ fn wire__crate__api__local__LocalVault_create_profile_impl(
 		},
 	)
 }
+fn wire__crate__api__local__LocalVault_delete_category_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_delete_category",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			let api_category_id = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok =
+							crate::api::local::LocalVault::delete_category(&*api_that_guard, api_category_id).await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
 fn wire__crate__api__local__LocalVault_download_chapter_impl(
 	port_: flutter_rust_bridge::for_generated::MessagePort,
 	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -552,6 +643,50 @@ fn wire__crate__api__local__LocalVault_downloaded_chapters_impl(
 						let api_that_guard = api_that_guard.unwrap();
 						let output_ok =
 							crate::api::local::LocalVault::downloaded_chapters(&*api_that_guard, api_work_id).await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
+fn wire__crate__api__local__LocalVault_export_backup_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_export_backup",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok = crate::api::local::LocalVault::export_backup(&*api_that_guard).await?;
 						Ok(output_ok)
 					})()
 					.await,
@@ -740,6 +875,52 @@ fn wire__crate__api__local__LocalVault_history_impl(
 		},
 	)
 }
+fn wire__crate__api__local__LocalVault_import_backup_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_import_backup",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			let api_backup_json = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok =
+							crate::api::local::LocalVault::import_backup(&*api_that_guard, api_backup_json).await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
 fn wire__crate__api__local__LocalVault_import_work_impl(
 	port_: flutter_rust_bridge::for_generated::MessagePort,
 	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -881,6 +1062,94 @@ fn wire__crate__api__local__LocalVault_latest_source_impl(
 		},
 	)
 }
+fn wire__crate__api__local__LocalVault_library_overview_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_library_overview",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok = crate::api::local::LocalVault::library_overview(&*api_that_guard).await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
+fn wire__crate__api__local__LocalVault_list_categories_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_list_categories",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok = crate::api::local::LocalVault::list_categories(&*api_that_guard).await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
 fn wire__crate__api__local__LocalVault_list_library_impl(
 	port_: flutter_rust_bridge::for_generated::MessagePort,
 	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -970,6 +1239,59 @@ fn wire__crate__api__local__LocalVault_list_sources_impl(
 		},
 	)
 }
+fn wire__crate__api__local__LocalVault_mark_chapters_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_mark_chapters",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			let api_work_id = <String>::sse_decode(&mut deserializer);
+			let api_chapter_ids = <Vec<String>>::sse_decode(&mut deserializer);
+			let api_read = <bool>::sse_decode(&mut deserializer);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok = crate::api::local::LocalVault::mark_chapters(
+							&*api_that_guard,
+							api_work_id,
+							api_chapter_ids,
+							api_read,
+						)
+						.await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
 fn wire__crate__api__local__LocalVault_mark_read_impl(
 	port_: flutter_rust_bridge::for_generated::MessagePort,
 	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1007,6 +1329,51 @@ fn wire__crate__api__local__LocalVault_mark_read_impl(
 						}
 						let api_that_guard = api_that_guard.unwrap();
 						let output_ok = crate::api::local::LocalVault::mark_read(&*api_that_guard, api_chapter_id).await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
+fn wire__crate__api__local__LocalVault_mark_unread_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_mark_unread",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			let api_chapter_id = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok = crate::api::local::LocalVault::mark_unread(&*api_that_guard, api_chapter_id).await?;
 						Ok(output_ok)
 					})()
 					.await,
@@ -1227,6 +1594,50 @@ fn wire__crate__api__local__LocalVault_read_chapters_impl(
 						}
 						let api_that_guard = api_that_guard.unwrap();
 						let output_ok = crate::api::local::LocalVault::read_chapters(&*api_that_guard, api_work_id).await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
+fn wire__crate__api__local__LocalVault_reading_stats_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_reading_stats",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok = crate::api::local::LocalVault::reading_stats(&*api_that_guard).await?;
 						Ok(output_ok)
 					})()
 					.await,
@@ -1561,6 +1972,57 @@ fn wire__crate__api__local__LocalVault_select_profile_impl(
 		},
 	)
 }
+fn wire__crate__api__local__LocalVault_set_entry_category_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_set_entry_category",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			let api_entry_id = <String>::sse_decode(&mut deserializer);
+			let api_category_id = <Option<String>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok = crate::api::local::LocalVault::set_entry_category(
+							&*api_that_guard,
+							api_entry_id,
+							api_category_id,
+						)
+						.await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
 fn wire__crate__api__local__LocalVault_set_translation_provider_impl(
 	port_: flutter_rust_bridge::for_generated::MessagePort,
 	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1757,6 +2219,54 @@ fn wire__crate__api__local__LocalVault_translation_mode_impl(
 		},
 	)
 }
+fn wire__crate__api__local__LocalVault_trending_source_impl(
+	port_: flutter_rust_bridge::for_generated::MessagePort,
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "LocalVault_trending_source",
+			port: Some(port_),
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(ptr_, rust_vec_len_, data_len_)
+			};
+			let mut deserializer = flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
+				&mut deserializer,
+			);
+			let api_source_id = <String>::sse_decode(&mut deserializer);
+			let api_page = <u32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			move |context| async move {
+				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
+					(move || async move {
+						let mut api_that_guard = None;
+						let decode_indices_ = flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+							flutter_rust_bridge::for_generated::LockableOrderInfo::new(&api_that, 0, false),
+						]);
+						for i in decode_indices_ {
+							match i {
+								0 => api_that_guard = Some(api_that.lockable_decode_async_ref().await),
+								_ => unreachable!(),
+							}
+						}
+						let api_that_guard = api_that_guard.unwrap();
+						let output_ok =
+							crate::api::local::LocalVault::trending_source(&*api_that_guard, api_source_id, api_page)
+								.await?;
+						Ok(output_ok)
+					})()
+					.await,
+				)
+			}
+		},
+	)
+}
 fn wire__crate__api__local__LocalVault_uninstall_plugin_impl(
 	port_: flutter_rust_bridge::for_generated::MessagePort,
 	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -1904,6 +2414,20 @@ impl SseDecode for crate::api::local::CatalogItem {
 	}
 }
 
+impl SseDecode for crate::api::local::CategorySummary {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_id = <String>::sse_decode(deserializer);
+		let mut var_name = <String>::sse_decode(deserializer);
+		let mut var_createdAt = <String>::sse_decode(deserializer);
+		return crate::api::local::CategorySummary {
+			id: var_id,
+			name: var_name,
+			created_at: var_createdAt,
+		};
+	}
+}
+
 impl SseDecode for crate::api::local::ChapterBody {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1952,6 +2476,18 @@ impl SseDecode for crate::api::local::ContinueItem {
 			cover_url: var_coverUrl,
 			chapter_id: var_chapterId,
 			page: var_page,
+		};
+	}
+}
+
+impl SseDecode for crate::api::local::DailyReadCount {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_day = <String>::sse_decode(deserializer);
+		let mut var_count = <i64>::sse_decode(deserializer);
+		return crate::api::local::DailyReadCount {
+			day: var_day,
+			count: var_count,
 		};
 	}
 }
@@ -2019,6 +2555,18 @@ impl SseDecode for Vec<crate::api::local::CatalogItem> {
 	}
 }
 
+impl SseDecode for Vec<crate::api::local::CategorySummary> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut len_ = <i32>::sse_decode(deserializer);
+		let mut ans_ = Vec::with_capacity(len_ as usize);
+		for idx_ in 0..len_ {
+			ans_.push(<crate::api::local::CategorySummary>::sse_decode(deserializer));
+		}
+		return ans_;
+	}
+}
+
 impl SseDecode for Vec<crate::api::local::ChapterSummary> {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2038,6 +2586,18 @@ impl SseDecode for Vec<crate::api::local::ContinueItem> {
 		let mut ans_ = Vec::with_capacity(len_ as usize);
 		for idx_ in 0..len_ {
 			ans_.push(<crate::api::local::ContinueItem>::sse_decode(deserializer));
+		}
+		return ans_;
+	}
+}
+
+impl SseDecode for Vec<crate::api::local::DailyReadCount> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut len_ = <i32>::sse_decode(deserializer);
+		let mut ans_ = Vec::with_capacity(len_ as usize);
+		for idx_ in 0..len_ {
+			ans_.push(<crate::api::local::DailyReadCount>::sse_decode(deserializer));
 		}
 		return ans_;
 	}
@@ -2127,6 +2687,18 @@ impl SseDecode for Vec<crate::api::local::SourceSummary> {
 	}
 }
 
+impl SseDecode for Vec<crate::api::local::WorkOverview> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut len_ = <i32>::sse_decode(deserializer);
+		let mut ans_ = Vec::with_capacity(len_ as usize);
+		for idx_ in 0..len_ {
+			ans_.push(<crate::api::local::WorkOverview>::sse_decode(deserializer));
+		}
+		return ans_;
+	}
+}
+
 impl SseDecode for Vec<crate::api::local::WorkSummary> {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2201,6 +2773,22 @@ impl SseDecode for crate::api::local::ReadingPosition {
 	}
 }
 
+impl SseDecode for crate::api::local::ReadingStats {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_totalRead = <i64>::sse_decode(deserializer);
+		let mut var_streak = <i64>::sse_decode(deserializer);
+		let mut var_worksStarted = <i64>::sse_decode(deserializer);
+		let mut var_daily = <Vec<crate::api::local::DailyReadCount>>::sse_decode(deserializer);
+		return crate::api::local::ReadingStats {
+			total_read: var_totalRead,
+			streak: var_streak,
+			works_started: var_worksStarted,
+			daily: var_daily,
+		};
+	}
+}
+
 impl SseDecode for crate::api::local::SourceSummary {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2247,6 +2835,8 @@ impl SseDecode for crate::api::local::WorkDetails {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
 		let mut var_id = <String>::sse_decode(deserializer);
+		let mut var_sourceId = <String>::sse_decode(deserializer);
+		let mut var_remoteUrl = <String>::sse_decode(deserializer);
 		let mut var_kind = <String>::sse_decode(deserializer);
 		let mut var_title = <String>::sse_decode(deserializer);
 		let mut var_coverUrl = <Option<String>>::sse_decode(deserializer);
@@ -2257,6 +2847,8 @@ impl SseDecode for crate::api::local::WorkDetails {
 		let mut var_chapters = <Vec<crate::api::local::ChapterSummary>>::sse_decode(deserializer);
 		return crate::api::local::WorkDetails {
 			id: var_id,
+			source_id: var_sourceId,
+			remote_url: var_remoteUrl,
 			kind: var_kind,
 			title: var_title,
 			cover_url: var_coverUrl,
@@ -2269,15 +2861,31 @@ impl SseDecode for crate::api::local::WorkDetails {
 	}
 }
 
+impl SseDecode for crate::api::local::WorkOverview {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_workId = <String>::sse_decode(deserializer);
+		let mut var_chaptersRead = <i64>::sse_decode(deserializer);
+		let mut var_chaptersTotal = <i64>::sse_decode(deserializer);
+		return crate::api::local::WorkOverview {
+			work_id: var_workId,
+			chapters_read: var_chaptersRead,
+			chapters_total: var_chaptersTotal,
+		};
+	}
+}
+
 impl SseDecode for crate::api::local::WorkSummary {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
 		let mut var_id = <Option<String>>::sse_decode(deserializer);
+		let mut var_sourceId = <String>::sse_decode(deserializer);
 		let mut var_title = <String>::sse_decode(deserializer);
 		let mut var_remoteUrl = <String>::sse_decode(deserializer);
 		let mut var_coverUrl = <Option<String>>::sse_decode(deserializer);
 		return crate::api::local::WorkSummary {
 			id: var_id,
+			source_id: var_sourceId,
 			title: var_title,
 			remote_url: var_remoteUrl,
 			cover_url: var_coverUrl,
@@ -2308,38 +2916,49 @@ fn pde_ffi_dispatcher_primary_impl(
 		5 => wire__crate__api__local__LocalVault_chapter_content_impl(port, ptr, rust_vec_len, data_len),
 		6 => wire__crate__api__local__LocalVault_clear_translation_provider_impl(port, ptr, rust_vec_len, data_len),
 		7 => wire__crate__api__local__LocalVault_continue_reading_impl(port, ptr, rust_vec_len, data_len),
-		8 => wire__crate__api__local__LocalVault_create_glossary_entry_impl(port, ptr, rust_vec_len, data_len),
-		9 => wire__crate__api__local__LocalVault_create_profile_impl(port, ptr, rust_vec_len, data_len),
-		10 => wire__crate__api__local__LocalVault_download_chapter_impl(port, ptr, rust_vec_len, data_len),
-		11 => wire__crate__api__local__LocalVault_downloaded_chapters_impl(port, ptr, rust_vec_len, data_len),
-		12 => wire__crate__api__local__LocalVault_export_sync_state_impl(port, ptr, rust_vec_len, data_len),
-		13 => wire__crate__api__local__LocalVault_get_work_impl(port, ptr, rust_vec_len, data_len),
-		14 => wire__crate__api__local__LocalVault_glossary_for_language_impl(port, ptr, rust_vec_len, data_len),
-		15 => wire__crate__api__local__LocalVault_history_impl(port, ptr, rust_vec_len, data_len),
-		16 => wire__crate__api__local__LocalVault_import_work_impl(port, ptr, rust_vec_len, data_len),
-		17 => wire__crate__api__local__LocalVault_install_plugin_impl(port, ptr, rust_vec_len, data_len),
-		18 => wire__crate__api__local__LocalVault_latest_source_impl(port, ptr, rust_vec_len, data_len),
-		19 => wire__crate__api__local__LocalVault_list_library_impl(port, ptr, rust_vec_len, data_len),
-		20 => wire__crate__api__local__LocalVault_list_sources_impl(port, ptr, rust_vec_len, data_len),
-		21 => wire__crate__api__local__LocalVault_mark_read_impl(port, ptr, rust_vec_len, data_len),
-		22 => wire__crate__api__local__LocalVault_plugin_catalog_impl(port, ptr, rust_vec_len, data_len),
-		23 => wire__crate__api__local__LocalVault_plugin_repos_impl(port, ptr, rust_vec_len, data_len),
-		24 => wire__crate__api__local__LocalVault_positions_for_work_impl(port, ptr, rust_vec_len, data_len),
-		25 => wire__crate__api__local__LocalVault_profiles_impl(port, ptr, rust_vec_len, data_len),
-		26 => wire__crate__api__local__LocalVault_read_chapters_impl(port, ptr, rust_vec_len, data_len),
-		27 => wire__crate__api__local__LocalVault_refresh_work_impl(port, ptr, rust_vec_len, data_len),
-		28 => wire__crate__api__local__LocalVault_remove_download_impl(port, ptr, rust_vec_len, data_len),
-		29 => wire__crate__api__local__LocalVault_remove_from_library_impl(port, ptr, rust_vec_len, data_len),
-		30 => wire__crate__api__local__LocalVault_remove_plugin_repo_impl(port, ptr, rust_vec_len, data_len),
-		31 => wire__crate__api__local__LocalVault_save_position_impl(port, ptr, rust_vec_len, data_len),
-		32 => wire__crate__api__local__LocalVault_search_source_impl(port, ptr, rust_vec_len, data_len),
-		33 => wire__crate__api__local__LocalVault_select_profile_impl(port, ptr, rust_vec_len, data_len),
-		34 => wire__crate__api__local__LocalVault_set_translation_provider_impl(port, ptr, rust_vec_len, data_len),
-		35 => wire__crate__api__local__LocalVault_toggle_glossary_vote_impl(port, ptr, rust_vec_len, data_len),
-		36 => wire__crate__api__local__LocalVault_translate_chapter_impl(port, ptr, rust_vec_len, data_len),
-		37 => wire__crate__api__local__LocalVault_translation_mode_impl(port, ptr, rust_vec_len, data_len),
-		38 => wire__crate__api__local__LocalVault_uninstall_plugin_impl(port, ptr, rust_vec_len, data_len),
-		39 => wire__crate__api__local__start_impl(port, ptr, rust_vec_len, data_len),
+		8 => wire__crate__api__local__LocalVault_create_category_impl(port, ptr, rust_vec_len, data_len),
+		9 => wire__crate__api__local__LocalVault_create_glossary_entry_impl(port, ptr, rust_vec_len, data_len),
+		10 => wire__crate__api__local__LocalVault_create_profile_impl(port, ptr, rust_vec_len, data_len),
+		11 => wire__crate__api__local__LocalVault_delete_category_impl(port, ptr, rust_vec_len, data_len),
+		12 => wire__crate__api__local__LocalVault_download_chapter_impl(port, ptr, rust_vec_len, data_len),
+		13 => wire__crate__api__local__LocalVault_downloaded_chapters_impl(port, ptr, rust_vec_len, data_len),
+		14 => wire__crate__api__local__LocalVault_export_backup_impl(port, ptr, rust_vec_len, data_len),
+		15 => wire__crate__api__local__LocalVault_export_sync_state_impl(port, ptr, rust_vec_len, data_len),
+		16 => wire__crate__api__local__LocalVault_get_work_impl(port, ptr, rust_vec_len, data_len),
+		17 => wire__crate__api__local__LocalVault_glossary_for_language_impl(port, ptr, rust_vec_len, data_len),
+		18 => wire__crate__api__local__LocalVault_history_impl(port, ptr, rust_vec_len, data_len),
+		19 => wire__crate__api__local__LocalVault_import_backup_impl(port, ptr, rust_vec_len, data_len),
+		20 => wire__crate__api__local__LocalVault_import_work_impl(port, ptr, rust_vec_len, data_len),
+		21 => wire__crate__api__local__LocalVault_install_plugin_impl(port, ptr, rust_vec_len, data_len),
+		22 => wire__crate__api__local__LocalVault_latest_source_impl(port, ptr, rust_vec_len, data_len),
+		23 => wire__crate__api__local__LocalVault_library_overview_impl(port, ptr, rust_vec_len, data_len),
+		24 => wire__crate__api__local__LocalVault_list_categories_impl(port, ptr, rust_vec_len, data_len),
+		25 => wire__crate__api__local__LocalVault_list_library_impl(port, ptr, rust_vec_len, data_len),
+		26 => wire__crate__api__local__LocalVault_list_sources_impl(port, ptr, rust_vec_len, data_len),
+		27 => wire__crate__api__local__LocalVault_mark_chapters_impl(port, ptr, rust_vec_len, data_len),
+		28 => wire__crate__api__local__LocalVault_mark_read_impl(port, ptr, rust_vec_len, data_len),
+		29 => wire__crate__api__local__LocalVault_mark_unread_impl(port, ptr, rust_vec_len, data_len),
+		30 => wire__crate__api__local__LocalVault_plugin_catalog_impl(port, ptr, rust_vec_len, data_len),
+		31 => wire__crate__api__local__LocalVault_plugin_repos_impl(port, ptr, rust_vec_len, data_len),
+		32 => wire__crate__api__local__LocalVault_positions_for_work_impl(port, ptr, rust_vec_len, data_len),
+		33 => wire__crate__api__local__LocalVault_profiles_impl(port, ptr, rust_vec_len, data_len),
+		34 => wire__crate__api__local__LocalVault_read_chapters_impl(port, ptr, rust_vec_len, data_len),
+		35 => wire__crate__api__local__LocalVault_reading_stats_impl(port, ptr, rust_vec_len, data_len),
+		36 => wire__crate__api__local__LocalVault_refresh_work_impl(port, ptr, rust_vec_len, data_len),
+		37 => wire__crate__api__local__LocalVault_remove_download_impl(port, ptr, rust_vec_len, data_len),
+		38 => wire__crate__api__local__LocalVault_remove_from_library_impl(port, ptr, rust_vec_len, data_len),
+		39 => wire__crate__api__local__LocalVault_remove_plugin_repo_impl(port, ptr, rust_vec_len, data_len),
+		40 => wire__crate__api__local__LocalVault_save_position_impl(port, ptr, rust_vec_len, data_len),
+		41 => wire__crate__api__local__LocalVault_search_source_impl(port, ptr, rust_vec_len, data_len),
+		42 => wire__crate__api__local__LocalVault_select_profile_impl(port, ptr, rust_vec_len, data_len),
+		43 => wire__crate__api__local__LocalVault_set_entry_category_impl(port, ptr, rust_vec_len, data_len),
+		44 => wire__crate__api__local__LocalVault_set_translation_provider_impl(port, ptr, rust_vec_len, data_len),
+		45 => wire__crate__api__local__LocalVault_toggle_glossary_vote_impl(port, ptr, rust_vec_len, data_len),
+		46 => wire__crate__api__local__LocalVault_translate_chapter_impl(port, ptr, rust_vec_len, data_len),
+		47 => wire__crate__api__local__LocalVault_translation_mode_impl(port, ptr, rust_vec_len, data_len),
+		48 => wire__crate__api__local__LocalVault_trending_source_impl(port, ptr, rust_vec_len, data_len),
+		49 => wire__crate__api__local__LocalVault_uninstall_plugin_impl(port, ptr, rust_vec_len, data_len),
+		50 => wire__crate__api__local__start_impl(port, ptr, rust_vec_len, data_len),
 		_ => unreachable!(),
 	}
 }
@@ -2390,6 +3009,23 @@ impl flutter_rust_bridge::IntoDart for crate::api::local::CatalogItem {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::CatalogItem {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::local::CatalogItem> for crate::api::local::CatalogItem {
 	fn into_into_dart(self) -> crate::api::local::CatalogItem {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::local::CategorySummary {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.id.into_into_dart().into_dart(),
+			self.name.into_into_dart().into_dart(),
+			self.created_at.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::CategorySummary {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::local::CategorySummary> for crate::api::local::CategorySummary {
+	fn into_into_dart(self) -> crate::api::local::CategorySummary {
 		self
 	}
 }
@@ -2446,6 +3082,18 @@ impl flutter_rust_bridge::IntoDart for crate::api::local::ContinueItem {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::ContinueItem {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::local::ContinueItem> for crate::api::local::ContinueItem {
 	fn into_into_dart(self) -> crate::api::local::ContinueItem {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::local::DailyReadCount {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[self.day.into_into_dart().into_dart(), self.count.into_into_dart().into_dart()].into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::DailyReadCount {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::local::DailyReadCount> for crate::api::local::DailyReadCount {
+	fn into_into_dart(self) -> crate::api::local::DailyReadCount {
 		self
 	}
 }
@@ -2536,6 +3184,24 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::local::ReadingPosition> for c
 	}
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::local::ReadingStats {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.total_read.into_into_dart().into_dart(),
+			self.streak.into_into_dart().into_dart(),
+			self.works_started.into_into_dart().into_dart(),
+			self.daily.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::ReadingStats {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::local::ReadingStats> for crate::api::local::ReadingStats {
+	fn into_into_dart(self) -> crate::api::local::ReadingStats {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::local::SourceSummary {
 	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
 		[
@@ -2558,6 +3224,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::local::WorkDetails {
 	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
 		[
 			self.id.into_into_dart().into_dart(),
+			self.source_id.into_into_dart().into_dart(),
+			self.remote_url.into_into_dart().into_dart(),
 			self.kind.into_into_dart().into_dart(),
 			self.title.into_into_dart().into_dart(),
 			self.cover_url.into_into_dart().into_dart(),
@@ -2577,10 +3245,28 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::local::WorkDetails> for crate
 	}
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::local::WorkOverview {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.work_id.into_into_dart().into_dart(),
+			self.chapters_read.into_into_dart().into_dart(),
+			self.chapters_total.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::WorkOverview {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::local::WorkOverview> for crate::api::local::WorkOverview {
+	fn into_into_dart(self) -> crate::api::local::WorkOverview {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::local::WorkSummary {
 	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
 		[
 			self.id.into_into_dart().into_dart(),
+			self.source_id.into_into_dart().into_dart(),
 			self.title.into_into_dart().into_dart(),
 			self.remote_url.into_into_dart().into_dart(),
 			self.cover_url.into_into_dart().into_dart(),
@@ -2648,6 +3334,15 @@ impl SseEncode for crate::api::local::CatalogItem {
 	}
 }
 
+impl SseEncode for crate::api::local::CategorySummary {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<String>::sse_encode(self.id, serializer);
+		<String>::sse_encode(self.name, serializer);
+		<String>::sse_encode(self.created_at, serializer);
+	}
+}
+
 impl SseEncode for crate::api::local::ChapterBody {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2684,6 +3379,14 @@ impl SseEncode for crate::api::local::ContinueItem {
 		<Option<String>>::sse_encode(self.cover_url, serializer);
 		<Option<String>>::sse_encode(self.chapter_id, serializer);
 		<Option<u32>>::sse_encode(self.page, serializer);
+	}
+}
+
+impl SseEncode for crate::api::local::DailyReadCount {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<String>::sse_encode(self.day, serializer);
+		<i64>::sse_encode(self.count, serializer);
 	}
 }
 
@@ -2734,6 +3437,16 @@ impl SseEncode for Vec<crate::api::local::CatalogItem> {
 	}
 }
 
+impl SseEncode for Vec<crate::api::local::CategorySummary> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<i32>::sse_encode(self.len() as _, serializer);
+		for item in self {
+			<crate::api::local::CategorySummary>::sse_encode(item, serializer);
+		}
+	}
+}
+
 impl SseEncode for Vec<crate::api::local::ChapterSummary> {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2750,6 +3463,16 @@ impl SseEncode for Vec<crate::api::local::ContinueItem> {
 		<i32>::sse_encode(self.len() as _, serializer);
 		for item in self {
 			<crate::api::local::ContinueItem>::sse_encode(item, serializer);
+		}
+	}
+}
+
+impl SseEncode for Vec<crate::api::local::DailyReadCount> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<i32>::sse_encode(self.len() as _, serializer);
+		for item in self {
+			<crate::api::local::DailyReadCount>::sse_encode(item, serializer);
 		}
 	}
 }
@@ -2824,6 +3547,16 @@ impl SseEncode for Vec<crate::api::local::SourceSummary> {
 	}
 }
 
+impl SseEncode for Vec<crate::api::local::WorkOverview> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<i32>::sse_encode(self.len() as _, serializer);
+		for item in self {
+			<crate::api::local::WorkOverview>::sse_encode(item, serializer);
+		}
+	}
+}
+
 impl SseEncode for Vec<crate::api::local::WorkSummary> {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2880,6 +3613,16 @@ impl SseEncode for crate::api::local::ReadingPosition {
 	}
 }
 
+impl SseEncode for crate::api::local::ReadingStats {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<i64>::sse_encode(self.total_read, serializer);
+		<i64>::sse_encode(self.streak, serializer);
+		<i64>::sse_encode(self.works_started, serializer);
+		<Vec<crate::api::local::DailyReadCount>>::sse_encode(self.daily, serializer);
+	}
+}
+
 impl SseEncode for crate::api::local::SourceSummary {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2920,6 +3663,8 @@ impl SseEncode for crate::api::local::WorkDetails {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
 		<String>::sse_encode(self.id, serializer);
+		<String>::sse_encode(self.source_id, serializer);
+		<String>::sse_encode(self.remote_url, serializer);
 		<String>::sse_encode(self.kind, serializer);
 		<String>::sse_encode(self.title, serializer);
 		<Option<String>>::sse_encode(self.cover_url, serializer);
@@ -2931,10 +3676,20 @@ impl SseEncode for crate::api::local::WorkDetails {
 	}
 }
 
+impl SseEncode for crate::api::local::WorkOverview {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<String>::sse_encode(self.work_id, serializer);
+		<i64>::sse_encode(self.chapters_read, serializer);
+		<i64>::sse_encode(self.chapters_total, serializer);
+	}
+}
+
 impl SseEncode for crate::api::local::WorkSummary {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
 		<Option<String>>::sse_encode(self.id, serializer);
+		<String>::sse_encode(self.source_id, serializer);
 		<String>::sse_encode(self.title, serializer);
 		<String>::sse_encode(self.remote_url, serializer);
 		<Option<String>>::sse_encode(self.cover_url, serializer);

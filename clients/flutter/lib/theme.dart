@@ -1,67 +1,222 @@
 import 'package:flutter/material.dart';
 
-const surface = Color(0xFF1A120B);
-const surfaceContainerLowest = Color(0xFF150C06);
-const surfaceContainerLow = Color(0xFF231A13);
-const surfaceContainer = Color(0xFF271E16);
-const surfaceContainerHigh = Color(0xFF322820);
-const surfaceContainerHighest = Color(0xFF3E332B);
-const onSurface = Color(0xFFF2DFD3);
-const onSurfaceVariant = Color(0xFFDBC2B0);
-const outline = Color(0xFFA38C7C);
-const outlineVariant = Color(0xFF554336);
-const primary = Color(0xFFFFB77D);
-const onPrimary = Color(0xFF4D2600);
-const primaryContainer = Color(0xFFD97707);
-const onPrimaryContainer = Color(0xFF432100);
-const secondary = Color(0xFF44E2CD);
-const onSecondary = Color(0xFF003731);
-const secondaryContainer = Color(0xFF03C6B2);
-const onSecondaryContainer = Color(0xFF004D44);
-const error = Color(0xFFFFB4AB);
-const onError = Color(0xFF690005);
-const errorContainer = Color(0xFF93000A);
-const onErrorContainer = Color(0xFFFFDAD6);
+import 'service/app_prefs.dart';
 
 const _geist = 'Geist';
 const _playfair = 'Playfair Display';
 
-ThemeData buildVaultTheme() {
-  const scheme = ColorScheme.dark(
-    surface: surface,
-    onSurface: onSurface,
-    onSurfaceVariant: onSurfaceVariant,
-    primary: primary,
-    onPrimary: onPrimary,
-    primaryContainer: primaryContainer,
-    onPrimaryContainer: onPrimaryContainer,
-    secondary: secondary,
-    onSecondary: onSecondary,
-    secondaryContainer: secondaryContainer,
-    onSecondaryContainer: onSecondaryContainer,
-    error: error,
-    onError: onError,
-    errorContainer: errorContainer,
-    onErrorContainer: onErrorContainer,
-    outline: outline,
-    outlineVariant: outlineVariant,
-    inverseSurface: onSurface,
-    onInverseSurface: Color(0xFF392E26),
-    surfaceContainerLowest: surfaceContainerLowest,
-    surfaceContainerLow: surfaceContainerLow,
-    surfaceContainer: surfaceContainer,
-    surfaceContainerHigh: surfaceContainerHigh,
-    surfaceContainerHighest: surfaceContainerHighest,
-    surfaceTint: primary,
+const _secondary = Color(0xFF44E2CD);
+const _onSecondary = Color(0xFF003731);
+const _secondaryContainer = Color(0xFF03C6B2);
+const _onSecondaryContainer = Color(0xFF004D44);
+const _error = Color(0xFFFFB4AB);
+const _onError = Color(0xFF690005);
+const _errorContainer = Color(0xFF93000A);
+const _onErrorContainer = Color(0xFFFFDAD6);
+const _black = Color(0xFF000000);
+
+class VaultPalette {
+  const VaultPalette({
+    required this.surface,
+    required this.surfaceDim,
+    required this.surfaceBright,
+    required this.surfaceLowest,
+    required this.surfaceLow,
+    required this.surfaceContainer,
+    required this.surfaceHigh,
+    required this.surfaceHighest,
+    required this.onSurface,
+    required this.onSurfaceVariant,
+    required this.outline,
+    required this.outlineVariant,
+    required this.primary,
+    required this.onPrimary,
+    required this.primaryContainer,
+    required this.onPrimaryContainer,
+  });
+
+  final Color surface;
+  final Color surfaceDim;
+  final Color surfaceBright;
+  final Color surfaceLowest;
+  final Color surfaceLow;
+  final Color surfaceContainer;
+  final Color surfaceHigh;
+  final Color surfaceHighest;
+  final Color onSurface;
+  final Color onSurfaceVariant;
+  final Color outline;
+  final Color outlineVariant;
+  final Color primary;
+  final Color onPrimary;
+  final Color primaryContainer;
+  final Color onPrimaryContainer;
+}
+
+class VaultTheme {
+  const VaultTheme({
+    required this.id,
+    required this.name,
+    required this.palette,
+  });
+
+  final String id;
+  final String name;
+  final VaultPalette palette;
+}
+
+const classicTheme = VaultTheme(
+  id: 'classic',
+  name: 'Classic Vault',
+  palette: VaultPalette(
+    surface: Color(0xFF1A120B),
+    surfaceDim: Color(0xFF1A120B),
+    surfaceBright: Color(0xFF42372F),
+    surfaceLowest: Color(0xFF150C06),
+    surfaceLow: Color(0xFF231A13),
+    surfaceContainer: Color(0xFF271E16),
+    surfaceHigh: Color(0xFF322820),
+    surfaceHighest: Color(0xFF3E332B),
+    onSurface: Color(0xFFF2DFD3),
+    onSurfaceVariant: Color(0xFFDBC2B0),
+    outline: Color(0xFFA38C7C),
+    outlineVariant: Color(0xFF554336),
+    primary: Color(0xFFFFB77D),
+    onPrimary: Color(0xFF4D2600),
+    primaryContainer: Color(0xFFD97707),
+    onPrimaryContainer: Color(0xFF432100),
+  ),
+);
+
+const forestTheme = VaultTheme(
+  id: 'forest',
+  name: 'Forest Archive',
+  palette: VaultPalette(
+    surface: Color(0xFF111812),
+    surfaceDim: Color(0xFF111812),
+    surfaceBright: Color(0xFF33463A),
+    surfaceLowest: Color(0xFF0C110D),
+    surfaceLow: Color(0xFF141C16),
+    surfaceContainer: Color(0xFF18231A),
+    surfaceHigh: Color(0xFF1E2C20),
+    surfaceHighest: Color(0xFF253627),
+    onSurface: Color(0xFFDCEBDD),
+    onSurfaceVariant: Color(0xFFB0C4AF),
+    outline: Color(0xFF8FA48C),
+    outlineVariant: Color(0xFF2C3F30),
+    primary: Color(0xFFA8D5A2),
+    onPrimary: Color(0xFF0D2A13),
+    primaryContainer: Color(0xFF63A86B),
+    onPrimaryContainer: Color(0xFF081508),
+  ),
+);
+
+const slateTheme = VaultTheme(
+  id: 'slate',
+  name: 'Slate Scholar',
+  palette: VaultPalette(
+    surface: Color(0xFF0D1518),
+    surfaceDim: Color(0xFF0D1518),
+    surfaceBright: Color(0xFF2B4048),
+    surfaceLowest: Color(0xFF080F12),
+    surfaceLow: Color(0xFF10191D),
+    surfaceContainer: Color(0xFF142024),
+    surfaceHigh: Color(0xFF19282D),
+    surfaceHighest: Color(0xFF1F3238),
+    onSurface: Color(0xFFD5E4E8),
+    onSurfaceVariant: Color(0xFFADC0C7),
+    outline: Color(0xFF8AA4AA),
+    outlineVariant: Color(0xFF23353B),
+    primary: Color(0xFF80C8D4),
+    onPrimary: Color(0xFF00363D),
+    primaryContainer: Color(0xFF56A9BA),
+    onPrimaryContainer: Color(0xFF03242A),
+  ),
+);
+
+const vaultThemes = [classicTheme, forestTheme, slateTheme];
+
+VaultTheme vaultThemeById(String id) => vaultThemes.firstWhere(
+  (theme) => theme.id == id,
+  orElse: () => classicTheme,
+);
+
+class Appearance {
+  const Appearance({required this.themeId, required this.pureBlack});
+
+  final String themeId;
+  final bool pureBlack;
+
+  ThemeData build() =>
+      buildVaultTheme(vaultThemeById(themeId), pureBlack: pureBlack);
+}
+
+final appearance = ValueNotifier<Appearance>(
+  const Appearance(themeId: 'classic', pureBlack: false),
+);
+
+Future<void> applyAppearance({String? themeId, bool? pureBlack}) async {
+  final prefs = await AppPrefs.instance();
+  final current = appearance.value;
+  final next = Appearance(
+    themeId: themeId ?? current.themeId,
+    pureBlack: pureBlack ?? current.pureBlack,
+  );
+  appearance.value = next;
+  await prefs.setThemeId(next.themeId);
+  await prefs.setPureBlack(next.pureBlack);
+}
+
+Future<void> restoreAppearance() async {
+  final prefs = await AppPrefs.instance();
+  appearance.value = Appearance(
+    themeId: prefs.themeId,
+    pureBlack: prefs.pureBlack,
+  );
+}
+
+ThemeData buildVaultTheme(VaultTheme theme, {bool pureBlack = false}) {
+  final palette = theme.palette;
+  final scheme = ColorScheme.dark(
+    surface: pureBlack ? _black : palette.surface,
+    surfaceDim: pureBlack ? _black : palette.surfaceDim,
+    surfaceBright: palette.surfaceBright,
+    surfaceContainerLowest: pureBlack ? _black : palette.surfaceLowest,
+    surfaceContainerLow: palette.surfaceLow,
+    surfaceContainer: palette.surfaceContainer,
+    surfaceContainerHigh: palette.surfaceHigh,
+    surfaceContainerHighest: palette.surfaceHighest,
+    onSurface: palette.onSurface,
+    onSurfaceVariant: palette.onSurfaceVariant,
+    primary: palette.primary,
+    onPrimary: palette.onPrimary,
+    primaryContainer: palette.primaryContainer,
+    onPrimaryContainer: palette.onPrimaryContainer,
+    secondary: _secondary,
+    onSecondary: _onSecondary,
+    secondaryContainer: _secondaryContainer,
+    onSecondaryContainer: _onSecondaryContainer,
+    error: _error,
+    onError: _onError,
+    errorContainer: _errorContainer,
+    onErrorContainer: _onErrorContainer,
+    outline: palette.outline,
+    outlineVariant: palette.outlineVariant,
+    inverseSurface: palette.onSurface,
+    onInverseSurface: Color.alphaBlend(
+      Colors.black.withValues(alpha: 0.35),
+      palette.outlineVariant,
+    ),
+    surfaceTint: palette.primary,
   );
 
-  final geist = TextStyle(fontFamily: _geist, color: onSurface);
-  final playfair = TextStyle(fontFamily: _playfair, color: onSurface);
+  final geist = TextStyle(fontFamily: _geist, color: palette.onSurface);
+  final playfair = TextStyle(fontFamily: _playfair, color: palette.onSurface);
 
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
-    scaffoldBackgroundColor: surface,
+    scaffoldBackgroundColor: scheme.surface,
     textTheme: TextTheme(
       displayLarge: playfair.copyWith(
         fontSize: 48,
@@ -112,8 +267,8 @@ ThemeData buildVaultTheme() {
       ),
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor: surface,
-      foregroundColor: onSurface,
+      backgroundColor: scheme.surface,
+      foregroundColor: palette.onSurface,
       elevation: 0,
       titleTextStyle: playfair.copyWith(
         fontSize: 22,
@@ -121,13 +276,13 @@ ThemeData buildVaultTheme() {
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: surfaceContainerLow,
+      backgroundColor: palette.surfaceLow,
       indicatorColor: Colors.transparent,
       iconTheme: WidgetStateProperty.resolveWith(
         (states) => IconThemeData(
           color: states.contains(WidgetState.selected)
-              ? primary
-              : onSurfaceVariant,
+              ? palette.primary
+              : palette.onSurfaceVariant,
         ),
       ),
       labelTextStyle: WidgetStateProperty.resolveWith(
@@ -136,44 +291,44 @@ ThemeData buildVaultTheme() {
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: states.contains(WidgetState.selected)
-              ? primary
-              : onSurfaceVariant,
+              ? palette.primary
+              : palette.onSurfaceVariant,
         ),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: surfaceContainerLow,
-      hintStyle: geist.copyWith(color: outline),
+      fillColor: palette.surfaceLow,
+      hintStyle: geist.copyWith(color: palette.outline),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: outlineVariant),
+        borderSide: BorderSide(color: palette.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: outlineVariant),
+        borderSide: BorderSide(color: palette.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: primary),
+        borderSide: BorderSide(color: palette.primary),
       ),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: surfaceContainerHigh,
+      backgroundColor: palette.surfaceHigh,
       labelStyle: geist.copyWith(
         fontSize: 12,
         fontWeight: FontWeight.w500,
-        color: onSurfaceVariant,
+        color: palette.onSurfaceVariant,
       ),
-      side: BorderSide(color: outlineVariant),
+      side: BorderSide(color: palette.outlineVariant),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     ),
-    listTileTheme: ListTileThemeData(iconColor: onSurfaceVariant),
+    listTileTheme: ListTileThemeData(iconColor: palette.onSurfaceVariant),
     cardTheme: CardThemeData(
-      color: surfaceContainerLow,
+      color: palette.surfaceLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: outlineVariant),
+        side: BorderSide(color: palette.outlineVariant),
       ),
     ),
   );

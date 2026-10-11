@@ -10,6 +10,7 @@ import 'pages/library.dart';
 import 'pages/local_archive.dart';
 import 'service/app_prefs.dart';
 import 'pages/profile_picker.dart';
+import 'pages/server_sign_in.dart';
 import 'pages/settings.dart';
 import 'pages/sources.dart';
 import 'pages/work_page.dart';
@@ -41,13 +42,22 @@ class _MangaVaultAppState extends State<MangaVaultApp> {
   int sessionEpoch = 0;
 
   @override
+  void initState() {
+    super.initState();
+    restoreAppearance();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Manga Vault',
-      theme: buildVaultTheme(),
-      home: BootstrapPage(
-        key: ValueKey(sessionEpoch),
-        onSessionEnded: () => setState(() => sessionEpoch += 1),
+    return ValueListenableBuilder<Appearance>(
+      valueListenable: appearance,
+      builder: (context, look, _) => MaterialApp(
+        title: 'Manga Vault',
+        theme: look.build(),
+        home: BootstrapPage(
+          key: ValueKey(sessionEpoch),
+          onSessionEnded: () => setState(() => sessionEpoch += 1),
+        ),
       ),
     );
   }
@@ -183,64 +193,14 @@ class _BootstrapPageState extends State<BootstrapPage> {
   }
 
   Future<void> _connectServer() async {
-    final baseUrl = TextEditingController();
-    final username = TextEditingController();
-    final password = TextEditingController();
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Use a server account'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: baseUrl,
-              decoration: const InputDecoration(
-                hintText: 'https://server.example.org',
-              ),
-            ),
-            TextField(
-              controller: username,
-              decoration: const InputDecoration(hintText: 'Username'),
-            ),
-            TextField(
-              controller: password,
-              obscureText: true,
-              decoration: const InputDecoration(hintText: 'Password'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              try {
-                final service = await RemoteService.login(
-                  baseUrl: baseUrl.text.trim(),
-                  username: username.text,
-                  password: password.text,
-                );
-                await SessionStore.saveRemote(
-                  baseUrl: service.baseUrl,
-                  token: service.token,
-                );
-                if (!context.mounted) return;
-                Navigator.of(context).pop();
-                await _enterRemote(service);
-              } catch (e) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text('Login failed: $e')));
-              }
-            },
-            child: const Text('Sign in'),
-          ),
-        ],
-      ),
+    final service = await showServerSignIn(context);
+    if (service == null || !mounted) return;
+    await SessionStore.saveRemote(
+      baseUrl: service.baseUrl,
+      token: service.token,
     );
+    if (!mounted) return;
+    await _enterRemote(service);
   }
 
   @override
@@ -380,8 +340,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             if (context.mounted)
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) =>
-                      WorkPage(vault: widget.service, details: details),
+                  builder: (_) => WorkPage(
+                    vault: widget.service,
+                    remote: widget.linkedRemote,
+                    details: details,
+                  ),
                 ),
               );
           },
@@ -414,21 +377,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       const NavigationSection(icon: Icons.extension_outlined, label: 'Plugins'),
       if (widget.isLocal)
         const NavigationSection(icon: Icons.folder_outlined, label: 'Local'),
-      const NavigationSection(
-        icon: Icons.settings_outlined,
-        label: 'Settings',
-      ),
+      const NavigationSection(icon: Icons.settings_outlined, label: 'Settings'),
     ];
     return Scaffold(
       body: switch (tab) {
-        0 => DiscoverPage(vault: widget.service),
-        1 => LibraryPage(vault: widget.service),
+        0 => DiscoverPage(vault: widget.service, remote: widget.linkedRemote),
+        1 => LibraryPage(vault: widget.service, remote: widget.linkedRemote),
         2 => HistoryPage(vault: widget.service),
         3 => SourcesPage(vault: widget.service),
         4 when widget.isLocal => LocalArchivePage(vault: widget.service),
         _ => SettingsPage(
           service: widget.service,
           isLocal: widget.isLocal,
+          linkedRemote: widget.linkedRemote,
           restartSession: widget.restartSession,
         ),
       },

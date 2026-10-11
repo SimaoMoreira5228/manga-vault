@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../service/remote_service.dart';
 import '../service/vault_service.dart';
 import 'work_page.dart';
 
 class DiscoverPage extends StatefulWidget {
-  const DiscoverPage({super.key, required this.vault});
+  const DiscoverPage({super.key, required this.vault, this.remote});
 
   final VaultService vault;
+  final RemoteService? remote;
 
   @override
   State<DiscoverPage> createState() => _DiscoverPageState();
@@ -55,7 +57,11 @@ class _DiscoverPageState extends State<DiscoverPage> {
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => WorkPage(vault: widget.vault, details: details),
+        builder: (_) => WorkPage(
+          vault: widget.vault,
+          remote: widget.remote,
+          details: details,
+        ),
       ),
     );
   }
@@ -63,9 +69,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (error != null) {
       return Scaffold(
@@ -392,9 +396,9 @@ class WorkCard extends StatelessWidget {
                     headers: vault.imageHeaders,
                     fit: BoxFit.cover,
                   )
-                : const ColoredBox(
-                    color: Color(0xFF322820),
-                    child: Icon(Icons.menu_book),
+                : ColoredBox(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    child: const Icon(Icons.menu_book),
                   ),
             Positioned(
               left: 0,
@@ -407,7 +411,8 @@ class WorkCard extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withValues(alpha: 0.85),
+                      Theme.of(context).colorScheme.surface
+                          .withValues(alpha: 0.85),
                     ],
                   ),
                 ),
@@ -417,8 +422,9 @@ class WorkCard extends StatelessWidget {
                     work.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium
-                        ?.copyWith(color: Colors.white),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ),

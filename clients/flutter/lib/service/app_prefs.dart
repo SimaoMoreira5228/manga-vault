@@ -54,6 +54,18 @@ class AppPrefs {
     await _save();
   }
 
+  String get themeId => _data['themeId'] as String? ?? 'classic';
+  Future<void> setThemeId(String value) async {
+    _data['themeId'] = value;
+    await _save();
+  }
+
+  bool get pureBlack => _data['pureBlack'] == true;
+  Future<void> setPureBlack(bool value) async {
+    _data['pureBlack'] = value;
+    await _save();
+  }
+
   double? positionFor(String chapterId) {
     final positions = (_data['positions'] as Map?)?.cast<String, dynamic>();
     final raw = positions?[chapterId];

@@ -90,7 +90,11 @@ class _LocalArchivePageState extends State<LocalArchivePage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.folder_open, size: 64, color: Colors.grey),
+                  Icon(
+                    Icons.folder_open,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                   const SizedBox(height: 16),
                   const Text('No local manga found'),
                   const SizedBox(height: 8),

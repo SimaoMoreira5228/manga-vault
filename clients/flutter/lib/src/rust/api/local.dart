@@ -38,6 +38,8 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<List<ContinueItem>> continueReading();
 
+  Future<CategorySummary> createCategory({required String name});
+
   Future<void> createGlossaryEntry({
     required String term,
     required String language,
@@ -47,15 +49,23 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<ProfileSummary> createProfile({required String name, String? pin});
 
+  Future<void> deleteCategory({required String categoryId});
+
   Future<void> downloadChapter({required String chapterId});
 
   Future<List<String>> downloadedChapters({required String workId});
+
+  Future<String> exportBackup();
 
   Future<String> exportSyncState();
 
   Future<WorkDetails> getWork({required String workId});
 
   Future<String> glossaryForLanguage({required String language});
+
+  Future<List<HistoryItem>> history({int? limit});
+
+  Future<void> importBackup({required String backupJson});
 
   Future<WorkDetails> importWork({
     required String sourceId,
@@ -69,11 +79,23 @@ abstract class LocalVault implements RustOpaqueInterface {
     required int page,
   });
 
+  Future<List<WorkOverview>> libraryOverview();
+
+  Future<List<CategorySummary>> listCategories();
+
   Future<List<LibraryItem>> listLibrary();
 
   Future<List<SourceSummary>> listSources();
 
+  Future<void> markChapters({
+    required String workId,
+    required List<String> chapterIds,
+    required bool read,
+  });
+
   Future<void> markRead({required String chapterId});
+
+  Future<void> markUnread({required String chapterId});
 
   Future<List<CatalogItem>> pluginCatalog();
 
@@ -84,6 +106,8 @@ abstract class LocalVault implements RustOpaqueInterface {
   Future<List<ProfileSummary>> profiles();
 
   Future<List<String>> readChapters({required String workId});
+
+  Future<ReadingStats> readingStats();
 
   Future<void> refreshWork({required String workId});
 
@@ -103,6 +127,8 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<void> selectProfile({required String id, String? pin});
 
+  Future<void> setEntryCategory({required String entryId, String? categoryId});
+
   Future<void> setTranslationProvider({
     String? providerBaseUrl,
     String? apiKey,
@@ -118,6 +144,11 @@ abstract class LocalVault implements RustOpaqueInterface {
   });
 
   Future<String> translationMode();
+
+  Future<List<WorkSummary>> trendingSource({
+    required String sourceId,
+    required int page,
+  });
 
   Future<bool> uninstallPlugin({required String pluginId});
 }
@@ -163,6 +194,30 @@ class CatalogItem {
           availableVersion == other.availableVersion &&
           installedVersion == other.installedVersion &&
           updateAvailable == other.updateAvailable;
+}
+
+class CategorySummary {
+  final String id;
+  final String name;
+  final String createdAt;
+
+  const CategorySummary({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+  });
+
+  @override
+  int get hashCode => id.hashCode ^ name.hashCode ^ createdAt.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CategorySummary &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          createdAt == other.createdAt;
 }
 
 @freezed
@@ -230,6 +285,63 @@ class ContinueItem {
           coverUrl == other.coverUrl &&
           chapterId == other.chapterId &&
           page == other.page;
+}
+
+class DailyReadCount {
+  final String day;
+  final PlatformInt64 count;
+
+  const DailyReadCount({required this.day, required this.count});
+
+  @override
+  int get hashCode => day.hashCode ^ count.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DailyReadCount &&
+          runtimeType == other.runtimeType &&
+          day == other.day &&
+          count == other.count;
+}
+
+class HistoryItem {
+  final String readAt;
+  final String chapterId;
+  final String chapterTitle;
+  final String workId;
+  final String workTitle;
+  final String kind;
+
+  const HistoryItem({
+    required this.readAt,
+    required this.chapterId,
+    required this.chapterTitle,
+    required this.workId,
+    required this.workTitle,
+    required this.kind,
+  });
+
+  @override
+  int get hashCode =>
+      readAt.hashCode ^
+      chapterId.hashCode ^
+      chapterTitle.hashCode ^
+      workId.hashCode ^
+      workTitle.hashCode ^
+      kind.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HistoryItem &&
+          runtimeType == other.runtimeType &&
+          readAt == other.readAt &&
+          chapterId == other.chapterId &&
+          chapterTitle == other.chapterTitle &&
+          workId == other.workId &&
+          workTitle == other.workTitle &&
+          kind == other.kind;
 }
 
 class LibraryItem {
@@ -312,6 +424,37 @@ class ReadingPosition {
           page == other.page;
 }
 
+class ReadingStats {
+  final PlatformInt64 totalRead;
+  final PlatformInt64 streak;
+  final PlatformInt64 worksStarted;
+  final List<DailyReadCount> daily;
+
+  const ReadingStats({
+    required this.totalRead,
+    required this.streak,
+    required this.worksStarted,
+    required this.daily,
+  });
+
+  @override
+  int get hashCode =>
+      totalRead.hashCode ^
+      streak.hashCode ^
+      worksStarted.hashCode ^
+      daily.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ReadingStats &&
+          runtimeType == other.runtimeType &&
+          totalRead == other.totalRead &&
+          streak == other.streak &&
+          worksStarted == other.worksStarted &&
+          daily == other.daily;
+}
+
 class SourceSummary {
   final String id;
   final String name;
@@ -342,6 +485,8 @@ class SourceSummary {
 
 class WorkDetails {
   final String id;
+  final String sourceId;
+  final String remoteUrl;
   final String kind;
   final String title;
   final String? coverUrl;
@@ -353,6 +498,8 @@ class WorkDetails {
 
   const WorkDetails({
     required this.id,
+    required this.sourceId,
+    required this.remoteUrl,
     required this.kind,
     required this.title,
     this.coverUrl,
@@ -366,6 +513,8 @@ class WorkDetails {
   @override
   int get hashCode =>
       id.hashCode ^
+      sourceId.hashCode ^
+      remoteUrl.hashCode ^
       kind.hashCode ^
       title.hashCode ^
       coverUrl.hashCode ^
@@ -381,6 +530,8 @@ class WorkDetails {
       other is WorkDetails &&
           runtimeType == other.runtimeType &&
           id == other.id &&
+          sourceId == other.sourceId &&
+          remoteUrl == other.remoteUrl &&
           kind == other.kind &&
           title == other.title &&
           coverUrl == other.coverUrl &&
@@ -391,14 +542,41 @@ class WorkDetails {
           chapters == other.chapters;
 }
 
+class WorkOverview {
+  final String workId;
+  final PlatformInt64 chaptersRead;
+  final PlatformInt64 chaptersTotal;
+
+  const WorkOverview({
+    required this.workId,
+    required this.chaptersRead,
+    required this.chaptersTotal,
+  });
+
+  @override
+  int get hashCode =>
+      workId.hashCode ^ chaptersRead.hashCode ^ chaptersTotal.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorkOverview &&
+          runtimeType == other.runtimeType &&
+          workId == other.workId &&
+          chaptersRead == other.chaptersRead &&
+          chaptersTotal == other.chaptersTotal;
+}
+
 class WorkSummary {
   final String? id;
+  final String sourceId;
   final String title;
   final String remoteUrl;
   final String? coverUrl;
 
   const WorkSummary({
     this.id,
+    required this.sourceId,
     required this.title,
     required this.remoteUrl,
     this.coverUrl,
@@ -406,7 +584,11 @@ class WorkSummary {
 
   @override
   int get hashCode =>
-      id.hashCode ^ title.hashCode ^ remoteUrl.hashCode ^ coverUrl.hashCode;
+      id.hashCode ^
+      sourceId.hashCode ^
+      title.hashCode ^
+      remoteUrl.hashCode ^
+      coverUrl.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -414,6 +596,7 @@ class WorkSummary {
       other is WorkSummary &&
           runtimeType == other.runtimeType &&
           id == other.id &&
+          sourceId == other.sourceId &&
           title == other.title &&
           remoteUrl == other.remoteUrl &&
           coverUrl == other.coverUrl;

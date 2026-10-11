@@ -46,7 +46,46 @@ class RemoteService implements VaultService {
     return RemoteService(baseUrl: baseUrl, token: response['token'] as String);
   }
 
+  static Future<String> registrationMode(String baseUrl) async {
+    final response = await _requestJson(
+      method: 'GET',
+      url: '$baseUrl/api/registration',
+    );
+    return response['mode'] as String;
+  }
+
+  static Future<RemoteService> register({
+    required String baseUrl,
+    required String username,
+    required String password,
+    String inviteCode = '',
+  }) async {
+    final response = await _requestJson(
+      method: 'POST',
+      url: '$baseUrl/api/auth/register',
+      body: jsonEncode({
+        'username': username,
+        'password': password,
+        'device_label': 'Flutter',
+        if (inviteCode.trim().isNotEmpty) 'invite_code': inviteCode.trim(),
+      }),
+    );
+    return RemoteService(baseUrl: baseUrl, token: response['token'] as String);
+  }
+
   Future<void> logout() => _send('POST', '/api/auth/logout');
+
+  Future<List<SessionInfo>> sessions() => _list(
+    '/api/me/sessions',
+    (raw) => SessionInfo(
+      token: raw['token'] as String,
+      deviceLabel: raw['device_label'] as String?,
+      lastSeenAt: DateTime.parse(raw['last_seen_at'] as String),
+    ),
+  );
+
+  Future<void> revokeSession(String token) =>
+      _send('DELETE', '/api/me/sessions/$token');
 
   Future<dynamic> _send(String method, String path, {String? body}) =>
       _requestJson(
@@ -108,15 +147,26 @@ class RemoteService implements VaultService {
     required int page,
   }) => _list(
     '/api/sources/$sourceId/search?q=$query&page=$page',
-    WorkSummaryMapper.from,
+    (raw) => WorkSummaryMapper.from(sourceId, raw),
   );
 
   @override
   Future<List<WorkSummary>> latestSource({
     required String sourceId,
     required int page,
-  }) =>
-      _list('/api/sources/$sourceId/latest?page=$page', WorkSummaryMapper.from);
+  }) => _list(
+    '/api/sources/$sourceId/latest?page=$page',
+    (raw) => WorkSummaryMapper.from(sourceId, raw),
+  );
+
+  @override
+  Future<List<WorkSummary>> trendingSource({
+    required String sourceId,
+    required int page,
+  }) => _list(
+    '/api/sources/$sourceId/trending?page=$page',
+    (raw) => WorkSummaryMapper.from(sourceId, raw),
+  );
 
   @override
   Future<WorkDetails> importWork({
@@ -201,6 +251,20 @@ class RemoteService implements VaultService {
           workTitle: row['work_title'] as String,
         ),
     ];
+  }
+
+  @override
+  Future<ReadingStatsSummary> readingStats() async {
+    final payload = await _send('GET', '/api/me/stats');
+    return ReadingStatsSummary(
+      totalRead: payload['total_read'] as int,
+      streak: payload['streak'] as int,
+      worksStarted: payload['works_started'] as int,
+      daily: {
+        for (final row in (payload['daily_counts'] as List).cast<List>())
+          row[0] as String: row[1] as int,
+      },
+    );
   }
 
   @override
@@ -298,6 +362,10 @@ class RemoteService implements VaultService {
   @override
   Future<void> markRead({required String chapterId}) =>
       _send('PUT', '/api/chapters/$chapterId/read');
+
+  @override
+  Future<void> markUnread({required String chapterId}) =>
+      _send('DELETE', '/api/chapters/$chapterId/read');
 
   @override
   Future<int> markChapters({
@@ -607,8 +675,9 @@ class RemoteService implements VaultService {
 }
 
 class WorkSummaryMapper {
-  static WorkSummary from(dynamic raw) => WorkSummary(
+  static WorkSummary from(String sourceId, dynamic raw) => WorkSummary(
     id: null,
+    sourceId: sourceId,
     title: raw['title'] as String,
     remoteUrl: raw['remote_url'] as String,
     coverUrl: raw['cover_url'] as String?,
@@ -630,6 +699,8 @@ class WorkDetailsMapper {
     List<String> readIds = const [],
   }) => WorkDetails(
     id: work['id'] as String,
+    sourceId: work['source_id'] as String,
+    remoteUrl: work['remote_url'] as String,
     kind: work['kind'] as String,
     title: work['title'] as String,
     coverUrl: work['cover_url'] as String?,

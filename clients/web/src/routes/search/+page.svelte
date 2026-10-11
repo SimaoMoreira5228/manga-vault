@@ -181,7 +181,7 @@ async function importAndOpen(remoteUrl: string) {
 			{/each}
 		</div>
 
-		{#if results.length > 0}
+		{#if searched && !error}
 			<nav class="mt-8 flex items-center gap-4" aria-label="Search pagination">
 				<button
 					type="button"
@@ -195,7 +195,6 @@ async function importAndOpen(remoteUrl: string) {
 				<button
 					type="button"
 					class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline disabled:opacity-40"
-					disabled={results.length === 0}
 					onclick={() => changePage(1)}
 				>
 					Next

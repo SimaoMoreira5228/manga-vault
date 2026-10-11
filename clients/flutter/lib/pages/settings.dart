@@ -11,6 +11,9 @@ import '../service/remote_service.dart';
 import '../service/session_store.dart';
 import '../service/sync_engine.dart';
 import '../service/vault_service.dart';
+import 'appearance_section.dart';
+import 'server_sign_in.dart';
+import 'sessions_section.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -18,11 +21,13 @@ class SettingsPage extends StatefulWidget {
     required this.service,
     required this.isLocal,
     required this.restartSession,
+    this.linkedRemote,
   });
 
   final VaultService service;
   final bool isLocal;
   final VoidCallback restartSession;
+  final RemoteService? linkedRemote;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -38,6 +43,15 @@ class _SettingsPageState extends State<SettingsPage> {
   Map<String, TextEditingController> trackerPasswordFields = {};
   String? serverBaseUrl;
 
+  RemoteService? get _account {
+    final linkedRemote = widget.linkedRemote;
+    if (linkedRemote != null) return linkedRemote;
+    final service = widget.service;
+    return service is RemoteService ? service : null;
+  }
+
+  bool get _showTrackers => _account?.supportsTrackers ?? false;
+
   @override
   void initState() {
     super.initState();
@@ -45,28 +59,27 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadTrackers() async {
-    if (!widget.isLocal && widget.service is RemoteService) {
-      final service = widget.service as RemoteService;
-      try {
-        serverBaseUrl = service.baseUrl;
-        trackerRegistry = [
-          for (final entry in await service.trackersRegistry()) entry,
-        ];
-        linkedTrackerIds = (await service.myTrackerAccounts())
-            .map((account) => account['tracker_id'] as String)
-            .toSet();
-      } catch (_) {
-        trackerRegistry = const [];
-      }
-      if (mounted) setState(() {});
+    final account = _account;
+    if (account == null || !account.supportsTrackers) return;
+    try {
+      serverBaseUrl = account.baseUrl;
+      trackerRegistry = [
+        for (final entry in await account.trackersRegistry()) entry,
+      ];
+      linkedTrackerIds = (await account.myTrackerAccounts())
+          .map((tracker) => tracker['tracker_id'] as String)
+          .toSet();
+    } catch (_) {
+      trackerRegistry = const [];
     }
+    if (mounted) setState(() {});
   }
 
   bool _trackerLinked(String id) => linkedTrackerIds.contains(id);
 
   Future<void> _linkCredentials(String id) async {
-    final remote = widget.service;
-    if (remote is! RemoteService) return;
+    final remote = _account;
+    if (remote == null) return;
     final username = trackerUsernameFields
         .putIfAbsent(id, TextEditingController.new)
         .text
@@ -84,8 +97,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _connectOauth(String id) async {
-    final remote = widget.service;
-    if (remote is! RemoteService || serverBaseUrl == null) return;
+    final remote = _account;
+    if (remote == null || serverBaseUrl == null) return;
     final redirectUri = '${serverBaseUrl!}/api/me/trackers/$id/oauth/callback';
     final authorizeUrl = await remote.startTrackerOauth(
       trackerId: id,
@@ -107,8 +120,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _reloadTrackers() async {
-    final remote = widget.service;
-    if (remote is! RemoteService) return;
+    final remote = _account;
+    if (remote == null) return;
     final accounts = await remote.myTrackerAccounts();
     setState(
       () => linkedTrackerIds = {
@@ -118,13 +131,14 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _linkTracker(String id) async {
+    final remote = _account;
+    if (remote == null) return;
     final controller = trackerTokenFields.putIfAbsent(
       id,
       TextEditingController.new,
     );
     final token = controller.text.trim();
-    if (token.isEmpty || widget.service is! RemoteService) return;
-    final remote = widget.service as RemoteService;
+    if (token.isEmpty) return;
     await remote.linkTracker(trackerId: id, token: token);
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -132,8 +146,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _unlinkTracker(String id) async {
-    if (widget.service is! RemoteService) return;
-    final remote = widget.service as RemoteService;
+    final remote = _account;
+    if (remote == null) return;
     await remote.unlinkTracker(trackerId: id);
     setState(() => linkedTrackerIds.remove(id));
   }
@@ -145,71 +159,20 @@ class _SettingsPageState extends State<SettingsPage> {
       final baseUrl = saved['base_url'] as String?;
       final token = saved['token'] as String?;
       if (baseUrl == null || token == null) return;
-      setState(
-        () => linked = RemoteService(baseUrl: baseUrl, token: token),
-      );
+      setState(() => linked = RemoteService(baseUrl: baseUrl, token: token));
     } catch (_) {}
   }
 
   Future<void> _link() async {
-    final baseUrl = TextEditingController();
-    final username = TextEditingController();
-    final password = TextEditingController();
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Link to a server account'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: baseUrl,
-              decoration: const InputDecoration(
-                hintText: 'https://server.example.org',
-              ),
-            ),
-            TextField(
-              controller: username,
-              decoration: const InputDecoration(hintText: 'Username'),
-            ),
-            TextField(
-              controller: password,
-              obscureText: true,
-              decoration: const InputDecoration(hintText: 'Password'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              try {
-                final service = await RemoteService.login(
-                  baseUrl: baseUrl.text.trim(),
-                  username: username.text,
-                  password: password.text,
-                );
-                await SessionStore.saveLink(
-                  baseUrl: service.baseUrl,
-                  token: service.token,
-                );
-                if (!context.mounted) return;
-                Navigator.of(context).pop();
-                widget.restartSession();
-              } catch (e) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text('Link failed: $e')));
-              }
-            },
-            child: const Text('Link'),
-          ),
-        ],
-      ),
+    final service = await showServerSignIn(
+      context,
+      title: 'Link to a server account',
+      submitLabel: 'Link',
+      failureLabel: 'Link failed',
     );
+    if (service == null) return;
+    await SessionStore.saveLink(baseUrl: service.baseUrl, token: service.token);
+    widget.restartSession();
   }
 
   Future<void> _unlink() async {
@@ -251,6 +214,7 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          const AppearanceSection(),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Text(
@@ -313,7 +277,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
               ),
           ],
-          if (!widget.isLocal)
+          if (_showTrackers)
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
               child: Text(
@@ -325,7 +289,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ),
             ),
-          if (!widget.isLocal)
+          if (_showTrackers)
             for (final tracker in trackerRegistry)
               ListTile(
                 title: Text(
@@ -409,6 +373,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       },
               ),
+          if (_account != null)
+            SessionsSection(
+              account: _account!,
+              onSignedOut: widget.restartSession,
+            ),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Text(
@@ -492,28 +461,25 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             },
           ),
-          if (widget.service is RemoteService)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 24, 16, 4),
-              child: Text(
-                'DATA',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.6,
-                ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 24, 16, 4),
+            child: Text(
+              'DATA',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.6,
               ),
             ),
-          if (widget.service is RemoteService)
-            ListTile(
-              leading: const Icon(Icons.download),
-              title: const Text('Export backup'),
-              subtitle: const Text('Save all library data as a JSON file.'),
-              onTap: () async {
-                try {
-                  final json = await widget.service.exportBackup();
-                final dir = await getApplicationDocumentsDirectory();
-                final file = File('${dir.path}/manga-vault-backup.json');
+          ),
+          ListTile(
+            leading: const Icon(Icons.download),
+            title: const Text('Export backup'),
+            subtitle: const Text('Save all library data as a JSON file.'),
+            onTap: () async {
+              try {
+                final json = await widget.service.exportBackup();
+                final file = await _backupFile();
                 await file.writeAsString(json);
                 if (context.mounted)
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -527,9 +493,44 @@ class _SettingsPageState extends State<SettingsPage> {
               }
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.upload),
+            title: const Text('Import backup'),
+            subtitle: const Text('Restore library data from a JSON backup.'),
+            onTap: () async {
+              try {
+                final file = await _backupFile();
+                if (!await file.exists()) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('No backup at ${file.path}')),
+                    );
+                  }
+                  return;
+                }
+                await widget.service.importBackup(await file.readAsString());
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Backup restored')),
+                );
+                widget.restartSession();
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+                }
+              }
+            },
+          ),
         ],
       ),
     );
+  }
+
+  Future<File> _backupFile() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return File('${dir.path}/manga-vault-backup.json');
   }
 
   Future<void> _configureTranslation() async {
