@@ -12,7 +12,9 @@
 			"!worker-configuration.d.ts",
 			"!wrangler.jsonc",
 			"!**/.svelte-kit",
-			"!**/build"
+			"!**/build",
+			"!**/test-results",
+			"!**/playwright-report"
 		]
 	},
 	"formatter": {

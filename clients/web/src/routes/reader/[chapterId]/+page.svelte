@@ -472,6 +472,7 @@ async function load() {
 			</span>
 			<button
 				type="button"
+				aria-label="Reader settings"
 				class="text-on-surface-variant hover:text-primary"
 				onclick={() => (showReaderSettings = !showReaderSettings)}
 			>

@@ -1,0 +1,6 @@
+id = "mv_e2e_manga"
+version = "1.0.0"
+backend = "lua"
+entrypoint = "init.lua"
+plugin_api = "1"
+capabilities = []

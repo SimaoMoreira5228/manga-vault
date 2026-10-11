@@ -6,6 +6,9 @@ import Skeleton from '$lib/components/Skeleton.svelte';
 import { SEARCH_INPUT_ID } from '$lib/keyboard_shortcuts';
 
 let sources = $state<SourceInfo[]>([]);
+let sourcesState = $state<'loading' | 'ready' | 'error'>('loading');
+let sourcesError = $state<string | null>(null);
+let sourcesPromise: Promise<void> | null = null;
 let selected = $state<string | null>(null);
 let query = $state('');
 let page = $state(1);
@@ -19,16 +22,49 @@ let error = $state<string | null>(null);
 const isAllSources = $derived(selected === 'all');
 const selectedKind = $derived(sources.find((source) => source.id === selected)?.kind ?? null);
 
+function ensureSources(): Promise<void> {
+	sourcesPromise ??= api
+		.sources()
+		.then((all) => {
+			sources = all;
+			selected ??= all[0]?.id ?? null;
+			sourcesState = 'ready';
+		})
+		.catch((cause) => {
+			sourcesPromise = null;
+			sourcesState = 'error';
+			sourcesError = cause instanceof Error ? cause.message : 'Could not load the source list';
+		});
+	return sourcesPromise;
+}
+
 $effect(() => {
-	api.sources().then((all) => {
-		sources = all;
-		selected ??= all[0]?.id ?? null;
-	});
+	ensureSources();
 });
 
 async function submit(event: SubmitEvent) {
 	event.preventDefault();
-	if (!selected || !query.trim()) return;
+	const text = query.trim();
+	if (!text) {
+		error = 'Enter something to search for';
+		return;
+	}
+	error = null;
+	searching = true;
+	await ensureSources();
+	if (sourcesState !== 'ready') {
+		searching = false;
+		error = sourcesError ?? 'Could not load the source list';
+		return;
+	}
+	if (!selected) {
+		searching = false;
+		error =
+			sources.length === 0
+				? 'No sources are configured on this server'
+				: 'Choose a source to search';
+		return;
+	}
 	page = 1;
 	await runSearch();
 }
@@ -133,6 +169,24 @@ async function importAndOpen(remoteUrl: string) {
 				layout="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5"
 			/>
 		</div>
+	{/if}
+
+	{#if sourcesState === 'loading'}
+		<p class="mono-label mt-4 text-on-surface-variant" role="status">Loading sources…</p>
+	{:else if sourcesState === 'error'}
+		<p class="body-md mt-4 text-error" role="alert">
+			{sourcesError}
+			<button
+				type="button"
+				class="ml-2 text-primary uppercase underline hover:no-underline"
+				onclick={() => {
+					sourcesState = 'loading';
+					ensureSources().catch(() => undefined);
+				}}
+			>
+				Retry
+			</button>
+		</p>
 	{/if}
 
 	{#if error}
