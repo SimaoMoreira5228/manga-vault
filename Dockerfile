@@ -24,4 +24,5 @@ ENV DATABASE_URL="sqlite:///data/manga-vault.db?mode=rwc" \
 	PLUGINS_DIR=/plugins
 VOLUME ["/data", "/plugins"]
 EXPOSE 8080
-ENTRYPOINT ["manga-vault", "api"]
+ENTRYPOINT ["manga-vault"]
+CMD ["api"]
