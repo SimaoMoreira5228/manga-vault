@@ -141,6 +141,39 @@ pub async fn progress_for_work(
 	Ok(Json(json!({ "read_chapter_ids": read_ids })))
 }
 
+#[derive(serde::Deserialize)]
+pub struct PositionPayload {
+	pub page: u32,
+}
+
+pub async fn save_position(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	Path(chapter_id): Path<Uuid>,
+	Json(payload): Json<PositionPayload>,
+) -> ApiResult<serde_json::Value> {
+	let position = state.vault.save_position(auth.user.id, chapter_id, payload.page).await?;
+	Ok(Json(json!({ "chapter_id": position.chapter_id, "page": position.page })))
+}
+
+pub async fn positions_for_work(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	Path(work_id): Path<Uuid>,
+) -> ApiResult<serde_json::Value> {
+	let positions = state.vault.positions_for_work(auth.user.id, work_id).await?;
+	Ok(Json(json!({ "positions": positions })))
+}
+
+pub async fn furthest_position(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	Path(work_id): Path<Uuid>,
+) -> ApiResult<serde_json::Value> {
+	let position = state.vault.furthest_position(auth.user.id, work_id).await?;
+	Ok(Json(json!(position)))
+}
+
 pub async fn continue_reading(
 	State(state): State<AppState>,
 	auth: Authenticated,

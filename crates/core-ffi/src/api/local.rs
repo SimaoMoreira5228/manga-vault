@@ -2,6 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use application::Vault;
+use application::reading::ContinueReadingItem;
 use domain::{ChapterContent, UserId};
 use persistence::{GlossaryEntryRecord, UserSettingsRecord};
 use source_manager::SourceManager;
@@ -351,6 +352,45 @@ impl LocalVault {
 		Ok(ids.into_iter().map(|id| id.to_string()).collect())
 	}
 
+	pub async fn save_position(&self, chapter_id: String, page: u32) -> anyhow::Result<()> {
+		self.vault.save_position(self.user_id, chapter_id.parse()?, page).await?;
+		Ok(())
+	}
+
+	pub async fn positions_for_work(&self, work_id: String) -> anyhow::Result<Vec<ReadingPosition>> {
+		Ok(self
+			.vault
+			.positions_for_work(self.user_id, work_id.parse()?)
+			.await?
+			.into_iter()
+			.map(|position| ReadingPosition {
+				chapter_id: position.chapter_id.to_string(),
+				page: position.page,
+			})
+			.collect())
+	}
+
+	pub async fn history(&self, limit: Option<u32>) -> anyhow::Result<Vec<HistoryItem>> {
+		let limit = limit.unwrap_or(60).min(200);
+		Ok(self
+			.vault
+			.history(self.user_id, u64::from(limit))
+			.await?
+			.into_iter()
+			.map(|(progress, chapter, work)| HistoryItem {
+				read_at: progress.read_at.to_rfc3339(),
+				chapter_id: chapter.id.to_string(),
+				chapter_title: chapter.title,
+				work_id: work.id.to_string(),
+				work_title: work.title,
+				kind: match work.kind {
+					domain::WorkKind::Manga => "manga".to_owned(),
+					domain::WorkKind::Novel => "novel".to_owned(),
+				},
+			})
+			.collect())
+	}
+
 	pub fn plugin_repos(&self) -> Vec<PluginRepo> {
 		self.updater
 			.list_repos()
@@ -439,14 +479,26 @@ impl LocalVault {
 		let items = self.vault.continue_reading(self.user_id).await?;
 		Ok(items
 			.into_iter()
-			.map(|item| ContinueItem {
-				work_id: item.work.id.to_string(),
-				title: item.work.title,
-				cover_url: item.work.cover_url,
-				chapter_id: item
-					.next_chapter
-					.or(Some(item.last_read))
-					.map(|chapter| chapter.id.to_string()),
+			.map(|item| {
+				let ContinueReadingItem {
+					work,
+					last_read,
+					next_chapter,
+					page,
+					..
+				} = item;
+				// NOTE: a saved page always belongs to `last_read`, so it outranks the next unread chapter.
+				let (chapter_id, page) = match page {
+					Some(page) => (Some(last_read.id.to_string()), Some(page)),
+					None => (next_chapter.or(Some(last_read)).map(|chapter| chapter.id.to_string()), None),
+				};
+				ContinueItem {
+					work_id: work.id.to_string(),
+					title: work.title,
+					cover_url: work.cover_url,
+					chapter_id,
+					page,
+				}
 			})
 			.collect())
 	}
@@ -468,6 +520,21 @@ pub struct ContinueItem {
 	pub title: String,
 	pub cover_url: Option<String>,
 	pub chapter_id: Option<String>,
+	pub page: Option<u32>,
+}
+
+pub struct HistoryItem {
+	pub read_at: String,
+	pub chapter_id: String,
+	pub chapter_title: String,
+	pub work_id: String,
+	pub work_title: String,
+	pub kind: String,
+}
+
+pub struct ReadingPosition {
+	pub chapter_id: String,
+	pub page: u32,
 }
 
 pub struct ProfileSummary {

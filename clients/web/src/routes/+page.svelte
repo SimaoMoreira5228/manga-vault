@@ -157,7 +157,9 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 					{#each continueReading as entry (entry.work.id)}
 						<div>
 							<a
-								href="/work/{entry.work.id}"
+								href={entry.page !== null
+									? `/reader/${entry.last_read.id}?work=${entry.work.id}&page=${entry.page}`
+									: `/work/${entry.work.id}`}
 								class="group block overflow-hidden rounded-card border border-outline-variant/40"
 							>
 								<div class="relative aspect-2/3 bg-surface-high">

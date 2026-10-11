@@ -101,6 +101,23 @@ pub struct LibraryEntry {
 	pub work_id: WorkId,
 	pub category_id: Option<CategoryId>,
 	pub created_at: DateTime<Utc>,
+	pub updated_at: DateTime<Utc>,
+	pub removed_at: Option<DateTime<Utc>>,
+}
+
+impl LibraryEntry {
+	pub fn is_removed(&self) -> bool {
+		self.removed_at.is_some()
+	}
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReadingPosition {
+	pub id: Uuid,
+	pub user_id: UserId,
+	pub chapter_id: ChapterId,
+	pub page: u32,
+	pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,4 +127,12 @@ pub struct ReadingProgress {
 	pub work_id: WorkId,
 	pub chapter_id: ChapterId,
 	pub read_at: DateTime<Utc>,
+	pub updated_at: DateTime<Utc>,
+	pub removed_at: Option<DateTime<Utc>>,
+}
+
+impl ReadingProgress {
+	pub fn is_removed(&self) -> bool {
+		self.removed_at.is_some()
+	}
 }

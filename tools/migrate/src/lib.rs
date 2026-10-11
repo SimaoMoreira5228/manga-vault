@@ -242,6 +242,8 @@ pub async fn migrate(legacy: &LegacyVault, target_url: &str) -> Result<Migration
 			work_id: Set(work_id),
 			category_id: Set(maps.categories.get(&favorite.category_id).copied()),
 			created_at: Set(utc(favorite.created_at).into()),
+			updated_at: Set(utc(favorite.created_at).into()),
+			removed_at: Set(None),
 		}
 		.insert(&txn)
 		.await?;
@@ -259,6 +261,8 @@ pub async fn migrate(legacy: &LegacyVault, target_url: &str) -> Result<Migration
 			work_id: Set(work_id),
 			category_id: Set(maps.categories.get(&favorite.category_id).copied()),
 			created_at: Set(utc(favorite.created_at).into()),
+			updated_at: Set(utc(favorite.created_at).into()),
+			removed_at: Set(None),
 		}
 		.insert(&txn)
 		.await?;
@@ -293,6 +297,8 @@ pub async fn migrate(legacy: &LegacyVault, target_url: &str) -> Result<Migration
 			work_id: Set(work_id),
 			chapter_id: Set(chapter_id),
 			read_at: Set(utc(read.created_at).into()),
+			updated_at: Set(utc(read.created_at).into()),
+			removed_at: Set(None),
 		}
 		.insert(&txn)
 		.await?;

@@ -1,5 +1,5 @@
 <script lang="ts">
-import { goto } from '$app/navigation';
+import { beforeNavigate, goto } from '$app/navigation';
 import {
 	api,
 	type Chapter,
@@ -19,7 +19,12 @@ let chapters = $state<Chapter[]>([]);
 let content = $state<ChapterContent | null>(null);
 let currentPage = $state(1);
 let resumePercent = $state<number | null>(null);
+let resumePage = $state<number | null>(null);
+let pendingJumpPage: number | null = null;
 let lastPositionSave = 0;
+let pendingChapterId: string | null = null;
+let pendingPage = 0;
+let pageSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let contentReady = $state(false);
 let readMarked = false;
 let loadError = $state<string | null>(null);
@@ -49,6 +54,11 @@ const chapterTitle = $derived(chapters[chapterIndex]?.title ?? '');
 const previousChapter = $derived(chapterIndex > 0 ? (chapters[chapterIndex - 1] ?? null) : null);
 const nextChapter = $derived(chapterIndex >= 0 ? (chapters[chapterIndex + 1] ?? null) : null);
 const canTranslate = $derived(html !== null && !translating && translationMode !== 'unavailable');
+const resumeLabel = $derived(
+	resumePage !== null
+		? `Resume at page ${resumePage}`
+		: `Resume at ${Math.round((resumePercent ?? 0) * 100)}%`,
+);
 
 const positionKey = $derived(`mv-pos:${params.chapterId}`);
 
@@ -98,6 +108,40 @@ function scrollFraction(): number {
 	return scrollable <= 0 ? 1 : Math.min(1, Math.max(0, window.scrollY / scrollable));
 }
 
+function queuePageSave(page: number) {
+	pendingChapterId = params.chapterId;
+	pendingPage = page;
+	if (pageSaveTimer !== null) clearTimeout(pageSaveTimer);
+	pageSaveTimer = setTimeout(flushPageSave, 2000);
+}
+
+async function flushPageSave() {
+	if (pageSaveTimer !== null) {
+		clearTimeout(pageSaveTimer);
+		pageSaveTimer = null;
+	}
+	const chapterId = pendingChapterId;
+	if (chapterId === null) return;
+	pendingChapterId = null;
+	await api.savePosition(chapterId, pendingPage).catch(() => undefined);
+}
+
+function flushPageSaveWhenHidden() {
+	if (document.visibilityState === 'hidden') flushPageSave();
+}
+
+function jumpToPage(page: number) {
+	const target = Math.min(Math.max(1, page), Math.max(1, images.length));
+	const node = document.querySelector<HTMLElement>(`[data-page="${target}"]`);
+	if (node) window.scrollTo({ top: window.scrollY + node.getBoundingClientRect().top });
+}
+
+function jumpWhenReady() {
+	const page = pendingJumpPage;
+	pendingJumpPage = null;
+	if (page !== null) jumpToPage(page);
+}
+
 function trackCurrentPage() {
 	if (images.length) {
 		const middle = window.innerHeight / 2;
@@ -109,6 +153,7 @@ function trackCurrentPage() {
 			}
 		}
 		currentPage = current;
+		queuePageSave(current);
 	}
 
 	const fraction = scrollFraction();
@@ -151,10 +196,17 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 function resumeSavedPosition() {
-	if (resumePercent === null) return;
-	const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-	window.scrollTo({ top: scrollable * resumePercent });
+	const page = resumePage;
+	const percent = resumePercent;
+	resumePage = null;
 	resumePercent = null;
+	if (page !== null) {
+		jumpToPage(page);
+		return;
+	}
+	if (percent === null) return;
+	const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+	window.scrollTo({ top: scrollable * percent });
 }
 
 async function markRead() {
@@ -167,7 +219,10 @@ function imageLoaded(index: number) {
 	loadedImageIndexes.add(index);
 	if (loadedImageIndexes.size === images.length) {
 		contentReady = true;
-		requestAnimationFrame(trackCurrentPage);
+		requestAnimationFrame(() => {
+			jumpWhenReady();
+			trackCurrentPage();
+		});
 	}
 }
 
@@ -196,17 +251,27 @@ $effect(() => {
 	load();
 });
 
+beforeNavigate(() => {
+	flushPageSave();
+});
+
 async function load() {
 	contentReady = false;
 	readMarked = false;
 	loadError = null;
 	translationError = null;
 	translatedHtml = null;
+	resumePage = null;
+	resumePercent = null;
+	pendingJumpPage = null;
 	matches = [];
 	loadedImageIndexes.clear();
+	const query = new URLSearchParams(window.location.search);
+	const requested = Number(query.get('page') ?? '');
+	if (requested > 0) pendingJumpPage = requested;
 	try {
 		content = await api.chapterContent(params.chapterId);
-		workId = new URLSearchParams(window.location.search).get('work');
+		workId = query.get('work');
 		api
 			.translationMode()
 			.then((mode) => (translationMode = mode))
@@ -215,6 +280,17 @@ async function load() {
 			const data = await api.getWork(workId);
 			work = data.work;
 			chapters = data.chapters;
+			const chapterId = params.chapterId;
+			api
+				.positionsForWork(workId)
+				.then(({ positions }) => {
+					const saved = positions.find((position) => position.chapter_id === chapterId);
+					if (saved && saved.page > 1) {
+						resumePage = saved.page;
+						resumePercent = null;
+					}
+				})
+				.catch(() => undefined);
 		}
 	} catch (cause) {
 		loadError = cause instanceof Error ? cause.message : 'Failed to load chapter';
@@ -228,6 +304,7 @@ async function load() {
 	}
 	requestAnimationFrame(() => {
 		window.scrollTo({ top: 0, behavior: 'auto' });
+		if (requested > 0) return;
 		const saved = Number(localStorage.getItem(positionKey) ?? '');
 		if (saved > 0.03 && saved < 0.97) {
 			resumePercent = saved;
@@ -236,16 +313,20 @@ async function load() {
 }
 </script>
 
-<svelte:window onscroll={trackCurrentPage} onkeydown={onKeydown} />
+<svelte:window
+	onscroll={trackCurrentPage}
+	onkeydown={onKeydown}
+	onvisibilitychange={flushPageSaveWhenHidden}
+/>
 
-{#if resumePercent !== null}
+{#if resumePage !== null || resumePercent !== null}
 	<div class="fixed inset-x-0 bottom-6 z-20 flex items-center justify-center gap-2">
 		<button
 			type="button"
 			class="label-caps rounded-card bg-primary-container px-5 py-3 font-semibold text-on-primary-container shadow-elevated"
 			onclick={resumeSavedPosition}
 		>
-			Resume at {Math.round(resumePercent * 100)}%
+			{resumeLabel}
 		</button>
 		<button
 			type="button"
@@ -253,6 +334,7 @@ async function load() {
 			onclick={() => {
 				localStorage.removeItem(positionKey);
 				resumePercent = null;
+				resumePage = null;
 			}}
 		>
 			Dismiss

@@ -14,6 +14,8 @@ pub struct Model {
 	pub work_id: Uuid,
 	pub category_id: Option<Uuid>,
 	pub created_at: DateTimeWithTimeZone,
+	pub updated_at: DateTimeWithTimeZone,
+	pub removed_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -175,6 +175,14 @@ class LocalService implements VaultService {
       _vault.readChapters(workId: workId);
 
   @override
+  Future<void> savePosition({required String chapterId, required int page}) =>
+      _vault.savePosition(chapterId: chapterId, page: page);
+
+  @override
+  Future<List<ReadingPosition>> positionsForWork({required String workId}) =>
+      _vault.positionsForWork(workId: workId);
+
+  @override
   Future<List<ContinueItem>> continueReading() => _vault.continueReading();
 
   @override

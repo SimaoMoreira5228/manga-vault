@@ -56,6 +56,9 @@ pub fn router(state: AppState) -> Router {
 			put(reading_handlers::mark_read).delete(reading_handlers::mark_unread),
 		)
 		.route("/api/works/{work_id}/progress", get(reading_handlers::progress_for_work))
+		.route("/api/works/{work_id}/position", get(reading_handlers::furthest_position))
+		.route("/api/works/{work_id}/positions", get(reading_handlers::positions_for_work))
+		.route("/api/chapters/{chapter_id}/position", put(reading_handlers::save_position))
 		.route("/api/works/{work_id}/chapters/read", post(reading_handlers::mark_bulk))
 		.route("/api/library", get(library_handlers::list).put(library_handlers::add))
 		.route("/api/library/{work_id}", delete(library_handlers::remove))

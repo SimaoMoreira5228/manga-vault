@@ -79,6 +79,8 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<List<PluginRepo>> pluginRepos();
 
+  Future<List<ReadingPosition>> positionsForWork({required String workId});
+
   Future<List<ProfileSummary>> profiles();
 
   Future<List<String>> readChapters({required String workId});
@@ -90,6 +92,8 @@ abstract class LocalVault implements RustOpaqueInterface {
   Future<void> removeFromLibrary({required String workId});
 
   Future<void> removePluginRepo({required String repoId});
+
+  Future<void> savePosition({required String chapterId, required int page});
 
   Future<List<WorkSummary>> searchSource({
     required String sourceId,
@@ -198,17 +202,23 @@ class ContinueItem {
   final String title;
   final String? coverUrl;
   final String? chapterId;
+  final int? page;
 
   const ContinueItem({
     required this.workId,
     required this.title,
     this.coverUrl,
     this.chapterId,
+    this.page,
   });
 
   @override
   int get hashCode =>
-      workId.hashCode ^ title.hashCode ^ coverUrl.hashCode ^ chapterId.hashCode;
+      workId.hashCode ^
+      title.hashCode ^
+      coverUrl.hashCode ^
+      chapterId.hashCode ^
+      page.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -218,7 +228,8 @@ class ContinueItem {
           workId == other.workId &&
           title == other.title &&
           coverUrl == other.coverUrl &&
-          chapterId == other.chapterId;
+          chapterId == other.chapterId &&
+          page == other.page;
 }
 
 class LibraryItem {
@@ -281,6 +292,24 @@ class ProfileSummary {
           id == other.id &&
           name == other.name &&
           hasPin == other.hasPin;
+}
+
+class ReadingPosition {
+  final String chapterId;
+  final int page;
+
+  const ReadingPosition({required this.chapterId, required this.page});
+
+  @override
+  int get hashCode => chapterId.hashCode ^ page.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ReadingPosition &&
+          runtimeType == other.runtimeType &&
+          chapterId == other.chapterId &&
+          page == other.page;
 }
 
 class SourceSummary {

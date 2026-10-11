@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use domain::{
-	Category, Chapter, ChapterId, LibraryEntry, ReadingProgress, Session, SourceId, User, UserId, Work, WorkId, WorkKind,
+	Category, Chapter, ChapterId, LibraryEntry, ReadingPosition, ReadingProgress, Session, SourceId, User, UserId, Work,
+	WorkId, WorkKind,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -144,9 +145,18 @@ pub trait LibraryRepository: Send + Sync {
 		category_id: Option<uuid::Uuid>,
 	) -> StoreResult<LibraryEntry>;
 	async fn remove_from_library(&self, user_id: UserId, work_id: WorkId) -> StoreResult<()>;
+	/// Writes a removal at a caller-supplied time so sync can keep last-write-wins ordering.
+	async fn tombstone_library_entry(
+		&self,
+		user_id: UserId,
+		work_id: WorkId,
+		removed_at: chrono::DateTime<chrono::Utc>,
+	) -> StoreResult<()>;
 	async fn clear_user_library(&self, user_id: UserId) -> StoreResult<()>;
 	async fn library_entries(&self, user_id: UserId) -> StoreResult<Vec<LibraryEntry>>;
 	async fn library_entry(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Option<LibraryEntry>>;
+	/// Includes soft-deleted rows so sync can compare a tombstone's `updated_at`.
+	async fn library_entries_including_removed(&self, user_id: UserId) -> StoreResult<Vec<LibraryEntry>>;
 	async fn set_entry_category(
 		&self,
 		entry_id: uuid::Uuid,
@@ -162,7 +172,16 @@ pub trait LibraryRepository: Send + Sync {
 #[async_trait]
 pub trait ProgressRepository: Send + Sync {
 	async fn mark_read(&self, progress: ReadingProgress) -> StoreResult<bool>;
+	async fn save_position(&self, position: ReadingPosition) -> StoreResult<ReadingPosition>;
+	/// Keeps whichever page is further along, so a device that is behind cannot regress a position.
+	async fn merge_position_furthest(&self, position: ReadingPosition) -> StoreResult<ReadingPosition>;
+	async fn furthest_position(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Option<ReadingPosition>>;
+	async fn positions_for_user(&self, user_id: UserId) -> StoreResult<Vec<ReadingPosition>>;
+	async fn positions_for_chapters(&self, user_id: UserId, chapter_ids: &[ChapterId]) -> StoreResult<Vec<ReadingPosition>>;
 	async fn mark_unread(&self, user_id: UserId, chapter_id: ChapterId) -> StoreResult<()>;
+	/// Includes unread tombstones so sync can compare a removal's `updated_at`.
+	async fn read_progress_including_removed(&self, user_id: UserId) -> StoreResult<Vec<ReadingProgress>>;
+	async fn merge_progress(&self, progress: ReadingProgress) -> StoreResult<bool>;
 	async fn mark_many_read(&self, progresses: Vec<ReadingProgress>) -> StoreResult<()>;
 	async fn mark_many_unread(&self, user_id: UserId, chapter_ids: Vec<ChapterId>) -> StoreResult<()>;
 	async fn read_chapter_ids(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Vec<ChapterId>>;

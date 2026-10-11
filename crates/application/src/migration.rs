@@ -220,6 +220,8 @@ impl Vault {
 					work_id: new_work.id,
 					chapter_id: new_chapter.id,
 					read_at: chrono::Utc::now(),
+					updated_at: chrono::Utc::now(),
+					removed_at: None,
 				});
 			}
 		}

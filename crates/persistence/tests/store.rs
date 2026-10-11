@@ -134,6 +134,8 @@ async fn bulk_mark_read_is_idempotent_and_unread_clears() {
 			work_id,
 			chapter_id: *chapter_id,
 			read_at: now,
+			updated_at: Utc::now(),
+			removed_at: None,
 		})
 		.collect();
 
@@ -192,6 +194,8 @@ async fn users_sessions_and_progress_roundtrip() {
 		work_id,
 		chapter_id: chapters[0].id,
 		read_at: Utc::now(),
+		updated_at: Utc::now(),
+		removed_at: None,
 	};
 	ProgressRepository::mark_read(&store, progress).await.unwrap();
 	let read_ids = ProgressRepository::read_chapter_ids(&store, user.id, work_id).await.unwrap();

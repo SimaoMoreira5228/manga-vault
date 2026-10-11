@@ -8,13 +8,14 @@ mod users;
 mod works;
 
 use domain::{
-	Category, Chapter, ChapterContentKind, LibraryEntry, ReadingProgress, Session, SourceId, User, Work, WorkKind,
+	Category, Chapter, ChapterContentKind, LibraryEntry, ReadingPosition, ReadingProgress, Session, SourceId, User, Work,
+	WorkKind,
 };
 use sea_orm::DatabaseConnection;
 
 use crate::entities::{
-	categories, chapters, library_entries, reading_progress, sessions as session_rows, sources, users as user_rows,
-	works as work_rows,
+	categories, chapters, library_entries, reading_positions, reading_progress, sessions as session_rows, sources,
+	users as user_rows, works as work_rows,
 };
 
 pub struct SeaStore {
@@ -148,6 +149,20 @@ impl From<&library_entries::Model> for LibraryEntry {
 			work_id: model.work_id,
 			category_id: model.category_id,
 			created_at: model.created_at.with_timezone(&chrono::Utc),
+			updated_at: model.updated_at.with_timezone(&chrono::Utc),
+			removed_at: model.removed_at.map(|time| time.with_timezone(&chrono::Utc)),
+		}
+	}
+}
+
+impl From<&reading_positions::Model> for ReadingPosition {
+	fn from(model: &reading_positions::Model) -> Self {
+		Self {
+			id: model.id,
+			user_id: model.user_id,
+			chapter_id: model.chapter_id,
+			page: model.page.max(0) as u32,
+			updated_at: model.updated_at.with_timezone(&chrono::Utc),
 		}
 	}
 }
@@ -160,6 +175,8 @@ impl From<&reading_progress::Model> for ReadingProgress {
 			work_id: model.work_id,
 			chapter_id: model.chapter_id,
 			read_at: model.read_at.with_timezone(&chrono::Utc),
+			updated_at: model.updated_at.with_timezone(&chrono::Utc),
+			removed_at: model.removed_at.map(|time| time.with_timezone(&chrono::Utc)),
 		}
 	}
 }

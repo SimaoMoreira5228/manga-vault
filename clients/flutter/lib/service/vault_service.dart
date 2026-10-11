@@ -101,6 +101,8 @@ abstract class VaultService {
     required bool read,
   });
   Future<List<String>> readChapters({required String workId});
+  Future<void> savePosition({required String chapterId, required int page});
+  Future<List<ReadingPosition>> positionsForWork({required String workId});
   Future<List<ContinueItem>> continueReading();
   Future<void> refreshWork({required String workId});
   Future<String> translationMode();

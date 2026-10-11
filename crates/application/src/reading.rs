@@ -1,4 +1,4 @@
-use domain::{ChapterId, ReadingProgress, UserId, WorkId};
+use domain::{ChapterId, ReadingPosition, ReadingProgress, UserId, WorkId};
 use persistence::{ProgressRepository, WorkRepository};
 use uuid::Uuid;
 
@@ -11,6 +11,7 @@ pub struct ContinueReadingItem {
 	pub next_chapter: Option<domain::Chapter>,
 	pub chapters_read: usize,
 	pub chapters_total: usize,
+	pub page: Option<u32>,
 }
 
 impl Vault {
@@ -20,15 +21,45 @@ impl Vault {
 			.get_chapter(chapter_id)
 			.await?
 			.ok_or(VaultError::NotFound("chapter", chapter_id.to_string()))?;
+		let now = chrono::Utc::now();
 		let progress = ReadingProgress {
 			id: Uuid::now_v7(),
 			user_id,
 			work_id: chapter.work_id,
 			chapter_id,
-			read_at: chrono::Utc::now(),
+			read_at: now,
+			updated_at: now,
+			removed_at: None,
 		};
 		self.db.mark_read(progress.clone()).await?;
 		Ok(progress)
+	}
+
+	pub async fn save_position(&self, user_id: UserId, chapter_id: ChapterId, page: u32) -> VaultResult<ReadingPosition> {
+		let chapter = self
+			.db
+			.get_chapter(chapter_id)
+			.await?
+			.ok_or(VaultError::NotFound("chapter", chapter_id.to_string()))?;
+		self.require_owned_work(user_id, chapter.work_id).await?;
+		let position = ReadingPosition {
+			id: Uuid::now_v7(),
+			user_id,
+			chapter_id,
+			page,
+			updated_at: chrono::Utc::now(),
+		};
+		Ok(self.db.save_position(position).await?)
+	}
+
+	pub async fn furthest_position(&self, user_id: UserId, work_id: WorkId) -> VaultResult<Option<ReadingPosition>> {
+		Ok(self.db.furthest_position(user_id, work_id).await?)
+	}
+
+	pub async fn positions_for_work(&self, user_id: UserId, work_id: WorkId) -> VaultResult<Vec<ReadingPosition>> {
+		let chapters = self.db.chapters_for_work(work_id).await?;
+		let ids: Vec<ChapterId> = chapters.iter().map(|chapter| chapter.id).collect();
+		Ok(self.db.positions_for_chapters(user_id, &ids).await?)
 	}
 
 	pub async fn mark_unread(&self, user_id: UserId, chapter_id: ChapterId) -> VaultResult<()> {
@@ -52,6 +83,8 @@ impl Vault {
 					work_id,
 					chapter_id,
 					read_at: now,
+					updated_at: now,
+					removed_at: None,
 				})
 				.collect();
 			self.db.mark_many_read(progresses).await?;
@@ -110,6 +143,17 @@ impl Vault {
 			};
 			let chapters = self.db.chapters_for_work(work.id).await?;
 			let chapters_total = chapters.len();
+			let stored = self.db.furthest_position(user_id, work.id).await?;
+			let (last_read, page) = match stored {
+				Some(position) => {
+					let chapter = chapters.iter().find(|chapter| chapter.id == position.chapter_id).cloned();
+					match chapter {
+						Some(chapter) => (chapter, Some(position.page)),
+						None => (last_read, None),
+					}
+				}
+				None => (last_read, None),
+			};
 			let position = chapters.iter().position(|chapter| chapter.id == last_read.id);
 			let next_chapter = position.and_then(|index| chapters.get(index + 1).cloned());
 			items.push(ContinueReadingItem {
@@ -118,6 +162,7 @@ impl Vault {
 				next_chapter,
 				chapters_read: position.map(|index| index + 1).unwrap_or(0),
 				chapters_total,
+				page,
 			});
 		}
 		Ok(items)

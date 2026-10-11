@@ -59,6 +59,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool dco_decode_bool(dynamic raw);
 
   @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
+
+  @protected
   CatalogItem dco_decode_catalog_item(dynamic raw);
 
   @protected
@@ -101,6 +104,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ProfileSummary> dco_decode_list_profile_summary(dynamic raw);
 
   @protected
+  List<ReadingPosition> dco_decode_list_reading_position(dynamic raw);
+
+  @protected
   List<SourceSummary> dco_decode_list_source_summary(dynamic raw);
 
   @protected
@@ -110,10 +116,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+
+  @protected
   PluginRepo dco_decode_plugin_repo(dynamic raw);
 
   @protected
   ProfileSummary dco_decode_profile_summary(dynamic raw);
+
+  @protected
+  ReadingPosition dco_decode_reading_position(dynamic raw);
 
   @protected
   SourceSummary dco_decode_source_summary(dynamic raw);
@@ -170,6 +182,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
   CatalogItem sse_decode_catalog_item(SseDeserializer deserializer);
 
   @protected
@@ -218,6 +233,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  List<ReadingPosition> sse_decode_list_reading_position(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<SourceSummary> sse_decode_list_source_summary(
     SseDeserializer deserializer,
   );
@@ -229,10 +249,16 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
   PluginRepo sse_decode_plugin_repo(SseDeserializer deserializer);
 
   @protected
   ProfileSummary sse_decode_profile_summary(SseDeserializer deserializer);
+
+  @protected
+  ReadingPosition sse_decode_reading_position(SseDeserializer deserializer);
 
   @protected
   SourceSummary sse_decode_source_summary(SseDeserializer deserializer);
@@ -297,6 +323,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_catalog_item(CatalogItem self, SseSerializer serializer);
@@ -365,6 +394,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_reading_position(
+    List<ReadingPosition> self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_list_source_summary(
     List<SourceSummary> self,
     SseSerializer serializer,
@@ -380,11 +415,20 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
   void sse_encode_plugin_repo(PluginRepo self, SseSerializer serializer);
 
   @protected
   void sse_encode_profile_summary(
     ProfileSummary self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_reading_position(
+    ReadingPosition self,
     SseSerializer serializer,
   );
 

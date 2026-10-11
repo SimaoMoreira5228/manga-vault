@@ -14,6 +14,8 @@ pub struct Model {
 	#[sea_orm(unique_key = "idx_progress_user_chapter")]
 	pub chapter_id: Uuid,
 	pub read_at: DateTimeWithTimeZone,
+	pub updated_at: DateTimeWithTimeZone,
+	pub removed_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

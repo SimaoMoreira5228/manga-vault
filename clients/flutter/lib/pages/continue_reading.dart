@@ -50,6 +50,7 @@ class _ContinueReadingRowState extends State<ContinueReadingRow> {
           chapters: details.chapters,
           index: index,
           workId: item.workId,
+          page: item.page,
         ),
       ),
     );

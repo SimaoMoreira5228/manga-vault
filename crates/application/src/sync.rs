@@ -1,4 +1,6 @@
-use domain::{LibraryEntry, ReadingProgress, UserId, Work};
+use std::collections::HashMap;
+
+use domain::{LibraryEntry, ReadingPosition, ReadingProgress, UserId, Work, WorkId};
 use persistence::repo::SourceRecord;
 use persistence::{LibraryRepository, ProgressRepository, SourceRepository, WorkRepository};
 use source_sdk::SourceInfo;
@@ -11,6 +13,7 @@ pub struct SyncState {
 	pub works: Vec<SyncedWork>,
 	pub entries: Vec<LibraryEntry>,
 	pub progress: Vec<ReadingProgress>,
+	pub positions: Vec<ReadingPosition>,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -22,13 +25,19 @@ pub struct SyncedWork {
 #[derive(Debug, Default, serde::Serialize)]
 pub struct SyncReport {
 	pub works_applied: usize,
+	pub works_kept_newer: usize,
 	pub entries_added: usize,
+	pub entries_updated: usize,
+	pub entries_removed: usize,
+	pub entries_kept_newer: usize,
 	pub progress_added: usize,
+	pub progress_removed: usize,
+	pub positions_merged: usize,
 }
 
 impl Vault {
 	pub async fn export_sync_state(&self, user_id: UserId) -> VaultResult<SyncState> {
-		let entries = self.db.library_entries(user_id).await?;
+		let entries = self.db.library_entries_including_removed(user_id).await?;
 		let mut works = Vec::with_capacity(entries.len());
 		let mut sources: Vec<SourceInfo> = Vec::new();
 		let registered = self.db.list_sources().await?;
@@ -50,11 +59,13 @@ impl Vault {
 			}
 			works.push(bundle);
 		}
+
 		Ok(SyncState {
 			sources,
 			works,
 			entries,
-			progress: self.db.read_progress(user_id).await?,
+			progress: self.db.read_progress_including_removed(user_id).await?,
+			positions: self.db.positions_for_user(user_id).await?,
 		})
 	}
 
@@ -74,26 +85,74 @@ impl Vault {
 				.await?;
 		}
 		for synced in &state.works {
+			let local = self.db.get_work(synced.work.id).await?;
+			if local.is_some_and(|work| work.updated_at > synced.work.updated_at) {
+				report.works_kept_newer += 1;
+				continue;
+			}
 			self.db.save_work_snapshot(&synced.work, &synced.chapters).await?;
 			report.works_applied += 1;
 		}
-		let existing_entries = self.db.library_entries(user_id).await?;
+
+		let local_entries: HashMap<WorkId, LibraryEntry> = self
+			.db
+			.library_entries_including_removed(user_id)
+			.await?
+			.into_iter()
+			.map(|entry| (entry.work_id, entry))
+			.collect();
 		for entry in state.entries {
 			if self.db.get_work(entry.work_id).await?.is_none() {
 				continue;
 			}
-			let already_present = existing_entries.iter().any(|existing| existing.work_id == entry.work_id);
-			if !already_present {
-				self.db.add_to_library(user_id, entry.work_id, entry.category_id).await?;
-				report.entries_added += 1;
+			match local_entries.get(&entry.work_id) {
+				None if entry.is_removed() => {
+					self.db
+						.tombstone_library_entry(user_id, entry.work_id, entry.updated_at)
+						.await?;
+					report.entries_removed += 1;
+				}
+				None => {
+					self.db.add_to_library(user_id, entry.work_id, entry.category_id).await?;
+					report.entries_added += 1;
+				}
+				Some(local) if local.updated_at >= entry.updated_at => report.entries_kept_newer += 1,
+				Some(_) if entry.is_removed() => {
+					self.db.remove_from_library(user_id, entry.work_id).await?;
+					report.entries_removed += 1;
+				}
+				Some(_) => {
+					let applied = self.db.add_to_library(user_id, entry.work_id, entry.category_id).await?;
+					if applied.category_id != entry.category_id {
+						self.db.set_entry_category(applied.id, user_id, entry.category_id).await?;
+					}
+					report.entries_updated += 1;
+				}
 			}
 		}
 		for mut progress in state.progress {
 			progress.id = uuid::Uuid::now_v7();
 			progress.user_id = user_id;
-			if self.db.get_chapter(progress.chapter_id).await?.is_some() && self.db.mark_read(progress).await? {
-				report.progress_added += 1;
+			if self.db.get_chapter(progress.chapter_id).await?.is_none() {
+				continue;
 			}
+			let removed = progress.is_removed();
+			if self.db.merge_progress(progress).await? {
+				if removed {
+					report.progress_removed += 1;
+				} else {
+					report.progress_added += 1;
+				}
+			}
+		}
+		for mut position in state.positions {
+			position.id = uuid::Uuid::now_v7();
+			position.user_id = user_id;
+			if self.db.get_chapter(position.chapter_id).await?.is_none() {
+				continue;
+			}
+			self.db.merge_position_furthest(position).await?;
+			report.positions_merged += 1;
 		}
 		Ok(report)
 	}

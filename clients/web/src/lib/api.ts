@@ -70,6 +70,8 @@ export interface LibraryEntry {
 	work_id: string;
 	category_id: string | null;
 	created_at: string;
+	updated_at: string;
+	removed_at: string | null;
 }
 
 export interface Category {
@@ -79,12 +81,21 @@ export interface Category {
 	created_at: string;
 }
 
+export interface ReadingPosition {
+	id: string;
+	user_id: string;
+	chapter_id: string;
+	page: number;
+	updated_at: string;
+}
+
 export interface ContinueReadingItem {
 	work: Work;
 	last_read: Chapter;
 	next_chapter: Chapter | null;
 	chapters_read: number;
 	chapters_total: number;
+	page: number | null;
 }
 
 export type ChapterContent = { Images: string[] } | { Html: string };
@@ -318,6 +329,12 @@ export const api = {
 			chapter_ids: chapterIds,
 			read,
 		}),
+	furthestPosition: (workId: string) =>
+		get<ReadingPosition | null>(`/api/works/${workId}/position`),
+	positionsForWork: (workId: string) =>
+		get<{ positions: ReadingPosition[] }>(`/api/works/${workId}/positions`),
+	savePosition: (chapterId: string, page: number) =>
+		put<{ chapter_id: string; page: number }>(`/api/chapters/${chapterId}/position`, { page }),
 
 	continueReading: () => get<ContinueReadingItem[]>('/api/me/continue-reading'),
 

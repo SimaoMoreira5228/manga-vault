@@ -3,7 +3,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrde
 
 use super::{utc_to_db, *};
 use crate::StoreResult;
-use crate::entities::{categories, chapters, library_entries, reading_progress};
+use crate::entities::{categories, chapters, library_entries, reading_positions, reading_progress};
 use crate::repo::{LibraryRepository, ProgressRepository};
 
 #[async_trait::async_trait]
@@ -14,20 +14,33 @@ impl LibraryRepository for SeaStore {
 		work_id: uuid::Uuid,
 		category_id: Option<uuid::Uuid>,
 	) -> StoreResult<LibraryEntry> {
+		let now = utc_to_db(Utc::now());
 		if let Some(existing) = library_entries::Entity::find()
 			.filter(library_entries::Column::UserId.eq(user_id))
 			.filter(library_entries::Column::WorkId.eq(work_id))
 			.one(&self.db)
 			.await?
 		{
-			return Ok(LibraryEntry::from(&existing));
+			if existing.removed_at.is_none() {
+				return Ok(LibraryEntry::from(&existing));
+			}
+			let mut model = library_entries::ActiveModel::from(existing);
+			model.removed_at = Set(None);
+			model.updated_at = Set(now);
+			if category_id.is_some() {
+				model.category_id = Set(category_id);
+			}
+			let model = model.update(&self.db).await?;
+			return Ok(LibraryEntry::from(&model));
 		}
 		let model = library_entries::ActiveModel {
 			id: Set(uuid::Uuid::now_v7()),
 			user_id: Set(user_id),
 			work_id: Set(work_id),
 			category_id: Set(category_id),
-			created_at: Set(utc_to_db(Utc::now())),
+			created_at: Set(now),
+			updated_at: Set(now),
+			removed_at: Set(None),
 		}
 		.insert(&self.db)
 		.await?;
@@ -35,11 +48,48 @@ impl LibraryRepository for SeaStore {
 	}
 
 	async fn remove_from_library(&self, user_id: uuid::Uuid, work_id: uuid::Uuid) -> StoreResult<()> {
-		library_entries::Entity::delete_many()
+		let now = utc_to_db(Utc::now());
+		library_entries::Entity::update_many()
+			.col_expr(library_entries::Column::RemovedAt, sea_orm::sea_query::Expr::value(now))
+			.col_expr(library_entries::Column::UpdatedAt, sea_orm::sea_query::Expr::value(now))
 			.filter(library_entries::Column::UserId.eq(user_id))
 			.filter(library_entries::Column::WorkId.eq(work_id))
+			.filter(library_entries::Column::RemovedAt.is_null())
 			.exec(&self.db)
 			.await?;
+		Ok(())
+	}
+
+	async fn tombstone_library_entry(
+		&self,
+		user_id: uuid::Uuid,
+		work_id: uuid::Uuid,
+		removed_at: chrono::DateTime<Utc>,
+	) -> StoreResult<()> {
+		let stamp = utc_to_db(removed_at);
+		if let Some(existing) = library_entries::Entity::find()
+			.filter(library_entries::Column::UserId.eq(user_id))
+			.filter(library_entries::Column::WorkId.eq(work_id))
+			.one(&self.db)
+			.await?
+		{
+			let mut model = library_entries::ActiveModel::from(existing);
+			model.removed_at = Set(Some(stamp));
+			model.updated_at = Set(stamp);
+			model.update(&self.db).await?;
+			return Ok(());
+		}
+		library_entries::ActiveModel {
+			id: Set(uuid::Uuid::now_v7()),
+			user_id: Set(user_id),
+			work_id: Set(work_id),
+			category_id: Set(None),
+			created_at: Set(stamp),
+			updated_at: Set(stamp),
+			removed_at: Set(Some(stamp)),
+		}
+		.insert(&self.db)
+		.await?;
 		Ok(())
 	}
 
@@ -62,6 +112,7 @@ impl LibraryRepository for SeaStore {
 	async fn library_entries(&self, user_id: uuid::Uuid) -> StoreResult<Vec<LibraryEntry>> {
 		let models = library_entries::Entity::find()
 			.filter(library_entries::Column::UserId.eq(user_id))
+			.filter(library_entries::Column::RemovedAt.is_null())
 			.order_by_desc(library_entries::Column::CreatedAt)
 			.all(&self.db)
 			.await?;
@@ -72,9 +123,18 @@ impl LibraryRepository for SeaStore {
 		let model = library_entries::Entity::find()
 			.filter(library_entries::Column::UserId.eq(user_id))
 			.filter(library_entries::Column::WorkId.eq(work_id))
+			.filter(library_entries::Column::RemovedAt.is_null())
 			.one(&self.db)
 			.await?;
 		Ok(model.as_ref().map(LibraryEntry::from))
+	}
+
+	async fn library_entries_including_removed(&self, user_id: uuid::Uuid) -> StoreResult<Vec<LibraryEntry>> {
+		let models = library_entries::Entity::find()
+			.filter(library_entries::Column::UserId.eq(user_id))
+			.all(&self.db)
+			.await?;
+		Ok(models.iter().map(LibraryEntry::from).collect())
 	}
 
 	async fn set_entry_category(
@@ -88,8 +148,13 @@ impl LibraryRepository for SeaStore {
 				library_entries::Column::CategoryId,
 				sea_orm::sea_query::Expr::value(category_id),
 			)
+			.col_expr(
+				library_entries::Column::UpdatedAt,
+				sea_orm::sea_query::Expr::value(utc_to_db(Utc::now())),
+			)
 			.filter(library_entries::Column::Id.eq(entry_id))
 			.filter(library_entries::Column::UserId.eq(user_id))
+			.filter(library_entries::Column::RemovedAt.is_null())
 			.exec(&self.db)
 			.await?;
 		Ok(())
@@ -118,7 +183,12 @@ impl LibraryRepository for SeaStore {
 				library_entries::Column::CategoryId,
 				sea_orm::sea_query::Expr::value::<Option<uuid::Uuid>>(None),
 			)
+			.col_expr(
+				library_entries::Column::UpdatedAt,
+				sea_orm::sea_query::Expr::value(utc_to_db(Utc::now())),
+			)
 			.filter(library_entries::Column::UserId.eq(user_id))
+			.filter(library_entries::Column::RemovedAt.is_null())
 			.filter(library_entries::Column::CategoryId.eq(id))
 			.exec(&self.db)
 			.await?;
@@ -135,17 +205,15 @@ impl LibraryRepository for SeaStore {
 	}
 }
 
-#[async_trait::async_trait]
-impl ProgressRepository for SeaStore {
-	async fn mark_read(&self, progress: ReadingProgress) -> StoreResult<bool> {
-		let exists = reading_progress::Entity::find()
-			.filter(reading_progress::Column::UserId.eq(progress.user_id))
-			.filter(reading_progress::Column::ChapterId.eq(progress.chapter_id))
-			.one(&self.db)
-			.await?
-			.is_some();
-		if exists {
-			return Ok(false);
+impl SeaStore {
+	async fn tombstone_progress_at(&self, progress: ReadingProgress) -> StoreResult<()> {
+		let stamp = utc_to_db(progress.updated_at);
+		if let Some(existing) = self.find_progress(progress.user_id, progress.chapter_id).await? {
+			let mut model = reading_progress::ActiveModel::from(existing);
+			model.removed_at = Set(Some(stamp));
+			model.updated_at = Set(stamp);
+			model.update(&self.db).await?;
+			return Ok(());
 		}
 		reading_progress::ActiveModel {
 			id: Set(progress.id),
@@ -153,6 +221,155 @@ impl ProgressRepository for SeaStore {
 			work_id: Set(progress.work_id),
 			chapter_id: Set(progress.chapter_id),
 			read_at: Set(utc_to_db(progress.read_at)),
+			updated_at: Set(stamp),
+			removed_at: Set(Some(stamp)),
+		}
+		.insert(&self.db)
+		.await?;
+		Ok(())
+	}
+
+	async fn find_progress(
+		&self,
+		user_id: uuid::Uuid,
+		chapter_id: uuid::Uuid,
+	) -> StoreResult<Option<reading_progress::Model>> {
+		Ok(reading_progress::Entity::find()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.filter(reading_progress::Column::ChapterId.eq(chapter_id))
+			.one(&self.db)
+			.await?)
+	}
+
+	async fn tombstone_progress(&self, user_id: uuid::Uuid, chapter_ids: Vec<uuid::Uuid>) -> StoreResult<()> {
+		if chapter_ids.is_empty() {
+			return Ok(());
+		}
+		let now = utc_to_db(Utc::now());
+		reading_progress::Entity::update_many()
+			.col_expr(reading_progress::Column::RemovedAt, sea_orm::sea_query::Expr::value(now))
+			.col_expr(reading_progress::Column::UpdatedAt, sea_orm::sea_query::Expr::value(now))
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.filter(reading_progress::Column::RemovedAt.is_null())
+			.filter(reading_progress::Column::ChapterId.is_in(chapter_ids))
+			.filter(reading_progress::Column::RemovedAt.is_null())
+			.exec(&self.db)
+			.await?;
+		Ok(())
+	}
+
+	async fn find_position(
+		&self,
+		user_id: uuid::Uuid,
+		chapter_id: uuid::Uuid,
+	) -> StoreResult<Option<reading_positions::Model>> {
+		Ok(reading_positions::Entity::find()
+			.filter(reading_positions::Column::UserId.eq(user_id))
+			.filter(reading_positions::Column::ChapterId.eq(chapter_id))
+			.one(&self.db)
+			.await?)
+	}
+}
+
+#[async_trait::async_trait]
+impl ProgressRepository for SeaStore {
+	async fn save_position(&self, position: ReadingPosition) -> StoreResult<ReadingPosition> {
+		let stamp = utc_to_db(position.updated_at);
+		if let Some(existing) = self.find_position(position.user_id, position.chapter_id).await? {
+			let mut model = reading_positions::ActiveModel::from(existing);
+			model.page = Set(position.page as i32);
+			model.updated_at = Set(stamp);
+			return Ok(ReadingPosition::from(&model.update(&self.db).await?));
+		}
+		let model = reading_positions::ActiveModel {
+			id: Set(position.id),
+			user_id: Set(position.user_id),
+			chapter_id: Set(position.chapter_id),
+			page: Set(position.page as i32),
+			updated_at: Set(stamp),
+		}
+		.insert(&self.db)
+		.await?;
+		Ok(ReadingPosition::from(&model))
+	}
+
+	async fn merge_position_furthest(&self, position: ReadingPosition) -> StoreResult<ReadingPosition> {
+		if let Some(existing) = self.find_position(position.user_id, position.chapter_id).await?
+			&& existing.page >= position.page as i32
+		{
+			return Ok(ReadingPosition::from(&existing));
+		}
+		self.save_position(position).await
+	}
+
+	async fn furthest_position(&self, user_id: uuid::Uuid, work_id: domain::WorkId) -> StoreResult<Option<ReadingPosition>> {
+		let chapters = chapters::Entity::find()
+			.filter(chapters::Column::WorkId.eq(work_id))
+			.all(&self.db)
+			.await?;
+		let chapter_ids: Vec<uuid::Uuid> = chapters.iter().map(|chapter| chapter.id).collect();
+		let positions = self.positions_for_chapters(user_id, &chapter_ids).await?;
+		let mut best: Option<ReadingPosition> = None;
+		let mut best_index = i64::MIN;
+		let mut best_page = i32::MIN;
+		for position in &positions {
+			let Some(chapter) = chapters.iter().find(|chapter| chapter.id == position.chapter_id) else {
+				continue;
+			};
+			if (chapter.sort_index, position.page as i32) > (best_index, best_page) {
+				best = Some(position.clone());
+				best_index = chapter.sort_index;
+				best_page = position.page as i32;
+			}
+		}
+		Ok(best)
+	}
+
+	async fn positions_for_user(&self, user_id: uuid::Uuid) -> StoreResult<Vec<ReadingPosition>> {
+		let models = reading_positions::Entity::find()
+			.filter(reading_positions::Column::UserId.eq(user_id))
+			.all(&self.db)
+			.await?;
+		Ok(models.iter().map(ReadingPosition::from).collect())
+	}
+
+	async fn positions_for_chapters(
+		&self,
+		user_id: uuid::Uuid,
+		chapter_ids: &[domain::ChapterId],
+	) -> StoreResult<Vec<ReadingPosition>> {
+		if chapter_ids.is_empty() {
+			return Ok(Vec::new());
+		}
+		let models = reading_positions::Entity::find()
+			.filter(reading_positions::Column::UserId.eq(user_id))
+			.filter(reading_positions::Column::ChapterId.is_in(chapter_ids.iter().copied()))
+			.all(&self.db)
+			.await?;
+		Ok(models.iter().map(ReadingPosition::from).collect())
+	}
+
+	async fn mark_read(&self, progress: ReadingProgress) -> StoreResult<bool> {
+		let stamp = utc_to_db(progress.updated_at);
+		if let Some(existing) = self.find_progress(progress.user_id, progress.chapter_id).await? {
+			if existing.removed_at.is_none() {
+				return Ok(false);
+			}
+			let mut model = reading_progress::ActiveModel::from(existing);
+			model.removed_at = Set(None);
+			model.read_at = Set(utc_to_db(progress.read_at));
+			model.updated_at = Set(stamp);
+			model.update(&self.db).await?;
+			return Ok(true);
+		}
+		reading_progress::ActiveModel {
+			id: Set(progress.id),
+			user_id: Set(progress.user_id),
+			work_id: Set(progress.work_id),
+			chapter_id: Set(progress.chapter_id),
+			read_at: Set(utc_to_db(progress.read_at)),
+			updated_at: Set(stamp),
+			removed_at: Set(None),
 		}
 		.insert(&self.db)
 		.await?;
@@ -163,6 +380,29 @@ impl ProgressRepository for SeaStore {
 		if progresses.is_empty() {
 			return Ok(());
 		}
+		let mut users: Vec<uuid::Uuid> = Vec::new();
+		for progress in &progresses {
+			if !users.contains(&progress.user_id) {
+				users.push(progress.user_id);
+			}
+		}
+		for user_id in users {
+			let chapters: Vec<uuid::Uuid> = progresses
+				.iter()
+				.filter(|progress| progress.user_id == user_id)
+				.map(|progress| progress.chapter_id)
+				.collect();
+			reading_progress::Entity::update_many()
+				.col_expr(
+					reading_progress::Column::RemovedAt,
+					sea_orm::sea_query::Expr::value(Option::<chrono::DateTime<Utc>>::None),
+				)
+				.filter(reading_progress::Column::UserId.eq(user_id))
+				.filter(reading_progress::Column::ChapterId.is_in(chapters))
+				.filter(reading_progress::Column::RemovedAt.is_not_null())
+				.exec(&self.db)
+				.await?;
+		}
 		let models = progresses
 			.into_iter()
 			.map(|progress| reading_progress::ActiveModel {
@@ -171,6 +411,8 @@ impl ProgressRepository for SeaStore {
 				work_id: Set(progress.work_id),
 				chapter_id: Set(progress.chapter_id),
 				read_at: Set(utc_to_db(progress.read_at)),
+				updated_at: Set(utc_to_db(progress.updated_at)),
+				removed_at: Set(None),
 			})
 			.collect::<Vec<_>>();
 		let inserted = reading_progress::Entity::insert_many(models)
@@ -182,24 +424,11 @@ impl ProgressRepository for SeaStore {
 	}
 
 	async fn mark_many_unread(&self, user_id: uuid::Uuid, chapter_ids: Vec<uuid::Uuid>) -> StoreResult<()> {
-		if chapter_ids.is_empty() {
-			return Ok(());
-		}
-		reading_progress::Entity::delete_many()
-			.filter(reading_progress::Column::UserId.eq(user_id))
-			.filter(reading_progress::Column::ChapterId.is_in(chapter_ids))
-			.exec(&self.db)
-			.await?;
-		Ok(())
+		self.tombstone_progress(user_id, chapter_ids).await
 	}
 
 	async fn mark_unread(&self, user_id: uuid::Uuid, chapter_id: uuid::Uuid) -> StoreResult<()> {
-		reading_progress::Entity::delete_many()
-			.filter(reading_progress::Column::UserId.eq(user_id))
-			.filter(reading_progress::Column::ChapterId.eq(chapter_id))
-			.exec(&self.db)
-			.await?;
-		Ok(())
+		self.tombstone_progress(user_id, vec![chapter_id]).await
 	}
 
 	async fn reading_progress_for_works(
@@ -212,19 +441,11 @@ impl ProgressRepository for SeaStore {
 		}
 		let rows = reading_progress::Entity::find()
 			.filter(reading_progress::Column::UserId.eq(user_id))
+			.filter(reading_progress::Column::RemovedAt.is_null())
 			.filter(reading_progress::Column::WorkId.is_in(work_ids.to_vec()))
 			.all(&self.db)
 			.await?;
-		Ok(rows
-			.into_iter()
-			.map(|row| ReadingProgress {
-				id: row.id,
-				user_id: row.user_id,
-				work_id: row.work_id,
-				chapter_id: row.chapter_id,
-				read_at: row.read_at.into(),
-			})
-			.collect())
+		Ok(rows.into_iter().map(|row| ReadingProgress::from(&row)).collect())
 	}
 
 	async fn reading_stats(&self, user_id: uuid::Uuid) -> StoreResult<crate::repo::ReadingStats> {
@@ -269,6 +490,7 @@ impl ProgressRepository for SeaStore {
 	async fn read_chapter_ids(&self, user_id: uuid::Uuid, work_id: uuid::Uuid) -> StoreResult<Vec<uuid::Uuid>> {
 		let models = reading_progress::Entity::find()
 			.filter(reading_progress::Column::UserId.eq(user_id))
+			.filter(reading_progress::Column::RemovedAt.is_null())
 			.filter(reading_progress::Column::WorkId.eq(work_id))
 			.all(&self.db)
 			.await?;
@@ -300,6 +522,28 @@ impl ProgressRepository for SeaStore {
 		Ok(pairs)
 	}
 
+	async fn read_progress_including_removed(&self, user_id: uuid::Uuid) -> StoreResult<Vec<domain::ReadingProgress>> {
+		let rows = reading_progress::Entity::find()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.all(&self.db)
+			.await?;
+		Ok(rows.iter().map(ReadingProgress::from).collect())
+	}
+
+	async fn merge_progress(&self, progress: ReadingProgress) -> StoreResult<bool> {
+		if let Some(existing) = self.find_progress(progress.user_id, progress.chapter_id).await?
+			&& existing.updated_at.with_timezone(&Utc) >= progress.updated_at
+		{
+			return Ok(false);
+		}
+		if progress.is_removed() {
+			self.tombstone_progress_at(progress).await?;
+			return Ok(true);
+		}
+		self.mark_read(progress).await?;
+		Ok(true)
+	}
+
 	async fn read_progress(&self, user_id: uuid::Uuid) -> StoreResult<Vec<domain::ReadingProgress>> {
 		Ok(reading_progress::Entity::find()
 			.filter(reading_progress::Column::UserId.eq(user_id))
@@ -317,6 +561,7 @@ impl ProgressRepository for SeaStore {
 	) -> StoreResult<Vec<(domain::ReadingProgress, domain::Chapter)>> {
 		let rows = reading_progress::Entity::find()
 			.filter(reading_progress::Column::UserId.eq(user_id))
+			.filter(reading_progress::Column::RemovedAt.is_null())
 			.order_by_desc(reading_progress::Column::ReadAt)
 			.all(&self.db)
 			.await?;

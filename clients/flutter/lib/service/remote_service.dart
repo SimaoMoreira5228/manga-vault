@@ -320,6 +320,29 @@ class RemoteService implements VaultService {
   }
 
   @override
+  Future<void> savePosition({required String chapterId, required int page}) =>
+      _send(
+        'PUT',
+        '/api/chapters/$chapterId/position',
+        body: jsonEncode({'page': page}),
+      );
+
+  @override
+  Future<List<ReadingPosition>> positionsForWork({
+    required String workId,
+  }) async {
+    final payload = await _send('GET', '/api/works/$workId/positions');
+    return [
+      for (final row
+          in (payload['positions'] as List).cast<Map<String, dynamic>>())
+        ReadingPosition(
+          chapterId: row['chapter_id'] as String,
+          page: row['page'] as int,
+        ),
+    ];
+  }
+
+  @override
   Future<String> translationMode() async {
     final caps = await _send('GET', '/api/me/capabilities');
     return caps['translation']['mode'] as String;
@@ -510,8 +533,10 @@ class RemoteService implements VaultService {
           workId: item['work']['id'] as String,
           title: item['work']['title'] as String,
           coverUrl: item['work']['cover_url'] as String?,
-          chapterId:
-              (item['next_chapter'] ?? item['last_read'])['id'] as String,
+          chapterId: item['page'] != null
+              ? item['last_read']['id'] as String
+              : (item['next_chapter'] ?? item['last_read'])['id'] as String,
+          page: item['page'] as int?,
         ),
     ];
   }

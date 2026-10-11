@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -11,12 +12,14 @@ class ReaderPage extends StatefulWidget {
     required this.chapters,
     required this.index,
     required this.workId,
+    this.page,
   });
 
   final VaultService vault;
   final List<ChapterSummary> chapters;
   final int index;
   final String workId;
+  final int? page;
 
   @override
   State<ReaderPage> createState() => _ReaderPageState();
@@ -28,6 +31,12 @@ class _ReaderPageState extends State<ReaderPage> {
   late int _index;
   final ScrollController _scroll = ScrollController();
   final PageController _pageController = PageController();
+  final Map<String, int> _positions = {};
+  Future<void>? _positionsLoaded;
+  Timer? _saveTimer;
+  int _currentPage = 0;
+  int _resumePage = 0;
+  int _entryPage = 0;
   double? _resumeFraction;
   int _nextPreloaded = -1;
   int _lastSaveMs = 0;
@@ -45,6 +54,11 @@ class _ReaderPageState extends State<ReaderPage> {
         ? widget.chapters[next]
         : null;
   }
+
+  int get _pageCount => switch (body) {
+    ChapterBody_Images urls => urls.field0.length,
+    _ => 0,
+  };
 
   void _onScroll() {
     if (!_scroll.hasClients) return;
@@ -67,6 +81,42 @@ class _ReaderPageState extends State<ReaderPage> {
         (prefs) => prefs.setPosition(current.id, fraction),
       );
     }
+
+    // NOTE: continuous mode has no per-item offsets, so the page is derived
+    // from the scroll fraction. Exact per-page tracking needs item extents.
+    final page = _pageCount < 2 ? 0 : (fraction * (_pageCount - 1)).round() + 1;
+    if (page != _currentPage) {
+      _currentPage = page;
+      _queuePositionSave();
+    }
+  }
+
+  void _queuePositionSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(seconds: 2), _flushPositionSave);
+  }
+
+  Future<void> _flushPositionSave() async {
+    _saveTimer?.cancel();
+    _saveTimer = null;
+    if (_currentPage <= 0) return;
+    final chapterId = current.id;
+    final page = _currentPage;
+    try {
+      await widget.vault.savePosition(chapterId: chapterId, page: page);
+    } catch (_) {}
+  }
+
+  void _resumeSavedPosition() {
+    final page = _resumePage;
+    if (page > 1 && page <= _pageCount && _pagedMode && _pageController.hasClients) {
+      _pageController.jumpToPage(page - 1);
+      return;
+    }
+    final fraction = _resumeFraction;
+    if (fraction == null || !_scroll.hasClients) return;
+    final maxExtent = _scroll.position.maxScrollExtent;
+    if (maxExtent > 0) _scroll.jumpTo(maxExtent * fraction);
   }
 
   String? translatedHtml;
@@ -79,9 +129,11 @@ class _ReaderPageState extends State<ReaderPage> {
     _index = widget.index;
     current = widget.chapters[_index];
     _workId = widget.workId;
+    _entryPage = widget.page ?? 0;
     body = null;
     _scroll.addListener(_onScroll);
     _loadSettings();
+    _positionsLoaded = _loadPositions();
     _load(current.id);
     widget.vault
         .translationMode()
@@ -91,8 +143,18 @@ class _ReaderPageState extends State<ReaderPage> {
         .catchError((_) {});
   }
 
+  Future<void> _loadPositions() async {
+    final positions = await widget.vault
+        .positionsForWork(workId: _workId)
+        .catchError((_) => <ReadingPosition>[]);
+    for (final position in positions) {
+      _positions[position.chapterId] = position.page;
+    }
+  }
+
   @override
   void dispose() {
+    _flushPositionSave();
     _scroll.dispose();
     _pageController.dispose();
     super.dispose();
@@ -270,34 +332,44 @@ class _ReaderPageState extends State<ReaderPage> {
       translatedHtml = null;
     });
     _nextPreloaded = cached != null ? 1 : -1;
+    _currentPage = 0;
 
     final prefs = await AppPrefs.instance();
-    final saved = prefs.positionFor(chapterId);
-    if (saved != null && saved > 0.03 && saved < 0.97) {
-      _resumeFraction = saved;
+    await _positionsLoaded;
+    final page = switch (_entryPage > 0 ? _entryPage : _positions[chapterId]) {
+      final p? when _pageCount > 1 => p,
+      _ => 0,
+    };
+    _entryPage = 0;
+    _resumePage = page;
+    _resumeFraction = page > 1
+        ? (page - 1) / (_pageCount - 1)
+        : prefs.positionFor(chapterId);
+    final fraction = _resumeFraction;
+    if (_resumePage > 1 || (fraction != null && fraction > 0.03)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !_scroll.hasClients || _resumeFraction == null) return;
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Resume at ${(_resumeFraction! * 100).round()}%'),
+            content: Text(
+              _resumePage > 1
+                  ? 'Resume at page $_resumePage'
+                  : 'Resume at ${(fraction! * 100).round()}%',
+            ),
             action: SnackBarAction(
               label: 'Resume',
-              onPressed: () {
-                final maxExtent = _scroll.position.maxScrollExtent;
-                if (maxExtent > 0) _scroll.jumpTo(maxExtent * _resumeFraction!);
-              },
+              onPressed: _resumeSavedPosition,
             ),
           ),
         );
       });
-    } else {
-      _resumeFraction = null;
     }
   }
 
   Future<void> _go(int delta) async {
     final next = _index + delta;
     if (next < 0 || next >= widget.chapters.length) return;
+    await _flushPositionSave();
     setState(() {
       _index = next;
       current = widget.chapters[next];
@@ -514,11 +586,13 @@ class _ReaderPageState extends State<ReaderPage> {
       controller: _pageController,
       itemCount: urls.field0.length,
       onPageChanged: (index) async {
-        final fraction = urls.field0.isEmpty
-            ? 0.0
-            : index / urls.field0.length;
+        _currentPage = index + 1;
+        _queuePositionSave();
         final prefs = await AppPrefs.instance();
-        await prefs.setPosition(current.id, fraction);
+        await prefs.setPosition(
+          current.id,
+          urls.field0.isEmpty ? 0.0 : index / urls.field0.length,
+        );
       },
       itemBuilder: (context, index) {
         final page = urls.field0[index];

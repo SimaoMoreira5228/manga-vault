@@ -10,6 +10,7 @@ pub mod glossary_votes;
 pub mod invite_codes;
 pub mod jobs;
 pub mod library_entries;
+pub mod reading_positions;
 pub mod reading_progress;
 pub mod server_settings;
 pub mod sessions;

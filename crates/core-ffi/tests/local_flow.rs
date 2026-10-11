@@ -98,6 +98,45 @@ async fn local_mode_imports_reads_and_tracks() {
 	assert!(vault.downloaded_chapters(imported.id.clone()).await.unwrap().is_empty());
 
 	vault.mark_read(imported.chapters[0].id.clone()).await.unwrap();
+
+	let first_id = imported.chapters[0].id.clone();
+	let second_id = imported.chapters[1].id.clone();
+	vault.save_position(first_id.clone(), 3).await.unwrap();
+	vault.save_position(second_id.clone(), 7).await.unwrap();
+	let positions = vault.positions_for_work(imported.id.clone()).await.unwrap();
+	assert_eq!(positions.len(), 2, "every chapter keeps its own page");
+	assert!(
+		positions
+			.iter()
+			.any(|position| position.chapter_id == first_id && position.page == 3)
+	);
+	assert!(
+		positions
+			.iter()
+			.any(|position| position.chapter_id == second_id && position.page == 7)
+	);
+
+	let items = vault.continue_reading().await.unwrap();
+	assert_eq!(items.len(), 1);
+	assert_eq!(items[0].chapter_id.as_deref(), Some(second_id.as_str()));
+	assert_eq!(items[0].page, Some(7), "continue reading links the furthest page");
+
+	let history = vault.history(Some(10)).await.unwrap();
+	assert_eq!(history.len(), 1, "only the chapter that was marked read is history");
+	assert_eq!(history[0].chapter_id, first_id);
+	assert!(
+		history
+			.iter()
+			.all(|entry| entry.read_at.contains('T') && entry.read_at.len() > 19),
+		"history carries RFC3339 read timestamps, not placeholders"
+	);
+	assert_eq!(
+		history[0].chapter_title, imported.chapters[0].title,
+		"history names the chapter that was read"
+	);
+	assert_eq!(history[0].work_id, imported.id, "history names the work");
+	assert!(history.iter().all(|entry| entry.kind == "manga" || entry.kind == "novel"));
+
 	let imported_id = imported.id.clone();
 	vault.remove_from_library(imported_id.clone()).await.unwrap();
 	assert!(vault.list_library().await.unwrap().is_empty());
