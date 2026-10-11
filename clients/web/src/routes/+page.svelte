@@ -11,6 +11,8 @@ import {
 import { auth } from '$lib/auth.svelte';
 import ProgressBar from '$lib/components/ProgressBar.svelte';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
+import Skeleton from '$lib/components/Skeleton.svelte';
+import IconClose from '~icons/material-symbols/close';
 import IconHistory from '~icons/material-symbols/history';
 import IconSearch from '~icons/material-symbols/search';
 import IconTrendingUp from '~icons/material-symbols/trending-up';
@@ -33,6 +35,8 @@ let loading = $state(true);
 let trendingStatus = $state<'loading' | 'ready' | 'error'>('loading');
 let sourcesError = $state(false);
 let importError = $state<string | null>(null);
+let clearingChapterId = $state<string | null>(null);
+let clearPositionError = $state<string | null>(null);
 
 const trendingSource = $derived(sources.find((source) => source.id === trendingSourceId) ?? null);
 
@@ -112,6 +116,20 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 		importError = cause instanceof Error ? cause.message : 'Import failed';
 	}
 }
+
+async function clearSavedPosition(entry: ContinueReadingItem) {
+	const chapterId = entry.last_read.id;
+	clearPositionError = null;
+	clearingChapterId = chapterId;
+	try {
+		await api.clearPosition(chapterId);
+		continueReading = await api.continueReading();
+	} catch (cause) {
+		clearPositionError = `Could not clear position: ${cause instanceof Error ? cause.message : 'request failed'}`;
+	} finally {
+		clearingChapterId = null;
+	}
+}
 </script>
 
 <div class="px-4 py-6 md:px-10 md:py-10">
@@ -129,7 +147,14 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 	</header>
 
 	{#if loading}
-		<p class="body-md mt-10 text-on-surface-variant" role="status">Loading your archive…</p>
+		<div class="mt-10">
+			<Skeleton
+				variant="cards"
+				count={8}
+				label="Loading your archive"
+				layout="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-6"
+			/>
+		</div>
 	{:else}
 		{#if importError}
 			<p
@@ -153,9 +178,17 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 					<IconHistory class="size-5 text-primary" />
 					Continue Reading
 				</h2>
+				{#if clearPositionError}
+					<p
+						class="body-md mb-4 rounded-card border border-error/40 bg-surface-low px-4 py-3 text-error"
+						role="alert"
+					>
+						{clearPositionError}
+					</p>
+				{/if}
 				<div class="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-6">
 					{#each continueReading as entry (entry.work.id)}
-						<div>
+						<div class="relative">
 							<a
 								href={entry.page !== null
 									? `/reader/${entry.last_read.id}?work=${entry.work.id}&page=${entry.page}`
@@ -184,6 +217,16 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 									</span>
 								</div>
 							</a>
+							<button
+								type="button"
+								title="Clear reading position"
+								aria-label="Clear reading position for {entry.work.title}"
+								disabled={clearingChapterId === entry.last_read.id}
+								class="absolute top-2 right-2 grid size-7 place-items-center rounded-full bg-black/70 text-on-surface backdrop-blur-sm hover:bg-black/90 disabled:opacity-40"
+								onclick={() => clearSavedPosition(entry)}
+							>
+								<IconClose class="size-4" />
+							</button>
 							<h3 class="title-md mt-2 truncate">{entry.work.title}</h3>
 							<ProgressBar value={entry.chapters_read} max={entry.chapters_total} />
 						</div>
@@ -200,9 +243,19 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 				</h2>
 				{#each latest as group (group.sourceId)}
 					{#if group.status === 'loading'}
-						<p class="body-md mt-6 text-on-surface-variant" role="status">
-							{group.sourceName} <span class="animate-pulse">· loading</span>
-						</p>
+						<a
+							href="/sources"
+							class="label-caps mt-6 mb-3 block first:mt-0 text-outline hover:text-primary"
+						>
+							{group.sourceName}
+							<span class="ml-2 normal-case opacity-70">{group.kind}</span>
+						</a>
+						<Skeleton
+							variant="cards"
+							count={6}
+							label={`Loading the latest releases from ${group.sourceName}`}
+							layout="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5"
+						/>
 					{:else if group.status === 'error'}
 						<p class="body-md mt-6 text-error" role="alert">
 							{group.sourceName}
@@ -286,7 +339,9 @@ async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 							</li>
 						{/each}
 					{:else if trendingStatus === 'loading'}
-						<li class="mono-label text-on-surface-variant animate-pulse" role="status">Loading…</li>
+						<li>
+							<Skeleton variant="trending" count={5} label="Loading trending" layout="space-y-4" />
+						</li>
 					{:else if trendingStatus === 'error'}
 						<li class="mono-label text-error">
 							Could not load trending

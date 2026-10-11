@@ -36,3 +36,6 @@ tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
 url = "2"
 reqwest = { workspace = true }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

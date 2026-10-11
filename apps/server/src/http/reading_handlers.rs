@@ -158,6 +158,15 @@ pub async fn save_position(
 	Ok(Json(json!({ "chapter_id": position.chapter_id, "page": position.page })))
 }
 
+pub async fn clear_position(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	Path(chapter_id): Path<Uuid>,
+) -> ApiResult<serde_json::Value> {
+	let cleared = state.vault.clear_position(auth.user.id, chapter_id).await?;
+	Ok(Json(json!({ "chapter_id": chapter_id, "cleared": cleared })))
+}
+
 pub async fn positions_for_work(
 	State(state): State<AppState>,
 	auth: Authenticated,

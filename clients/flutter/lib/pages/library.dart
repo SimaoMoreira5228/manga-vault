@@ -8,6 +8,7 @@ import '../service/vault_events.dart';
 import '../service/vault_service.dart';
 import 'continue_reading.dart';
 import 'pager_bar.dart';
+import 'skeletons.dart';
 import 'work_page.dart';
 
 class LibraryPage extends StatefulWidget {
@@ -282,7 +283,14 @@ class _LibraryPageState extends State<LibraryPage> {
               ),
             )
           : shown == null
-          ? const Center(child: CircularProgressIndicator())
+          ? SkeletonList(
+              label: 'Loading your library',
+              count: 10,
+              itemBuilder: (context, index) => SkeletonTile(
+                leading: const SkeletonBar(height: 24, width: 24),
+                trailing: const SkeletonBar(height: 24, width: 24),
+              ),
+            )
           : RefreshIndicator(
               onRefresh: () async {
                 await _load();

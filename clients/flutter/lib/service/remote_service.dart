@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'remote_error.dart';
+import 'remote_mapper.dart';
 import 'vault_service.dart';
 
 class RemoteService implements VaultService {
@@ -83,6 +84,22 @@ class RemoteService implements VaultService {
 
   Future<void> revokeSession(String token) =>
       _send('DELETE', '/api/me/sessions/$token');
+
+  Future<int> logoutEverywhere() async =>
+      (await _send('DELETE', '/api/me/sessions'))['revoked_sessions'] as int;
+
+  Future<int> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async =>
+      (await _send(
+        'POST',
+        '/api/me/password',
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      ))['revoked_sessions'] as int;
 
   Future<dynamic> _send(String method, String path, {String? body}) =>
       _requestJson(
@@ -436,6 +453,12 @@ class RemoteService implements VaultService {
   }
 
   @override
+  Future<bool> clearPosition({required String chapterId}) async {
+    final payload = await _send('DELETE', '/api/chapters/$chapterId/position');
+    return payload['cleared'] as bool;
+  }
+
+  @override
   Future<String> translationMode() async {
     final caps = await _send('GET', '/api/me/capabilities');
     return caps['translation']['mode'] as String;
@@ -697,53 +720,4 @@ class RemoteService implements VaultService {
     await _send('DELETE', '/api/plugins/$pluginId');
     return true;
   }
-}
-
-class WorkSummaryMapper {
-  static WorkSummary from(String sourceId, dynamic raw) => WorkSummary(
-    id: null,
-    sourceId: sourceId,
-    title: raw['title'] as String,
-    remoteUrl: raw['remote_url'] as String,
-    coverUrl: raw['cover_url'] as String?,
-  );
-}
-
-class WorkDetailsMapper {
-  static WorkDetails fromPayload(dynamic payload) => fromWork(
-    payload['work'],
-    chapters: payload['chapters'] as List?,
-    readIds: [
-      for (final id in payload['read_chapter_ids'] as List) id as String,
-    ],
-  );
-
-  static WorkDetails fromWork(
-    dynamic work, {
-    List<dynamic>? chapters,
-    List<String> readIds = const [],
-  }) => WorkDetails(
-    id: work['id'] as String,
-    sourceId: work['source_id'] as String,
-    remoteUrl: work['remote_url'] as String,
-    kind: work['kind'] as String,
-    title: work['title'] as String,
-    coverUrl: work['cover_url'] as String?,
-    authors: [
-      for (final author in (work['authors'] ?? []) as List) author as String,
-    ],
-    status: work['status'] as String?,
-    description: work['description'] as String?,
-    genres: [
-      for (final genre in (work['genres'] ?? []) as List) genre as String,
-    ],
-    chapters: [
-      for (final chapter in chapters ?? const [])
-        ChapterSummary(
-          id: chapter['id'] as String,
-          title: chapter['title'] as String,
-          sortIndex: chapter['sort_index'] as int,
-        ),
-    ],
-  );
 }

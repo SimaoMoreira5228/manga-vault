@@ -34,6 +34,8 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<ChapterBody> chapterContent({required String chapterId});
 
+  Future<bool> clearPosition({required String chapterId});
+
   Future<void> clearTranslationProvider();
 
   Future<List<ContinueItem>> continueReading();

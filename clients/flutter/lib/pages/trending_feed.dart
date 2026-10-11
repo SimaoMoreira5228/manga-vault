@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../service/vault_service.dart';
+import 'skeletons.dart';
 import 'source_page_bar.dart';
 
 class TrendingFeed extends StatefulWidget {
@@ -87,7 +88,14 @@ class _TrendingFeedState extends State<TrendingFeed> {
         ),
         Expanded(
           child: shown == null
-              ? const Center(child: CircularProgressIndicator())
+              ? SkeletonList(
+                  label: 'Loading trending from ${source.name}',
+                  count: 6,
+                  itemBuilder: (context, index) => SkeletonTile(
+                    leading: SkeletonBar(height: 28, width: 32, radius: 0),
+                    trailing: const SkeletonBar(height: 14, width: 48),
+                  ),
+                )
               : shown.isEmpty
               ? Center(
                   child: Column(

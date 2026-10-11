@@ -7,6 +7,7 @@ import {
 	type StoredRepo,
 	type WorkKind,
 } from '$lib/api';
+import Skeleton from '$lib/components/Skeleton.svelte';
 import IconAdd from '~icons/material-symbols/add';
 import IconDelete from '~icons/material-symbols/delete';
 import IconDownload from '~icons/material-symbols/download';
@@ -118,7 +119,16 @@ async function uninstall(pluginId: string) {
 		{/each}
 	</div>
 
-	{#if !loading}
+	{#if loading}
+		<div class="mt-8">
+			<Skeleton
+				variant="sources"
+				count={6}
+				label="Loading installed sources"
+				layout="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+			/>
+		</div>
+	{:else}
 		<div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 			{#each filtered as source (source.id)}
 				<article
@@ -231,9 +241,15 @@ async function uninstall(pluginId: string) {
 						{/if}
 					</li>
 				{:else}
-					<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
-						Nothing available: add a repository to browse its plugins.
-					</li>
+					{#if loading}
+						<li>
+							<Skeleton variant="chapters" count={4} label="Loading the plugin catalog" />
+						</li>
+					{:else}
+						<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
+							Nothing available: add a repository to browse its plugins.
+						</li>
+					{/if}
 				{/each}
 			</ul>
 		{/if}
@@ -289,9 +305,15 @@ async function uninstall(pluginId: string) {
 						</button>
 					</li>
 				{:else}
-					<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
-						No repositories configured.
-					</li>
+					{#if loading}
+						<li>
+							<Skeleton variant="chapters" count={3} label="Loading repositories" />
+						</li>
+					{:else}
+						<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
+							No repositories configured.
+						</li>
+					{/if}
 				{/each}
 			</ul>
 		</section>

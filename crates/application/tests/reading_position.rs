@@ -106,6 +106,7 @@ fn position_of(fixture: &Fixture, page: u32) -> ReadingPosition {
 		chapter_id: fixture.chapters[0],
 		page,
 		updated_at: chrono::Utc::now(),
+		removed_at: None,
 	}
 }
 
@@ -212,4 +213,165 @@ async fn a_position_on_a_chapter_someone_else_owns_is_rejected() {
 
 	f.vault.save_position(f.user, f.chapters[0], 5).await.unwrap();
 	assert!(f.vault.furthest_position(session.user_id, f.work_id).await.unwrap().is_none());
+}
+
+#[tokio::test]
+async fn clearing_a_position_hides_it_from_the_furthest_page() {
+	let fixture = seeded("clear-hides").await;
+	fixture
+		.vault
+		.save_position(fixture.user, fixture.chapters[0], 12)
+		.await
+		.unwrap();
+	assert_eq!(
+		fixture
+			.vault
+			.furthest_position(fixture.user, fixture.work_id)
+			.await
+			.unwrap()
+			.unwrap()
+			.page,
+		12
+	);
+
+	assert!(fixture.vault.clear_position(fixture.user, fixture.chapters[0]).await.unwrap());
+	assert!(
+		fixture
+			.vault
+			.furthest_position(fixture.user, fixture.work_id)
+			.await
+			.unwrap()
+			.is_none()
+	);
+	assert!(
+		fixture
+			.vault
+			.positions_for_work(fixture.user, fixture.work_id)
+			.await
+			.unwrap()
+			.is_empty()
+	);
+}
+
+#[tokio::test]
+async fn a_stale_device_cannot_resurrect_a_cleared_position() {
+	let fixture = seeded("clear-survives").await;
+	fixture
+		.vault
+		.save_position(fixture.user, fixture.chapters[0], 12)
+		.await
+		.unwrap();
+	fixture.vault.clear_position(fixture.user, fixture.chapters[0]).await.unwrap();
+
+	let mut stale = position_of(&fixture, 12);
+	stale.updated_at = chrono::Utc::now() - chrono::Duration::hours(1);
+	fixture
+		.vault
+		.apply_sync_state(fixture.user, state_with_positions(vec![stale]))
+		.await
+		.unwrap();
+
+	assert!(
+		fixture
+			.vault
+			.furthest_position(fixture.user, fixture.work_id)
+			.await
+			.unwrap()
+			.is_none(),
+		"an older device must not bring back a position the user cleared"
+	);
+}
+
+#[tokio::test]
+async fn reading_again_after_clearing_restores_the_position() {
+	let fixture = seeded("clear-revives").await;
+	fixture
+		.vault
+		.save_position(fixture.user, fixture.chapters[0], 12)
+		.await
+		.unwrap();
+	fixture.vault.clear_position(fixture.user, fixture.chapters[0]).await.unwrap();
+	fixture
+		.vault
+		.save_position(fixture.user, fixture.chapters[0], 4)
+		.await
+		.unwrap();
+
+	assert_eq!(
+		fixture
+			.vault
+			.furthest_position(fixture.user, fixture.work_id)
+			.await
+			.unwrap()
+			.unwrap()
+			.page,
+		4
+	);
+}
+
+#[tokio::test]
+async fn clearing_a_position_twice_reports_that_nothing_changed() {
+	let fixture = seeded("clear-twice").await;
+	fixture
+		.vault
+		.save_position(fixture.user, fixture.chapters[0], 3)
+		.await
+		.unwrap();
+	assert!(fixture.vault.clear_position(fixture.user, fixture.chapters[0]).await.unwrap());
+	assert!(!fixture.vault.clear_position(fixture.user, fixture.chapters[0]).await.unwrap());
+}
+
+#[tokio::test]
+async fn a_clearance_syncs_to_another_device() {
+	let fixture = seeded("clear-syncs").await;
+	fixture
+		.vault
+		.save_position(fixture.user, fixture.chapters[0], 9)
+		.await
+		.unwrap();
+	fixture.vault.clear_position(fixture.user, fixture.chapters[0]).await.unwrap();
+
+	let mut cleared = position_of(&fixture, 9);
+	cleared.removed_at = Some(chrono::Utc::now());
+	fixture
+		.vault
+		.apply_sync_state(fixture.user, state_with_positions(vec![cleared]))
+		.await
+		.unwrap();
+
+	assert!(
+		fixture
+			.vault
+			.furthest_position(fixture.user, fixture.work_id)
+			.await
+			.unwrap()
+			.is_none()
+	);
+}
+
+#[tokio::test]
+async fn clearing_a_page_keeps_the_work_in_continue_reading() {
+	let fixture = seeded("clear-keeps-progress").await;
+	fixture.vault.mark_read(fixture.user, fixture.chapters[0]).await.unwrap();
+	fixture
+		.vault
+		.save_position(fixture.user, fixture.chapters[0], 12)
+		.await
+		.unwrap();
+
+	let before = fixture.vault.continue_reading(fixture.user).await.unwrap();
+	assert_eq!(before.len(), 1);
+	assert_eq!(before[0].page, Some(12));
+
+	fixture.vault.clear_position(fixture.user, fixture.chapters[0]).await.unwrap();
+
+	let after = fixture.vault.continue_reading(fixture.user).await.unwrap();
+	assert_eq!(
+		after.len(),
+		1,
+		"clearing a position tombstones reading_positions only; reading_progress still lists the work"
+	);
+	assert_eq!(after[0].work.id, fixture.work_id);
+	assert_eq!(after[0].page, None, "the work stays, it just starts from the top again");
+	assert_eq!(after[0].chapters_read, 1, "read chapters are untouched");
 }

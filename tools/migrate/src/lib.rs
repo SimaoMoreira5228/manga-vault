@@ -125,19 +125,28 @@ pub async fn migrate(legacy: &LegacyVault, target_url: &str) -> Result<Migration
 		.await?;
 	}
 
-	let mut source_ids: Vec<String> = Vec::new();
-	for work in mangas.iter().chain(novels.iter()) {
-		let slug = slugify(&work.scraper);
-		if !source_ids.contains(&slug) {
-			source_ids.push(slug);
+	let mut source_counts: Vec<(String, u64, u64)> = Vec::new();
+	for work in &mangas {
+		let entry = source_counts.iter_mut().find(|(id, _, _)| id == &slugify(&work.scraper));
+		match entry {
+			Some((_, mangas, _)) => *mangas += 1,
+			None => source_counts.push((slugify(&work.scraper), 1, 0)),
 		}
 	}
-	for slug in &source_ids {
+	for work in &novels {
+		let entry = source_counts.iter_mut().find(|(id, _, _)| id == &slugify(&work.scraper));
+		match entry {
+			Some((_, _, novels)) => *novels += 1,
+			None => source_counts.push((slugify(&work.scraper), 0, 1)),
+		}
+	}
+	for (slug, manga_count, novel_count) in &source_counts {
+		let kind = if novel_count > manga_count { "novel" } else { "manga" };
 		persistence::entities::sources::ActiveModel {
 			id: Set(slug.clone()),
 			name: Set(slug.clone()),
 			version: Set("legacy".to_owned()),
-			kind: Set("manga".to_owned()),
+			kind: Set((*kind).to_owned()),
 			icon_url: Set(None),
 			referer_url: Set(None),
 			base_url: Set(None),

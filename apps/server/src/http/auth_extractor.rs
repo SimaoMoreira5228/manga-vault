@@ -36,11 +36,11 @@ impl FromRequestParts<AppState> for AdminUser {
 	async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
 		let authenticated = Authenticated::from_request_parts(parts, state).await?;
 		let Some(admin_username) = &state.admin_username else {
-			return Err(plugin_management_disabled());
+			return Err(operator_only_disabled());
 		};
 		if authenticated.user.username != *admin_username {
 			return Err(crate::http::error::ApiError::forbidden(
-				"plugin management is reserved to the server operator".to_owned(),
+				"this action is reserved to the server operator".to_owned(),
 			));
 		}
 		Ok(Self {
@@ -49,9 +49,9 @@ impl FromRequestParts<AppState> for AdminUser {
 	}
 }
 
-pub fn plugin_management_disabled() -> crate::http::error::ApiError {
+pub fn operator_only_disabled() -> crate::http::error::ApiError {
 	crate::http::error::ApiError::forbidden(
-		"plugin management is disabled on this deployment: set ADMIN_USERNAME".to_owned(),
+		"operator actions are disabled on this deployment: set ADMIN_USERNAME".to_owned(),
 	)
 }
 

@@ -1,5 +1,5 @@
 use manga_vault_migrate::legacy;
-use sea_orm::EntityTrait;
+use sea_orm::{ConnectionTrait, EntityTrait};
 
 mod common;
 
@@ -73,6 +73,43 @@ async fn migrates_a_legacy_sqlite_vault() {
 	);
 
 	common::assert_migrated_vault(&to).await;
+}
+
+#[tokio::test]
+async fn a_novel_only_scraper_is_not_seeded_as_a_manga_source() {
+	let root = common::scratch("novel-source");
+	let legacy_path = root.join("legacy.db");
+	seed_legacy_sqlite(&legacy_path).await;
+	sea_orm::Database::connect(format!("sqlite://{}?mode=rw", legacy_path.display()))
+		.await
+		.unwrap()
+		.execute_unprepared(
+			"INSERT INTO novels (id, title, url, img_url, scraper, updated_at) VALUES (91, 'Novel Only', 'https://example.test/novel/91', '', 'Novel Shop', '2024-03-04 05:06:07')",
+		)
+		.await
+		.unwrap();
+
+	let from = format!("sqlite://{}?mode=rw", legacy_path.display());
+	let to = common::target_url(&root);
+	let source = legacy::LegacyVault::connect(&from).await.unwrap();
+	manga_vault_migrate::migrate(&source, &to).await.unwrap();
+
+	let db = sea_orm::Database::connect(&to).await.unwrap();
+	let kinds: Vec<(String, String)> = persistence::entities::sources::Entity::find()
+		.all(&db)
+		.await
+		.unwrap()
+		.into_iter()
+		.map(|model| (model.id, model.kind))
+		.collect();
+	assert_eq!(
+		kinds,
+		vec![
+			("my-scraper".to_owned(), "manga".to_owned()),
+			("novel-shop".to_owned(), "novel".to_owned())
+		],
+		"a scraper that only ever produced novels must not be recorded as a manga source"
+	);
 }
 
 #[tokio::test]

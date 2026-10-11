@@ -11,6 +11,7 @@ import {
 } from '$lib/api';
 import { appearance, THEMES } from '$lib/appearance.svelte';
 import { auth } from '$lib/auth.svelte';
+import AccountSecurity from '$lib/components/AccountSecurity.svelte';
 import DeviceList from '$lib/components/DeviceList.svelte';
 import {
 	chapterNotificationsEnabled,
@@ -249,7 +250,7 @@ async function clearTranslationSettings() {
 
 	<section class="mt-8" aria-labelledby="appearance-heading">
 		<h2 id="appearance-heading" class="title-lg">Appearance</h2>
-		<div class="mt-4 grid gap-4 sm:grid-cols-3">
+		<div class="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
 			{#each THEMES as theme (theme.id)}
 				{@const active = appearance.theme === theme.id}
 				<button
@@ -268,7 +269,7 @@ async function clearTranslationSettings() {
 					</span>
 					<span
 						class="mt-3 flex aspect-4/3 flex-col gap-1.5 rounded-card border p-2"
-						style={`background:${theme.id === 'classic' ? '#1a120b' : theme.id === 'forest' ? '#111812' : '#0d1518'};border-color:${theme.deep}`}
+						style={`background:${theme.palette.surface};border-color:${theme.deep}`}
 					>
 						<span class="flex items-center gap-1">
 							<span class="h-1 w-8 rounded-full" style={`background:${theme.accent}`}></span>
@@ -276,11 +277,11 @@ async function clearTranslationSettings() {
 						<span class="flex flex-1 gap-1.5">
 							<span
 								class="flex-1 rounded-sm"
-								style={`background:${theme.id === 'classic' ? '#231a13' : theme.id === 'forest' ? '#18231a' : '#142024'}`}
+								style={`background:${theme.palette.surfaceLow}`}
 							></span>
 							<span
 								class="flex-1 rounded-sm"
-								style={`background:${theme.id === 'classic' ? '#271e16' : theme.id === 'forest' ? '#18231a' : '#142024'}`}
+								style={`background:${theme.palette.surfaceContainer}`}
 							></span>
 						</span>
 						<span
@@ -638,6 +639,8 @@ async function clearTranslationSettings() {
 			{/if}
 		{/if}
 	</section>
+
+	<AccountSecurity />
 
 	<DeviceList />
 

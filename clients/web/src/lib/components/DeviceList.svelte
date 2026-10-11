@@ -1,11 +1,12 @@
 <script lang="ts">
-import { api, type Session } from '$lib/api';
+import { api, type DeviceSession } from '$lib/api';
 import Pager from '$lib/components/Pager.svelte';
 import { PAGE_SIZE } from '$lib/page';
+import { sessionEpoch } from '$lib/session_refresh.svelte';
 
 const limit = PAGE_SIZE;
 
-let sessions = $state<Session[]>([]);
+let sessions = $state<DeviceSession[]>([]);
 let total = $state(0);
 let offset = $state(0);
 let loading = $state(true);
@@ -19,6 +20,7 @@ async function load() {
 }
 
 $effect(() => {
+	sessionEpoch.value;
 	load().catch(() => {
 		sessions = [];
 		total = 0;
@@ -52,7 +54,12 @@ function shiftPage(next: number) {
 		{#each sessions as session (session.token)}
 			<li class="flex items-center justify-between gap-4 px-4 py-3">
 				<div>
-					<p class="body-md">{session.device_label ?? 'Unnamed device'}</p>
+					<p class="body-md">
+						{session.device_label ?? 'Unnamed device'}
+						{#if session.current}
+							<span class="mono-label ml-2 text-primary">This device</span>
+						{/if}
+					</p>
 					<p class="mono-label text-outline">
 						Last seen {new Date(session.last_seen_at).toLocaleString()}
 					</p>
@@ -67,7 +74,7 @@ function shiftPage(next: number) {
 			</li>
 		{:else}
 			{#if !loading}
-				<li class="mono-label px-4 py-6 text-center text-on-surface-variant">No other sessions</li>
+				<li class="mono-label px-4 py-6 text-center text-on-surface-variant">No sessions</li>
 			{/if}
 		{/each}
 	</ul>

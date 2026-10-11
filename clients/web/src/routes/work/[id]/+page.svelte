@@ -2,6 +2,7 @@
 import { goto } from '$app/navigation';
 import type { TrackerAccount, WorkTrackLink } from '$lib/api';
 import { api, type Chapter, proxied, type SourceInfo, type Work } from '$lib/api';
+import Skeleton from '$lib/components/Skeleton.svelte';
 import { onWorkRefreshed } from '$lib/events.svelte';
 import IconArrowBack from '~icons/material-symbols/arrow-back';
 import IconBookmarkAdd from '~icons/material-symbols/bookmark-add';
@@ -51,6 +52,7 @@ let trackTrackerId = $state<string>('');
 let trackBusy = $state(false);
 let expandedDescription = $state(false);
 let busy = $state<string | null>(null);
+let loading = $state(true);
 let loadError = $state<string | null>(null);
 
 let sources = $state<SourceInfo[]>([]);
@@ -97,6 +99,8 @@ async function load(id: string) {
 		trackTrackerId ||= accounts[0]?.tracker_id ?? '';
 	} catch (cause) {
 		loadError = cause instanceof Error ? cause.message : 'Failed to load this work';
+	} finally {
+		loading = false;
 	}
 }
 
@@ -273,7 +277,16 @@ function chapterDate(chapter: Chapter): string {
 		Back to Explore
 	</a>
 
-	{#if loadError}
+	{#if loading}
+		<div class="mt-8">
+			<Skeleton
+				variant="chapters"
+				count={8}
+				label="Loading chapters"
+				layout="divide-y divide-outline-variant/20 overflow-hidden rounded-card border border-outline-variant/40 bg-surface-low"
+			/>
+		</div>
+	{:else if loadError}
 		<div class="mt-8 rounded-xl border border-error/40 bg-surface-low p-6 text-center" role="alert">
 			<p class="title-md text-error">Could not load this work</p>
 			<p class="body-md mt-2 text-on-surface-variant">{loadError}</p>

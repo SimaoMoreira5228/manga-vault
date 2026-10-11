@@ -5,6 +5,7 @@ mod add_glossary_tables;
 mod add_library_soft_delete;
 mod add_progress_soft_delete;
 mod add_reading_position;
+mod add_reading_position_removed_at;
 mod add_registration_tables;
 mod add_tracker_refresh_token;
 mod add_tracker_tables;
@@ -16,6 +17,7 @@ use add_glossary_tables::AddGlossaryTables;
 use add_library_soft_delete::AddLibrarySoftDelete;
 use add_progress_soft_delete::AddProgressSoftDelete;
 use add_reading_position::AddReadingPosition;
+use add_reading_position_removed_at::AddReadingPositionRemovedAt;
 use add_registration_tables::AddRegistrationTables;
 use add_tracker_refresh_token::AddTrackerRefreshToken;
 use add_tracker_tables::AddTrackerTables;
@@ -40,6 +42,7 @@ impl MigratorTrait for Migrator {
 			Box::new(AddLibrarySoftDelete),
 			Box::new(AddReadingPosition),
 			Box::new(AddProgressSoftDelete),
+			Box::new(AddReadingPositionRemovedAt),
 		]
 	}
 }

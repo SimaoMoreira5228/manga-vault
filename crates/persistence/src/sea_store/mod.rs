@@ -163,6 +163,7 @@ impl From<&reading_positions::Model> for ReadingPosition {
 			chapter_id: model.chapter_id,
 			page: model.page.max(0) as u32,
 			updated_at: model.updated_at.with_timezone(&chrono::Utc),
+			removed_at: model.removed_at.map(|stamp| stamp.with_timezone(&chrono::Utc)),
 		}
 	}
 }

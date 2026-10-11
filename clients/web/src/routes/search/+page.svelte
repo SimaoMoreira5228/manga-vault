@@ -2,6 +2,7 @@
 import { goto } from '$app/navigation';
 import { api, type RemoteWorkSummary, type SourceInfo } from '$lib/api';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
+import Skeleton from '$lib/components/Skeleton.svelte';
 import { SEARCH_INPUT_ID } from '$lib/keyboard_shortcuts';
 
 let sources = $state<SourceInfo[]>([]);
@@ -41,6 +42,8 @@ async function changePage(delta: number) {
 async function runSearch() {
 	error = null;
 	searched = false;
+	results = [];
+	grouped = [];
 	const text = query.trim();
 	searching = true;
 	try {
@@ -122,9 +125,14 @@ async function importAndOpen(remoteUrl: string) {
 	</form>
 
 	{#if searching}
-		<p class="body-md mt-4 text-on-surface-variant" role="status">
-			Searching {sources.length} sources…
-		</p>
+		<div class="mt-8">
+			<Skeleton
+				variant="cards"
+				count={12}
+				label={`Searching ${sources.length} sources`}
+				layout="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5"
+			/>
+		</div>
 	{/if}
 
 	{#if error}

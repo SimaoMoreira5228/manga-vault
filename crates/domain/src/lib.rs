@@ -118,6 +118,13 @@ pub struct ReadingPosition {
 	pub chapter_id: ChapterId,
 	pub page: u32,
 	pub updated_at: DateTime<Utc>,
+	pub removed_at: Option<DateTime<Utc>>,
+}
+
+impl ReadingPosition {
+	pub fn is_removed(&self) -> bool {
+		self.removed_at.is_some()
+	}
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -83,6 +83,7 @@ pub trait UserRepository: Send + Sync {
 	async fn get_user(&self, id: UserId) -> StoreResult<Option<User>>;
 	async fn get_user_by_username(&self, username: &str) -> StoreResult<Option<User>>;
 	async fn list_users(&self) -> StoreResult<Vec<User>>;
+	async fn set_password_hash(&self, id: UserId, password_hash: &str) -> StoreResult<()>;
 }
 
 #[async_trait]
@@ -135,6 +136,7 @@ pub trait SessionRepository: Send + Sync {
 	async fn sessions_for_user(&self, user_id: UserId) -> StoreResult<Vec<Session>>;
 	async fn sessions_page(&self, user_id: UserId, offset: u64, limit: u64) -> StoreResult<(Vec<Session>, i64)>;
 	async fn delete_sessions_seen_before(&self, user_id: Option<UserId>, cutoff: DateTime<Utc>) -> StoreResult<u64>;
+	async fn delete_sessions_for_user(&self, user_id: UserId, keep: Option<uuid::Uuid>) -> StoreResult<u64>;
 }
 
 #[derive(Debug, Clone, Default)]
@@ -188,6 +190,7 @@ pub trait LibraryRepository: Send + Sync {
 pub trait ProgressRepository: Send + Sync {
 	async fn mark_read(&self, progress: ReadingProgress) -> StoreResult<bool>;
 	async fn save_position(&self, position: ReadingPosition) -> StoreResult<ReadingPosition>;
+	async fn clear_position(&self, user_id: UserId, chapter_id: ChapterId, cleared_at: DateTime<Utc>) -> StoreResult<bool>;
 	/// Keeps whichever page is further along, so a device that is behind cannot regress a position.
 	async fn merge_position_furthest(&self, position: ReadingPosition) -> StoreResult<ReadingPosition>;
 	async fn furthest_position(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Option<ReadingPosition>>;

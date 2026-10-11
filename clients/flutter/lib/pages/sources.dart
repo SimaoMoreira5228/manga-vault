@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../service/remote_error.dart';
 import '../service/vault_service.dart';
+import 'skeletons.dart';
 
 class SourcesPage extends StatefulWidget {
   const SourcesPage({super.key, required this.vault});
@@ -174,7 +175,13 @@ class _SourcesPageState extends State<SourcesPage> {
     if (shown == null) {
       return SliverList(
         delegate: SliverChildListDelegate([
-          Center(child: CircularProgressIndicator()),
+          SkeletonColumn(
+            label: 'Loading repositories',
+            count: 4,
+            itemBuilder: (context, index) => SkeletonTile(
+              trailing: const SkeletonBar(height: 24, width: 24),
+            ),
+          ),
         ]),
       );
     }
@@ -207,12 +214,19 @@ class _SourcesPageState extends State<SourcesPage> {
 
   SliverList _buildCatalog() {
     final shown = catalog;
-    if (shown == null)
+    if (shown == null) {
       return SliverList(
         delegate: SliverChildListDelegate([
-          Center(child: CircularProgressIndicator()),
+          SkeletonColumn(
+            label: 'Loading the plugin catalog',
+            count: 5,
+            itemBuilder: (context, index) => SkeletonTile(
+              trailing: const SkeletonBar(height: 40, width: 72),
+            ),
+          ),
         ]),
       );
+    }
     if (shown.isEmpty) {
       return SliverList(
         delegate: SliverChildListDelegate([

@@ -14,6 +14,7 @@ pub struct Model {
 	pub chapter_id: Uuid,
 	pub page: i32,
 	pub updated_at: DateTimeWithTimeZone,
+	pub removed_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

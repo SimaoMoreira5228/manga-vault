@@ -33,6 +33,8 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/auth/login", post(auth_handlers::login))
 		.route("/api/auth/logout", post(auth_handlers::logout))
 		.route("/api/me", get(auth_handlers::me))
+		.route("/api/me/password", post(auth_handlers::change_password))
+		.route("/api/admin/users/password", post(auth_handlers::reset_password))
 		.route("/api/me/continue-reading", get(reading_handlers::continue_reading))
 		.route("/api/me/history", get(reading_handlers::history))
 		.route("/api/me/stats", get(reading_handlers::reading_stats))
@@ -42,7 +44,10 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/me/backup", get(backup_handlers::export_backup))
 		.route("/api/me/backup/import", post(backup_handlers::import_backup))
 		.route("/opds/catalog", get(opds_handlers::catalog))
-		.route("/api/me/sessions", get(auth_handlers::list_sessions))
+		.route(
+			"/api/me/sessions",
+			get(auth_handlers::list_sessions).delete(auth_handlers::logout_everywhere),
+		)
 		.route("/api/me/sessions/{token}", delete(auth_handlers::revoke_session))
 		.route("/api/sources", get(sources_handlers::list))
 		.route("/api/sources/{source_id}/search", get(sources_handlers::search))
@@ -59,7 +64,10 @@ pub fn router(state: AppState) -> Router {
 		.route("/api/works/{work_id}/progress", get(reading_handlers::progress_for_work))
 		.route("/api/works/{work_id}/position", get(reading_handlers::furthest_position))
 		.route("/api/works/{work_id}/positions", get(reading_handlers::positions_for_work))
-		.route("/api/chapters/{chapter_id}/position", put(reading_handlers::save_position))
+		.route(
+			"/api/chapters/{chapter_id}/position",
+			put(reading_handlers::save_position).delete(reading_handlers::clear_position),
+		)
 		.route("/api/works/{work_id}/chapters/read", post(reading_handlers::mark_bulk))
 		.route("/api/library", get(library_handlers::list).put(library_handlers::add))
 		.route("/api/library/{work_id}", delete(library_handlers::remove))

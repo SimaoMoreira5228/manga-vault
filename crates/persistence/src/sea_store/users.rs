@@ -89,6 +89,22 @@ impl UserRepository for SeaStore {
 			.map(User::from)
 			.collect())
 	}
+
+	async fn set_password_hash(&self, id: uuid::Uuid, password_hash: &str) -> StoreResult<()> {
+		let updated = users::Entity::update_many()
+			.col_expr(
+				users::Column::PasswordHash,
+				sea_orm::sea_query::Expr::value(password_hash.to_owned()),
+			)
+			.filter(users::Column::Id.eq(id))
+			.exec(&self.db)
+			.await?
+			.rows_affected;
+		if updated == 0 {
+			return Err(StoreError::NotFound("user", id.to_string()));
+		}
+		Ok(())
+	}
 }
 
 #[async_trait::async_trait]
@@ -164,6 +180,14 @@ impl SessionRepository for SeaStore {
 		let mut query = sessions::Entity::delete_many().filter(sessions::Column::LastSeenAt.lt(utc_to_db(cutoff)));
 		if let Some(user_id) = user_id {
 			query = query.filter(sessions::Column::UserId.eq(user_id));
+		}
+		Ok(query.exec(&self.db).await?.rows_affected)
+	}
+
+	async fn delete_sessions_for_user(&self, user_id: uuid::Uuid, keep: Option<uuid::Uuid>) -> StoreResult<u64> {
+		let mut query = sessions::Entity::delete_many().filter(sessions::Column::UserId.eq(user_id));
+		if let Some(token) = keep {
+			query = query.filter(sessions::Column::Token.ne(token));
 		}
 		Ok(query.exec(&self.db).await?.rows_affected)
 	}

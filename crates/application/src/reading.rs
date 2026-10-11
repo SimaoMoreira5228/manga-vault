@@ -48,8 +48,19 @@ impl Vault {
 			chapter_id,
 			page,
 			updated_at: chrono::Utc::now(),
+			removed_at: None,
 		};
 		Ok(self.db.save_position(position).await?)
+	}
+
+	pub async fn clear_position(&self, user_id: UserId, chapter_id: ChapterId) -> VaultResult<bool> {
+		let chapter = self
+			.db
+			.get_chapter(chapter_id)
+			.await?
+			.ok_or(VaultError::NotFound("chapter", chapter_id.to_string()))?;
+		self.require_owned_work(user_id, chapter.work_id).await?;
+		Ok(self.db.clear_position(user_id, chapter_id, chrono::Utc::now()).await?)
 	}
 
 	pub async fn furthest_position(&self, user_id: UserId, work_id: WorkId) -> VaultResult<Option<ReadingPosition>> {

@@ -54,7 +54,7 @@ class AppPrefs {
     await _save();
   }
 
-  String get themeId => _data['themeId'] as String? ?? 'classic';
+  String? get themeId => _data['themeId'] as String?;
   Future<void> setThemeId(String value) async {
     _data['themeId'] = value;
     await _save();

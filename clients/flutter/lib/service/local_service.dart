@@ -208,6 +208,10 @@ class LocalService implements VaultService {
       _vault.savePosition(chapterId: chapterId, page: page);
 
   @override
+  Future<bool> clearPosition({required String chapterId}) =>
+      _vault.clearPosition(chapterId: chapterId);
+
+  @override
   Future<List<ReadingPosition>> positionsForWork({required String workId}) =>
       _vault.positionsForWork(workId: workId);
 

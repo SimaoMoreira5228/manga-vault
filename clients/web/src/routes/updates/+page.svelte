@@ -1,5 +1,6 @@
 <script lang="ts">
 import { api, type LibraryEntry, proxied, type Work } from '$lib/api';
+import Skeleton from '$lib/components/Skeleton.svelte';
 
 let items = $state<[LibraryEntry, Work][]>([]);
 let loading = $state(true);
@@ -40,11 +41,13 @@ $effect(() => {
 	</p>
 
 	{#if loading}
-		<div class="mt-16 flex flex-col items-center gap-4 text-on-surface-variant" role="status">
-			<span
-				class="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
-			></span>
-			<span class="body-md">Loading updates…</span>
+		<div class="mt-8">
+			<Skeleton
+				variant="thumbs"
+				count={8}
+				label="Loading updates"
+				layout="max-w-3xl divide-y divide-outline-variant/20 rounded-card border border-outline-variant/40 bg-surface-low"
+			/>
 		</div>
 	{:else if loadError}
 		<div class="mt-16 text-center" role="alert">

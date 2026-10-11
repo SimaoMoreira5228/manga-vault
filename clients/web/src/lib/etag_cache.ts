@@ -34,7 +34,10 @@ export async function cachedRequest(
 	if (init?.method !== undefined && init.method !== 'GET') {
 		const response = await fetch(url, { ...init, headers });
 		if (response.ok) invalidateEtags();
-		return { response, body: undefined, notModified: false };
+		if (!response.ok || response.status === 204) {
+			return { response, body: undefined, notModified: false };
+		}
+		return { response, body: await response.json(), notModified: false };
 	}
 
 	const cached = cache.get(url);

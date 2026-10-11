@@ -58,6 +58,22 @@ class _ContinueReadingRowState extends State<ContinueReadingRow> {
     widget.onChanged();
   }
 
+  Future<void> _dismiss(ContinueItem item) async {
+    final chapterId = item.chapterId;
+    if (chapterId == null) return;
+    try {
+      await widget.vault.clearPosition(chapterId: chapterId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not clear position: $e')));
+      return;
+    }
+    await _load();
+    widget.onChanged();
+  }
+
   @override
   Widget build(BuildContext context) {
     final shown = items;
@@ -91,24 +107,37 @@ class _ContinueReadingRowState extends State<ContinueReadingRow> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: SizedBox(
-                            height: 110,
-                            width: 100,
-                            child: item.coverUrl != null
-                                ? Image.network(
-                                    widget.vault.imageUrl(item.coverUrl!),
-                                    headers: widget.vault.imageHeaders,
-                                    fit: BoxFit.cover,
-                                  )
-                                : ColoredBox(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .surfaceContainerHigh,
-                                    child: const Icon(Icons.menu_book),
-                                  ),
-                          ),
+                        Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                height: 110,
+                                width: 100,
+                                child: item.coverUrl != null
+                                    ? Image.network(
+                                        widget.vault.imageUrl(item.coverUrl!),
+                                        headers: widget.vault.imageHeaders,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : ColoredBox(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerHigh,
+                                        child: const Icon(Icons.menu_book),
+                                      ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: IconButton(
+                                tooltip: 'Clear reading position',
+                                icon: const Icon(Icons.close),
+                                onPressed: () => _dismiss(item),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         Text(

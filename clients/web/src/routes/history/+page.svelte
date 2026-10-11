@@ -1,6 +1,7 @@
 <script lang="ts">
 import { api } from '$lib/api';
 import Pager from '$lib/components/Pager.svelte';
+import Skeleton from '$lib/components/Skeleton.svelte';
 import { onWorkRefreshed } from '$lib/events.svelte';
 import { PAGE_SIZE } from '$lib/page';
 
@@ -72,11 +73,8 @@ function timeLabel(readAt: string): string {
 	{/if}
 
 	{#if loading}
-		<div class="mt-16 flex flex-col items-center gap-4 text-on-surface-variant" role="status">
-			<span
-				class="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
-			></span>
-			<span class="body-md">Loading history…</span>
+		<div class="mt-10">
+			<Skeleton variant="rows" count={8} label="Loading history" layout="space-y-3" />
 		</div>
 	{:else if loadError}
 		<div class="mt-16 text-center" role="alert">

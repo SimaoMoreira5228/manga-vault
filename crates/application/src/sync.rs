@@ -33,6 +33,7 @@ pub struct SyncReport {
 	pub progress_added: usize,
 	pub progress_removed: usize,
 	pub positions_merged: usize,
+	pub positions_cleared: usize,
 }
 
 impl Vault {
@@ -151,8 +152,13 @@ impl Vault {
 			if self.db.get_chapter(position.chapter_id).await?.is_none() {
 				continue;
 			}
+			let was_removed = position.is_removed();
 			self.db.merge_position_furthest(position).await?;
-			report.positions_merged += 1;
+			if was_removed {
+				report.positions_cleared += 1;
+			} else {
+				report.positions_merged += 1;
+			}
 		}
 		Ok(report)
 	}

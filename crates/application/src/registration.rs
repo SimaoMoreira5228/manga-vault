@@ -7,6 +7,8 @@ use crate::{Vault, VaultError, VaultResult};
 
 pub const REGISTRATION_MODE_KEY: &str = "registration_mode";
 
+pub const MIN_PASSWORD_LENGTH: usize = 8;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RegistrationMode {
 	Open,
@@ -54,6 +56,15 @@ pub(crate) fn decoy_hash() -> &'static str {
 	DECOY.get_or_init(|| hash_password("no such account").expect("hash decoy"))
 }
 
+pub(crate) fn check_password_policy(password: &str) -> VaultResult<()> {
+	if password.chars().count() < MIN_PASSWORD_LENGTH {
+		return Err(VaultError::WeakPassword {
+			min_length: MIN_PASSWORD_LENGTH,
+		});
+	}
+	Ok(())
+}
+
 pub fn verify_password(password: &str, stored: &str) -> bool {
 	if stored.starts_with("$2a$") || stored.starts_with("$2b$") || stored.starts_with("$2y$") {
 		return bcrypt::verify(password, stored).unwrap_or(false);
@@ -94,6 +105,7 @@ impl Vault {
 		device_label: Option<String>,
 		invite_code: Option<&str>,
 	) -> VaultResult<Session> {
+		check_password_policy(password)?;
 		let hashed = hash_password(password)?;
 		match self.registration_mode().await? {
 			crate::registration::RegistrationMode::Closed => Err(VaultError::RegistrationClosed),

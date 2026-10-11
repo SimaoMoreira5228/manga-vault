@@ -31,6 +31,12 @@ pub enum VaultError {
 	NotFound(&'static str, String),
 	#[error("invalid credentials")]
 	BadCredentials,
+	#[error("the current password is not correct")]
+	WrongPassword,
+	#[error("password must be at least {min_length} characters")]
+	WeakPassword {
+		min_length: usize,
+	},
 	#[error("too many failed login attempts; retry in {}s", retry_after.as_secs())]
 	TooManyAttempts {
 		retry_after: std::time::Duration,

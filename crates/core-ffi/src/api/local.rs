@@ -520,6 +520,10 @@ impl LocalVault {
 		Ok(ids.into_iter().map(|id| id.to_string()).collect())
 	}
 
+	pub async fn clear_position(&self, chapter_id: String) -> anyhow::Result<bool> {
+		Ok(self.vault.clear_position(self.user_id, chapter_id.parse()?).await?)
+	}
+
 	pub async fn save_position(&self, chapter_id: String, page: u32) -> anyhow::Result<()> {
 		self.vault.save_position(self.user_id, chapter_id.parse()?, page).await?;
 		Ok(())

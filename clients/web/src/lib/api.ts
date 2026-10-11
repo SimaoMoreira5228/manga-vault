@@ -66,6 +66,10 @@ export interface Session {
 	last_seen_at: string;
 }
 
+export interface DeviceSession extends Session {
+	current: boolean;
+}
+
 export interface LibraryEntry {
 	id: string;
 	user_id: string;
@@ -213,6 +217,7 @@ export interface InviteInfo {
 export type ApiErrorCode =
 	| 'not_found'
 	| 'bad_credentials'
+	| 'wrong_password'
 	| 'too_many_attempts'
 	| 'registration_closed'
 	| 'invite_required'
@@ -231,6 +236,7 @@ export type ApiErrorCode =
 const apiErrorCodes: ReadonlySet<string> = new Set<ApiErrorCode>([
 	'not_found',
 	'bad_credentials',
+	'wrong_password',
 	'too_many_attempts',
 	'registration_closed',
 	'invite_required',
@@ -348,8 +354,19 @@ export const api = {
 	logout: () => post('/api/auth/logout'),
 	me: () => get<PublicUser>('/api/me'),
 	sessions: (offset = 0, limit = PAGE_SIZE) =>
-		get<Page<Session>>(`/api/me/sessions?${pageQuery(offset, limit)}`),
+		get<Page<DeviceSession>>(`/api/me/sessions?${pageQuery(offset, limit)}`),
 	revokeSession: (token: string) => del(`/api/me/sessions/${token}`),
+	logoutEverywhere: () => del<{ ok: boolean; revoked_sessions: number }>('/api/me/sessions'),
+	changePassword: (currentPassword: string, newPassword: string) =>
+		post<{ ok: boolean; revoked_sessions: number }>('/api/me/password', {
+			current_password: currentPassword,
+			new_password: newPassword,
+		}),
+	resetUserPassword: (username: string, newPassword: string) =>
+		post<{ ok: boolean; revoked_sessions: number }>('/api/admin/users/password', {
+			username,
+			new_password: newPassword,
+		}),
 
 	sources: () => get<SourceInfo[]>('/api/sources'),
 	searchSource: (sourceId: string, query: string, page = 1) =>
@@ -437,6 +454,8 @@ export const api = {
 		get<{ positions: ReadingPosition[] }>(`/api/works/${workId}/positions`),
 	savePosition: (chapterId: string, page: number) =>
 		put<{ chapter_id: string; page: number }>(`/api/chapters/${chapterId}/position`, { page }),
+	clearPosition: (chapterId: string) =>
+		del<{ chapter_id: string; cleared: boolean }>(`/api/chapters/${chapterId}/position`),
 
 	continueReading: () => get<ContinueReadingItem[]>('/api/me/continue-reading'),
 

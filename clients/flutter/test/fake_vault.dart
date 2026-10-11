@@ -12,9 +12,11 @@ class FakeVault implements VaultService {
     ),
     this.categories = const [],
     this.items = const [],
+    this.continueItems = const [],
     this.total = 0,
     this.statsError,
     this.trendingError,
+    this.clearError,
   });
 
   final List<SourceSummary> sources;
@@ -22,12 +24,15 @@ class FakeVault implements VaultService {
   ReadingStatsSummary stats;
   List<CategoryInfo> categories;
   final List<LibraryItem> items;
+  final List<ContinueItem> continueItems;
   final int total;
   Object? statsError;
   Object? trendingError;
+  Object? clearError;
 
   final created = <String>[];
   final deleted = <String>[];
+  final cleared = <String>[];
   final trendingRequests = <({String sourceId, int page})>[];
   final filters = <LibraryFilter>[];
 
@@ -90,7 +95,25 @@ class FakeVault implements VaultService {
   Future<Map<String, ChapterProgressStats>> libraryOverview() async => {};
 
   @override
-  Future<List<ContinueItem>> continueReading() async => const [];
+  Future<List<ContinueItem>> continueReading() async => [
+    for (final item in continueItems)
+      if (cleared.contains(item.chapterId))
+        ContinueItem(
+          workId: item.workId,
+          title: item.title,
+          coverUrl: item.coverUrl,
+          chapterId: item.chapterId,
+        )
+      else
+        item,
+  ];
+
+  @override
+  Future<bool> clearPosition({required String chapterId}) async {
+    if (clearError != null) throw clearError!;
+    cleared.add(chapterId);
+    return true;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

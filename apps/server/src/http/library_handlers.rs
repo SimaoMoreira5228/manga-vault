@@ -14,10 +14,20 @@ use crate::state::AppState;
 
 #[derive(Deserialize)]
 pub struct LibraryQuery {
-	#[serde(flatten)]
-	page: PageQuery,
-	#[serde(flatten)]
-	filter: LibraryFilterQuery,
+	pub offset: Option<u64>,
+	pub limit: Option<u64>,
+	pub kind: Option<String>,
+	pub category_id: Option<Uuid>,
+	pub q: Option<String>,
+}
+
+impl LibraryQuery {
+	fn page(&self) -> PageQuery {
+		PageQuery {
+			offset: self.offset,
+			limit: self.limit,
+		}
+	}
 }
 
 #[derive(Deserialize)]
@@ -37,8 +47,13 @@ pub async fn list(
 	headers: axum::http::HeaderMap,
 	axum::extract::Query(query): axum::extract::Query<LibraryQuery>,
 ) -> Result<Response, ApiError> {
-	let (offset, limit) = query.page.resolve();
-	let filter = query.filter.resolve();
+	let (offset, limit) = query.page().resolve();
+	let filter = LibraryFilterQuery {
+		kind: query.kind.clone(),
+		category_id: query.category_id,
+		q: query.q.clone(),
+	}
+	.resolve();
 	let entries = state.vault.library_page(auth.user.id, &filter, offset, limit).await?;
 	let categories = state.vault.categories(auth.user.id).await?;
 	Ok(cache::cached_json(
@@ -122,4 +137,39 @@ pub async fn delete_category(
 ) -> ApiResult<serde_json::Value> {
 	state.vault.delete_category(auth.user.id, category_id).await?;
 	Ok(Json(json!({ "ok": true })))
+}
+
+#[cfg(test)]
+mod query_tests {
+	use axum::extract::Query;
+	use axum::http::Uri;
+
+	use super::LibraryQuery;
+
+	fn parse(target: &'static str) -> LibraryQuery {
+		Query::<LibraryQuery>::try_from_uri(&Uri::from_static(target)).unwrap().0
+	}
+
+	#[test]
+	fn page_numbers_arrive_as_numbers_not_strings() {
+		let query = parse("/api/library?offset=0&limit=200");
+		assert_eq!(query.offset, Some(0));
+		assert_eq!(query.limit, Some(200));
+		assert_eq!(query.page().resolve(), (0, 200));
+	}
+
+	#[test]
+	fn filters_parse_alongside_the_page() {
+		let query = parse("/api/library?offset=20&limit=10&q=necromancer&kind=novel");
+		assert_eq!(query.q.as_deref(), Some("necromancer"));
+		assert_eq!(query.kind.as_deref(), Some("novel"));
+		assert_eq!(query.page().resolve(), (20, 10));
+	}
+
+	#[test]
+	fn an_absent_query_falls_back_to_the_defaults() {
+		let query = parse("/api/library");
+		assert_eq!(query.offset, None);
+		assert_eq!(query.page().resolve(), (0, 50));
+	}
 }

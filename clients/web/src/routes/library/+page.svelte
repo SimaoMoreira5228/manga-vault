@@ -9,6 +9,7 @@ import {
 } from '$lib/api';
 import Pager from '$lib/components/Pager.svelte';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
+import Skeleton from '$lib/components/Skeleton.svelte';
 import { onWorkRefreshed } from '$lib/events.svelte';
 import { PAGE_SIZE } from '$lib/page';
 
@@ -241,14 +242,13 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 	{/if}
 
 	{#if loading}
-		<div
-			class="mt-16 flex flex-col items-center justify-center gap-4 text-on-surface-variant"
-			role="status"
-		>
-			<span
-				class="size-8 animate-spin rounded-full border-2 border-outline-variant border-t-primary"
-			></span>
-			<span class="body-md">Loading your library…</span>
+		<div class="mt-8">
+			<Skeleton
+				variant="cards"
+				count={12}
+				label="Loading your library"
+				layout="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5"
+			/>
 		</div>
 	{:else if loadError}
 		<div class="mt-16 text-center" role="alert">

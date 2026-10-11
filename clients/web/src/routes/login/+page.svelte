@@ -2,6 +2,7 @@
 import { goto } from '$app/navigation';
 import { ApiError, api, type RegistrationMode } from '$lib/api';
 import { auth } from '$lib/auth.svelte';
+import { MIN_PASSWORD_LENGTH } from '$lib/password_form';
 
 type Field = 'username' | 'invite' | 'form';
 
@@ -129,8 +130,15 @@ async function submit(event: SubmitEvent) {
 					bind:value={password}
 					required
 					autocomplete={mode === 'login' ? 'current-password' : 'new-password'}
+					minlength={mode === 'register' ? MIN_PASSWORD_LENGTH : undefined}
+					aria-describedby={mode === 'register' ? 'password-hint' : undefined}
 					class="rounded-card border border-outline-variant/60 bg-surface-container px-4 py-3 outline-none focus:border-primary"
 				>
+				{#if mode === 'register'}
+					<span id="password-hint" class="mono-label text-outline-variant">
+						At least {MIN_PASSWORD_LENGTH} characters.
+					</span>
+				{/if}
 			</label>
 			{#if mode === 'register' && registration === 'invite'}
 				<label class="flex flex-col gap-2">

@@ -25,18 +25,17 @@ class AppearanceSection extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 for (final theme in vaultThemes)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _ThemePickerCard(
-                        theme: theme,
-                        selected: theme.id == look.themeId,
-                        onTap: () => applyAppearance(themeId: theme.id),
-                      ),
+                  SizedBox(
+                    width: 104,
+                    child: _ThemePickerCard(
+                      theme: theme,
+                      selected: theme.id == look.themeId,
+                      onTap: () => applyAppearance(themeId: theme.id),
                     ),
                   ),
               ],
@@ -44,10 +43,14 @@ class AppearanceSection extends StatelessWidget {
           ),
           SwitchListTile(
             title: const Text('Pure black background'),
-            subtitle: const Text(
-              'Use #000 for the app background: ideal for OLED screens.',
+            subtitle: Text(
+              vaultThemeById(look.themeId).mode == VaultThemeMode.light
+                  ? 'Not available on light themes.'
+                  : 'Use #000 for the app background: ideal for OLED screens.',
             ),
-            value: look.pureBlack,
+            value:
+                vaultThemeById(look.themeId).mode == VaultThemeMode.dark &&
+                look.pureBlack,
             onChanged: (value) => applyAppearance(pureBlack: value),
           ),
         ],

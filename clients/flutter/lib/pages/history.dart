@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../service/vault_service.dart';
 import 'pager_bar.dart';
+import 'skeletons.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key, required this.vault});
@@ -65,7 +66,14 @@ class _HistoryPageState extends State<HistoryPage> {
       body: error != null
           ? _ErrorBody(message: error!, onRetry: _load)
           : shown == null
-          ? const Center(child: CircularProgressIndicator())
+          ? SkeletonList(
+              label: 'Loading history',
+              count: 10,
+              itemBuilder: (context, index) => SkeletonTile(
+                leading: const SkeletonBar(height: 24, width: 24),
+                trailing: const SkeletonBar(height: 14, width: 48),
+              ),
+            )
           : shown.isEmpty
           ? const Center(child: Text('Nothing read yet'))
           : ListView.builder(

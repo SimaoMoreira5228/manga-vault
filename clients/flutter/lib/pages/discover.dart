@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../service/remote_service.dart';
 import '../service/vault_service.dart';
+import 'skeletons.dart';
 import 'source_page_bar.dart';
 import 'trending_feed.dart';
 import 'work_page.dart';
@@ -71,7 +72,10 @@ class _DiscoverPageState extends State<DiscoverPage> {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(title: const Text('Discover')),
+        body: const SkeletonGrid(label: 'Loading sources', count: 8),
+      );
     }
     if (error != null) {
       return Scaffold(
@@ -390,7 +394,10 @@ class _SourceResultsState extends State<SourceResults> {
         ),
         Expanded(
           child: shown == null
-              ? const Center(child: CircularProgressIndicator())
+              ? SkeletonGrid(
+                  label: 'Loading the latest releases from ${widget.sourceId}',
+                  count: 8,
+                )
               : GridView.builder(
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(

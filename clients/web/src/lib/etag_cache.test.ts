@@ -80,6 +80,29 @@ describe('cachedRequest', () => {
 		assert.deepEqual(after.body, { entries: [{ id: 'w1' }] });
 	});
 
+	it('hands back the body of a write so callers can read what they created', async () => {
+		next = () => reply({ id: '01a10d41', title: 'Disastrous Necromancer' }, null);
+		const created = await cachedRequest(
+			'/api/works',
+			{ method: 'POST', body: '{}' },
+			new Headers(),
+		);
+		assert.deepEqual(created.body, { id: '01a10d41', title: 'Disastrous Necromancer' });
+	});
+
+	it('leaves the body empty for a write that has nothing to say', async () => {
+		next = () => reply(undefined, null, 204);
+		const empty = await cachedRequest('/api/library', { method: 'PUT', body: '{}' }, new Headers());
+		assert.equal(empty.body, undefined);
+	});
+
+	it('leaves a failed write body unread so the caller can report why', async () => {
+		next = () => reply({ error: 'nope' }, null, 422);
+		const failed = await cachedRequest('/api/works', { method: 'POST', body: '{}' }, new Headers());
+		assert.equal(failed.body, undefined);
+		assert.deepEqual(await failed.response.json(), { error: 'nope' });
+	});
+
 	it('never caches a response without an etag', async () => {
 		next = () => reply({ name: 'dex' }, null);
 		await get('/api/works/w1');

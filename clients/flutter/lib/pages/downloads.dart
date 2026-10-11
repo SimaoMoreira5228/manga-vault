@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../service/vault_service.dart';
+import 'skeletons.dart';
 
 class DownloadsPage extends StatefulWidget {
   const DownloadsPage({super.key, required this.vault});
@@ -54,7 +55,13 @@ class _DownloadsPageState extends State<DownloadsPage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Downloads')),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? SkeletonList(
+              label: 'Loading downloads',
+              count: 8,
+              itemBuilder: (context, index) => SkeletonTile(
+                trailing: const SkeletonBar(height: 24, width: 24),
+              ),
+            )
           : _works.isEmpty
           ? const Center(child: Text('No downloaded chapters'))
           : ListView.builder(

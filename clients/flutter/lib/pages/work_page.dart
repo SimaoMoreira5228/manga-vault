@@ -6,6 +6,7 @@ import '../service/sync_scheduler.dart';
 import '../service/vault_service.dart';
 import 'chapter_actions.dart';
 import 'reader_page.dart';
+import 'skeletons.dart';
 
 class WorkPage extends StatefulWidget {
   const WorkPage({
@@ -397,7 +398,39 @@ class _WorkPageState extends State<WorkPage> {
         future: _details,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            return Semantics(
+              container: true,
+              label: 'Loading chapters for ${widget.details.title}',
+              child: ExcludeSemantics(
+                child: CustomScrollView(
+                  slivers: [
+                    SliverAppBar(title: Text(widget.details.title)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            SkeletonBar(height: 28, width: 220),
+                            SizedBox(height: 12),
+                            SkeletonBar(height: 14, width: 140),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => SkeletonTile(
+                          subtitle: index % 3 != 0,
+                          trailing: const SkeletonBar(height: 24, width: 24),
+                        ),
+                        childCount: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
           final details = snapshot.data ?? widget.details;
           final orderedChapters = newestFirst

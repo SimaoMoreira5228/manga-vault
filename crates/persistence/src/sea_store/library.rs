@@ -330,6 +330,7 @@ impl ProgressRepository for SeaStore {
 			let mut model = reading_positions::ActiveModel::from(existing);
 			model.page = Set(position.page as i32);
 			model.updated_at = Set(stamp);
+			model.removed_at = Set(None);
 			return Ok(ReadingPosition::from(&model.update(&self.db).await?));
 		}
 		let model = reading_positions::ActiveModel {
@@ -338,19 +339,69 @@ impl ProgressRepository for SeaStore {
 			chapter_id: Set(position.chapter_id),
 			page: Set(position.page as i32),
 			updated_at: Set(stamp),
+			removed_at: Set(None),
 		}
 		.insert(&self.db)
 		.await?;
 		Ok(ReadingPosition::from(&model))
 	}
 
-	async fn merge_position_furthest(&self, position: ReadingPosition) -> StoreResult<ReadingPosition> {
-		if let Some(existing) = self.find_position(position.user_id, position.chapter_id).await?
-			&& existing.page >= position.page as i32
-		{
-			return Ok(ReadingPosition::from(&existing));
+	async fn clear_position(
+		&self,
+		user_id: uuid::Uuid,
+		chapter_id: domain::ChapterId,
+		cleared_at: chrono::DateTime<Utc>,
+	) -> StoreResult<bool> {
+		let stamp = utc_to_db(cleared_at);
+		if let Some(existing) = self.find_position(user_id, chapter_id).await? {
+			if existing.removed_at.is_some() {
+				return Ok(false);
+			}
+			let mut model = reading_positions::ActiveModel::from(existing);
+			model.page = Set(0);
+			model.updated_at = Set(stamp);
+			model.removed_at = Set(Some(stamp));
+			model.update(&self.db).await?;
+			return Ok(true);
 		}
-		self.save_position(position).await
+		reading_positions::ActiveModel {
+			id: Set(uuid::Uuid::now_v7()),
+			user_id: Set(user_id),
+			chapter_id: Set(chapter_id),
+			page: Set(0),
+			updated_at: Set(stamp),
+			removed_at: Set(Some(stamp)),
+		}
+		.insert(&self.db)
+		.await?;
+		Ok(true)
+	}
+
+	async fn merge_position_furthest(&self, position: ReadingPosition) -> StoreResult<ReadingPosition> {
+		let incoming = ReadingPosition {
+			removed_at: None,
+			..position.clone()
+		};
+		if let Some(existing) = self.find_position(position.user_id, position.chapter_id).await? {
+			let kept = ReadingPosition::from(&existing);
+			if kept.is_removed() && kept.updated_at > incoming.updated_at {
+				return Ok(kept);
+			}
+			if !kept.is_removed() && kept.page >= incoming.page {
+				return Ok(kept);
+			}
+			if position.is_removed() && position.updated_at <= kept.updated_at {
+				return Ok(kept);
+			}
+		}
+		if position.is_removed() {
+			self.clear_position(position.user_id, position.chapter_id, position.updated_at)
+				.await?;
+			if let Some(kept) = self.find_position(position.user_id, position.chapter_id).await? {
+				return Ok(ReadingPosition::from(&kept));
+			}
+		}
+		self.save_position(incoming).await
 	}
 
 	async fn furthest_position(&self, user_id: uuid::Uuid, work_id: domain::WorkId) -> StoreResult<Option<ReadingPosition>> {
@@ -379,6 +430,7 @@ impl ProgressRepository for SeaStore {
 	async fn positions_for_user(&self, user_id: uuid::Uuid) -> StoreResult<Vec<ReadingPosition>> {
 		let models = reading_positions::Entity::find()
 			.filter(reading_positions::Column::UserId.eq(user_id))
+			.filter(reading_positions::Column::RemovedAt.is_null())
 			.all(&self.db)
 			.await?;
 		Ok(models.iter().map(ReadingPosition::from).collect())
@@ -395,6 +447,7 @@ impl ProgressRepository for SeaStore {
 		let models = reading_positions::Entity::find()
 			.filter(reading_positions::Column::UserId.eq(user_id))
 			.filter(reading_positions::Column::ChapterId.is_in(chapter_ids.iter().copied()))
+			.filter(reading_positions::Column::RemovedAt.is_null())
 			.all(&self.db)
 			.await?;
 		Ok(models.iter().map(ReadingPosition::from).collect())

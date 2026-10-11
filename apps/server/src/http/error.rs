@@ -9,6 +9,7 @@ use source_updater::{RepoError, UpdateError};
 pub enum ErrorCode {
 	NotFound,
 	BadCredentials,
+	WrongPassword,
 	TooManyAttempts,
 	RegistrationClosed,
 	InviteRequired,
@@ -30,6 +31,7 @@ impl ErrorCode {
 		match self {
 			Self::NotFound => "not_found",
 			Self::BadCredentials => "bad_credentials",
+			Self::WrongPassword => "wrong_password",
 			Self::TooManyAttempts => "too_many_attempts",
 			Self::RegistrationClosed => "registration_closed",
 			Self::InviteRequired => "invite_required",
@@ -86,6 +88,8 @@ impl From<VaultError> for ApiError {
 		let (status, code) = match &error {
 			VaultError::NotFound(..) => (StatusCode::NOT_FOUND, ErrorCode::NotFound),
 			VaultError::BadCredentials => (StatusCode::UNAUTHORIZED, ErrorCode::BadCredentials),
+			VaultError::WrongPassword => (StatusCode::BAD_REQUEST, ErrorCode::WrongPassword),
+			VaultError::WeakPassword { .. } => (StatusCode::UNPROCESSABLE_ENTITY, ErrorCode::BadRequest),
 			VaultError::TooManyAttempts { .. } => (StatusCode::TOO_MANY_REQUESTS, ErrorCode::TooManyAttempts),
 			VaultError::RegistrationClosed => (StatusCode::FORBIDDEN, ErrorCode::RegistrationClosed),
 			VaultError::InviteRequired => (StatusCode::FORBIDDEN, ErrorCode::InviteRequired),
@@ -170,6 +174,8 @@ mod tests {
 		let cases: Vec<(VaultError, &str)> = vec![
 			(VaultError::NotFound("work", "x".into()), "not_found"),
 			(VaultError::BadCredentials, "bad_credentials"),
+			(VaultError::WrongPassword, "wrong_password"),
+			(VaultError::WeakPassword { min_length: 8 }, "bad_request"),
 			(
 				VaultError::TooManyAttempts {
 					retry_after: std::time::Duration::from_secs(30),

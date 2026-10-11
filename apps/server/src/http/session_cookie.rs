@@ -21,11 +21,15 @@ impl SessionCookie {
 	}
 
 	fn attributes(self) -> String {
-		if self.cross_origin {
-			"; SameSite=None; Secure".to_owned()
+		let mut attributes = if self.cross_origin {
+			String::from("; SameSite=None")
 		} else {
-			"; SameSite=Lax".to_owned()
+			String::from("; SameSite=Lax")
+		};
+		if self.secure {
+			attributes.push_str("; Secure");
 		}
+		attributes
 	}
 
 	pub fn set_header(self, token: uuid::Uuid, ttl: std::time::Duration) -> String {
@@ -53,7 +57,26 @@ mod tests {
 		let header = cookie.set_header(uuid::Uuid::nil(), std::time::Duration::from_secs(60));
 		assert_eq!(
 			header,
-			"__Host-session_token=00000000-0000-0000-0000-000000000000; Path=/; HttpOnly; Max-Age=60; SameSite=Lax"
+			"__Host-session_token=00000000-0000-0000-0000-000000000000; Path=/; HttpOnly; Max-Age=60; SameSite=Lax; Secure"
+		);
+	}
+
+	#[test]
+	fn the_host_prefix_is_never_emitted_without_secure() {
+		for cross_origin in [false, true] {
+			let header =
+				SessionCookie::new(true, cross_origin).set_header(uuid::Uuid::nil(), std::time::Duration::from_secs(1));
+			assert_eq!(header.contains("__Host-"), header.contains("; Secure"));
+		}
+		assert!(
+			!SessionCookie::new(false, false)
+				.set_header(uuid::Uuid::nil(), std::time::Duration::from_secs(1))
+				.contains("; Secure")
+		);
+		assert!(
+			!SessionCookie::new(false, false)
+				.set_header(uuid::Uuid::nil(), std::time::Duration::from_secs(1))
+				.contains("__Host-")
 		);
 	}
 
@@ -81,10 +104,8 @@ mod tests {
 	#[test]
 	fn same_origin_deployments_keep_lax_even_when_secure() {
 		let cookie = SessionCookie::new(true, false);
-		assert!(
-			cookie
-				.set_header(uuid::Uuid::nil(), std::time::Duration::from_secs(1))
-				.ends_with("; SameSite=Lax")
-		);
+		let header = cookie.set_header(uuid::Uuid::nil(), std::time::Duration::from_secs(1));
+		assert!(header.contains("; SameSite=Lax"));
+		assert!(!header.contains("SameSite=None"));
 	}
 }

@@ -209,4 +209,5 @@ pub enum ReadingPositions {
 	ChapterId,
 	Page,
 	UpdatedAt,
+	RemovedAt,
 }

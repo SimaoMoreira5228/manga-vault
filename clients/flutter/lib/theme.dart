@@ -1,6 +1,9 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import 'service/app_prefs.dart';
+import 'theme_palette_data.g.dart';
 
 const _geist = 'Geist';
 const _playfair = 'Playfair Display';
@@ -57,89 +60,17 @@ class VaultTheme {
   const VaultTheme({
     required this.id,
     required this.name,
+    required this.mode,
     required this.palette,
   });
 
   final String id;
   final String name;
+  final VaultThemeMode mode;
   final VaultPalette palette;
 }
 
-const classicTheme = VaultTheme(
-  id: 'classic',
-  name: 'Classic Vault',
-  palette: VaultPalette(
-    surface: Color(0xFF1A120B),
-    surfaceDim: Color(0xFF1A120B),
-    surfaceBright: Color(0xFF42372F),
-    surfaceLowest: Color(0xFF150C06),
-    surfaceLow: Color(0xFF231A13),
-    surfaceContainer: Color(0xFF271E16),
-    surfaceHigh: Color(0xFF322820),
-    surfaceHighest: Color(0xFF3E332B),
-    onSurface: Color(0xFFF2DFD3),
-    onSurfaceVariant: Color(0xFFDBC2B0),
-    outline: Color(0xFFA38C7C),
-    outlineVariant: Color(0xFF554336),
-    primary: Color(0xFFFFB77D),
-    onPrimary: Color(0xFF4D2600),
-    primaryContainer: Color(0xFFD97707),
-    onPrimaryContainer: Color(0xFF432100),
-  ),
-);
-
-const forestTheme = VaultTheme(
-  id: 'forest',
-  name: 'Forest Archive',
-  palette: VaultPalette(
-    surface: Color(0xFF111812),
-    surfaceDim: Color(0xFF111812),
-    surfaceBright: Color(0xFF33463A),
-    surfaceLowest: Color(0xFF0C110D),
-    surfaceLow: Color(0xFF141C16),
-    surfaceContainer: Color(0xFF18231A),
-    surfaceHigh: Color(0xFF1E2C20),
-    surfaceHighest: Color(0xFF253627),
-    onSurface: Color(0xFFDCEBDD),
-    onSurfaceVariant: Color(0xFFB0C4AF),
-    outline: Color(0xFF8FA48C),
-    outlineVariant: Color(0xFF2C3F30),
-    primary: Color(0xFFA8D5A2),
-    onPrimary: Color(0xFF0D2A13),
-    primaryContainer: Color(0xFF63A86B),
-    onPrimaryContainer: Color(0xFF081508),
-  ),
-);
-
-const slateTheme = VaultTheme(
-  id: 'slate',
-  name: 'Slate Scholar',
-  palette: VaultPalette(
-    surface: Color(0xFF0D1518),
-    surfaceDim: Color(0xFF0D1518),
-    surfaceBright: Color(0xFF2B4048),
-    surfaceLowest: Color(0xFF080F12),
-    surfaceLow: Color(0xFF10191D),
-    surfaceContainer: Color(0xFF142024),
-    surfaceHigh: Color(0xFF19282D),
-    surfaceHighest: Color(0xFF1F3238),
-    onSurface: Color(0xFFD5E4E8),
-    onSurfaceVariant: Color(0xFFADC0C7),
-    outline: Color(0xFF8AA4AA),
-    outlineVariant: Color(0xFF23353B),
-    primary: Color(0xFF80C8D4),
-    onPrimary: Color(0xFF00363D),
-    primaryContainer: Color(0xFF56A9BA),
-    onPrimaryContainer: Color(0xFF03242A),
-  ),
-);
-
-const vaultThemes = [classicTheme, forestTheme, slateTheme];
-
-VaultTheme vaultThemeById(String id) => vaultThemes.firstWhere(
-  (theme) => theme.id == id,
-  orElse: () => classicTheme,
-);
+enum VaultThemeMode { dark, light }
 
 class Appearance {
   const Appearance({required this.themeId, required this.pureBlack});
@@ -151,15 +82,48 @@ class Appearance {
       buildVaultTheme(vaultThemeById(themeId), pureBlack: pureBlack);
 }
 
+final vaultThemes = <VaultTheme>[
+  for (final entry in vaultPaletteEntries)
+    VaultTheme(
+      id: entry.$1,
+      name: entry.$2,
+      mode: vaultThemeModes[entry.$1]!,
+      palette: paletteForThemeId(entry.$1),
+    ),
+];
+
+VaultTheme vaultThemeById(String id) => vaultThemes.firstWhere(
+  (theme) => theme.id == id,
+  orElse: () => vaultThemes.first,
+);
+
+const darkDefaultThemeId = 'classic';
+
+String resolveThemeId(String? stored) =>
+    stored != null && vaultThemes.any((theme) => theme.id == stored)
+    ? stored
+    : darkDefaultThemeId;
+
+Appearance resolveAppearance({
+  required String? storedThemeId,
+  required bool pureBlack,
+}) {
+  final id = resolveThemeId(storedThemeId);
+  return Appearance(
+    themeId: id,
+    pureBlack: vaultThemeById(id).mode == VaultThemeMode.dark && pureBlack,
+  );
+}
+
 final appearance = ValueNotifier<Appearance>(
-  const Appearance(themeId: 'classic', pureBlack: false),
+  resolveAppearance(storedThemeId: null, pureBlack: false),
 );
 
 Future<void> applyAppearance({String? themeId, bool? pureBlack}) async {
   final prefs = await AppPrefs.instance();
   final current = appearance.value;
-  final next = Appearance(
-    themeId: themeId ?? current.themeId,
+  final next = resolveAppearance(
+    storedThemeId: themeId ?? current.themeId,
     pureBlack: pureBlack ?? current.pureBlack,
   );
   appearance.value = next;
@@ -169,15 +133,17 @@ Future<void> applyAppearance({String? themeId, bool? pureBlack}) async {
 
 Future<void> restoreAppearance() async {
   final prefs = await AppPrefs.instance();
-  appearance.value = Appearance(
-    themeId: prefs.themeId,
+  appearance.value = resolveAppearance(
+    storedThemeId: prefs.themeId,
     pureBlack: prefs.pureBlack,
   );
 }
 
 ThemeData buildVaultTheme(VaultTheme theme, {bool pureBlack = false}) {
   final palette = theme.palette;
-  final scheme = ColorScheme.dark(
+  final scheme = (theme.mode == VaultThemeMode.dark
+          ? ColorScheme.dark
+          : ColorScheme.light)(
     surface: pureBlack ? _black : palette.surface,
     surfaceDim: pureBlack ? _black : palette.surfaceDim,
     surfaceBright: palette.surfaceBright,

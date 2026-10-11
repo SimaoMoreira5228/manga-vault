@@ -57,6 +57,27 @@ cargo build --release
 DATABASE_URL=postgres://... ./target/release/manga-vault
 ```
 
+### Running it locally for development
+
+Two processes: the API server, and the web client talking to it through a Vite proxy.
+
+```bash
+# terminal 1 — the server, with the in-repo Lua sources loaded
+PLUGINS_DIR=./plugin-repo/sources \
+SECRET_KEY=$(openssl rand -hex 32) \
+DATA_DIR=/tmp/manga-vault-dev \
+cargo run -p manga-vault-server
+```
+
+```bash
+# terminal 2 — the web client on http://localhost:5173
+cd clients/web && pnpm install && pnpm dev
+```
+
+`PLUGINS_DIR` defaults to `./plugins`, which is empty in a fresh clone, so without it the app boots with **zero sources** and every list is empty. `plugin-repo/sources` holds the Lua source bundles the loader reads directly — no packing step needed. `SECRET_KEY` encrypts tracker and translation credentials; without it the server warns and those endpoints return an error. The default database is SQLite next to the binary, so `DATA_DIR` is only worth setting to keep the checkout clean.
+
+Set `MV_API_URL` if the server is not on `127.0.0.1:8080`; the Vite dev proxy defaults to that address.
+
 ### Web UI
 
 The web frontend is a separate static site, pointed at the server via `PUBLIC_API_URL`:
@@ -79,7 +100,7 @@ cargo build -p manga-vault-migrate --release
 # Run the migration (legacy MySQL)
 ./target/release/manga-vault-migrate \
   --from mysql://user:password@localhost:3306/old_vault \
-  --to sqlite://./manga-vault.db
+  --to 'sqlite://./manga-vault.db?mode=rwc'
 
 # ...or a legacy SQLite vault, which is also accepted
 ./target/release/manga-vault-migrate \
@@ -106,17 +127,67 @@ docker run -d --name legacy-mysql -p 127.0.0.1:3307:3306 \
 MV_MYSQL_URL=mysql://root:probe@127.0.0.1:3307/ cargo test -p manga-vault-migrate
 ```
 
-```bash
-# Example output:
-# entity                 legacy        new
-# works                       432         432  ok
-# chapters                  12847       12847  ok
-# library_entries             312         312  ok
-# reading_progress           8102        8102  ok
-# users                         3           3  ok
+Example output:
+
+```text
+entity                 legacy        new
+works                       432         432  ok
+chapters                  12847       12847  ok
+library_entries             312         312  ok
+reading_progress           8102        8102  ok
+users                         3           3  ok
 ```
 
-The legacy source must be MySQL (the old manga-vault supported MySQL). The target can be either SQLite or Postgres, use Postgres if you plan to run the new server in hosted mode.
+
+The legacy source must be MySQL or SQLite. The target can be either SQLite or Postgres, use Postgres if you plan to run the new server in hosted mode.
+
+A SQLite target URL needs `?mode=rwc` so the file is created if it does not exist yet — without it the tool aborts with `unable to open database file`. All schema migrations for the target run automatically before any row is copied.
+
+Every legacy `scraper` value is slugified and seeded as a `sources` row before the works reference it, which is how the legacy scraper-name string becomes a `sources.id`.
+
+---
+
+## Sessions and cookies
+
+Sessions are opaque server-side rows in the `sessions` table: a random UUID token, the owning user, an optional device label, `created_at`, and `last_seen_at`. Nothing is encoded or signed into the token — the client echoes it back and the server looks it up. That is the whole revocation story: delete the row and the session is dead on the next request, with no token expiry to wait out.
+
+### The two windows
+
+There is one server-side window and one browser-side window, and they are not the same thing.
+
+| Window | Value | Behaviour |
+|--------|-------|-----------|
+| Idle | `SESSION_TTL_DAYS` (default `7` days) | Sliding. Every authenticated request calls `touch_session`, so an active session never expires. An idle one past the window is rejected with `401 bad_credentials` **and its row is deleted on contact**. |
+| Cookie `Max-Age` | the same `SESSION_TTL_DAYS`, in seconds (default `604800`) | Fixed at the moment of login or registration. It is **not** re-issued on ordinary requests. |
+
+The consequence is the part worth knowing: `Max-Age` is a hard ceiling measured from login, while the idle window slides. A user who stays active for longer than `SESSION_TTL_DAYS` in a single browser session is signed out by the browser dropping the cookie, even though the server would still have accepted the token. Re-authenticating issues a fresh cookie. To make long-lived logins practical, raise `SESSION_TTL_DAYS` rather than relying on activity to extend the cookie.
+
+`sessions.created_at` is stored but never used for expiry — there is no absolute maximum session lifetime independent of idle time.
+
+### Cookie attributes
+
+The name and attributes are derived from two settings, and one of them overrides the other:
+
+| Setting | Cookie name | `SameSite` | `Secure` |
+|---------|-------------|------------|----------|
+| `SECURE_COOKIES=false`, no `CORS_ORIGINS` | `session_token` | `Lax` | no |
+| `SECURE_COOKIES=true`, no `CORS_ORIGINS` | `__Host-session_token` | `Lax` | yes |
+| `CORS_ORIGINS` set (any `SECURE_COOKIES`) | `__Host-session_token` | `None` | yes |
+
+Every cookie in every row above carries `Path=/` and `HttpOnly`, and never a `Domain` attribute.
+
+- **`SECURE_COOKIES`** decides the `__Host-` prefix. It defaults to `true` unless `BIND_ADDR` starts with `127.`, so a loopback dev server gets plain-HTTP cookies and anything network-reachable gets the prefix. Browsers reject `__Host-` cookies that arrive over plain HTTP or that carry a `Domain`, which is why the prefix is dropped rather than sent-and-ignored during local development. It also adds `Secure`, because browsers reject a `__Host-` cookie that arrives without it — set it to `false` only for plain-HTTP local work.
+- **`CORS_ORIGINS`** decides `SameSite`, because a cross-site web deployment (Cloudflare Pages against a separate API host) needs `None` or the browser drops the cookie on every request. Setting it *forces* `Secure` and the `__Host-` prefix regardless of `SECURE_COOKIES`, since browsers reject `SameSite=None` without `Secure`. Same-origin deployments keep `Lax`, which is why `SECURE_COOKIES=true` alone still yields `SameSite=Lax`.
+
+Clearing a cookie (logout, logout-everywhere) re-sends it with the same name and attributes and `Max-Age=0`.
+
+### What else touches the session
+
+- `GET /api/me/sessions` only lists sessions inside the idle window, and flags the caller's own token with `"current": true`.
+- Logging in or registering purges that user's already-expired rows first.
+- A background task enqueues a daily `CleanupExpiredData` job, which purges every expired session row regardless of owner.
+- `DELETE /api/me/sessions` revokes every session including the caller's own, and clears the cookie — so a stolen token is evicted rather than left alive until its window closes.
+- `POST /api/me/password` revokes every session except the caller's.
 
 ---
 
@@ -180,14 +251,14 @@ cargo component build --target wasm32-wasip2 --release
 | `BIND_ADDR` | `127.0.0.1:8080` | API listen address |
 | `DATA_DIR` | `./data` | Local data directory (downloads, repos) |
 | `SECRET_KEY` | — | Encrypts tracker/translation credentials at rest. Optional; when unset the server warns at boot that those features are disabled and they return an error. Must be 64 hex chars — the server refuses to start otherwise, and refuses a key that repeats a short pattern because that encrypts nothing. Changing it makes existing credentials undecryptable |
-| `SESSION_TTL_DAYS` | `7` | Idle days before a session is rejected and the cookie expires |
-| `SECURE_COOKIES` | `true` unless `BIND_ADDR` is loopback | Marks the session cookie `Secure` and prefixes it `__Host-`. Leave on for any deployment reachable over the network; set `false` only for plain-HTTP local development |
-| `ADMIN_USERNAME` | — | Grants admin access (plugin + registration management) |
+| `SESSION_TTL_DAYS` | `7` | Idle days before a session is rejected, and the cookie's `Max-Age` in seconds. See [Sessions and cookies](#sessions-and-cookies) |
+| `SECURE_COOKIES` | `true` unless `BIND_ADDR` is loopback | Marks the session cookie `__Host-`-prefixed and `Secure`, so it cannot be set over plain HTTP or scoped to a parent domain. Set it to `false` only for plain-HTTP local development |
+| `ADMIN_USERNAME` | — | Grants operator access (plugin + registration management, and resetting another account's password) |
 | `REGISTRATION_MODE` | `open` | `open`, `closed`, or `invite` |
 | `OLLAMA_ENDPOINT` | — | Instance-wide translation via Ollama |
 | `OLLAMA_MODEL` | `qwen2.5:7b` | Model used for Ollama translation |
 | `TRANSLATION_ENABLED` | `true` | Kill switch for translation |
-| `PLUGINS_DIR` | `./plugins` | Plugin storage path |
+| `PLUGINS_DIR` | `./plugins` | Plugin storage path. Empty in a fresh clone; point it at `plugin-repo/sources` for the bundled Lua sources |
 | `IMAGE_CACHE_MB` | `512` | Proxy cache size for images |
 | `PROXY_REQUESTS_PER_MINUTE` | `240` | Per-user image proxy request budget, refilled continuously. Exhausting it returns `429` with `Retry-After` |
 | `FLARESOLVERR_URL` | — | FlareSolverr for Cloudflare sources |
