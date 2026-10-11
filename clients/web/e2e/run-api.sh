@@ -19,7 +19,7 @@ mkdir -p "${data_dir}"
 cargo build --manifest-path "${root}/Cargo.toml" -p manga-vault-server
 
 seed_log="${data_dir}/seed-server.log"
-BIND_ADDR="${seed_addr}" "${root}/target/debug/manga-vault" >"${seed_log}" 2>&1 &
+BIND_ADDR="${seed_addr}" "${root}/target/debug/manga-vault" api >"${seed_log}" 2>&1 &
 seed_pid=$!
 
 stop_seed() {
@@ -49,4 +49,4 @@ E2E_API_URL="http://${seed_addr}" E2E_DB_PATH="${data_dir}/v.db" python3 "${e2e_
 stop_seed
 trap - EXIT
 
-exec "${root}/target/debug/manga-vault"
+exec "${root}/target/debug/manga-vault" api

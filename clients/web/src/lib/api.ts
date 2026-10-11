@@ -459,13 +459,31 @@ export const api = {
 
 	continueReading: () => get<ContinueReadingItem[]>('/api/me/continue-reading'),
 
-	library: (offset = 0, limit = PAGE_SIZE, filter?: LibraryFilter) => {
+	library: async (offset = 0, limit = PAGE_SIZE, filter?: LibraryFilter): Promise<LibraryPage> => {
 		const query = new URLSearchParams(pageQuery(offset, limit));
 		if (filter?.kind) query.set('kind', filter.kind);
 		if (filter?.categoryId) query.set('category_id', filter.categoryId);
 		const q = filter?.q?.trim();
 		if (q) query.set('q', q);
-		return get<LibraryPage>(`/api/library?${query}`);
+		const page = await get<Omit<LibraryPage, 'total'> & { total?: number }>(
+			`/api/library?${query}`,
+		);
+		if (page.total !== undefined) return { ...page, total: page.total };
+
+		const text = q?.toLowerCase();
+		const entries = page.entries.filter(
+			([entry, work]) =>
+				(!filter?.kind || work.kind === filter.kind) &&
+				(!filter?.categoryId || entry.category_id === filter.categoryId) &&
+				(!text || work.title.toLowerCase().includes(text)),
+		);
+		return {
+			...page,
+			entries: entries.slice(offset, offset + limit),
+			total: entries.length,
+			offset,
+			limit,
+		};
 	},
 	allLibrary: async (): Promise<{ entries: [LibraryEntry, Work][]; categories: Category[] }> => {
 		const entries: [LibraryEntry, Work][] = [];

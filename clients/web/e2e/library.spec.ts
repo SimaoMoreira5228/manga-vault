@@ -56,6 +56,34 @@ test.describe('library', () => {
 		await expect(page.getByText('60 works')).toBeVisible();
 	});
 
+	test('searches, filters and paginates with an older server response', async ({ page }) => {
+		await page.route('**/api/library?*', async (route) => {
+			const url = new URL(route.request().url());
+			url.search = '?offset=0&limit=200';
+			const response = await route.fetch({ url: url.toString() });
+			const { entries, categories } = await response.json();
+			await route.fulfill({ json: { entries, categories } });
+		});
+		await page.reload();
+		await expect(page.getByText('60 works')).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Check all for updates' })).toBeVisible();
+		await page.mouse.wheel(0, 20000);
+		await expect(page.getByRole('heading', { level: 3 })).toHaveCount(60);
+
+		await page.getByRole('button', { name: 'Mangas' }).click();
+		await expect(page.getByText('40 works')).toBeVisible();
+		await expect(page.getByRole('heading', { level: 3 })).toHaveCount(40);
+		await page.getByPlaceholder('Filter titles…').fill('Manga Seed 12');
+		await expect(page.getByText('1 works')).toBeVisible();
+		await expect(page.getByRole('heading', { level: 3 })).toHaveText('Manga Seed 12');
+		await page.getByPlaceholder('Filter titles…').fill('no matching title');
+		await expect(page.getByText('0 works')).toBeVisible();
+		await expect(page.getByPlaceholder('Filter titles…')).toBeVisible();
+		await page.getByPlaceholder('Filter titles…').fill('');
+		await page.getByRole('button', { name: 'All', exact: true }).first().click();
+		await expect(page.getByText('60 works')).toBeVisible();
+	});
+
 	test('sorts the grid', async ({ page }) => {
 		const cards = page.getByRole('heading', { level: 3 });
 		await expect(cards.first()).toHaveText('Novel Seed 10');
