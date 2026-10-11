@@ -79,8 +79,8 @@ impl From<DownloadError> for VaultError {
 }
 
 impl Vault {
-	pub async fn download_chapter(&self, chapter_id: domain::ChapterId) -> VaultResult<()> {
-		let content = self.chapter_content(chapter_id).await?;
+	pub async fn download_chapter(&self, user_id: domain::UserId, chapter_id: domain::ChapterId) -> VaultResult<()> {
+		let content = self.chapter_content(user_id, chapter_id).await?;
 		let staging = self.downloads.root.join(format!(".staging-{chapter_id}"));
 		let target = self.downloads.chapter_dir(chapter_id);
 		if staging.exists() {
@@ -124,7 +124,11 @@ impl Vault {
 			.collect())
 	}
 
-	pub async fn chapter_content_cached(&self, chapter_id: domain::ChapterId) -> VaultResult<(ChapterContent, bool)> {
+	pub async fn chapter_content_cached(
+		&self,
+		user_id: domain::UserId,
+		chapter_id: domain::ChapterId,
+	) -> VaultResult<(ChapterContent, bool)> {
 		if self.downloads.is_downloaded(chapter_id) {
 			return Ok((
 				match self.downloads.read_content(chapter_id)? {
@@ -134,7 +138,7 @@ impl Vault {
 				true,
 			));
 		}
-		let content = self.chapter_content(chapter_id).await?;
+		let content = self.chapter_content(user_id, chapter_id).await?;
 		Ok((content, false))
 	}
 }

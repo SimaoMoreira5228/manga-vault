@@ -157,14 +157,14 @@ impl LocalVault {
 
 	pub async fn chapter_content(&self, chapter_id: String) -> anyhow::Result<ChapterBody> {
 		let id: domain::ChapterId = chapter_id.parse()?;
-		match self.vault.chapter_content_cached(id).await?.0 {
+		match self.vault.chapter_content_cached(self.user_id, id).await?.0 {
 			ChapterContent::Images(pages) => Ok(ChapterBody::Images(pages)),
 			ChapterContent::Html(html) => Ok(ChapterBody::Html(html)),
 		}
 	}
 
 	pub async fn download_chapter(&self, chapter_id: String) -> anyhow::Result<()> {
-		self.vault.download_chapter(chapter_id.parse()?).await?;
+		self.vault.download_chapter(self.user_id, chapter_id.parse()?).await?;
 		Ok(())
 	}
 
@@ -249,7 +249,7 @@ impl LocalVault {
 		let translator = Self::build_translator(self.vault.get_user_settings(self.user_id).await?)
 			.ok_or_else(|| anyhow::anyhow!("no translation provider configured"))?;
 
-		let (content, _) = self.vault.chapter_content_cached(id).await?;
+		let (content, _) = self.vault.chapter_content_cached(self.user_id, id).await?;
 		let domain::ChapterContent::Html(html) = content else {
 			return Err(anyhow::anyhow!("only novel chapters can be translated"));
 		};

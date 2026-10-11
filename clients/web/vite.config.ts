@@ -23,7 +23,7 @@ export default defineConfig({
 		proxy: {
 			'/api': {
 				target: process.env.MV_API_URL ?? 'http://127.0.0.1:18080',
-				changeOrigin: true,
+				changeOrigin: false,
 			},
 		},
 	},

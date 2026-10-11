@@ -4,6 +4,7 @@ mod cache;
 pub mod downloads;
 pub mod glossary;
 mod library;
+pub mod login_throttle;
 pub mod migration;
 pub mod profiles;
 pub mod reading;
@@ -30,6 +31,10 @@ pub enum VaultError {
 	NotFound(&'static str, String),
 	#[error("invalid credentials")]
 	BadCredentials,
+	#[error("too many failed login attempts; retry in {}s", retry_after.as_secs())]
+	TooManyAttempts {
+		retry_after: std::time::Duration,
+	},
 	#[error("username `{0}` is already taken")]
 	UsernameTaken(String),
 	#[error("registration is closed on this server")]
@@ -50,6 +55,8 @@ impl From<source_sdk::SourceError> for VaultError {
 
 pub type VaultResult<T> = Result<T, VaultError>;
 
+pub const DEFAULT_SESSION_TTL: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 60 * 60);
+
 #[derive(Debug, Clone)]
 pub struct CacheConfig {
 	pub search_ttl_secs: u64,
@@ -69,21 +76,30 @@ impl Default for CacheConfig {
 
 pub struct Vault {
 	db: Arc<SeaStore>,
+	pub login_throttle: login_throttle::LoginThrottle,
 	pub sources: Arc<SourceManager>,
 	pub cache: cache::TtlCache,
 	cache_config: CacheConfig,
 	pub downloads: downloads::DownloadStore,
+	pub session_ttl: std::time::Duration,
 }
 
 impl Vault {
 	pub fn new(sources: Arc<SourceManager>, db: Arc<SeaStore>, downloads_root: PathBuf) -> Self {
 		Self {
 			db,
+			login_throttle: login_throttle::LoginThrottle::default(),
 			sources,
 			cache: cache::TtlCache::default(),
 			cache_config: CacheConfig::default(),
 			downloads: downloads::DownloadStore::new(downloads_root),
+			session_ttl: DEFAULT_SESSION_TTL,
 		}
+	}
+
+	pub fn with_session_ttl(mut self, ttl: std::time::Duration) -> Self {
+		self.session_ttl = ttl;
+		self
 	}
 
 	pub async fn sync_source_registry(&self) -> persistence::StoreResult<()> {

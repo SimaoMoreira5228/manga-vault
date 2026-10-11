@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use domain::ChapterContent;
@@ -9,6 +10,7 @@ use source_sdk::{RemoteWorkDetails, RemoteWorkSummary, Source, SourceInfo, Sourc
 struct ProbeSource {
 	active: AtomicUsize,
 	max_active: Arc<AtomicUsize>,
+	starts: Arc<std::sync::Mutex<Vec<tokio::time::Instant>>>,
 }
 
 #[async_trait]
@@ -66,10 +68,17 @@ impl Source for ProbeSource {
 }
 
 impl ProbeSource {
+	fn started(&self) -> tokio::time::Instant {
+		let now = tokio::time::Instant::now();
+		self.starts.lock().unwrap().push(now);
+		now
+	}
+
 	async fn track(&self) {
+		self.started();
 		let active = self.active.fetch_add(1, Ordering::SeqCst) + 1;
 		self.max_active.fetch_max(active, Ordering::SeqCst);
-		tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+		tokio::time::sleep(Duration::from_millis(25)).await;
 		self.active.fetch_sub(1, Ordering::SeqCst);
 	}
 }
@@ -79,8 +88,9 @@ async fn throttled_source_never_exceeds_concurrency_limit() {
 	let probe = Arc::new(ProbeSource {
 		active: AtomicUsize::new(0),
 		max_active: Arc::new(AtomicUsize::new(0)),
+		starts: Arc::new(std::sync::Mutex::new(Vec::new())),
 	});
-	let (throttled, _) = ThrottledSource::new(probe.clone());
+	let throttled = ThrottledSource::new(probe.clone(), Duration::ZERO);
 	let throttled = Arc::new(throttled);
 
 	let mut tasks = Vec::new();
@@ -105,5 +115,44 @@ async fn throttled_source_never_exceeds_concurrency_limit() {
 		probe.max_active.load(Ordering::SeqCst) <= throttle::MAX_CONCURRENT_PER_SOURCE,
 		"concurrency peaked at {}",
 		probe.max_active.load(Ordering::SeqCst)
+	);
+}
+
+#[tokio::test(start_paused = true)]
+async fn requests_to_one_source_are_spaced_by_the_cooldown() {
+	let probe = Arc::new(ProbeSource {
+		active: AtomicUsize::new(0),
+		max_active: Arc::new(AtomicUsize::new(0)),
+		starts: Arc::new(std::sync::Mutex::new(Vec::new())),
+	});
+	let gap = Duration::from_millis(60);
+	let throttled = Arc::new(ThrottledSource::new(probe.clone(), gap));
+
+	let mut tasks = Vec::new();
+	for _ in 0..4 {
+		let throttled = throttled.clone();
+		tasks.push(tokio::spawn(async move {
+			throttled.latest(1).await.unwrap();
+		}));
+	}
+	for task in tasks {
+		task.await.unwrap();
+	}
+
+	let mut starts = probe.starts.lock().unwrap().clone();
+	assert_eq!(starts.len(), 4);
+	starts.sort();
+	for pair in starts.windows(2) {
+		let spacing = pair[1].duration_since(pair[0]);
+		assert!(
+			spacing >= gap,
+			"two calls started {spacing:?} apart, expected at least {gap:?}"
+		);
+	}
+	let spread = starts[3].duration_since(starts[0]);
+	assert!(
+		spread >= gap * 3,
+		"four calls spanned {spread:?}, expected at least {:?}",
+		gap * 3
 	);
 }

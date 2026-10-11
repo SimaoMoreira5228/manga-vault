@@ -3,6 +3,10 @@ name = "manga-vault-migrate"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+name = "manga_vault_migrate"
+path = "src/lib.rs"
+
 [[bin]]
 name = "manga-vault-migrate"
 path = "src/main.rs"
@@ -12,7 +16,7 @@ persistence = { workspace = true }
 domain = { workspace = true }
 sea-orm = { workspace = true }
 tokio = { workspace = true }
-sqlx = { workspace = true, features = ["mysql", "chrono", "migrate", "derive"] }
+sqlx = { workspace = true, features = ["any", "mysql", "sqlite", "chrono", "migrate", "derive"] }
 chrono = { workspace = true }
 uuid = { workspace = true }
 serde_json = { workspace = true }

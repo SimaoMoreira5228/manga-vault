@@ -52,7 +52,14 @@ impl JobExecutor for RefreshExecutor {
 				}
 				Err(_) => ExecutionOutcome::Abandon(format!("job subject `{}` is not a work id", job.subject)),
 			},
-			Some(persistence::JobKind::CleanupExpiredData) | None => ExecutionOutcome::Success,
+			Some(persistence::JobKind::CleanupExpiredData) => match self.vault.purge_expired_sessions(None).await {
+				Ok(removed) => {
+					tracing::info!(removed, "expired sessions purged");
+					ExecutionOutcome::Success
+				}
+				Err(error) => ExecutionOutcome::Retry(error.to_string()),
+			},
+			None => ExecutionOutcome::Success,
 		}
 	}
 }

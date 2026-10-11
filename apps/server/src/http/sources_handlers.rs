@@ -3,6 +3,7 @@ use axum::extract::{Path, Query, State};
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::http::auth_extractor::Authenticated;
 use crate::http::error::ApiResult;
 use crate::state::AppState;
 
@@ -17,12 +18,13 @@ pub struct SearchQuery {
 	pub page: Option<u32>,
 }
 
-pub async fn list(State(state): State<AppState>) -> ApiResult<Value> {
+pub async fn list(State(state): State<AppState>, _auth: Authenticated) -> ApiResult<Value> {
 	Ok(Json(serde_json::to_value(state.vault.list_sources()).unwrap()))
 }
 
 pub async fn search(
 	State(state): State<AppState>,
+	_auth: Authenticated,
 	Path(source_id): Path<String>,
 	Query(query): Query<SearchQuery>,
 ) -> ApiResult<Value> {
@@ -35,6 +37,7 @@ pub async fn search(
 
 pub async fn latest(
 	State(state): State<AppState>,
+	_auth: Authenticated,
 	Path(source_id): Path<String>,
 	Query(page): Query<PageQuery>,
 ) -> ApiResult<Value> {
@@ -44,6 +47,7 @@ pub async fn latest(
 
 pub async fn trending(
 	State(state): State<AppState>,
+	_auth: Authenticated,
 	Path(source_id): Path<String>,
 	Query(page): Query<PageQuery>,
 ) -> ApiResult<Value> {

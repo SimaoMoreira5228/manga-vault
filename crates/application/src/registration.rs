@@ -49,6 +49,11 @@ pub(crate) fn hash_password(password: &str) -> VaultResult<String> {
 		.map_err(|_| VaultError::Conflict("password hashing failed".into()))
 }
 
+pub(crate) fn decoy_hash() -> &'static str {
+	static DECOY: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+	DECOY.get_or_init(|| hash_password("no such account").expect("hash decoy"))
+}
+
 pub fn verify_password(password: &str, stored: &str) -> bool {
 	if stored.starts_with("$2a$") || stored.starts_with("$2b$") || stored.starts_with("$2y$") {
 		return bcrypt::verify(password, stored).unwrap_or(false);
@@ -60,6 +65,29 @@ pub fn verify_password(password: &str, stored: &str) -> bool {
 
 impl Vault {
 	pub async fn register(
+		&self,
+		username: &str,
+		password: &str,
+		device_label: Option<String>,
+		invite_code: Option<&str>,
+	) -> VaultResult<Session> {
+		if let Some(retry_at) = self.login_throttle.blocked_until(username) {
+			let retry_after = (retry_at - chrono::Utc::now()).to_std().unwrap_or_default();
+			return Err(VaultError::TooManyAttempts { retry_after });
+		}
+		let session = self.register_unthrottled(username, password, device_label, invite_code).await;
+		match &session {
+			Ok(_) => self.login_throttle.clear(username),
+			Err(_) => {
+				if let Some(retry_at) = self.login_throttle.record_failure(username) {
+					tracing::warn!(%username, %retry_at, "registration locked after repeated failures");
+				}
+			}
+		}
+		session
+	}
+
+	async fn register_unthrottled(
 		&self,
 		username: &str,
 		password: &str,

@@ -138,7 +138,7 @@ pub async fn translate_chapter(
 	let settings = state.vault.get_user_settings(auth.user.id).await?;
 	let translator = translator_for(&state, settings.as_ref(), state.secret_key.as_deref())?;
 
-	let (content, _) = state.vault.chapter_content_cached(chapter_id).await?;
+	let (content, _) = state.vault.chapter_content_cached(auth.user.id, chapter_id).await?;
 	let domain::ChapterContent::Html(html) = content else {
 		return Err(ApiError::bad_request("only novel chapters can be translated"));
 	};

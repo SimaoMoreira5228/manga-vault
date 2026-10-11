@@ -139,4 +139,16 @@ impl SessionRepository for SeaStore {
 			.await?;
 		Ok(models.iter().map(Session::from).collect())
 	}
+
+	async fn delete_sessions_seen_before(
+		&self,
+		user_id: Option<uuid::Uuid>,
+		cutoff: chrono::DateTime<Utc>,
+	) -> StoreResult<u64> {
+		let mut query = sessions::Entity::delete_many().filter(sessions::Column::LastSeenAt.lt(utc_to_db(cutoff)));
+		if let Some(user_id) = user_id {
+			query = query.filter(sessions::Column::UserId.eq(user_id));
+		}
+		Ok(query.exec(&self.db).await?.rows_affected)
+	}
 }

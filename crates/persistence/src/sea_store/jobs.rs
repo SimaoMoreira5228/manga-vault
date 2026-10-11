@@ -28,7 +28,8 @@ impl JobRepository for SeaStore {
 			.filter(jobs::Column::Subject.eq(subject))
 			.filter(jobs::Column::Status.is_in(open_statuses))
 			.count(&self.db)
-			.await? > 0;
+			.await?
+			> 0;
 		if already_open {
 			return Ok(false);
 		}

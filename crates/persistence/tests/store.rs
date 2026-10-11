@@ -210,3 +210,51 @@ async fn users_sessions_and_progress_roundtrip() {
 	SessionRepository::delete_session(&store, session.token).await.unwrap();
 	assert!(store.get_session(session.token).await.unwrap().is_none());
 }
+
+#[tokio::test]
+async fn delete_sessions_seen_before_drops_idle_sessions_only() {
+	let (store, _db_lock) = connect_store().await;
+	let owner: User = store.create_user("sessions-owner", "argon-hash").await.unwrap();
+	let bystander: User = store.create_user("sessions-bystander", "argon-hash").await.unwrap();
+
+	let idle_at = Utc::now() - chrono::Duration::days(30);
+	let idle = Session {
+		token: Uuid::now_v7(),
+		user_id: owner.id,
+		device_label: Some("stale".into()),
+		created_at: idle_at,
+		last_seen_at: idle_at,
+	};
+	let bystander_idle = Session {
+		token: Uuid::now_v7(),
+		user_id: bystander.id,
+		device_label: Some("other user".into()),
+		created_at: idle_at,
+		last_seen_at: idle_at,
+	};
+	let fresh = Session {
+		token: Uuid::now_v7(),
+		user_id: owner.id,
+		device_label: Some("fresh".into()),
+		created_at: Utc::now(),
+		last_seen_at: Utc::now(),
+	};
+	for session in [&idle, &bystander_idle, &fresh] {
+		store.create_session((*session).clone()).await.unwrap();
+	}
+
+	let removed = store
+		.delete_sessions_seen_before(None, Utc::now() - chrono::Duration::days(7))
+		.await
+		.unwrap();
+	assert_eq!(removed, 2);
+	assert!(store.get_session(fresh.token).await.unwrap().is_some());
+	assert!(store.get_session(bystander_idle.token).await.unwrap().is_none());
+
+	let removed = store
+		.delete_sessions_seen_before(Some(bystander.id), Utc::now())
+		.await
+		.unwrap();
+	assert_eq!(removed, 0);
+	assert!(store.get_session(fresh.token).await.unwrap().is_some());
+}

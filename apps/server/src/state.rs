@@ -24,9 +24,12 @@ pub struct AppState {
 	pub ollama_translator: Option<Arc<dyn Translator>>,
 	pub secret_key: Option<String>,
 	pub translation_enabled: bool,
-	pub secure_cookies: bool,
+	pub session_cookie: crate::http::session_cookie::SessionCookie,
+	pub cors_origins: Vec<String>,
+	pub session_ttl: std::time::Duration,
 	pub events: EventFeed,
 	pub image_cache: std::sync::Arc<moka::future::Cache<String, std::sync::Arc<crate::http::proxy_handler::CachedResponse>>>,
+	pub proxy_quota: std::sync::Arc<crate::http::proxy_quota::ProxyQuota>,
 }
 
 impl AsRef<AppState> for AppState {

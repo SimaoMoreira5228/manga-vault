@@ -24,6 +24,9 @@ class RemoteService implements VaultService {
   String imageUrl(String url) =>
       '$baseUrl/api/proxy?url=${Uri.encodeQueryComponent(url)}';
 
+  @override
+  Map<String, String> get imageHeaders => _auth;
+
   Map<String, String> get _auth => {'Authorization': 'Bearer $token'};
 
   static Future<RemoteService> login({

@@ -389,6 +389,7 @@ class WorkCard extends StatelessWidget {
             work.coverUrl != null
                 ? Image.network(
                     vault.imageUrl(work.coverUrl!),
+                    headers: vault.imageHeaders,
                     fit: BoxFit.cover,
                   )
                 : const ColoredBox(

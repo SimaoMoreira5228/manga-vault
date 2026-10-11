@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use domain::{Chapter, ChapterId, Work, WorkId};
-use persistence::{JobRepository, WorkRepository};
+use persistence::{JobRepository, LibraryRepository, WorkRepository};
 use source_sdk::RemoteWorkDetails;
 
 use crate::{Vault, VaultError, VaultResult};
@@ -64,6 +64,19 @@ impl Vault {
 		Ok(work)
 	}
 
+	pub async fn import_work_for_user(
+		&self,
+		user_id: domain::UserId,
+		source_id: &str,
+		remote_url: &str,
+	) -> VaultResult<Work> {
+		let work = self.import_work(source_id, remote_url).await?;
+		if !self.owns_work(user_id, work.id).await? {
+			self.db.add_to_library(user_id, work.id, None).await?;
+		}
+		Ok(work)
+	}
+
 	pub async fn refresh_work(&self, work_id: WorkId) -> VaultResult<Work> {
 		let existing = self
 			.db
@@ -121,12 +134,17 @@ impl Vault {
 		Ok((work, chapters))
 	}
 
-	pub async fn chapter_content(&self, chapter_id: ChapterId) -> VaultResult<domain::ChapterContent> {
+	pub async fn chapter_content(
+		&self,
+		user_id: domain::UserId,
+		chapter_id: ChapterId,
+	) -> VaultResult<domain::ChapterContent> {
 		let chapter = self
 			.db
 			.get_chapter(chapter_id)
 			.await?
 			.ok_or(VaultError::NotFound("chapter", chapter_id.to_string()))?;
+		self.require_owned_work(user_id, chapter.work_id).await?;
 		let work = self
 			.db
 			.get_work(chapter.work_id)

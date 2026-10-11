@@ -56,6 +56,8 @@ class MigrationPairResult {
 abstract class VaultService {
   String imageUrl(String url);
 
+  Map<String, String> get imageHeaders;
+
   Future<List<SourceSummary>> listSources();
   Future<List<WorkSummary>> searchSource({
     required String sourceId,

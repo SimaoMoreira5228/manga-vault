@@ -39,6 +39,7 @@ impl From<VaultError> for ApiError {
 		let status = match &error {
 			VaultError::NotFound(..) => StatusCode::NOT_FOUND,
 			VaultError::BadCredentials => StatusCode::UNAUTHORIZED,
+			VaultError::TooManyAttempts { .. } => StatusCode::TOO_MANY_REQUESTS,
 			VaultError::RegistrationClosed | VaultError::InviteRequired | VaultError::InvalidInvite => StatusCode::FORBIDDEN,
 			VaultError::UsernameTaken(_) | VaultError::Conflict(_) => StatusCode::CONFLICT,
 			VaultError::Source(..) => StatusCode::BAD_GATEWAY,
@@ -75,6 +76,17 @@ impl IntoResponse for ApiError {
 		}
 		(self.status, Json(json!({ "error": self.message }))).into_response()
 	}
+}
+
+pub fn too_many_requests(retry_after: std::time::Duration, message: impl Into<String>) -> Response {
+	let seconds = retry_after.as_secs().max(1);
+	let body = json!({ "error": message.into() });
+	Response::builder()
+		.status(StatusCode::TOO_MANY_REQUESTS)
+		.header(axum::http::header::RETRY_AFTER, seconds.to_string())
+		.header(axum::http::header::CONTENT_TYPE, "application/json")
+		.body(axum::body::Body::from(body.to_string()))
+		.expect("static retry response")
 }
 
 pub type ApiResult<T> = Result<Json<T>, ApiError>;

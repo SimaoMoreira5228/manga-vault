@@ -440,6 +440,7 @@ class _WorkPageState extends State<WorkPage> {
                 child: _Hero(
                   details: details,
                   imageUrl: widget.vault.imageUrl,
+                  imageHeaders: widget.vault.imageHeaders,
                 ),
               ),
               SliverToBoxAdapter(
@@ -570,10 +571,15 @@ class _WorkPageState extends State<WorkPage> {
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.details, required this.imageUrl});
+  const _Hero({
+    required this.details,
+    required this.imageUrl,
+    required this.imageHeaders,
+  });
 
   final WorkDetails details;
   final String Function(String url) imageUrl;
+  final Map<String, String> imageHeaders;
 
   @override
   Widget build(BuildContext context) {
@@ -595,6 +601,7 @@ class _Hero extends StatelessWidget {
             child: details.coverUrl != null
                 ? Image.network(
                     imageUrl(details.coverUrl!),
+                    headers: imageHeaders,
                     width: 160,
                     height: 240,
                     fit: BoxFit.cover,

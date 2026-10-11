@@ -40,6 +40,10 @@ async fn main() {
 	}
 	let _ = std::fs::create_dir_all(&server_config.plugins_dir);
 
+	if let Some(secret_key) = server_config.secret_key.as_deref() {
+		secrets::validate(secret_key).unwrap_or_else(|error| panic!("{error}"));
+	}
+
 	let db = persistence::connect(&server_config.database_url)
 		.await
 		.unwrap_or_else(|error| panic!("database connect failed: {error}"));
@@ -58,7 +62,8 @@ async fn main() {
 	manager.load_dir(&server_config.plugins_dir).await;
 	let manager = Arc::new(manager);
 
-	let vault = Vault::new(manager.clone(), store.clone(), server_config.data_dir.join("downloads"));
+	let vault = Vault::new(manager.clone(), store.clone(), server_config.data_dir.join("downloads"))
+		.with_session_ttl(server_config.session_ttl);
 	vault
 		.seed_registration_mode(
 			server_config
@@ -70,6 +75,17 @@ async fn main() {
 	vault.sync_source_registry().await.expect("source registry sync");
 	let vault = Arc::new(vault);
 	let scheduler_vault = vault.clone();
+
+	let cleanup_vault = vault.clone();
+	tokio::spawn(async move {
+		let mut ticker = tokio::time::interval(std::time::Duration::from_secs(24 * 60 * 60));
+		loop {
+			ticker.tick().await;
+			if let Err(error) = cleanup_vault.request_session_cleanup().await {
+				tracing::warn!(%error, "session cleanup enqueue failed");
+			}
+		}
+	});
 
 	let scheduler = Scheduler::new(
 		store,
@@ -106,8 +122,16 @@ async fn main() {
 		ollama_translator,
 		secret_key: server_config.secret_key.clone(),
 		translation_enabled: server_config.translation_enabled,
-		secure_cookies: !server_config.cors_origins.is_empty(),
+		session_cookie: crate::http::session_cookie::SessionCookie::new(
+			server_config.secure_cookies,
+			!server_config.cors_origins.is_empty(),
+		),
+		cors_origins: server_config.cors_origins.clone(),
+		session_ttl: server_config.session_ttl,
 		image_cache: image_cache(),
+		proxy_quota: std::sync::Arc::new(crate::http::proxy_quota::ProxyQuota::per_minute(
+			server_config.proxy_requests_per_minute,
+		)),
 		events: EVENT_FEED.clone(),
 	});
 

@@ -70,16 +70,21 @@ pnpm install && pnpm build:static       # any static host (nginx, Caddy, etc.)
 
 ### Migrating from the old manga-vault
 
-If you have data in the old manga-vault (MySQL), there's a one-shot migration binary in `tools/migrate`. It reads from your legacy MySQL database and writes into a new SQLite or Postgres target.
+If you have data in the old manga-vault, there's a one-shot migration binary in `tools/migrate`. It reads from your legacy MySQL **or** SQLite database and writes into a new SQLite or Postgres target. The legacy schema is identical across those backends, so only the `--from` URL changes.
 
 ```bash
 # Build the tool
 cargo build -p manga-vault-migrate --release
 
-# Run the migration
+# Run the migration (legacy MySQL)
 ./target/release/manga-vault-migrate \
   --from mysql://user:password@localhost:3306/old_vault \
   --to sqlite://./manga-vault.db
+
+# ...or a legacy SQLite vault, which is also accepted
+./target/release/manga-vault-migrate \
+  --from sqlite:///srv/old-vault/database.db \
+  --to postgres://manga_vault@localhost/manga_vault
 ```
 
 What it migrates:
@@ -91,6 +96,15 @@ What it migrates:
 - **Users and categories** — carried over with new UUIDs
 
 After migration, the tool prints a verification table comparing row counts between the legacy and new databases. If counts don't match, the legacy database should be kept as a cold backup and investigated before retiring it.
+
+The SQLite and MySQL paths both have integration tests. The MySQL one needs a live server, so it only runs when you point it at one — it creates and drops its own `migrate_probe` database:
+
+```bash
+docker run -d --name legacy-mysql -p 127.0.0.1:3307:3306 \
+  -e MYSQL_ROOT_PASSWORD=probe mysql:8
+
+MV_MYSQL_URL=mysql://root:probe@127.0.0.1:3307/ cargo test -p manga-vault-migrate
+```
 
 ```bash
 # Example output:
@@ -165,7 +179,9 @@ cargo component build --target wasm32-wasip2 --release
 | `DATABASE_URL` | `sqlite://./data/manga-vault.db` | SQLite or Postgres connection |
 | `BIND_ADDR` | `127.0.0.1:8080` | API listen address |
 | `DATA_DIR` | `./data` | Local data directory (downloads, repos) |
-| `SECRET_KEY` | — | Encrypts tracker/translation credentials |
+| `SECRET_KEY` | — | Encrypts tracker/translation credentials at rest. Optional; when unset those features return an error. Must be 64 hex chars — the server refuses to start otherwise. Changing it makes existing credentials undecryptable |
+| `SESSION_TTL_DAYS` | `7` | Idle days before a session is rejected and the cookie expires |
+| `SECURE_COOKIES` | `true` unless `BIND_ADDR` is loopback | Marks the session cookie `Secure` and prefixes it `__Host-`. Leave on for any deployment reachable over the network; set `false` only for plain-HTTP local development |
 | `ADMIN_USERNAME` | — | Grants admin access (plugin + registration management) |
 | `REGISTRATION_MODE` | `open` | `open`, `closed`, or `invite` |
 | `OLLAMA_ENDPOINT` | — | Instance-wide translation via Ollama |
@@ -173,9 +189,12 @@ cargo component build --target wasm32-wasip2 --release
 | `TRANSLATION_ENABLED` | `true` | Kill switch for translation |
 | `PLUGINS_DIR` | `./plugins` | Plugin storage path |
 | `IMAGE_CACHE_MB` | `512` | Proxy cache size for images |
+| `PROXY_REQUESTS_PER_MINUTE` | `240` | Per-user image proxy request budget, refilled continuously. Exhausting it returns `429` with `Retry-After` |
 | `FLARESOLVERR_URL` | — | FlareSolverr for Cloudflare sources |
-| `CORS_ORIGINS` | — | Comma-separated allowed origins. Setting this also marks the session cookie `SameSite=None; Secure` for cross-site (e.g. Cloudflare Pages) deployments |
+| `CORS_ORIGINS` | — | Comma-separated allowed origins. Setting this marks the session cookie `SameSite=None` (and forces it `Secure`) for cross-site deployments such as Cloudflare Pages. Same-origin deployments keep `SameSite=Lax` |
 | `PUBLIC_API_URL` | `` | API URL for the web UI, baked in at build time (empty = same origin) |
+
+Writes authenticated by cookie are checked against the request's `Origin`: a cross-origin `POST`/`PUT`/`DELETE`/`PATCH` is rejected with `403` unless the origin is same-host or listed in `CORS_ORIGINS`. Bearer clients (Flutter, scripts) and non-browser clients that send no `Origin` are unaffected.
 
 ---
 

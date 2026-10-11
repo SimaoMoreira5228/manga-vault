@@ -407,6 +407,7 @@ class _ReaderPageState extends State<ReaderPage> {
                               )
                             : Image.network(
                                 widget.vault.imageUrl(page),
+                                headers: widget.vault.imageHeaders,
                                 fit: BoxFit.fitWidth,
                               );
                         return index > 0
@@ -477,6 +478,7 @@ class _ReaderPageState extends State<ReaderPage> {
             padding: EdgeInsets.only(bottom: _imageGap),
             child: Image.network(
               widget.vault.imageUrl(src.trim()),
+              headers: widget.vault.imageHeaders,
               fit: BoxFit.fitWidth,
             ),
           ),
@@ -530,6 +532,7 @@ class _ReaderPageState extends State<ReaderPage> {
             : Center(
                 child: Image.network(
                   widget.vault.imageUrl(page),
+                  headers: widget.vault.imageHeaders,
                   fit: BoxFit.contain,
                 ),
               );

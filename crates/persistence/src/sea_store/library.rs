@@ -68,6 +68,15 @@ impl LibraryRepository for SeaStore {
 		Ok(models.iter().map(LibraryEntry::from).collect())
 	}
 
+	async fn library_entry(&self, user_id: uuid::Uuid, work_id: domain::WorkId) -> StoreResult<Option<LibraryEntry>> {
+		let model = library_entries::Entity::find()
+			.filter(library_entries::Column::UserId.eq(user_id))
+			.filter(library_entries::Column::WorkId.eq(work_id))
+			.one(&self.db)
+			.await?;
+		Ok(model.as_ref().map(LibraryEntry::from))
+	}
+
 	async fn set_entry_category(
 		&self,
 		entry_id: uuid::Uuid,

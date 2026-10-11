@@ -123,3 +123,62 @@ async fn missing_export_fails_load_with_clear_error() {
 
 	std::fs::remove_dir_all(&dir).ok();
 }
+
+#[tokio::test]
+async fn host_string_trim_and_escaped_hyphen_matching() {
+	let dir = std::env::temp_dir().join(format!("mv-lua-trim-{}", std::process::id()));
+	std::fs::create_dir_all(&dir).unwrap();
+	std::fs::write(
+		dir.join("plugin.toml"),
+		"id = \"trim\"\nbackend = \"lua\"\nentrypoint = \"init.lua\"\n",
+	)
+	.unwrap();
+	std::fs::write(
+		dir.join("init.lua"),
+		r#"
+function info() return { id = "trim", name = "Trim", version = "1", kind = "manga" } end
+function search(q, p) return {} end
+function latest(p) return {} end
+function trending(p) return {} end
+function fetch_chapter(url)
+	local doc = "obj.attr('data-src', thzq[i]);\n\tvar thzq=['https://i.example/0.jpg','https://i.example/1.jpg'];"
+	local name = doc:match("data%-src['\"]%s*,%s*(%w+)")
+	local out = {}
+	if name then
+		local list = doc:match("var " .. name .. "%s*=%s*%[(.-)%]")
+		for url in list:gmatch("'([^']*)'") do
+			table.insert(out, string.trim(url))
+		end
+	end
+	table.insert(out, string.trim("  padded  ") .. "|" .. string.trim_end("tail   ") .. "|" .. tostring(#string.trim_end("tail   ") == 4))
+	return out
+end
+function fetch_work(url)
+	return { title = url, remote_url = url, cover_url = nil, alternative_names = {},
+		authors = {}, artists = {}, status = nil, release_date = nil, description = nil,
+		genres = {}, chapters = {}, content_html = nil }
+end
+"#,
+	)
+	.unwrap();
+
+	let runtime = source_runtime_lua::LuaRuntime::new(None);
+	let plugin = runtime.load(&dir).unwrap_or_else(|e| panic!("load failed: {e}"));
+
+	let content = plugin.fetch_chapter("https://example.com/c1").await.unwrap();
+	match content {
+		domain::ChapterContent::Images(urls) => {
+			assert_eq!(
+				urls,
+				vec![
+					"https://i.example/0.jpg".to_owned(),
+					"https://i.example/1.jpg".to_owned(),
+					"padded|tail|true".to_owned()
+				]
+			);
+		}
+		domain::ChapterContent::Html(_) => panic!("manga source must yield images"),
+	}
+
+	std::fs::remove_dir_all(&dir).ok();
+}

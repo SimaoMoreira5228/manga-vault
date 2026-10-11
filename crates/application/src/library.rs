@@ -22,6 +22,17 @@ impl Vault {
 		Ok(self.db.remove_from_library(user_id, work_id).await?)
 	}
 
+	pub async fn owns_work(&self, user_id: UserId, work_id: WorkId) -> VaultResult<bool> {
+		Ok(self.db.library_entry(user_id, work_id).await?.is_some())
+	}
+
+	pub async fn require_owned_work(&self, user_id: UserId, work_id: WorkId) -> VaultResult<()> {
+		match self.owns_work(user_id, work_id).await? {
+			true => Ok(()),
+			false => Err(VaultError::NotFound("work", work_id.to_string())),
+		}
+	}
+
 	pub async fn refresh_all(&self, user_id: UserId) -> VaultResult<usize> {
 		let entries = self.library(user_id).await?;
 		let mut queued = 0;

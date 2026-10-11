@@ -14,3 +14,6 @@ source-sdk = { workspace = true }
 source-runtime-lua = { workspace = true }
 source-runtime-wasm = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }

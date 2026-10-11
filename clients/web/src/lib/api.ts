@@ -1,4 +1,4 @@
-import { PUBLIC_API_URL } from '$env/static/public';
+import * as buildEnv from '$env/static/public';
 
 export type WorkKind = 'manga' | 'novel';
 export type ChapterContentKind = 'images' | 'html';
@@ -162,7 +162,7 @@ export class ApiError extends Error {
 	}
 }
 
-export const API_BASE = PUBLIC_API_URL;
+export const API_BASE = (buildEnv as Record<string, string | undefined>).PUBLIC_API_URL ?? '';
 
 let onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(handler: () => void) {

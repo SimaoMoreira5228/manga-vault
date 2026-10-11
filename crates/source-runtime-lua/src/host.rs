@@ -17,6 +17,7 @@ pub fn install(lua: &Lua, flaresolverr_url: Option<String>) {
 	globals.set("html", html_module(lua)).expect("html module");
 	globals.set("json", json_module(lua)).expect("json module");
 	globals.set("log", log_module(lua)).expect("log module");
+	extend_string_module(lua).expect("string module");
 	let flaresolverr = match flaresolverr_url {
 		Some(url) => flaresolverr_module(lua, client, url),
 		None => {
@@ -46,6 +47,14 @@ struct HttpResponse {
 	status: u16,
 	headers: HashMap<String, String>,
 	body: String,
+}
+
+fn extend_string_module(lua: &Lua) -> mlua::Result<()> {
+	let trim = lua.create_function(|_, text: String| Ok(text.trim().to_owned()))?;
+	let trim_end = lua.create_function(|_, text: String| Ok(text.trim_end().to_owned()))?;
+	let string: Table = lua.globals().get("string")?;
+	string.set("trim", trim)?;
+	string.set("trim_end", trim_end)
 }
 
 fn apply_headers(mut builder: reqwest::RequestBuilder, headers: Option<Table>) -> reqwest::RequestBuilder {

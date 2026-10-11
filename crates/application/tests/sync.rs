@@ -7,13 +7,16 @@ use source_manager::SourceManager;
 use uuid::Uuid;
 
 async fn vault(data_dir: &std::path::Path) -> Vault {
+	vault_with_store(data_dir).await.0
+}
+
+async fn vault_with_store(data_dir: &std::path::Path) -> (Vault, std::sync::Arc<persistence::SeaStore>) {
 	let db_url = format!("sqlite://{}/vault.db?mode=rwc", data_dir.display());
-	let store = persistence::SeaStore::new(persistence::connect(&db_url).await.unwrap());
+	let store = std::sync::Arc::new(persistence::SeaStore::new(persistence::connect(&db_url).await.unwrap()));
 	let manager = SourceManager::new(None).unwrap();
-	Vault::new(
-		std::sync::Arc::new(manager),
-		std::sync::Arc::new(store),
-		data_dir.join("downloads"),
+	(
+		Vault::new(std::sync::Arc::new(manager), store.clone(), data_dir.join("downloads")),
+		store,
 	)
 }
 
@@ -134,4 +137,64 @@ async fn applying_twice_stays_idempotent() {
 	assert_eq!(target.library(linked.id).await.unwrap().len(), 1);
 
 	std::fs::remove_dir_all(&root).ok();
+}
+
+#[tokio::test]
+async fn work_access_is_scoped_to_the_owning_user() {
+	let root = std::env::temp_dir().join(format!("mv-own-{}", Uuid::now_v7()));
+	std::fs::create_dir_all(&root).unwrap();
+
+	let (vault, store) = vault_with_store(&root).await;
+	let owner = vault.ensure_local_profile().await.unwrap();
+	let stranger = vault
+		.register("stranger", "correct horse battery staple", None, None)
+		.await
+		.map(|session| session.user_id)
+		.unwrap();
+
+	let work = sample_state().works.into_iter().next().unwrap().work;
+	persistence::SourceRepository::upsert_source(
+		store.as_ref(),
+		&persistence::repo::SourceRecord {
+			id: work.source_id.clone(),
+			name: "Example".into(),
+			version: "0.1.0".into(),
+			kind: work.kind,
+			icon_url: None,
+			referer_url: None,
+			base_url: None,
+		},
+	)
+	.await
+	.unwrap();
+	persistence::WorkRepository::save_work_snapshot(
+		store.as_ref(),
+		&work,
+		&[domain::Chapter {
+			id: Uuid::now_v7(),
+			work_id: work.id,
+			title: "c1".into(),
+			remote_url: format!("{}/1", work.remote_url),
+			sort_index: 0,
+			content_kind: domain::ChapterContentKind::Html,
+			scanlation_group: None,
+			released_at: None,
+			created_at: Utc::now(),
+		}],
+	)
+	.await
+	.unwrap();
+	persistence::LibraryRepository::add_to_library(store.as_ref(), owner.id, work.id, None)
+		.await
+		.unwrap();
+	assert!(!vault.owns_work(stranger, work.id).await.unwrap());
+
+	vault.require_owned_work(owner.id, work.id).await.unwrap();
+	assert!(
+		vault.require_owned_work(stranger, work.id).await.is_err(),
+		"another user must not read a work they do not own"
+	);
+
+	assert!(vault.owns_work(owner.id, work.id).await.unwrap());
+	assert!(!vault.owns_work(stranger, work.id).await.unwrap());
 }

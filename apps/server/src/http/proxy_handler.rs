@@ -158,7 +158,17 @@ async fn fetch_upstream(target: Url, referer_url: &str) -> Result<Arc<CachedResp
 	Ok(Arc::new(CachedResponse { bytes, content_type }))
 }
 
-pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery>) -> Result<Response, ApiError> {
+pub async fn proxy(
+	State(state): State<AppState>,
+	auth: crate::http::auth_extractor::Authenticated,
+	Query(query): Query<ProxyQuery>,
+) -> Result<Response, ApiError> {
+	if let Err(retry_after) = state.proxy_quota.charge(auth.user.id) {
+		return Ok(crate::http::error::too_many_requests(
+			retry_after,
+			format!("proxy request quota exceeded; retry in {}s", retry_after.as_secs().max(1)),
+		));
+	}
 	let target = normalize_target(Url::parse(&query.url).map_err(|_| ApiError {
 		status: axum::http::StatusCode::BAD_REQUEST,
 		message: "invalid url".into(),
@@ -187,14 +197,16 @@ pub async fn proxy(State(state): State<AppState>, Query(query): Query<ProxyQuery
 		.await
 		.map_err(Arc::unwrap_or_clone)?;
 
-	Ok((
-		[
-			(header::CONTENT_TYPE, cached.content_type.clone()),
-			(header::CACHE_CONTROL, "public, max-age=86400".to_owned()),
-		],
-		cached.bytes.clone(),
-	)
-		.into_response())
+	let cache_headers = [
+		(header::CONTENT_TYPE, cached.content_type.clone()),
+		(header::CACHE_CONTROL, "private, max-age=3600".to_owned()),
+		(
+			header::HeaderName::from_static("cloudflare-cdn-cache-control"),
+			"public, max-age=86400".to_owned(),
+		),
+	];
+
+	Ok((cache_headers, cached.bytes.clone()).into_response())
 }
 
 #[cfg(test)]

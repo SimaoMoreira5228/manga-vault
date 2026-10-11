@@ -132,6 +132,7 @@ pub trait SessionRepository: Send + Sync {
 	async fn touch_session(&self, token: uuid::Uuid, seen_at: DateTime<Utc>) -> StoreResult<()>;
 	async fn delete_session(&self, token: uuid::Uuid) -> StoreResult<()>;
 	async fn sessions_for_user(&self, user_id: UserId) -> StoreResult<Vec<Session>>;
+	async fn delete_sessions_seen_before(&self, user_id: Option<UserId>, cutoff: DateTime<Utc>) -> StoreResult<u64>;
 }
 
 #[async_trait]
@@ -145,6 +146,7 @@ pub trait LibraryRepository: Send + Sync {
 	async fn remove_from_library(&self, user_id: UserId, work_id: WorkId) -> StoreResult<()>;
 	async fn clear_user_library(&self, user_id: UserId) -> StoreResult<()>;
 	async fn library_entries(&self, user_id: UserId) -> StoreResult<Vec<LibraryEntry>>;
+	async fn library_entry(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Option<LibraryEntry>>;
 	async fn set_entry_category(
 		&self,
 		entry_id: uuid::Uuid,

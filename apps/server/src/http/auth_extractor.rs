@@ -74,3 +74,47 @@ fn extract_token(parts: &mut Parts) -> Option<Uuid> {
 	}
 	None
 }
+
+#[cfg(test)]
+mod tests {
+	use axum::http::{Request, header};
+
+	use super::*;
+
+	fn parts_with(headers: &[(&str, &str)]) -> Parts {
+		let mut builder = Request::builder().uri("/");
+		for (name, value) in headers {
+			builder = builder.header(*name, *value);
+		}
+		builder.body(()).unwrap().into_parts().0
+	}
+
+	#[test]
+	fn reads_bearer_and_cookie_tokens() {
+		let token = Uuid::new_v4();
+
+		let bearer = parts_with(&[(header::AUTHORIZATION.as_str(), &format!("Bearer {token}"))]);
+		assert_eq!(extract_token(&mut { bearer }), Some(token));
+
+		let cookie = parts_with(&[(header::COOKIE.as_str(), &format!("session_token={token}"))]);
+		assert_eq!(extract_token(&mut { cookie }), Some(token));
+
+		let mixed = parts_with(&[(
+			header::COOKIE.as_str(),
+			&format!("theme=dark; session_token={token}; other=1"),
+		)]);
+		assert_eq!(extract_token(&mut { mixed }), Some(token));
+	}
+
+	#[test]
+	fn rejects_missing_and_malformed_credentials() {
+		let none = parts_with(&[]);
+		assert_eq!(extract_token(&mut { none }), None);
+
+		let other_scheme = parts_with(&[(header::AUTHORIZATION.as_str(), "Basic dXNlcjpwYXNz")]);
+		assert_eq!(extract_token(&mut { other_scheme }), None);
+
+		let not_a_uuid = parts_with(&[(header::COOKIE.as_str(), "session_token=not-a-uuid")]);
+		assert_eq!(extract_token(&mut { not_a_uuid }), None);
+	}
+}

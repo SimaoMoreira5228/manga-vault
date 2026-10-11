@@ -11,6 +11,9 @@ class LocalService implements VaultService {
   String imageUrl(String url) => url;
 
   @override
+  Map<String, String> get imageHeaders => const {};
+
+  @override
   Future<List<SourceSummary>> listSources() => _vault.listSources();
 
   @override

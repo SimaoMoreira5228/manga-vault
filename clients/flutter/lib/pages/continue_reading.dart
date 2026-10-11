@@ -98,6 +98,7 @@ class _ContinueReadingRowState extends State<ContinueReadingRow> {
                             child: item.coverUrl != null
                                 ? Image.network(
                                     widget.vault.imageUrl(item.coverUrl!),
+                                    headers: widget.vault.imageHeaders,
                                     fit: BoxFit.cover,
                                   )
                                 : const ColoredBox(

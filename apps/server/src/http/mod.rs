@@ -1,6 +1,7 @@
 mod auth_extractor;
 mod auth_handlers;
 mod backup_handlers;
+mod csrf;
 mod error;
 pub mod event_feed;
 mod glossary_handlers;
@@ -9,8 +10,10 @@ mod migration_handlers;
 mod opds_handlers;
 mod plugin_handlers;
 pub mod proxy_handler;
+pub mod proxy_quota;
 mod reading_handlers;
 mod registration_handlers;
+pub mod session_cookie;
 mod sources_handlers;
 mod sync_handlers;
 mod tracker_handlers;
@@ -128,6 +131,7 @@ pub fn router(state: AppState) -> Router {
 			"/api/registration/invites/{code}",
 			delete(registration_handlers::delete_invite),
 		)
+		.layer(axum::middleware::from_fn_with_state(state.clone(), csrf::enforce))
 		.layer(
 			TraceLayer::new_for_http()
 				.make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
