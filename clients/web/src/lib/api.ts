@@ -1,4 +1,5 @@
 import * as buildEnv from '$env/static/public';
+import { cachedRequest } from './etag_cache';
 
 export type WorkKind = 'manga' | 'novel';
 export type ChapterContentKind = 'images' | 'html';
@@ -244,11 +245,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	if (init?.body !== undefined && !headers.has('content-type')) {
 		headers.set('content-type', 'application/json');
 	}
-	const response = await fetch(`${API_BASE}${path}`, {
-		credentials: 'include',
-		...init,
-		headers,
-	});
+	const { response, body, notModified } = await cachedRequest(`${API_BASE}${path}`, init, headers);
+	if (notModified) return body as T;
 	if (!response.ok) {
 		const body = (await response.json().catch(() => ({
 			error: response.statusText,
@@ -265,7 +263,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 		);
 	}
 	if (response.status === 204) return undefined as T;
-	return response.json();
+	return body as T;
 }
 
 function get<T>(path: string) {

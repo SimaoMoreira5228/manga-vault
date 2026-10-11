@@ -1,12 +1,14 @@
 use axum::Json;
 use axum::extract::{Path, State};
+use axum::response::Response;
 use domain::Category;
 use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::http::auth_extractor::Authenticated;
-use crate::http::error::ApiResult;
+use crate::http::cache;
+use crate::http::error::{ApiError, ApiResult};
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -20,10 +22,18 @@ pub struct CategoryRequest {
 	pub name: String,
 }
 
-pub async fn list(State(state): State<AppState>, auth: Authenticated) -> ApiResult<serde_json::Value> {
+pub async fn list(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	headers: axum::http::HeaderMap,
+) -> Result<Response, ApiError> {
 	let entries = state.vault.library(auth.user.id).await?;
 	let categories = state.vault.categories(auth.user.id).await?;
-	Ok(Json(json!({ "entries": entries, "categories": categories })))
+	Ok(cache::cached_json(
+		&headers,
+		&json!({ "entries": entries, "categories": categories }),
+		0,
+	))
 }
 
 pub async fn add(
@@ -71,8 +81,12 @@ pub async fn refresh_all(State(state): State<AppState>, auth: Authenticated) -> 
 	Ok(Json(json!({ "queued": queued })))
 }
 
-pub async fn categories(State(state): State<AppState>, auth: Authenticated) -> ApiResult<Vec<Category>> {
-	Ok(Json(state.vault.categories(auth.user.id).await?))
+pub async fn categories(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	headers: axum::http::HeaderMap,
+) -> Result<Response, ApiError> {
+	Ok(cache::cached_json(&headers, &state.vault.categories(auth.user.id).await?, 0))
 }
 
 pub async fn create_category(

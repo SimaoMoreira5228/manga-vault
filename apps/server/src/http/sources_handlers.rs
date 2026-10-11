@@ -1,10 +1,12 @@
 use axum::Json;
 use axum::extract::{Path, Query, State};
+use axum::response::Response;
 use serde::Deserialize;
 use serde_json::Value;
 
 use crate::http::auth_extractor::Authenticated;
-use crate::http::error::ApiResult;
+use crate::http::cache;
+use crate::http::error::{ApiError, ApiResult};
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -18,8 +20,12 @@ pub struct SearchQuery {
 	pub page: Option<u32>,
 }
 
-pub async fn list(State(state): State<AppState>, _auth: Authenticated) -> ApiResult<Value> {
-	Ok(Json(serde_json::to_value(state.vault.list_sources()).unwrap()))
+pub async fn list(
+	State(state): State<AppState>,
+	_auth: Authenticated,
+	headers: axum::http::HeaderMap,
+) -> Result<Response, ApiError> {
+	Ok(cache::cached_json(&headers, &state.vault.list_sources(), 300))
 }
 
 pub async fn search(

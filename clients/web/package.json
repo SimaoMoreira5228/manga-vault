@@ -12,6 +12,7 @@
 		"prepare": "svelte-kit sync || echo \"\"",
 		"check": "wrangler types --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "node --test src/lib/*.test.ts",
 		"lint": "biome check .",
 		"format": "biome format --write .",
 		"gen": "wrangler types"

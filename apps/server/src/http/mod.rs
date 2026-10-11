@@ -1,6 +1,7 @@
 mod auth_extractor;
 mod auth_handlers;
 mod backup_handlers;
+pub mod cache;
 mod csrf;
 mod error;
 pub mod event_feed;

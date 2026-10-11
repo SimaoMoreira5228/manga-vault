@@ -4,10 +4,11 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use domain::ChapterId;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::json;
 use uuid::Uuid;
 
 use crate::http::auth_extractor::Authenticated;
+use crate::http::cache;
 use crate::http::error::{ApiError, ApiResult};
 use crate::state::AppState;
 
@@ -29,15 +30,24 @@ pub async fn import(
 	Ok(Json(work))
 }
 
-pub async fn get_work(State(state): State<AppState>, Path(work_id): Path<Uuid>, auth: Authenticated) -> ApiResult<Value> {
+pub async fn get_work(
+	State(state): State<AppState>,
+	Path(work_id): Path<Uuid>,
+	auth: Authenticated,
+	headers: axum::http::HeaderMap,
+) -> Result<Response, ApiError> {
 	state.vault.require_owned_work(auth.user.id, work_id).await?;
 	let (work, chapters) = state.vault.get_work(work_id).await?;
 	let read_ids = state.vault.read_chapter_ids(auth.user.id, work_id).await?;
-	Ok(Json(json!({
-		"work": work,
-		"chapters": chapters,
-		"read_chapter_ids": read_ids,
-	})))
+	Ok(cache::cached_json(
+		&headers,
+		&json!({
+			"work": work,
+			"chapters": chapters,
+			"read_chapter_ids": read_ids,
+		}),
+		0,
+	))
 }
 
 pub async fn request_refresh(

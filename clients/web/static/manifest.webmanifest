@@ -1,0 +1,32 @@
+{
+	"name": "Manga Vault",
+	"short_name": "Manga Vault",
+	"description": "Your manga and novel library, in sync across your devices.",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#14100c",
+	"theme_color": "#14100c",
+	"orientation": "any",
+	"categories": ["books", "entertainment"],
+	"icons": [
+		{
+			"src": "/icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/maskable-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	]
+}
