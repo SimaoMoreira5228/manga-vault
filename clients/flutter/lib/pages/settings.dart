@@ -43,6 +43,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Map<String, TextEditingController> trackerUsernameFields = {};
   Map<String, TextEditingController> trackerPasswordFields = {};
   String? serverBaseUrl;
+  final sessions = GlobalKey<SessionsSectionState>();
 
   RemoteService? get _account {
     final linkedRemote = widget.linkedRemote;
@@ -213,60 +214,18 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        children: [
-          const AppearanceSection(),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Text(
-              'READING',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.insights_outlined),
-            title: const Text('Statistics'),
-            subtitle: const Text('Chapters read, streak and daily activity.'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => StatsPage(vault: widget.service),
-              ),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Text(
-              'CONNECTION',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-          if (widget.isLocal)
-            ListTile(
-              title: const Text('This device'),
-              subtitle: const Text('Library and progress are stored locally.'),
-            )
-          else
-            ListTile(
-              title: const Text('Server account'),
-              subtitle: const Text('Library and progress live on the server.'),
-              trailing: FilledButton(
-                onPressed: _signOut,
-                child: const Text('Sign out'),
-              ),
-            ),
-          if (widget.isLocal) ...[
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          sessions.currentState?.loadMore(notification);
+          return false;
+        },
+        child: ListView(
+          children: [
+            const AppearanceSection(),
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
               child: Text(
-                'SYNC',
+                'READING',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -275,277 +234,335 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
             ListTile(
-              title: Text(
-                linked == null ? 'Not linked' : 'Linked to ${linked!.baseUrl}',
+              leading: const Icon(Icons.insights_outlined),
+              title: const Text('Statistics'),
+              subtitle: const Text('Chapters read, streak and daily activity.'),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => StatsPage(vault: widget.service),
+                ),
               ),
-              subtitle: const Text(
-                'Keep library and reading progress in step with a server account.',
-              ),
-              trailing: linked == null
-                  ? FilledButton(onPressed: _link, child: const Text('Link'))
-                  : TextButton(onPressed: _unlink, child: const Text('Unlink')),
             ),
-            if (linked != null)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                'CONNECTION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+            if (widget.isLocal)
               ListTile(
-                title: const Text('Sync now'),
+                title: const Text('This device'),
                 subtitle: const Text(
-                  'Also happens automatically in the background.',
+                  'Library and progress are stored locally.',
                 ),
-                trailing: syncing
-                    ? const CircularProgressIndicator()
-                    : IconButton(
-                        icon: const Icon(Icons.sync),
-                        onPressed: _syncNow,
-                      ),
-              ),
-          ],
-          if (_showTrackers)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-              child: Text(
-                'TRACKERS',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.6,
+              )
+            else
+              ListTile(
+                title: const Text('Server account'),
+                subtitle: const Text(
+                  'Library and progress live on the server.',
+                ),
+                trailing: FilledButton(
+                  onPressed: _signOut,
+                  child: const Text('Sign out'),
                 ),
               ),
-            ),
-          if (_showTrackers)
-            for (final tracker in trackerRegistry)
+            if (widget.isLocal) ...[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Text(
+                  'SYNC',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
               ListTile(
                 title: Text(
-                  _trackerLinked(tracker['id'] as String)
-                      ? '${tracker['id']} (linked)'
-                      : tracker['id'] as String,
+                  linked == null
+                      ? 'Not linked'
+                      : 'Linked to ${linked!.baseUrl}',
                 ),
-                trailing: _trackerLinked(tracker['id'] as String)
-                    ? TextButton(
-                        onPressed: () =>
-                            _unlinkTracker(tracker['id'] as String),
-                        child: const Text('Unlink'),
-                      )
-                    : null,
-                subtitle: _trackerLinked(tracker['id'] as String)
-                    ? null
-                    : switch (tracker['auth'] as String?) {
-                        'oauth' => TextButton(
-                          onPressed: () =>
-                              _connectOauth(tracker['id'] as String),
-                          child: const Text('Connect in browser'),
-                        ),
-                        'credentials' => Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 130,
-                              child: TextField(
-                                controller: trackerUsernameFields.putIfAbsent(
-                                  tracker['id'] as String,
-                                  TextEditingController.new,
-                                ),
-                                decoration: const InputDecoration(
-                                  hintText: 'username',
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 130,
-                              child: TextField(
-                                controller: trackerPasswordFields.putIfAbsent(
-                                  tracker['id'] as String,
-                                  TextEditingController.new,
-                                ),
-                                obscureText: true,
-                                decoration: const InputDecoration(
-                                  hintText: 'password',
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.link),
-                              onPressed: () =>
-                                  _linkCredentials(tracker['id'] as String),
-                            ),
-                          ],
-                        ),
-                        _ => Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 200,
-                              child: TextField(
-                                controller: trackerTokenFields.putIfAbsent(
-                                  tracker['id'] as String,
-                                  TextEditingController.new,
-                                ),
-                                obscureText: true,
-                                decoration: const InputDecoration(
-                                  hintText: 'access token',
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.link),
-                              onPressed: () =>
-                                  _linkTracker(tracker['id'] as String),
-                            ),
-                          ],
-                        ),
-                      },
-              ),
-          if (_account != null)
-            SessionsSection(
-              account: _account!,
-              onSignedOut: widget.restartSession,
-            ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Text(
-              'NOTIFICATIONS',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-          FutureBuilder<AppPrefs>(
-            future: AppPrefs.instance(),
-            builder: (context, snapshot) {
-              final prefs = snapshot.data;
-              return SwitchListTile(
-                title: const Text('New chapter alerts'),
                 subtitle: const Text(
-                  'Show a banner when library works get new chapters.',
+                  'Keep library and reading progress in step with a server account.',
                 ),
-                value: prefs?.chapterNotifications ?? false,
-                onChanged: prefs == null
-                    ? null
-                    : (value) async {
-                        await prefs.setChapterNotifications(value);
-                        if (mounted) setState(() {});
-                      },
-              );
-            },
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-            child: Text(
-              'TRANSLATION',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.6,
+                trailing: linked == null
+                    ? FilledButton(onPressed: _link, child: const Text('Link'))
+                    : TextButton(
+                        onPressed: _unlink,
+                        child: const Text('Unlink'),
+                      ),
+              ),
+              if (linked != null)
+                ListTile(
+                  title: const Text('Sync now'),
+                  subtitle: const Text(
+                    'Also happens automatically in the background.',
+                  ),
+                  trailing: syncing
+                      ? const CircularProgressIndicator()
+                      : IconButton(
+                          icon: const Icon(Icons.sync),
+                          onPressed: _syncNow,
+                        ),
+                ),
+            ],
+            if (_showTrackers)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Text(
+                  'TRACKERS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+            if (_showTrackers)
+              for (final tracker in trackerRegistry)
+                ListTile(
+                  title: Text(
+                    _trackerLinked(tracker['id'] as String)
+                        ? '${tracker['id']} (linked)'
+                        : tracker['id'] as String,
+                  ),
+                  trailing: _trackerLinked(tracker['id'] as String)
+                      ? TextButton(
+                          onPressed: () =>
+                              _unlinkTracker(tracker['id'] as String),
+                          child: const Text('Unlink'),
+                        )
+                      : null,
+                  subtitle: _trackerLinked(tracker['id'] as String)
+                      ? null
+                      : switch (tracker['auth'] as String?) {
+                          'oauth' => TextButton(
+                            onPressed: () =>
+                                _connectOauth(tracker['id'] as String),
+                            child: const Text('Connect in browser'),
+                          ),
+                          'credentials' => Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 130,
+                                child: TextField(
+                                  controller: trackerUsernameFields.putIfAbsent(
+                                    tracker['id'] as String,
+                                    TextEditingController.new,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    hintText: 'username',
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 130,
+                                child: TextField(
+                                  controller: trackerPasswordFields.putIfAbsent(
+                                    tracker['id'] as String,
+                                    TextEditingController.new,
+                                  ),
+                                  obscureText: true,
+                                  decoration: const InputDecoration(
+                                    hintText: 'password',
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.link),
+                                onPressed: () =>
+                                    _linkCredentials(tracker['id'] as String),
+                              ),
+                            ],
+                          ),
+                          _ => Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 200,
+                                child: TextField(
+                                  controller: trackerTokenFields.putIfAbsent(
+                                    tracker['id'] as String,
+                                    TextEditingController.new,
+                                  ),
+                                  obscureText: true,
+                                  decoration: const InputDecoration(
+                                    hintText: 'access token',
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.link),
+                                onPressed: () =>
+                                    _linkTracker(tracker['id'] as String),
+                              ),
+                            ],
+                          ),
+                        },
+                ),
+            if (_account != null)
+              SessionsSection(
+                key: sessions,
+                account: _account!,
+                onSignedOut: widget.restartSession,
+              ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                'NOTIFICATIONS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.6,
+                ),
               ),
             ),
-          ),
-          FutureBuilder<String>(
-            future: widget.service.translationMode(),
-            builder: (context, snapshot) {
-              final mode = snapshot.data ?? 'off';
-              return ListTile(
-                title: Text(switch (mode) {
-                  'byok' || 'instance' => 'Your own API key',
-                  'ollama' => 'Ollama endpoint',
-                  _ => 'Disabled',
-                }),
-                subtitle: Text(
-                  widget.isLocal
-                      ? 'Translate novels while reading. Stored on this device only.'
-                      : 'Managed by the server account settings.',
+            FutureBuilder<AppPrefs>(
+              future: AppPrefs.instance(),
+              builder: (context, snapshot) {
+                final prefs = snapshot.data;
+                return SwitchListTile(
+                  title: const Text('New chapter alerts'),
+                  subtitle: const Text(
+                    'Show a banner when library works get new chapters.',
+                  ),
+                  value: prefs?.chapterNotifications ?? false,
+                  onChanged: prefs == null
+                      ? null
+                      : (value) async {
+                          await prefs.setChapterNotifications(value);
+                          if (mounted) setState(() {});
+                        },
+                );
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text(
+                'TRANSLATION',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.6,
                 ),
-                trailing: widget.isLocal
-                    ? (mode == 'off'
-                          ? FilledButton(
-                              onPressed: _configureTranslation,
-                              child: const Text('Set up'),
-                            )
-                          : Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                TextButton(
-                                  onPressed: _configureTranslation,
-                                  child: const Text('Change'),
-                                ),
-                                TextButton(
-                                  onPressed: () async {
-                                    await widget.service
-                                        .clearTranslationProvider();
-                                    if (context.mounted) setState(() {});
-                                  },
-                                  child: const Text('Clear'),
-                                ),
-                              ],
-                            ))
-                    : null,
-              );
-            },
-          ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 24, 16, 4),
-            child: Text(
-              'DATA',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.6,
               ),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.download),
-            title: const Text('Export backup'),
-            subtitle: const Text('Save all library data as a JSON file.'),
-            onTap: () async {
-              try {
-                final json = await widget.service.exportBackup();
-                final file = await _backupFile();
-                await file.writeAsString(json);
-                if (context.mounted)
+            FutureBuilder<String>(
+              future: widget.service.translationMode(),
+              builder: (context, snapshot) {
+                final mode = snapshot.data ?? 'off';
+                return ListTile(
+                  title: Text(switch (mode) {
+                    'byok' || 'instance' => 'Your own API key',
+                    'ollama' => 'Ollama endpoint',
+                    _ => 'Disabled',
+                  }),
+                  subtitle: Text(
+                    widget.isLocal
+                        ? 'Translate novels while reading. Stored on this device only.'
+                        : 'Managed by the server account settings.',
+                  ),
+                  trailing: widget.isLocal
+                      ? (mode == 'off'
+                            ? FilledButton(
+                                onPressed: _configureTranslation,
+                                child: const Text('Set up'),
+                              )
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextButton(
+                                    onPressed: _configureTranslation,
+                                    child: const Text('Change'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      await widget.service
+                                          .clearTranslationProvider();
+                                      if (context.mounted) setState(() {});
+                                    },
+                                    child: const Text('Clear'),
+                                  ),
+                                ],
+                              ))
+                      : null,
+                );
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 24, 16, 4),
+              child: Text(
+                'DATA',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.download),
+              title: const Text('Export backup'),
+              subtitle: const Text('Save all library data as a JSON file.'),
+              onTap: () async {
+                try {
+                  final json = await widget.service.exportBackup();
+                  final file = await _backupFile();
+                  await file.writeAsString(json);
+                  if (context.mounted)
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Saved to ${file.path}')),
+                    );
+                } catch (e) {
+                  if (context.mounted)
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Export failed: $e')),
+                    );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.upload),
+              title: const Text('Import backup'),
+              subtitle: const Text('Restore library data from a JSON backup.'),
+              onTap: () async {
+                try {
+                  final file = await _backupFile();
+                  if (!await file.exists()) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('No backup at ${file.path}')),
+                      );
+                    }
+                    return;
+                  }
+                  await widget.service.importBackup(await file.readAsString());
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Saved to ${file.path}')),
+                    const SnackBar(content: Text('Backup restored')),
                   );
-              } catch (e) {
-                if (context.mounted)
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
-              }
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.upload),
-            title: const Text('Import backup'),
-            subtitle: const Text('Restore library data from a JSON backup.'),
-            onTap: () async {
-              try {
-                final file = await _backupFile();
-                if (!await file.exists()) {
+                  widget.restartSession();
+                } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('No backup at ${file.path}')),
+                      SnackBar(content: Text('Import failed: $e')),
                     );
                   }
-                  return;
                 }
-                await widget.service.importBackup(await file.readAsString());
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Backup restored')),
-                );
-                widget.restartSession();
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
-                }
-              }
-            },
-          ),
-        ],
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

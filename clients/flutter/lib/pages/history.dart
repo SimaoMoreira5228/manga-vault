@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../service/vault_service.dart';
-import 'pager_bar.dart';
+import 'list_footer.dart';
 import 'skeletons.dart';
 
 class HistoryPage extends StatefulWidget {
@@ -15,9 +15,11 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   List<HistoryEntry>? entries;
-  int total = 0;
-  int offset = 0;
+  bool loadingMore = false;
+  bool done = false;
   String? error;
+  String? pageFailure;
+  int _epoch = 0;
 
   @override
   void initState() {
@@ -26,26 +28,55 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      entries = null;
-      error = null;
-    });
+    final epoch = ++_epoch;
     try {
-      final page = await widget.vault.history(offset: offset, limit: pageSize);
-      if (!mounted) return;
+      final page = await widget.vault.history(offset: 0, limit: pageSize);
+      if (!mounted || epoch != _epoch) return;
       setState(() {
         entries = page.items;
-        total = page.total;
+        error = null;
+        pageFailure = null;
+        loadingMore = false;
+        done = page.items.length < pageSize || page.items.length >= page.total;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => error = e.toString());
+      setState(() {
+        error = e.toString();
+        loadingMore = false;
+      });
     }
   }
 
-  void _shiftPage(int next) {
-    setState(() => offset = next);
-    _load();
+  Future<void> _more() async {
+    final window = entries;
+    if (window == null || window.isEmpty) return;
+    if (loadingMore || done) return;
+    final epoch = _epoch;
+    setState(() => loadingMore = true);
+    try {
+      final page = await widget.vault.history(
+        offset: window.length,
+        limit: pageSize,
+      );
+      if (!mounted || epoch != _epoch) return;
+      final seen = window.length + page.items.length;
+      setState(() {
+        entries = [...window, ...page.items];
+        pageFailure = null;
+        loadingMore = false;
+        done =
+            page.items.isEmpty ||
+            page.items.length < pageSize ||
+            seen >= page.total;
+      });
+    } catch (e) {
+      if (!mounted || epoch != _epoch) return;
+      setState(() {
+        pageFailure = e.toString();
+        loadingMore = false;
+      });
+    }
   }
 
   String _dayLabel(DateTime date) {
@@ -76,55 +107,65 @@ class _HistoryPageState extends State<HistoryPage> {
             )
           : shown.isEmpty
           ? const Center(child: Text('Nothing read yet'))
-          : ListView.builder(
-              itemCount: shown.length + 1,
-              itemBuilder: (context, index) {
-                if (index == shown.length) {
-                  return PagerBar(
-                    offset: offset,
-                    limit: pageSize,
-                    total: total,
-                    onshift: _shiftPage,
-                  );
+          : NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollUpdateNotification &&
+                    notification.metrics.axis == Axis.vertical &&
+                    notification.metrics.pixels + 400 >=
+                        notification.metrics.maxScrollExtent) {
+                  _more();
                 }
-                final entry = shown[index];
-                final readAt = entry.readAt;
-                final previous = index == 0 ? null : shown[index - 1].readAt;
-                final showDay =
-                    readAt != null &&
-                    (previous == null ||
-                        _dayLabel(previous) != _dayLabel(readAt));
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (showDay)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                        child: Text(
-                          _dayLabel(readAt),
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                      ),
-                    ListTile(
-                      title: Text(
-                        entry.workTitle,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        entry.chapterTitle ?? entry.chapterId,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      leading: const Icon(Icons.history),
-                      trailing: readAt == null
-                          ? null
-                          : Text(
-                              '${readAt.hour.toString().padLeft(2, '0')}:${readAt.minute.toString().padLeft(2, '0')}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                    ),
-                  ],
-                );
+                return false;
               },
+              child: ListView.builder(
+                itemCount: shown.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == shown.length) {
+                    return ListFooter(
+                      busy: loadingMore,
+                      failure: pageFailure,
+                      onRetry: _more,
+                    );
+                  }
+                  final entry = shown[index];
+                  final readAt = entry.readAt;
+                  final previous = index == 0 ? null : shown[index - 1].readAt;
+                  final showDay =
+                      readAt != null &&
+                      (previous == null ||
+                          _dayLabel(previous) != _dayLabel(readAt));
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (showDay)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                          child: Text(
+                            _dayLabel(readAt),
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                        ),
+                      ListTile(
+                        title: Text(
+                          entry.workTitle,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          entry.chapterTitle ?? entry.chapterId,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        leading: const Icon(Icons.history),
+                        trailing: readAt == null
+                            ? null
+                            : Text(
+                                '${readAt.hour.toString().padLeft(2, '0')}:${readAt.minute.toString().padLeft(2, '0')}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
     );
   }

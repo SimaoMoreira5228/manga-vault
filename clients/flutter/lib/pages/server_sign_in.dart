@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../service/remote_error.dart';
 import '../service/remote_service.dart';
+import 'server_url_field.dart';
 
 Future<RemoteService?> showServerSignIn(
   BuildContext context, {
@@ -96,8 +97,8 @@ class _ServerSignInState extends State<_ServerSignIn> {
   bool get canRegister => registration != 'closed';
 
   Future<void> _probeRegistration() async {
-    final url = baseUrl.text.trim();
-    if (url.isEmpty) return;
+    final url = normalizeServerUrl(baseUrl.text);
+    if (serverUrlError(baseUrl.text) != null) return;
     var mode = 'open';
     try {
       mode = await RemoteService.registrationMode(url);
@@ -138,7 +139,15 @@ class _ServerSignInState extends State<_ServerSignIn> {
       inviteError = null;
     });
     try {
-      final url = baseUrl.text.trim();
+      final invalid = serverUrlError(baseUrl.text);
+      if (invalid != null) {
+        setState(() {
+          busy = false;
+          usernameError = invalid;
+        });
+        return;
+      }
+      final url = normalizeServerUrl(baseUrl.text);
       final service = registering
           ? await RemoteService.register(
               baseUrl: url,
@@ -167,13 +176,7 @@ class _ServerSignInState extends State<_ServerSignIn> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: baseUrl,
-            onSubmitted: (_) => _probeRegistration(),
-            decoration: const InputDecoration(
-              hintText: 'https://server.example.org',
-            ),
-          ),
+          ServerUrlField(controller: baseUrl, onChanged: (_) => _probeRegistration()),
           TextField(
             controller: username,
             decoration: InputDecoration(

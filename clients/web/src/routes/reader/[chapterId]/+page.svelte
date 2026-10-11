@@ -43,8 +43,8 @@ const showGlossary = $derived(matches.length > 0);
 
 let fontSize = $state(16);
 let lineHeight = $state(1.6);
-let imageMargin = $state(0);
-let imageGap = $state(0);
+let imageMarginPct = $state(0);
+let imageGapPct = $state(0);
 let rtlMode = $state(false);
 let showReaderSettings = $state(false);
 
@@ -75,8 +75,8 @@ function readerKey(suffix: string): string {
 function loadReaderSettings() {
 	fontSize = Number(localStorage.getItem(readerKey('fontSize')) ?? '16');
 	lineHeight = Number(localStorage.getItem(readerKey('lineHeight')) ?? '1.6');
-	imageMargin = Number(localStorage.getItem(readerKey('imageMargin')) ?? '0');
-	imageGap = Number(localStorage.getItem(readerKey('imageGap')) ?? '0');
+	imageMarginPct = Number(localStorage.getItem(readerKey('imageMarginPct')) ?? '0');
+	imageGapPct = Number(localStorage.getItem(readerKey('imageGapPct')) ?? '0');
 	rtlMode = localStorage.getItem(readerKey('rtl')) === 'true';
 }
 
@@ -84,24 +84,15 @@ function saveReaderSetting(suffix: string, value: number) {
 	localStorage.setItem(readerKey(suffix), String(value));
 }
 
-function adjustFontSize(delta: number) {
-	fontSize = Math.min(32, Math.max(10, fontSize + delta));
-	saveReaderSetting('fontSize', fontSize);
+const showTextOptions = $derived(work?.kind !== 'manga');
+const showImageOptions = $derived(work?.kind !== 'novel');
+
+function clampMarginPct(value: number) {
+	return Math.min(50, Math.max(0, value));
 }
 
-function adjustLineHeight() {
-	lineHeight = lineHeight === 1.6 ? 2.2 : 1.6;
-	saveReaderSetting('lineHeight', lineHeight);
-}
-
-function adjustImageMargin(delta: number) {
-	imageMargin = Math.min(64, Math.max(0, imageMargin + delta));
-	saveReaderSetting('imageMargin', imageMargin);
-}
-
-function adjustImageGap(delta: number) {
-	imageGap = Math.min(32, Math.max(0, imageGap + delta));
-	saveReaderSetting('imageGap', imageGap);
+function clampGapPct(value: number) {
+	return Math.min(25, Math.max(0, value));
 }
 
 function toggleRtl() {
@@ -361,90 +352,103 @@ async function load() {
 		>
 			<h2 class="title-md mb-4">Reader settings</h2>
 
-			<div class="mb-3 flex items-center justify-between">
-				<span class="body-md">Font size</span>
-				<div class="flex gap-2">
+			{#if showTextOptions}
+				<h3 class="label-caps mb-2 text-on-surface-variant">Text</h3>
+
+				<label class="mb-3 block">
+					<span class="flex items-baseline justify-between">
+						<span class="body-md">Font size</span>
+						<span class="mono-label text-on-surface-variant">{fontSize}px</span>
+					</span>
+					<input
+						type="range"
+						min="10"
+						max="34"
+						step="1"
+						value={fontSize}
+						aria-label="Font size in pixels"
+						aria-valuetext="{fontSize} pixels"
+						class="mt-2 w-full"
+						oninput={(event) => (fontSize = Number(event.currentTarget.value))}
+						onchange={() => saveReaderSetting('fontSize', fontSize)}
+					>
+				</label>
+
+				<label class="mb-3 block">
+					<span class="flex items-baseline justify-between">
+						<span class="body-md">Line spacing</span>
+						<span class="mono-label text-on-surface-variant">{lineHeight.toFixed(1)}</span>
+					</span>
+					<input
+						type="range"
+						min="1.1"
+						max="2.6"
+						step="0.1"
+						value={lineHeight}
+						aria-label="Line spacing"
+						aria-valuetext={lineHeight.toFixed(1)}
+						class="mt-2 w-full"
+						oninput={(event) => (lineHeight = Number(event.currentTarget.value))}
+						onchange={() => saveReaderSetting('lineHeight', lineHeight)}
+					>
+				</label>
+
+				<div class="mb-1 flex items-center justify-between">
+					<span class="body-md">Right to left</span>
 					<button
 						type="button"
-						class="rounded-full border px-3 py-1"
-						onclick={() => adjustFontSize(-2)}
+						class="rounded-full border px-3 py-1 text-sm {rtlMode ? 'border-primary text-primary' : ''}"
+						onclick={toggleRtl}
+						aria-pressed={rtlMode}
 					>
-						A−
-					</button>
-					<span class="mono-label w-10 text-center">{fontSize}</span>
-					<button
-						type="button"
-						class="rounded-full border px-3 py-1"
-						onclick={() => adjustFontSize(2)}
-					>
-						A+
+						{rtlMode ? 'On' : 'Off'}
 					</button>
 				</div>
-			</div>
+			{/if}
 
-			<div class="mb-3 flex items-center justify-between">
-				<span class="body-md">Line spacing</span>
-				<button
-					type="button"
-					class="rounded-full border px-3 py-1 text-sm"
-					onclick={adjustLineHeight}
-				>
-					{lineHeight === 1.6 ? 'Compact' : 'Relaxed'}
-				</button>
-			</div>
+			{#if showImageOptions}
+				<h3 class="label-caps mb-2 {showTextOptions ? 'mt-4' : ''} text-on-surface-variant">
+					Images
+				</h3>
 
-			<div class="mb-3 flex items-center justify-between">
-				<span class="body-md">Image margins</span>
-				<div class="flex gap-2">
-					<button
-						type="button"
-						class="rounded-full border px-3 py-1 text-sm"
-						onclick={() => adjustImageMargin(-4)}
+				<label class="mb-3 block">
+					<span class="flex items-baseline justify-between">
+						<span class="body-md">Side margins</span>
+						<span class="mono-label text-on-surface-variant">{imageMarginPct}%</span>
+					</span>
+					<input
+						type="range"
+						min="0"
+						max="50"
+						step="1"
+						value={imageMarginPct}
+						aria-label="Side margins as a percentage of the width"
+						aria-valuetext="{imageMarginPct} percent"
+						class="mt-2 w-full"
+						oninput={(event) => (imageMarginPct = clampMarginPct(event.currentTarget.valueAsNumber))}
+						onchange={() => saveReaderSetting('imageMarginPct', imageMarginPct)}
 					>
-						−
-					</button>
-					<span class="mono-label w-10 text-center">{imageMargin}px</span>
-					<button
-						type="button"
-						class="rounded-full border px-3 py-1 text-sm"
-						onclick={() => adjustImageMargin(4)}
-					>
-						+
-					</button>
-				</div>
-			</div>
+				</label>
 
-			<div class="flex items-center justify-between">
-				<span class="body-md">Image gap</span>
-				<div class="flex gap-2">
-					<button
-						type="button"
-						class="rounded-full border px-3 py-1 text-sm"
-						onclick={() => adjustImageGap(-2)}
+				<label class="block">
+					<span class="flex items-baseline justify-between">
+						<span class="body-md">Gap between images</span>
+						<span class="mono-label text-on-surface-variant">{imageGapPct}%</span>
+					</span>
+					<input
+						type="range"
+						min="0"
+						max="25"
+						step="1"
+						value={imageGapPct}
+						aria-label="Gap between images as a percentage of the width"
+						aria-valuetext="{imageGapPct} percent"
+						class="mt-2 w-full"
+						oninput={(event) => (imageGapPct = clampGapPct(event.currentTarget.valueAsNumber))}
+						onchange={() => saveReaderSetting('imageGapPct', imageGapPct)}
 					>
-						−
-					</button>
-					<span class="mono-label w-10 text-center">{imageGap}px</span>
-					<button
-						type="button"
-						class="rounded-full border px-3 py-1 text-sm"
-						onclick={() => adjustImageGap(2)}
-					>
-						+
-					</button>
-				</div>
-			</div>
-
-			<div class="mt-2 flex items-center justify-between">
-				<span class="body-md">RTL</span>
-				<button
-					type="button"
-					class="rounded-full border px-3 py-1 text-sm {rtlMode ? 'border-primary text-primary' : ''}"
-					onclick={toggleRtl}
-				>
-					{rtlMode ? 'On' : 'Off'}
-				</button>
-			</div>
+				</label>
+			{/if}
 		</div>
 	</div>
 {/if}
@@ -500,7 +504,7 @@ async function load() {
 		{:else if images.length > 0}
 			<div
 				class="mx-auto max-w-4xl"
-				style="padding-left: {imageMargin}px; padding-right: {imageMargin}px"
+				style="padding-left: {imageMarginPct}%; padding-right: {imageMarginPct}%"
 			>
 				{#each images as url, index (url)}
 					<img
@@ -508,7 +512,7 @@ async function load() {
 						src={proxied(url, chapters[chapterIndex]?.remote_url)}
 						alt="Page {index + 1}"
 						class="mx-auto block w-full"
-						style={index > 0 ? 'margin-top: {imageGap}px' : ''}
+						style={index > 0 ? 'margin-top: {imageGapPct}%' : ''}
 						onload={() => imageLoaded(index)}
 					>
 				{/each}

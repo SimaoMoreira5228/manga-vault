@@ -7,8 +7,9 @@ import '../service/sync_scheduler.dart';
 import '../service/vault_events.dart';
 import '../service/vault_service.dart';
 import 'continue_reading.dart';
-import 'pager_bar.dart';
+import 'list_footer.dart';
 import 'skeletons.dart';
+import 'work_cover_card.dart';
 import 'work_page.dart';
 
 class LibraryPage extends StatefulWidget {
@@ -25,8 +26,10 @@ class _LibraryPageState extends State<LibraryPage> {
   List<LibraryItem>? items;
   Map<String, ChapterProgressStats> overview = {};
   List<CategoryInfo> categories = [];
-  int total = 0;
-  int offset = 0;
+  bool loadingMore = false;
+  bool done = false;
+  String? pageFailure;
+  int _epoch = 0;
   String sort = 'added';
   String textQuery = '';
   String kindFilter = 'all';
@@ -72,16 +75,19 @@ class _LibraryPageState extends State<LibraryPage> {
     _load();
   }
 
+  LibraryFilter get _filter => LibraryFilter(
+    kind: kindFilter == 'all' ? null : kindFilter,
+    categoryId: categoryFilter,
+    query: textQuery,
+  );
+
   Future<void> _load() async {
+    final epoch = ++_epoch;
     try {
       final loaded = await widget.vault.listLibrary(
-        offset: offset,
+        offset: 0,
         limit: pageSize,
-        filter: LibraryFilter(
-          kind: kindFilter == 'all' ? null : kindFilter,
-          categoryId: categoryFilter,
-          query: textQuery,
-        ),
+        filter: _filter,
       );
       final counts = await widget.vault.libraryOverview().catchError(
         (_) => <String, ChapterProgressStats>{},
@@ -89,32 +95,61 @@ class _LibraryPageState extends State<LibraryPage> {
       final cats = await widget.vault.listCategories().catchError(
         (_) => <CategoryInfo>[],
       );
-      if (!mounted) return;
+      if (!mounted || epoch != _epoch) return;
       setState(() {
         items = loaded.items;
-        total = loaded.total;
         overview = counts;
         categories = cats;
         error = null;
+        pageFailure = null;
+        loadingMore = false;
+        done =
+            loaded.items.length < pageSize ||
+            loaded.items.length >= loaded.total;
       });
     } catch (e) {
-      if (!mounted) return;
-      setState(() => error = e.toString());
+      if (!mounted || epoch != _epoch) return;
+      setState(() {
+        error = e.toString();
+        loadingMore = false;
+      });
     }
   }
 
-  void _shiftPage(int next) {
-    setState(() {
-      offset = next;
-      items = null;
-    });
-    _load();
+  Future<void> _more() async {
+    final window = items;
+    if (window == null || window.isEmpty || loadingMore || done) return;
+    final epoch = _epoch;
+    setState(() => loadingMore = true);
+    try {
+      final page = await widget.vault.listLibrary(
+        offset: window.length,
+        limit: pageSize,
+        filter: _filter,
+      );
+      if (!mounted || epoch != _epoch) return;
+      final seen = window.length + page.items.length;
+      setState(() {
+        items = [...window, ...page.items];
+        pageFailure = null;
+        loadingMore = false;
+        done =
+            page.items.isEmpty ||
+            page.items.length < pageSize ||
+            seen >= page.total;
+      });
+    } catch (e) {
+      if (!mounted || epoch != _epoch) return;
+      setState(() {
+        pageFailure = e.toString();
+        loadingMore = false;
+      });
+    }
   }
 
   void _setKind(String kind) {
     setState(() {
       kindFilter = kind;
-      offset = 0;
     });
     _load();
   }
@@ -122,7 +157,6 @@ class _LibraryPageState extends State<LibraryPage> {
   void _setCategory(String? categoryId) {
     setState(() {
       categoryFilter = categoryId;
-      offset = 0;
     });
     _load();
   }
@@ -168,7 +202,6 @@ class _LibraryPageState extends State<LibraryPage> {
       if (!mounted) return;
       setState(() {
         textQuery = value;
-        offset = 0;
       });
       _load();
     });
@@ -296,164 +329,138 @@ class _LibraryPageState extends State<LibraryPage> {
                 await _load();
                 SyncScheduler.instance.nudge();
               },
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: ContinueReadingRow(
-                      vault: widget.vault,
-                      onChanged: _load,
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          for (final kind in ['all', 'manga', 'novel'])
-                            ChoiceChip(
-                              label: Text(kind),
-                              selected: kindFilter == kind,
-                              onSelected: (_) => _setKind(kind),
-                            ),
-                          for (final category in categories)
-                            InputChip(
-                              label: Text(category.name),
-                              selected: categoryFilter == category.id,
-                              onSelected: (selected) =>
-                                  _setCategory(selected ? category.id : null),
-                              onDeleted: () => _deleteCategory(category),
-                              deleteIcon: const Icon(Icons.close, size: 18),
-                            ),
-                          ActionChip(
-                            avatar: const Icon(Icons.add, size: 18),
-                            label: const Text('New'),
-                            onPressed: _createCategory,
-                          ),
-                        ],
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollUpdateNotification &&
+                      notification.metrics.axis == Axis.vertical &&
+                      notification.metrics.pixels + 400 >=
+                          notification.metrics.maxScrollExtent) {
+                    _more();
+                  }
+                  return false;
+                },
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: ContinueReadingRow(
+                        vault: widget.vault,
+                        onChanged: _load,
                       ),
                     ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              decoration: const InputDecoration(
-                                isDense: true,
-                                hintText: 'Filter titles…',
-                                border: OutlineInputBorder(),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            for (final kind in ['all', 'manga', 'novel'])
+                              ChoiceChip(
+                                label: Text(kind),
+                                selected: kindFilter == kind,
+                                onSelected: (_) => _setKind(kind),
                               ),
-                              onChanged: _setQuery,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          SegmentedButton<String>(
-                            selected: {sort},
-                            onSelectionChanged: (value) =>
-                                setState(() => sort = value.first),
-                            segments: const [
-                              ButtonSegment(
-                                value: 'added',
-                                label: Text('Recent'),
+                            for (final category in categories)
+                              InputChip(
+                                label: Text(category.name),
+                                selected: categoryFilter == category.id,
+                                onSelected: (selected) =>
+                                    _setCategory(selected ? category.id : null),
+                                onDeleted: () => _deleteCategory(category),
+                                deleteIcon: const Icon(Icons.close, size: 18),
                               ),
-                              ButtonSegment(value: 'title', label: Text('A-Z')),
-                            ],
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '$total works',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (visible.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Center(
-                        child: Text(
-                          total < 1
-                              ? 'Your library is empty'
-                              : 'No titles match these filters',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                            ActionChip(
+                              avatar: const Icon(Icons.add, size: 18),
+                              label: const Text('New'),
+                              onPressed: _createCategory,
+                            ),
+                          ],
                         ),
                       ),
-                    )
-                  else
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final item = visible[index];
-                        final unread = unreadCount(item.work.id);
-                        return ListTile(
-                          leading: const Icon(Icons.menu_book),
-                          title: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  item.work.title,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (unread != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .secondary,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    '$unread new',
-                                    style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSecondary,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          subtitle: Text(
-                            '${item.work.chapters.length} chapters',
-                          ),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (action) {
-                              if (action == 'category') _assignCategory(item);
-                            },
-                            itemBuilder: (_) => [
-                              const PopupMenuItem(
-                                value: 'category',
-                                child: Text('Set category'),
-                              ),
-                            ],
-                          ),
-                          onTap: () => _open(item),
-                        );
-                      }, childCount: visible.length),
                     ),
-                  SliverToBoxAdapter(
-                    child: PagerBar(
-                      offset: offset,
-                      limit: pageSize,
-                      total: total,
-                      onshift: _shiftPage,
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  hintText: 'Filter titles…',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: _setQuery,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SegmentedButton<String>(
+                              selected: {sort},
+                              onSelectionChanged: (value) =>
+                                  setState(() => sort = value.first),
+                              segments: const [
+                                ButtonSegment(
+                                  value: 'added',
+                                  label: Text('Recent'),
+                                ),
+                                ButtonSegment(
+                                  value: 'title',
+                                  label: Text('A-Z'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${items?.length ?? 0} works',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    if (visible.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: Text(
+                            (items ?? const []).isEmpty
+                                ? 'Your library is empty'
+                                : 'No titles match these filters',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                      )
+                    else
+                      WorkCoverSliverGrid(
+                        itemCount: visible.length,
+                        itemBuilder: (context, index) {
+                          final item = visible[index];
+                          return WorkCoverCard(
+                            vault: widget.vault,
+                            title: item.work.title,
+                            coverUrl: item.work.coverUrl,
+                            remoteUrl: item.work.remoteUrl,
+                            kind: item.work.kind,
+                            sourceId: item.work.sourceId,
+                            progress: overview[item.work.id],
+                            onTap: () => _open(item),
+                            onLongPress: () => _assignCategory(item),
+                          );
+                        },
+                      ),
+                    SliverToBoxAdapter(
+                      child: ListFooter(
+                        busy: loadingMore,
+                        failure: pageFailure,
+                        onRetry: _more,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
     );

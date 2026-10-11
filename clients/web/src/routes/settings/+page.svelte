@@ -327,6 +327,10 @@ async function clearTranslationSettings() {
 		</button>
 	</section>
 
+	<AccountSecurity />
+
+	<DeviceList />
+
 	<section class="mt-12" aria-labelledby="translation-heading">
 		<h2 id="translation-heading" class="title-lg flex items-center gap-2">
 			<IconTranslate class="size-5" />
@@ -404,7 +408,7 @@ async function clearTranslationSettings() {
 		{/if}
 	</section>
 
-	<section class="mt-12 max-w-3xl" aria-labelledby="notifications-heading">
+	<section class="mt-12" aria-labelledby="notifications-heading">
 		<h2 id="notifications-heading" class="title-lg">New chapter notifications</h2>
 		<label class="mt-3 flex items-center gap-3 body-md">
 			<input
@@ -513,7 +517,7 @@ async function clearTranslationSettings() {
 		{/if}
 	</section>
 
-	<section class="mt-12 max-w-3xl" aria-labelledby="migration-heading">
+	<section class="mt-12" aria-labelledby="migration-heading">
 		<h2 id="migration-heading" class="title-lg">Source migration</h2>
 		<p class="body-md mt-1 text-on-surface-variant">
 			Move library works from one source to another, keeping read chapters.
@@ -582,8 +586,8 @@ async function clearTranslationSettings() {
 		{/if}
 	</section>
 
-	<section class="mt-12" aria-labelledby="registration-heading">
-		{#if auth.isAdmin}
+	{#if auth.isAdmin}
+		<section class="mt-12" aria-labelledby="registration-heading">
 			<h2 id="registration-heading" class="title-lg">Registration</h2>
 			{#if registrationMode !== null}
 				<div class="mt-4 flex flex-wrap items-center gap-3">
@@ -637,14 +641,10 @@ async function clearTranslationSettings() {
 			{:else}
 				<p class="body-md mt-2 text-on-surface-variant">Loading registration settings…</p>
 			{/if}
-		{/if}
-	</section>
+		</section>
+	{/if}
 
-	<AccountSecurity />
-
-	<DeviceList />
-
-	<section class="mt-10 max-w-3xl" aria-labelledby="data-heading">
+	<section class="mt-10" aria-labelledby="data-heading">
 		<h2 id="data-heading" class="title-lg">Data</h2>
 		<div class="mt-3 flex flex-wrap gap-3">
 			<a

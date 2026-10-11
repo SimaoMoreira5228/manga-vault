@@ -5,7 +5,7 @@ import '../service/remote_error.dart';
 import '../service/remote_service.dart';
 import '../service/session_store.dart';
 import '../service/vault_service.dart';
-import 'pager_bar.dart';
+import 'list_footer.dart';
 
 class SessionsSection extends StatefulWidget {
   const SessionsSection({
@@ -18,16 +18,19 @@ class SessionsSection extends StatefulWidget {
   final VoidCallback onSignedOut;
 
   @override
-  State<SessionsSection> createState() => _SessionsSectionState();
+  State<SessionsSection> createState() => SessionsSectionState();
 }
 
-class _SessionsSectionState extends State<SessionsSection> {
+class SessionsSectionState extends State<SessionsSection> {
   List<SessionInfo> sessions = const [];
-  int total = 0;
-  int offset = 0;
   bool loading = true;
+  bool loadingMore = false;
+  bool done = false;
   bool securityBusy = false;
   String? failure;
+  String? pageFailure;
+  final devices = GlobalKey();
+  int _epoch = 0;
 
   @override
   void initState() {
@@ -36,14 +39,18 @@ class _SessionsSectionState extends State<SessionsSection> {
   }
 
   Future<void> _load() async {
+    final epoch = ++_epoch;
     try {
-      final page = await widget.account.sessions(offset: offset);
-      if (!mounted) return;
+      final page = await widget.account.sessions(offset: 0);
+      if (!mounted || epoch != _epoch) return;
       setState(() {
         sessions = page.items;
-        total = page.total;
         loading = false;
         failure = null;
+        pageFailure = null;
+        loadingMore = false;
+        done =
+            page.items.length < page.limit || page.items.length >= page.total;
       });
     } catch (e) {
       if (!mounted) return;
@@ -54,9 +61,45 @@ class _SessionsSectionState extends State<SessionsSection> {
     }
   }
 
-  void _shiftPage(int next) {
-    setState(() => offset = next);
-    _load();
+  Future<void> _more() async {
+    if (loading || loadingMore || done || failure != null) return;
+    if (sessions.isEmpty) return;
+    final epoch = _epoch;
+    setState(() => loadingMore = true);
+    try {
+      final page = await widget.account.sessions(offset: sessions.length);
+      if (!mounted || epoch != _epoch) return;
+      final seen = sessions.length + page.items.length;
+      setState(() {
+        sessions = [...sessions, ...page.items];
+        pageFailure = null;
+        loadingMore = false;
+        done =
+            page.items.isEmpty ||
+            page.items.length < page.limit ||
+            seen >= page.total;
+      });
+    } catch (e) {
+      if (!mounted || epoch != _epoch) return;
+      setState(() {
+        pageFailure = '$e';
+        loadingMore = false;
+      });
+    }
+  }
+
+  void loadMore(ScrollNotification notification) {
+    if (notification is! ScrollUpdateNotification) return;
+    if (notification.metrics.axis != Axis.vertical) return;
+    final viewport = notification.context?.findRenderObject();
+    final section = devices.currentContext?.findRenderObject();
+    if (viewport is! RenderBox || section is! RenderBox) return;
+    if (!viewport.hasSize || !section.hasSize) return;
+    final reach =
+        section.localToGlobal(Offset.zero, ancestor: viewport).dy +
+        section.size.height;
+    if (reach > viewport.size.height + 200) return;
+    _more();
   }
 
   Future<void> _revoke(SessionInfo session) async {
@@ -71,9 +114,6 @@ class _SessionsSectionState extends State<SessionsSection> {
     if (session.token == widget.account.token) {
       await _signOutEverywhere();
       return;
-    }
-    if (sessions.length == 1 && offset > 0) {
-      setState(() => offset -= pageSize);
     }
     await _load();
   }
@@ -133,6 +173,7 @@ class _SessionsSectionState extends State<SessionsSection> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      key: devices,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Padding(
@@ -171,6 +212,8 @@ class _SessionsSectionState extends State<SessionsSection> {
                 child: const Text('Revoke'),
               ),
             ),
+        if (failure == null)
+          ListFooter(busy: loadingMore, failure: pageFailure, onRetry: _more),
         ListTile(
           title: const Text('Change password'),
           subtitle: const Text(
@@ -192,13 +235,6 @@ class _SessionsSectionState extends State<SessionsSection> {
             child: const Text('Log out everywhere'),
           ),
         ),
-        if (failure == null)
-          PagerBar(
-            offset: offset,
-            limit: pageSize,
-            total: total,
-            onshift: _shiftPage,
-          ),
       ],
     );
   }
@@ -311,7 +347,10 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
             ),
           ),
           if (field == null && problem != null)
-            Text(problem!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            Text(
+              problem!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
         ],
       ),
       actions: [

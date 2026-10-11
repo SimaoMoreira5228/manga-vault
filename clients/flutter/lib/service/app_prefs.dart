@@ -101,16 +101,17 @@ class AppPrefs {
     await _save();
   }
 
-  double get globalImageMargin =>
-      (_data['imageMargin'] as num?)?.toDouble() ?? 0.0;
-  Future<void> setGlobalImageMargin(double value) async {
-    _data['imageMargin'] = value;
+  double get globalImageMarginPct =>
+      (_data['imageMarginPct'] as num?)?.toDouble() ?? 0.0;
+  Future<void> setGlobalImageMarginPct(double value) async {
+    _data['imageMarginPct'] = value;
     await _save();
   }
 
-  double get globalImageGap => (_data['imageGap'] as num?)?.toDouble() ?? 0.0;
-  Future<void> setGlobalImageGap(double value) async {
-    _data['imageGap'] = value;
+  double get globalImageGapPct =>
+      (_data['imageGapPct'] as num?)?.toDouble() ?? 0.0;
+  Future<void> setGlobalImageGapPct(double value) async {
+    _data['imageGapPct'] = value;
     await _save();
   }
 
@@ -149,11 +150,12 @@ class AppPrefs {
       workReaderSettings(workId)?['lineHeight']?.toDouble() ?? globalLineHeight;
   bool effectivePagedMode(String workId) =>
       workReaderSettings(workId)?['pagedMode'] as bool? ?? pagedMode;
-  double effectiveImageMargin(String workId) =>
-      workReaderSettings(workId)?['imageMargin']?.toDouble() ??
-      globalImageMargin;
-  double effectiveImageGap(String workId) =>
-      workReaderSettings(workId)?['imageGap']?.toDouble() ?? globalImageGap;
+  double effectiveImageMarginPct(String workId) =>
+      workReaderSettings(workId)?['imageMarginPct']?.toDouble() ??
+      globalImageMarginPct;
+  double effectiveImageGapPct(String workId) =>
+      workReaderSettings(workId)?['imageGapPct']?.toDouble() ??
+      globalImageGapPct;
   bool effectiveRtlMode(String workId) =>
       workReaderSettings(workId)?['rtlMode'] as bool? ?? rtlMode;
 }

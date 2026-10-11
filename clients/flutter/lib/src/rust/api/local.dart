@@ -262,6 +262,7 @@ class ContinueItem {
   final String workId;
   final String title;
   final String? coverUrl;
+  final String remoteUrl;
   final String? chapterId;
   final int? page;
 
@@ -269,6 +270,7 @@ class ContinueItem {
     required this.workId,
     required this.title,
     this.coverUrl,
+    required this.remoteUrl,
     this.chapterId,
     this.page,
   });
@@ -278,6 +280,7 @@ class ContinueItem {
       workId.hashCode ^
       title.hashCode ^
       coverUrl.hashCode ^
+      remoteUrl.hashCode ^
       chapterId.hashCode ^
       page.hashCode;
 
@@ -289,6 +292,7 @@ class ContinueItem {
           workId == other.workId &&
           title == other.title &&
           coverUrl == other.coverUrl &&
+          remoteUrl == other.remoteUrl &&
           chapterId == other.chapterId &&
           page == other.page;
 }

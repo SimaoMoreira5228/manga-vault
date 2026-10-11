@@ -8,6 +8,7 @@ import 'fake_vault.dart';
 const _solo = ContinueItem(
   workId: 'w1',
   title: 'Solo Leveling',
+  remoteUrl: 'https://example.test/novel/solo',
   chapterId: 'c1',
   page: 3,
 );
@@ -15,6 +16,7 @@ const _solo = ContinueItem(
 const _chainsaw = ContinueItem(
   workId: 'w2',
   title: 'Chainsaw Man',
+  remoteUrl: 'https://example.test/novel/chainsaw',
   chapterId: 'c2',
   page: 1,
 );

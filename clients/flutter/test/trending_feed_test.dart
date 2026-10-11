@@ -46,7 +46,7 @@ void main() {
     expect(find.text('manga'), findsNWidgets(2));
   });
 
-  testWidgets('switches trending source and pages through results', (
+  testWidgets('appends the next trending page when the list runs out', (
     tester,
   ) async {
     final vault = FakeVault(
@@ -60,14 +60,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('novel'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Next'));
-    await tester.pumpAndSettle();
-
     expect(vault.trendingRequests, [
       (sourceId: 'katana', page: 1),
       (sourceId: 'novelfire', page: 1),
-      (sourceId: 'novelfire', page: 2),
     ]);
+    expect(find.text('First'), findsOneWidget);
   });
 
   testWidgets('reports a trending failure and retries on demand', (

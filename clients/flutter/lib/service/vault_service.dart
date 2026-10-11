@@ -115,7 +115,7 @@ class SessionInfo {
 }
 
 abstract class VaultService {
-  String imageUrl(String url);
+  String imageUrl(String url, {String? referer});
 
   Map<String, String> get imageHeaders;
 

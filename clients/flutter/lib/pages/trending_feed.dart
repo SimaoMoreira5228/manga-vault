@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../service/vault_service.dart';
+import 'list_footer.dart';
+import 'work_cover_card.dart';
 import 'skeletons.dart';
-import 'source_page_bar.dart';
 
 class TrendingFeed extends StatefulWidget {
   const TrendingFeed({
@@ -24,37 +25,77 @@ class _TrendingFeedState extends State<TrendingFeed> {
   late String sourceId = widget.sources.first.id;
   List<WorkSummary>? results;
   bool failed = false;
+  bool loadingMore = false;
+  bool done = false;
+  String? pageFailure;
   int page = 1;
+  int _epoch = 0;
 
   @override
   void initState() {
     super.initState();
-    _fetch(1);
+    _load();
   }
 
   Future<void> _pick(String id) async {
     setState(() => sourceId = id);
-    await _fetch(1);
+    await _load();
   }
 
-  Future<void> _fetch(int target) async {
+  Future<void> _load() async {
+    final epoch = ++_epoch;
     setState(() {
-      page = target;
+      page = 1;
       failed = false;
       results = null;
+      loadingMore = false;
+      done = false;
+      pageFailure = null;
     });
     try {
       final trending = await widget.vault.trendingSource(
         sourceId: sourceId,
-        page: target,
+        page: 1,
       );
-      if (!mounted) return;
-      setState(() => results = trending);
+      if (!mounted || epoch != _epoch) return;
+      setState(() {
+        results = trending;
+        done = trending.isEmpty;
+      });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || epoch != _epoch) return;
       setState(() {
         failed = true;
         results = const [];
+        done = true;
+      });
+    }
+  }
+
+  Future<void> _more() async {
+    final window = results;
+    if (window == null || window.isEmpty) return;
+    if (loadingMore || done || failed) return;
+    final epoch = _epoch;
+    setState(() => loadingMore = true);
+    try {
+      final trending = await widget.vault.trendingSource(
+        sourceId: sourceId,
+        page: page + 1,
+      );
+      if (!mounted || epoch != _epoch) return;
+      setState(() {
+        results = [...window, ...trending];
+        page = page + 1;
+        pageFailure = null;
+        loadingMore = false;
+        done = trending.isEmpty;
+      });
+    } catch (e) {
+      if (!mounted || epoch != _epoch) return;
+      setState(() {
+        pageFailure = '$e';
+        loadingMore = false;
       });
     }
   }
@@ -109,37 +150,55 @@ class _TrendingFeedState extends State<TrendingFeed> {
                       if (failed) ...[
                         const SizedBox(height: 16),
                         FilledButton(
-                          onPressed: () => _fetch(page),
+                          onPressed: _load,
                           child: const Text('Retry'),
                         ),
                       ],
                     ],
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 16, 0),
-                  itemCount: shown.length,
-                  itemBuilder: (context, index) => ListTile(
-                    leading: SizedBox(
-                      width: 32,
-                      child: Text(
-                        '${index + 1}',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleLarge,
+              : NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    if (notification is ScrollUpdateNotification &&
+                        notification.metrics.axis == Axis.vertical &&
+                        notification.metrics.pixels + 400 >=
+                            notification.metrics.maxScrollExtent) {
+                      _more();
+                    }
+                    return false;
+                  },
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                        sliver: WorkCoverSliverGrid(
+                          itemCount: shown.length,
+                          itemBuilder: (context, index) {
+                            final entry = shown[index];
+                            return WorkCoverCard(
+                              vault: widget.vault,
+                              title: entry.title,
+                              coverUrl: entry.coverUrl,
+                              remoteUrl: entry.remoteUrl,
+                              kind: source.kind,
+                              sourceId: sourceId,
+                              badge: '${index + 1}',
+                              onTap: () => widget.onOpen(sourceId, entry),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    title: Text(
-                      shown[index].title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(source.kind),
-                    onTap: () => widget.onOpen(sourceId, shown[index]),
+                      SliverToBoxAdapter(
+                        child: ListFooter(
+                          busy: loadingMore,
+                          failure: pageFailure,
+                          onRetry: _more,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
         ),
-        if (shown != null && shown.isNotEmpty)
-          SourcePageBar(page: page, canAdvance: true, onshift: _fetch),
       ],
     );
   }

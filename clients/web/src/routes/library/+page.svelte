@@ -7,7 +7,6 @@ import {
 	type Work,
 	type WorkKind,
 } from '$lib/api';
-import Pager from '$lib/components/Pager.svelte';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
 import Skeleton from '$lib/components/Skeleton.svelte';
 import { onWorkRefreshed } from '$lib/events.svelte';
@@ -19,13 +18,15 @@ let items = $state<[LibraryEntry, Work][]>([]);
 let categories = $state<Category[]>([]);
 let overview = $state<Record<string, { read: number; total: number }>>({});
 let total = $state(0);
-let offset = $state(0);
 let filter = $state<'all' | WorkKind>('all');
 let categoryFilter = $state<string | null>(null);
 let sort = $state<'updated' | 'title' | 'added' | 'unread-desc' | 'unread-asc'>('updated');
 let textQuery = $state('');
 let loading = $state(true);
+let loadingMore = $state(false);
 let loadError = $state<string | null>(null);
+let moreError = $state<string | null>(null);
+let finished = $state(false);
 let newCategoryName = $state('');
 let refreshBusy = $state(false);
 
@@ -66,12 +67,14 @@ async function load() {
 	loadError = null;
 	try {
 		const [library, counts] = await Promise.all([
-			api.library(offset, limit, filterQuery),
+			api.library(0, limit, filterQuery),
 			api.libraryOverview().catch(() => ({ overview: [] })),
 		]);
 		items = library.entries;
 		categories = library.categories;
 		total = library.total;
+		finished = library.entries.length >= library.total;
+		moreError = null;
 		overview = Object.fromEntries(
 			counts.overview.map((row) => [
 				row.work_id,
@@ -85,11 +88,38 @@ async function load() {
 	}
 }
 
-function shiftPage(next: number) {
-	offset = next;
-	loading = true;
-	load();
+async function loadMore() {
+	if (loading || loadingMore || finished) return;
+	loadingMore = true;
+	moreError = null;
+	try {
+		const page = await api.library(items.length, limit, filterQuery);
+		const seen = new Set(items.map(([entry]) => entry.id));
+		const added = page.entries.filter(([entry]) => !seen.has(entry.id));
+		items = [...items, ...added];
+		total = page.total;
+		finished = added.length === 0 || items.length >= page.total;
+	} catch (cause) {
+		moreError = cause instanceof Error ? cause.message : 'Could not load more';
+	} finally {
+		loadingMore = false;
+	}
 }
+
+let sentinel = $state<HTMLDivElement | undefined>();
+
+$effect(() => {
+	const node = sentinel;
+	if (!node) return;
+	const observer = new IntersectionObserver(
+		(entries) => {
+			if (entries.some((entry) => entry.isIntersecting)) loadMore().catch(() => undefined);
+		},
+		{ rootMargin: '600px 0px' },
+	);
+	observer.observe(node);
+	return () => observer.disconnect();
+});
 
 $effect(() => {
 	load();
@@ -123,7 +153,6 @@ async function removeCategory(categoryId: string) {
 	await api.deleteCategory(categoryId);
 	if (categoryFilter === categoryId) {
 		categoryFilter = null;
-		offset = 0;
 	}
 	categories = categories.filter((category) => category.id !== categoryId);
 }
@@ -159,8 +188,7 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 						: 'border-outline-variant/50 text-on-surface-variant hover:border-outline'}"
 					onclick={() => {
 						filter = option;
-						offset = 0;
-					}}
+									}}
 					aria-pressed={filter === option}
 				>
 					{option === 'all' ? 'All' : `${option}s`}
@@ -174,8 +202,7 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 					: 'border-outline-variant/50 text-on-surface-variant hover:border-outline'}"
 				onclick={() => {
 					categoryFilter = null;
-					offset = 0;
-				}}
+							}}
 				aria-pressed={categoryFilter === null}
 			>
 				All
@@ -190,8 +217,7 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 							: 'border-outline-variant/50 text-on-surface-variant hover:border-outline'}"
 						onclick={() => {
 							categoryFilter = categoryFilter === category.id ? null : category.id;
-							offset = 0;
-						}}
+											}}
 						aria-pressed={categoryFilter === category.id}
 					>
 						{category.name}
@@ -222,8 +248,7 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 				value={textQuery}
 				oninput={(event) => {
 					textQuery = event.currentTarget.value;
-					offset = 0;
-				}}
+							}}
 				class="min-w-0 flex-1 max-w-xs rounded-card border border-outline-variant/60 bg-surface-container px-4 py-2 outline-none focus:border-primary"
 			>
 			<select
@@ -299,6 +324,43 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 			{/each}
 		</div>
 
-		<Pager {offset} {limit} {total} label="Library" onshift={shiftPage} />
+		{#if moreError}
+			<div class="col-span-full" role="alert">
+				<p class="body-md text-error">{moreError}</p>
+				<button
+					type="button"
+					class="label-caps mt-2 rounded-card border border-primary/60 px-4 py-2 text-primary hover:border-primary"
+					onclick={() => loadMore()}
+				>
+					Retry
+				</button>
+			</div>
+		{/if}
+		{#if loadingMore}
+			<div class="col-span-full flex justify-center py-6">
+				<span class="sr-only">Loading more works</span>
+				<svg class="size-6 animate-spin text-primary" viewBox="0 0 24 24" aria-hidden="true">
+					<circle
+						class="opacity-20"
+						cx="12"
+						cy="12"
+						r="10"
+						stroke="currentColor"
+						stroke-width="4"
+						fill="none"
+					/>
+					<path
+						d="M4 12a8 8 0 0 1 8-8"
+						stroke="currentColor"
+						stroke-width="4"
+						fill="none"
+						stroke-linecap="round"
+					/>
+				</svg>
+			</div>
+		{/if}
+		{#if !loading && !loadingMore && !moreError}
+			<div bind:this={sentinel} class="col-span-full h-px"></div>
+		{/if}
 	{/if}
 </div>

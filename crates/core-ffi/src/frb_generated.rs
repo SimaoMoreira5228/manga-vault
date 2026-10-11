@@ -26,11 +26,10 @@
 
 // Section: imports
 
+use crate::api::local::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
-
-use crate::api::local::*;
 
 // Section: boilerplate
 
@@ -2521,12 +2520,14 @@ impl SseDecode for crate::api::local::ContinueItem {
 		let mut var_workId = <String>::sse_decode(deserializer);
 		let mut var_title = <String>::sse_decode(deserializer);
 		let mut var_coverUrl = <Option<String>>::sse_decode(deserializer);
+		let mut var_remoteUrl = <String>::sse_decode(deserializer);
 		let mut var_chapterId = <Option<String>>::sse_decode(deserializer);
 		let mut var_page = <Option<u32>>::sse_decode(deserializer);
 		return crate::api::local::ContinueItem {
 			work_id: var_workId,
 			title: var_title,
 			cover_url: var_coverUrl,
+			remote_url: var_remoteUrl,
 			chapter_id: var_chapterId,
 			page: var_page,
 		};
@@ -3182,6 +3183,7 @@ impl flutter_rust_bridge::IntoDart for crate::api::local::ContinueItem {
 			self.work_id.into_into_dart().into_dart(),
 			self.title.into_into_dart().into_dart(),
 			self.cover_url.into_into_dart().into_dart(),
+			self.remote_url.into_into_dart().into_dart(),
 			self.chapter_id.into_into_dart().into_dart(),
 			self.page.into_into_dart().into_dart(),
 		]
@@ -3540,6 +3542,7 @@ impl SseEncode for crate::api::local::ContinueItem {
 		<String>::sse_encode(self.work_id, serializer);
 		<String>::sse_encode(self.title, serializer);
 		<Option<String>>::sse_encode(self.cover_url, serializer);
+		<String>::sse_encode(self.remote_url, serializer);
 		<Option<String>>::sse_encode(self.chapter_id, serializer);
 		<Option<u32>>::sse_encode(self.page, serializer);
 	}
@@ -3910,12 +3913,11 @@ mod io {
 
 	// Section: imports
 
+	use super::*;
+	use crate::api::local::*;
 	use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 	use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
 	use flutter_rust_bridge::{Handler, IntoIntoDart};
-
-	use super::*;
-	use crate::api::local::*;
 
 	// Section: boilerplate
 
@@ -3946,13 +3948,13 @@ mod web {
 
 	// Section: imports
 
-	use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
-	use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
-	use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco, wasm_bindgen};
-	use flutter_rust_bridge::{Handler, IntoIntoDart};
-
 	use super::*;
 	use crate::api::local::*;
+	use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
+	use flutter_rust_bridge::for_generated::wasm_bindgen;
+	use flutter_rust_bridge::for_generated::wasm_bindgen::prelude::*;
+	use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
+	use flutter_rust_bridge::{Handler, IntoIntoDart};
 
 	// Section: boilerplate
 

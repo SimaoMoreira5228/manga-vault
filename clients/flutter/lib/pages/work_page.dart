@@ -603,7 +603,7 @@ class _Hero extends StatelessWidget {
   });
 
   final WorkDetails details;
-  final String Function(String url) imageUrl;
+  final String Function(String url, {String? referer}) imageUrl;
   final Map<String, String> imageHeaders;
 
   @override
@@ -625,7 +625,7 @@ class _Hero extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             child: details.coverUrl != null
                 ? Image.network(
-                    imageUrl(details.coverUrl!),
+                    imageUrl(details.coverUrl!, referer: details.remoteUrl),
                     headers: imageHeaders,
                     width: 160,
                     height: 240,

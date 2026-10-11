@@ -13,8 +13,11 @@ class RemoteService implements VaultService {
   String token;
 
   @override
-  String imageUrl(String url) =>
-      '$baseUrl/api/proxy?url=${Uri.encodeQueryComponent(url)}';
+  String imageUrl(String url, {String? referer}) {
+    final query = {'url': url};
+    if (referer != null && referer.isNotEmpty) query['referer'] = referer;
+    return '$baseUrl/api/proxy?${Uri(queryParameters: query).query}';
+  }
 
   @override
   Map<String, String> get imageHeaders => _auth;
@@ -649,6 +652,7 @@ class RemoteService implements VaultService {
           workId: item['work']['id'] as String,
           title: item['work']['title'] as String,
           coverUrl: item['work']['cover_url'] as String?,
+          remoteUrl: item['work']['remote_url'] as String? ?? '',
           chapterId: item['page'] != null
               ? item['last_read']['id'] as String
               : (item['next_chapter'] ?? item['last_read'])['id'] as String,

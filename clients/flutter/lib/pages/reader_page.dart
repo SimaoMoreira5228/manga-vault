@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../service/app_prefs.dart';
 import '../service/vault_service.dart';
+import 'reader_layout_sheet.dart';
 class ReaderPage extends StatefulWidget {
   const ReaderPage({
     super.key,
@@ -43,8 +44,9 @@ class _ReaderPageState extends State<ReaderPage> {
   double _fontSize = 16;
   double _lineHeight = 1.6;
   bool _pagedMode = false;
-  double _imageMargin = 0;
-  double _imageGap = 0;
+  double _imageMarginPct = 0;
+  double _imageGapPct = 0;
+  String? _kind;
   bool _rtlMode = false;
   String _workId = '';
 
@@ -119,6 +121,7 @@ class _ReaderPageState extends State<ReaderPage> {
     if (maxExtent > 0) _scroll.jumpTo(maxExtent * fraction);
   }
 
+  String? _referer;
   String? translatedHtml;
   List<Map<String, dynamic>> matches = const [];
   String? translationMode;
@@ -134,6 +137,7 @@ class _ReaderPageState extends State<ReaderPage> {
     _scroll.addListener(_onScroll);
     _loadSettings();
     _positionsLoaded = _loadPositions();
+    _resolveWork();
     _load(current.id);
     widget.vault
         .translationMode()
@@ -141,6 +145,71 @@ class _ReaderPageState extends State<ReaderPage> {
           if (mounted) setState(() => translationMode = mode);
         })
         .catchError((_) {});
+  }
+
+  Future<void> _openLayoutSheet() async {
+    final prefs = await AppPrefs.instance();
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: false,
+      builder: (context) => ReaderLayoutSheet(
+        kind: _kind,
+        settings: ReaderSettings(
+          imageMarginPct: _imageMarginPct,
+          imageGapPct: _imageGapPct,
+          fontSize: _fontSize,
+          lineHeight: _lineHeight,
+          pagedMode: _pagedMode,
+          rtlMode: _rtlMode,
+        ),
+        onChange: (next) async {
+          setState(() {
+            _imageMarginPct = next.imageMarginPct;
+            _imageGapPct = next.imageGapPct;
+            _fontSize = next.fontSize;
+            _lineHeight = next.lineHeight;
+            _pagedMode = next.pagedMode;
+            _rtlMode = next.rtlMode;
+          });
+          await prefs.setWorkReaderSetting(_workId, 'imageMarginPct', next.imageMarginPct);
+          await prefs.setWorkReaderSetting(_workId, 'imageGapPct', next.imageGapPct);
+          await prefs.setWorkReaderSetting(_workId, 'fontSize', next.fontSize);
+          await prefs.setWorkReaderSetting(_workId, 'lineHeight', next.lineHeight);
+          await prefs.setWorkReaderSetting(_workId, 'pagedMode', next.pagedMode);
+          await prefs.setWorkReaderSetting(_workId, 'rtlMode', next.rtlMode);
+        },
+      ),
+    );
+  }
+
+  Widget _proxied(String url, BoxFit fit) {
+    if (_referer == null) {
+      return const SizedBox(
+        height: 160,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    return Image.network(
+      widget.vault.imageUrl(url, referer: _referer),
+      headers: widget.vault.imageHeaders,
+      fit: fit,
+      errorBuilder: (_, _, _) => const SizedBox(height: 120),
+    );
+  }
+
+  Future<void> _resolveWork() async {
+    try {
+      final work = await widget.vault.getWork(workId: _workId);
+      if (!mounted) return;
+      setState(() {
+        _referer = work.remoteUrl;
+        _kind = work.kind;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _referer = '');
+    }
   }
 
   Future<void> _loadPositions() async {
@@ -167,8 +236,8 @@ class _ReaderPageState extends State<ReaderPage> {
       _fontSize = prefs.effectiveFontSize(_workId);
       _lineHeight = prefs.effectiveLineHeight(_workId);
       _pagedMode = prefs.effectivePagedMode(_workId);
-      _imageMargin = prefs.effectiveImageMargin(_workId);
-      _imageGap = prefs.effectiveImageGap(_workId);
+      _imageMarginPct = prefs.effectiveImageMarginPct(_workId);
+      _imageGapPct = prefs.effectiveImageGapPct(_workId);
       _rtlMode = prefs.effectiveRtlMode(_workId);
     });
   }
@@ -231,39 +300,7 @@ class _ReaderPageState extends State<ReaderPage> {
     });
   }
 
-  void _handleReaderSetting(String action) async {
-    final prefs = await AppPrefs.instance();
-    switch (action) {
-      case 'font_up':
-        _fontSize = (_fontSize + 2).clamp(10, 32);
-        await prefs.setWorkReaderSetting(_workId, 'fontSize', _fontSize);
-      case 'font_down':
-        _fontSize = (_fontSize - 2).clamp(10, 32);
-        await prefs.setWorkReaderSetting(_workId, 'fontSize', _fontSize);
-      case 'spacing':
-        _lineHeight = _lineHeight == 1.6 ? 2.2 : 1.6;
-        await prefs.setWorkReaderSetting(_workId, 'lineHeight', _lineHeight);
-      case 'paged':
-        _pagedMode = !_pagedMode;
-        await prefs.setWorkReaderSetting(_workId, 'pagedMode', _pagedMode);
-      case 'margin_up':
-        _imageMargin = (_imageMargin + 4).clamp(0, 64);
-        await prefs.setWorkReaderSetting(_workId, 'imageMargin', _imageMargin);
-      case 'margin_down':
-        _imageMargin = (_imageMargin - 4).clamp(0, 64);
-        await prefs.setWorkReaderSetting(_workId, 'imageMargin', _imageMargin);
-      case 'gap_up':
-        _imageGap = (_imageGap + 2).clamp(0, 32);
-        await prefs.setWorkReaderSetting(_workId, 'imageGap', _imageGap);
-      case 'gap_down':
-        _imageGap = (_imageGap - 2).clamp(0, 32);
-        await prefs.setWorkReaderSetting(_workId, 'imageGap', _imageGap);
-      case 'rtl':
-        _rtlMode = !_rtlMode;
-        await prefs.setWorkReaderSetting(_workId, 'rtlMode', _rtlMode);
-    }
-    setState(() {});
-  }
+
 
   void _showGlossary() {
     showModalBottomSheet<void>(
@@ -411,40 +448,10 @@ class _ReaderPageState extends State<ReaderPage> {
               icon: const Icon(Icons.translate),
               onPressed: _translate,
             ),
-          PopupMenuButton<String>(
+          IconButton(
             icon: const Icon(Icons.tune),
-            onSelected: _handleReaderSetting,
-            itemBuilder: (_) => [
-              PopupMenuItem(value: 'font_up', child: Text('Larger text')),
-              PopupMenuItem(value: 'font_down', child: Text('Smaller text')),
-              PopupMenuItem(
-                value: 'spacing',
-                child: Text('Toggle line spacing'),
-              ),
-              PopupMenuItem(value: 'paged', child: Text('Toggle paged mode')),
-              PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'margin_up',
-                child: Text('Wider image margins'),
-              ),
-              PopupMenuItem(
-                value: 'margin_down',
-                child: Text('Narrower image margins'),
-              ),
-              PopupMenuItem(
-                value: 'gap_up',
-                child: Text('More gap between images'),
-              ),
-              PopupMenuItem(
-                value: 'gap_down',
-                child: Text('Less gap between images'),
-              ),
-              PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'rtl',
-                child: Text(_rtlMode ? 'Switch to LTR' : 'Switch to RTL'),
-              ),
-            ],
+            tooltip: 'Reader settings',
+            onPressed: _openLayoutSheet,
           ),
           IconButton(
             icon: const Icon(Icons.skip_previous),
@@ -468,8 +475,12 @@ class _ReaderPageState extends State<ReaderPage> {
                 : InteractiveViewer(
                     child: ListView.builder(
                       controller: _scroll,
-                      padding: EdgeInsets.symmetric(horizontal: _imageMargin),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: MediaQuery.sizeOf(context).width *
+                            (_imageMarginPct / 100),
+                      ),
                       itemExtent: null,
+                      itemCount: urls.field0.length,
                       itemBuilder: (context, index) {
                         final page = urls.field0[index];
                         final image = page.startsWith('file://')
@@ -477,14 +488,13 @@ class _ReaderPageState extends State<ReaderPage> {
                                 File.fromUri(Uri.parse(page)),
                                 fit: BoxFit.fitWidth,
                               )
-                            : Image.network(
-                                widget.vault.imageUrl(page),
-                                headers: widget.vault.imageHeaders,
-                                fit: BoxFit.fitWidth,
-                              );
+                            : _proxied(page, BoxFit.fitWidth);
                         return index > 0
                             ? Padding(
-                                padding: EdgeInsets.only(top: _imageGap),
+                                padding: EdgeInsets.only(
+                                  top: MediaQuery.sizeOf(context).width *
+                                      (_imageGapPct / 100),
+                                ),
                                 child: image,
                               )
                             : image;
@@ -547,12 +557,10 @@ class _ReaderPageState extends State<ReaderPage> {
       if (src != null && src.trim().isNotEmpty) {
         blocks.add(
           Padding(
-            padding: EdgeInsets.only(bottom: _imageGap),
-            child: Image.network(
-              widget.vault.imageUrl(src.trim()),
-              headers: widget.vault.imageHeaders,
-              fit: BoxFit.fitWidth,
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.sizeOf(context).width * (_imageGapPct / 100),
             ),
+            child: _proxied(src.trim(), BoxFit.fitWidth),
           ),
         );
       } else {
@@ -605,7 +613,7 @@ class _ReaderPageState extends State<ReaderPage> {
               )
             : Center(
                 child: Image.network(
-                  widget.vault.imageUrl(page),
+                  widget.vault.imageUrl(page, referer: _referer),
                   headers: widget.vault.imageHeaders,
                   fit: BoxFit.contain,
                 ),

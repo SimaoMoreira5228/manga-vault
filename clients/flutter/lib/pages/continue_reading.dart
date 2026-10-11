@@ -116,7 +116,7 @@ class _ContinueReadingRowState extends State<ContinueReadingRow> {
                                 width: 100,
                                 child: item.coverUrl != null
                                     ? Image.network(
-                                        widget.vault.imageUrl(item.coverUrl!),
+                                        widget.vault.imageUrl(item.coverUrl!, referer: item.remoteUrl),
                                         headers: widget.vault.imageHeaders,
                                         fit: BoxFit.cover,
                                       )

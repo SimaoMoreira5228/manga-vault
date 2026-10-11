@@ -8,7 +8,7 @@ class LocalService implements VaultService {
   final LocalVault _vault;
 
   @override
-  String imageUrl(String url) => url;
+  String imageUrl(String url, {String? referer}) => url;
 
   @override
   Map<String, String> get imageHeaders => const {};

@@ -2447,14 +2447,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ContinueItem dco_decode_continue_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return ContinueItem(
       workId: dco_decode_String(arr[0]),
       title: dco_decode_String(arr[1]),
       coverUrl: dco_decode_opt_String(arr[2]),
-      chapterId: dco_decode_opt_String(arr[3]),
-      page: dco_decode_opt_box_autoadd_u_32(arr[4]),
+      remoteUrl: dco_decode_String(arr[3]),
+      chapterId: dco_decode_opt_String(arr[4]),
+      page: dco_decode_opt_box_autoadd_u_32(arr[5]),
     );
   }
 
@@ -2945,12 +2946,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_workId = sse_decode_String(deserializer);
     var var_title = sse_decode_String(deserializer);
     var var_coverUrl = sse_decode_opt_String(deserializer);
+    var var_remoteUrl = sse_decode_String(deserializer);
     var var_chapterId = sse_decode_opt_String(deserializer);
     var var_page = sse_decode_opt_box_autoadd_u_32(deserializer);
     return ContinueItem(
       workId: var_workId,
       title: var_title,
       coverUrl: var_coverUrl,
+      remoteUrl: var_remoteUrl,
       chapterId: var_chapterId,
       page: var_page,
     );
@@ -3549,6 +3552,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.workId, serializer);
     sse_encode_String(self.title, serializer);
     sse_encode_opt_String(self.coverUrl, serializer);
+    sse_encode_String(self.remoteUrl, serializer);
     sse_encode_opt_String(self.chapterId, serializer);
     sse_encode_opt_box_autoadd_u_32(self.page, serializer);
   }

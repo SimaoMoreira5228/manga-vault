@@ -672,6 +672,7 @@ impl LocalVault {
 					work_id: work.id.to_string(),
 					title: work.title,
 					cover_url: work.cover_url,
+					remote_url: work.remote_url,
 					chapter_id,
 					page,
 				}
@@ -695,6 +696,7 @@ pub struct ContinueItem {
 	pub work_id: String,
 	pub title: String,
 	pub cover_url: Option<String>,
+	pub remote_url: String,
 	pub chapter_id: Option<String>,
 	pub page: Option<u32>,
 }
