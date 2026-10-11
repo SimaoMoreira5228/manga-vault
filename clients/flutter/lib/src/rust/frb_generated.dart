@@ -165,8 +165,9 @@ abstract class RustLibApi extends BaseApi {
     required String language,
   });
 
-  Future<List<HistoryItem>> crateApiLocalLocalVaultHistory({
+  Future<HistoryPage> crateApiLocalLocalVaultHistory({
     required LocalVault that,
+    required BigInt offset,
     int? limit,
   });
 
@@ -200,8 +201,11 @@ abstract class RustLibApi extends BaseApi {
     required LocalVault that,
   });
 
-  Future<List<LibraryItem>> crateApiLocalLocalVaultListLibrary({
+  Future<LibraryPage> crateApiLocalLocalVaultListLibrary({
     required LocalVault that,
+    required BigInt offset,
+    int? limit,
+    required LibraryFilter filter,
   });
 
   Future<List<SourceSummary>> crateApiLocalLocalVaultListSources({
@@ -1001,8 +1005,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<List<HistoryItem>> crateApiLocalLocalVaultHistory({
+  Future<HistoryPage> crateApiLocalLocalVaultHistory({
     required LocalVault that,
+    required BigInt offset,
     int? limit,
   }) {
     return handler.executeNormal(
@@ -1013,6 +1018,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
+          sse_encode_u_64(offset, serializer);
           sse_encode_opt_box_autoadd_u_32(limit, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
@@ -1022,11 +1028,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_history_item,
+          decodeSuccessData: sse_decode_history_page,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiLocalLocalVaultHistoryConstMeta,
-        argValues: [that, limit],
+        argValues: [that, offset, limit],
         apiImpl: this,
       ),
     );
@@ -1035,7 +1041,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiLocalLocalVaultHistoryConstMeta =>
       const TaskConstMeta(
         debugName: "LocalVault_history",
-        argNames: ["that", "limit"],
+        argNames: ["that", "offset", "limit"],
       );
 
   @override
@@ -1267,8 +1273,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<List<LibraryItem>> crateApiLocalLocalVaultListLibrary({
+  Future<LibraryPage> crateApiLocalLocalVaultListLibrary({
     required LocalVault that,
+    required BigInt offset,
+    int? limit,
+    required LibraryFilter filter,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -1278,6 +1287,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
+          sse_encode_u_64(offset, serializer);
+          sse_encode_opt_box_autoadd_u_32(limit, serializer);
+          sse_encode_box_autoadd_library_filter(filter, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -1286,11 +1298,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_library_item,
+          decodeSuccessData: sse_decode_library_page,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiLocalLocalVaultListLibraryConstMeta,
-        argValues: [that],
+        argValues: [that, offset, limit, filter],
         apiImpl: this,
       ),
     );
@@ -1299,7 +1311,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiLocalLocalVaultListLibraryConstMeta =>
       const TaskConstMeta(
         debugName: "LocalVault_list_library",
-        argNames: ["that"],
+        argNames: ["that", "offset", "limit", "filter"],
       );
 
   @override
@@ -2321,6 +2333,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  LibraryFilter dco_decode_box_autoadd_library_filter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_library_filter(raw);
+  }
+
+  @protected
   int dco_decode_box_autoadd_u_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -2426,20 +2444,62 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  HistoryPage dco_decode_history_page(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return HistoryPage(
+      items: dco_decode_list_history_item(arr[0]),
+      total: dco_decode_i_64(arr[1]),
+      offset: dco_decode_u_64(arr[2]),
+      limit: dco_decode_u_64(arr[3]),
+    );
+  }
+
+  @protected
   PlatformInt64 dco_decode_i_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dcoDecodeI64(raw);
   }
 
   @protected
+  LibraryFilter dco_decode_library_filter(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return LibraryFilter(
+      kind: dco_decode_opt_String(arr[0]),
+      categoryId: dco_decode_opt_String(arr[1]),
+      query: dco_decode_opt_String(arr[2]),
+    );
+  }
+
+  @protected
   LibraryItem dco_decode_library_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return LibraryItem(
       entryId: dco_decode_String(arr[0]),
-      work: dco_decode_work_details(arr[1]),
+      categoryId: dco_decode_opt_String(arr[1]),
+      work: dco_decode_work_details(arr[2]),
+    );
+  }
+
+  @protected
+  LibraryPage dco_decode_library_page(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return LibraryPage(
+      items: dco_decode_list_library_item(arr[0]),
+      total: dco_decode_i_64(arr[1]),
+      offset: dco_decode_u_64(arr[2]),
+      limit: dco_decode_u_64(arr[3]),
     );
   }
 
@@ -2618,6 +2678,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt dco_decode_u_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dcoDecodeU64(raw);
+  }
+
+  @protected
   int dco_decode_u_8(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as int;
@@ -2753,6 +2819,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  LibraryFilter sse_decode_box_autoadd_library_filter(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_library_filter(deserializer));
+  }
+
+  @protected
   int sse_decode_box_autoadd_u_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_u_32(deserializer));
@@ -2867,17 +2941,65 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  HistoryPage sse_decode_history_page(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_items = sse_decode_list_history_item(deserializer);
+    var var_total = sse_decode_i_64(deserializer);
+    var var_offset = sse_decode_u_64(deserializer);
+    var var_limit = sse_decode_u_64(deserializer);
+    return HistoryPage(
+      items: var_items,
+      total: var_total,
+      offset: var_offset,
+      limit: var_limit,
+    );
+  }
+
+  @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getPlatformInt64();
   }
 
   @protected
+  LibraryFilter sse_decode_library_filter(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_opt_String(deserializer);
+    var var_categoryId = sse_decode_opt_String(deserializer);
+    var var_query = sse_decode_opt_String(deserializer);
+    return LibraryFilter(
+      kind: var_kind,
+      categoryId: var_categoryId,
+      query: var_query,
+    );
+  }
+
+  @protected
   LibraryItem sse_decode_library_item(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_entryId = sse_decode_String(deserializer);
+    var var_categoryId = sse_decode_opt_String(deserializer);
     var var_work = sse_decode_work_details(deserializer);
-    return LibraryItem(entryId: var_entryId, work: var_work);
+    return LibraryItem(
+      entryId: var_entryId,
+      categoryId: var_categoryId,
+      work: var_work,
+    );
+  }
+
+  @protected
+  LibraryPage sse_decode_library_page(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_items = sse_decode_list_library_item(deserializer);
+    var var_total = sse_decode_i_64(deserializer);
+    var var_offset = sse_decode_u_64(deserializer);
+    var var_limit = sse_decode_u_64(deserializer);
+    return LibraryPage(
+      items: var_items,
+      total: var_total,
+      offset: var_offset,
+      limit: var_limit,
+    );
   }
 
   @protected
@@ -3156,6 +3278,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  BigInt sse_decode_u_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getBigUint64();
+  }
+
+  @protected
   int sse_decode_u_8(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8();
@@ -3311,6 +3439,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_library_filter(
+    LibraryFilter self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_library_filter(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_32(self, serializer);
@@ -3395,16 +3532,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_history_page(HistoryPage self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_history_item(self.items, serializer);
+    sse_encode_i_64(self.total, serializer);
+    sse_encode_u_64(self.offset, serializer);
+    sse_encode_u_64(self.limit, serializer);
+  }
+
+  @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putPlatformInt64(self);
   }
 
   @protected
+  void sse_encode_library_filter(LibraryFilter self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_opt_String(self.kind, serializer);
+    sse_encode_opt_String(self.categoryId, serializer);
+    sse_encode_opt_String(self.query, serializer);
+  }
+
+  @protected
   void sse_encode_library_item(LibraryItem self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.entryId, serializer);
+    sse_encode_opt_String(self.categoryId, serializer);
     sse_encode_work_details(self.work, serializer);
+  }
+
+  @protected
+  void sse_encode_library_page(LibraryPage self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_library_item(self.items, serializer);
+    sse_encode_i_64(self.total, serializer);
+    sse_encode_u_64(self.offset, serializer);
+    sse_encode_u_64(self.limit, serializer);
   }
 
   @protected
@@ -3656,6 +3820,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_u_64(BigInt self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putBigUint64(self);
+  }
+
+  @protected
   void sse_encode_u_8(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self);
@@ -3821,8 +3991,10 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
         language: language,
       );
 
-  Future<List<HistoryItem>> history({int? limit}) => RustLib.instance.api
-      .crateApiLocalLocalVaultHistory(that: this, limit: limit);
+  Future<HistoryPage> history({required BigInt offset, int? limit}) => RustLib
+      .instance
+      .api
+      .crateApiLocalLocalVaultHistory(that: this, offset: offset, limit: limit);
 
   Future<void> importBackup({required String backupJson}) => RustLib
       .instance
@@ -3856,8 +4028,16 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
   Future<List<CategorySummary>> listCategories() =>
       RustLib.instance.api.crateApiLocalLocalVaultListCategories(that: this);
 
-  Future<List<LibraryItem>> listLibrary() =>
-      RustLib.instance.api.crateApiLocalLocalVaultListLibrary(that: this);
+  Future<LibraryPage> listLibrary({
+    required BigInt offset,
+    int? limit,
+    required LibraryFilter filter,
+  }) => RustLib.instance.api.crateApiLocalLocalVaultListLibrary(
+    that: this,
+    offset: offset,
+    limit: limit,
+    filter: filter,
+  );
 
   Future<List<SourceSummary>> listSources() =>
       RustLib.instance.api.crateApiLocalLocalVaultListSources(that: this);

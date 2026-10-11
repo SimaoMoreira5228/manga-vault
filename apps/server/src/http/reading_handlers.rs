@@ -1,3 +1,4 @@
+use application::PageQuery;
 use axum::Json;
 use axum::extract::{Path, State};
 use domain::ReadingProgress;
@@ -39,11 +40,12 @@ pub async fn library_overview(State(state): State<AppState>, auth: Authenticated
 pub async fn history(
 	State(state): State<AppState>,
 	auth: Authenticated,
-	axum::extract::Query(params): axum::extract::Query<HistoryQuery>,
+	axum::extract::Query(page): axum::extract::Query<PageQuery>,
 ) -> ApiResult<serde_json::Value> {
-	let limit = params.limit.unwrap_or(60).min(200);
-	let items = state.vault.history(auth.user.id, limit).await?;
-	let entries: Vec<serde_json::Value> = items
+	let (offset, limit) = page.resolve();
+	let page = state.vault.history_page(auth.user.id, offset, limit).await?;
+	let entries: Vec<serde_json::Value> = page
+		.items
 		.into_iter()
 		.map(|(progress, chapter, work)| {
 			json!({
@@ -56,12 +58,12 @@ pub async fn history(
 			})
 		})
 		.collect();
-	Ok(Json(json!({ "history": entries })))
-}
-
-#[derive(serde::Deserialize)]
-pub struct HistoryQuery {
-	limit: Option<u64>,
+	Ok(Json(json!({
+		"history": entries,
+		"total": page.total,
+		"offset": page.offset,
+		"limit": page.limit,
+	})))
 }
 
 async fn push_trackers(state: &AppState, user_id: Uuid, work_id: Uuid, chapters_read: f64) {

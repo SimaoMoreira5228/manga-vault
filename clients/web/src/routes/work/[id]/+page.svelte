@@ -87,7 +87,7 @@ async function load(id: string) {
 		renderedCount = CHUNK_SIZE;
 
 		const [library, accounts, links] = await Promise.all([
-			api.library(),
+			api.allLibrary(),
 			api.myTrackerAccounts().catch(() => [] as TrackerAccount[]),
 			api.workTracks(id).catch(() => [] as WorkTrackLink[]),
 		]);

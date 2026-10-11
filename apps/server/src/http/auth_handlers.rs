@@ -1,3 +1,4 @@
+use application::{Page, PageQuery};
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::header;
@@ -98,8 +99,13 @@ pub async fn me(State(state): State<AppState>, auth: Authenticated) -> ApiResult
 	Ok(Json(PublicUser::from_user(&auth.user, state.admin_username.as_deref())))
 }
 
-pub async fn list_sessions(State(state): State<AppState>, auth: Authenticated) -> ApiResult<Vec<Session>> {
-	Ok(Json(state.vault.sessions_for_user(auth.user.id).await?))
+pub async fn list_sessions(
+	State(state): State<AppState>,
+	auth: Authenticated,
+	axum::extract::Query(page): axum::extract::Query<PageQuery>,
+) -> ApiResult<Page<Session>> {
+	let (offset, limit) = page.resolve();
+	Ok(Json(state.vault.sessions_page(auth.user.id, offset, limit).await?))
 }
 
 pub async fn revoke_session(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../service/remote_service.dart';
@@ -5,6 +7,7 @@ import '../service/sync_scheduler.dart';
 import '../service/vault_events.dart';
 import '../service/vault_service.dart';
 import 'continue_reading.dart';
+import 'pager_bar.dart';
 import 'work_page.dart';
 
 class LibraryPage extends StatefulWidget {
@@ -21,25 +24,17 @@ class _LibraryPageState extends State<LibraryPage> {
   List<LibraryItem>? items;
   Map<String, ChapterProgressStats> overview = {};
   List<CategoryInfo> categories = [];
+  int total = 0;
+  int offset = 0;
   String sort = 'added';
   String textQuery = '';
   String kindFilter = 'all';
   bool refreshBusy = false;
   String? error;
+  Timer? _debounce;
 
-  List<LibraryItem> get filtered {
-    var result = items ?? [];
-    if (kindFilter == 'manga') {
-      result = result.where((item) => item.work.kind == 'Manga').toList();
-    } else if (kindFilter == 'novel') {
-      result = result.where((item) => item.work.kind == 'Novel').toList();
-    }
-    final text = textQuery.toLowerCase().trim();
-    if (text.isNotEmpty) {
-      result = result
-          .where((item) => item.work.title.toLowerCase().contains(text))
-          .toList();
-    }
+  List<LibraryItem> get visible {
+    final result = [...?items];
     if (sort == 'title') {
       result.sort(
         (a, b) =>
@@ -66,6 +61,7 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   void dispose() {
     VaultEvents.instance.unsubscribe(_onEvent);
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -76,7 +72,14 @@ class _LibraryPageState extends State<LibraryPage> {
 
   Future<void> _load() async {
     try {
-      final loaded = await widget.vault.listLibrary();
+      final loaded = await widget.vault.listLibrary(
+        offset: offset,
+        limit: pageSize,
+        filter: LibraryFilter(
+          kind: kindFilter == 'all' ? null : kindFilter,
+          query: textQuery,
+        ),
+      );
       final counts = await widget.vault.libraryOverview().catchError(
         (_) => <String, ChapterProgressStats>{},
       );
@@ -85,7 +88,8 @@ class _LibraryPageState extends State<LibraryPage> {
       );
       if (!mounted) return;
       setState(() {
-        items = loaded;
+        items = loaded.items;
+        total = loaded.total;
         overview = counts;
         categories = cats;
         error = null;
@@ -94,6 +98,34 @@ class _LibraryPageState extends State<LibraryPage> {
       if (!mounted) return;
       setState(() => error = e.toString());
     }
+  }
+
+  void _shiftPage(int next) {
+    setState(() {
+      offset = next;
+      items = null;
+    });
+    _load();
+  }
+
+  void _setKind(String kind) {
+    setState(() {
+      kindFilter = kind;
+      offset = 0;
+    });
+    _load();
+  }
+
+  void _setQuery(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      setState(() {
+        textQuery = value;
+        offset = 0;
+      });
+      _load();
+    });
   }
 
   Future<void> _open(LibraryItem item) async {
@@ -164,7 +196,6 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   Widget build(BuildContext context) {
     final shown = items;
-    final visible = filtered;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Library'),
@@ -232,8 +263,7 @@ class _LibraryPageState extends State<LibraryPage> {
                             ChoiceChip(
                               label: Text(kind),
                               selected: kindFilter == kind,
-                              onSelected: (_) =>
-                                  setState(() => kindFilter = kind),
+                              onSelected: (_) => _setKind(kind),
                             ),
                         ],
                       ),
@@ -254,8 +284,7 @@ class _LibraryPageState extends State<LibraryPage> {
                                 hintText: 'Filter titles…',
                                 border: OutlineInputBorder(),
                               ),
-                              onChanged: (value) =>
-                                  setState(() => textQuery = value),
+                              onChanged: _setQuery,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -271,14 +300,26 @@ class _LibraryPageState extends State<LibraryPage> {
                               ButtonSegment(value: 'title', label: Text('A-Z')),
                             ],
                           ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$total works',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                         ],
                       ),
                     ),
                   ),
                   if (visible.isEmpty)
-                    const SliverFillRemaining(
+                    SliverFillRemaining(
                       hasScrollBody: false,
-                      child: Center(child: Text('No matching library entries')),
+                      child: Center(
+                        child: Text(
+                          total < 1
+                              ? 'Your library is empty'
+                              : 'No titles match these filters',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
                     )
                   else
                     SliverList(
@@ -337,6 +378,14 @@ class _LibraryPageState extends State<LibraryPage> {
                         );
                       }, childCount: visible.length),
                     ),
+                  SliverToBoxAdapter(
+                    child: PagerBar(
+                      offset: offset,
+                      limit: pageSize,
+                      total: total,
+                      onshift: _shiftPage,
+                    ),
+                  ),
                 ],
               ),
             ),

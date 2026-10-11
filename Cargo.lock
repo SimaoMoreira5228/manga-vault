@@ -1023,6 +1023,7 @@ dependencies = [
  "source-updater",
  "tokio",
  "translation",
+ "uuid",
 ]
 
 [[package]]
@@ -2796,6 +2797,7 @@ dependencies = [
  "application",
  "axum",
  "bytes",
+ "chrono",
  "dashmap 6.2.1",
  "domain",
  "futures",

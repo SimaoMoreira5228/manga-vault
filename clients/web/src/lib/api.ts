@@ -1,5 +1,6 @@
 import * as buildEnv from '$env/static/public';
 import { cachedRequest } from './etag_cache';
+import { MAX_PAGE_SIZE, PAGE_SIZE, pageQuery } from './page';
 
 export type WorkKind = 'manga' | 'novel';
 export type ChapterContentKind = 'images' | 'html';
@@ -80,6 +81,43 @@ export interface Category {
 	user_id: string;
 	name: string;
 	created_at: string;
+}
+
+export interface Page<T> {
+	items: T[];
+	total: number;
+	offset: number;
+	limit: number;
+}
+
+export interface LibraryPage {
+	entries: [LibraryEntry, Work][];
+	total: number;
+	offset: number;
+	limit: number;
+	categories: Category[];
+}
+
+export interface LibraryFilter {
+	kind?: WorkKind;
+	categoryId?: string;
+	q?: string;
+}
+
+export interface HistoryItem {
+	read_at: string;
+	chapter_id: string;
+	chapter_title: string;
+	work_id: string;
+	work_title: string;
+	kind: string;
+}
+
+export interface HistoryPage {
+	history: HistoryItem[];
+	total: number;
+	offset: number;
+	limit: number;
 }
 
 export interface ReadingPosition {
@@ -302,7 +340,8 @@ export const api = {
 		post<Session>('/api/auth/login', { username, password }),
 	logout: () => post('/api/auth/logout'),
 	me: () => get<PublicUser>('/api/me'),
-	sessions: () => get<Session[]>('/api/me/sessions'),
+	sessions: (offset = 0, limit = PAGE_SIZE) =>
+		get<Page<Session>>(`/api/me/sessions?${pageQuery(offset, limit)}`),
 	revokeSession: (token: string) => del(`/api/me/sessions/${token}`),
 
 	sources: () => get<SourceInfo[]>('/api/sources'),
@@ -394,7 +433,28 @@ export const api = {
 
 	continueReading: () => get<ContinueReadingItem[]>('/api/me/continue-reading'),
 
-	library: () => get<{ entries: [LibraryEntry, Work][]; categories: Category[] }>('/api/library'),
+	library: (offset = 0, limit = PAGE_SIZE, filter?: LibraryFilter) => {
+		const query = new URLSearchParams(pageQuery(offset, limit));
+		if (filter?.kind) query.set('kind', filter.kind);
+		if (filter?.categoryId) query.set('category_id', filter.categoryId);
+		const q = filter?.q?.trim();
+		if (q) query.set('q', q);
+		return get<LibraryPage>(`/api/library?${query}`);
+	},
+	allLibrary: async (): Promise<{ entries: [LibraryEntry, Work][]; categories: Category[] }> => {
+		const entries: [LibraryEntry, Work][] = [];
+		let categories: Category[] = [];
+		let offset = 0;
+		let total = 1;
+		while (offset < total) {
+			const page = await api.library(offset, MAX_PAGE_SIZE);
+			entries.push(...page.entries);
+			categories = page.categories;
+			total = page.total;
+			offset = page.offset + page.limit;
+		}
+		return { entries, categories };
+	},
 	setEntryCategory: (entryId: string, categoryId: string | null) =>
 		put(`/api/library-entries/${entryId}/category`, { category_id: categoryId }),
 	createCategory: (name: string) => post<Category>('/api/categories', { name }),
@@ -433,17 +493,8 @@ export const api = {
 		get<{ overview: { work_id: string; chapters_read: number; chapters_total: number }[] }>(
 			'/api/me/library-overview',
 		),
-	history: (limit = 60) =>
-		get<{
-			history: {
-				read_at: string;
-				chapter_id: string;
-				chapter_title: string;
-				work_id: string;
-				work_title: string;
-				kind: string;
-			}[];
-		}>(`/api/me/history?limit=${limit}`),
+	history: (offset = 0, limit = PAGE_SIZE) =>
+		get<HistoryPage>(`/api/me/history?${pageQuery(offset, limit)}`),
 	readingStats: () =>
 		get<{
 			total_read: number;

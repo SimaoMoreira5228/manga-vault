@@ -66,8 +66,14 @@ class RemoteService implements VaultService {
 
   Future<void> logout() => _send('POST', '/api/auth/logout');
 
-  Future<List<SessionInfo>> sessions() => _list(
+  Future<VaultPage<SessionInfo>> sessions({
+    int offset = 0,
+    int limit = pageSize,
+  }) => _page(
     '/api/me/sessions',
+    offset,
+    limit,
+    'items',
     (raw) => SessionInfo(
       token: raw['token'] as String,
       deviceLabel: raw['device_label'] as String?,
@@ -89,6 +95,24 @@ class RemoteService implements VaultService {
   Future<List<T>> _list<T>(String path, T Function(dynamic) from) async {
     final raw = await _send('GET', path);
     return [for (final item in raw as List) from(item)];
+  }
+
+  Future<VaultPage<T>> _page<T>(
+    String path,
+    int offset,
+    int limit,
+    String key,
+    T Function(dynamic) from, [
+    String extra = '',
+  ]) async {
+    final url = '$path?offset=$offset&limit=$limit$extra';
+    final payload = await _send('GET', url);
+    return VaultPage(
+      items: [for (final item in payload[key] as List) from(item)],
+      total: payload['total'] as int,
+      offset: payload['offset'] as int,
+      limit: payload['limit'] as int,
+    );
   }
 
   static Future<dynamic> _requestJson({
@@ -207,16 +231,21 @@ class RemoteService implements VaultService {
       _send('DELETE', '/api/library/$workId');
 
   @override
-  Future<List<LibraryItem>> listLibrary() async {
-    final payload = await _send('GET', '/api/library');
-    return [
-      for (final pair in payload['entries'] as List)
-        LibraryItem(
-          entryId: pair[0]['id'] as String,
-          work: WorkDetailsMapper.fromWork(pair[1]),
-        ),
-    ];
-  }
+  Future<VaultPage<LibraryItem>> listLibrary({
+    int offset = 0,
+    int limit = pageSize,
+    LibraryFilter filter = const LibraryFilter(),
+  }) => _page(
+    '/api/library',
+    offset,
+    limit,
+    'entries',
+    (raw) => LibraryItem(
+      entryId: raw[0]['id'] as String,
+      work: WorkDetailsMapper.fromWork(raw[1]),
+    ),
+    libraryQuerySuffix(filter),
+  );
 
   @override
   Future<Map<String, ChapterProgressStats>> libraryOverview() async {
@@ -232,20 +261,22 @@ class RemoteService implements VaultService {
   }
 
   @override
-  Future<List<HistoryEntry>> history({int limit = 60}) async {
-    final payload = await _send('GET', '/api/me/history?limit=$limit');
-    return [
-      for (final row
-          in (payload['history'] as List).cast<Map<String, dynamic>>())
-        HistoryEntry(
-          readAt: DateTime.parse(row['read_at'] as String),
-          chapterId: row['chapter_id'] as String,
-          chapterTitle: row['chapter_title'] as String,
-          workId: row['work_id'] as String,
-          workTitle: row['work_title'] as String,
-        ),
-    ];
-  }
+  Future<VaultPage<HistoryEntry>> history({
+    int offset = 0,
+    int limit = pageSize,
+  }) => _page(
+    '/api/me/history',
+    offset,
+    limit,
+    'history',
+    (row) => HistoryEntry(
+      readAt: DateTime.parse(row['read_at'] as String),
+      chapterId: row['chapter_id'] as String,
+      chapterTitle: row['chapter_title'] as String,
+      workId: row['work_id'] as String,
+      workTitle: row['work_title'] as String,
+    ),
+  );
 
   @override
   Future<ReadingStatsSummary> readingStats() async {

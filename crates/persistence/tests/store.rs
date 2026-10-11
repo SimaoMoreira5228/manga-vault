@@ -1,8 +1,8 @@
 use chrono::Utc;
 use domain::{Chapter, ChapterContentKind, ReadingProgress, Session, User, Work, WorkId};
 use persistence::{
-	LibraryRepository, ProgressRepository, SeaStore, SessionRepository, SourceRecord, SourceRepository, UserRepository,
-	WorkRepository,
+	LibraryFilter, LibraryRepository, ProgressRepository, SeaStore, SessionRepository, SourceRecord, SourceRepository,
+	UserRepository, WorkRepository,
 };
 use sea_orm_migration::MigratorTrait;
 use uuid::Uuid;
@@ -261,4 +261,190 @@ async fn delete_sessions_seen_before_drops_idle_sessions_only() {
 		.unwrap();
 	assert_eq!(removed, 0);
 	assert!(store.get_session(fresh.token).await.unwrap().is_some());
+}
+
+#[tokio::test]
+async fn library_pages_partition_every_row_without_overlap() {
+	let (store, _db_lock) = connect_store().await;
+	seed_source(&store).await;
+	let user = store.create_user("pager", "argon-hash").await.unwrap();
+
+	let mut work_ids = Vec::new();
+	for index in 0..7 {
+		let work_id = Uuid::now_v7();
+		let (mut work, mut chapters) = sample_work(work_id);
+		work.title = format!("Manga {index}");
+		work.remote_url = format!("https://example.com/work/{index}");
+		for (position, chapter) in chapters.iter_mut().enumerate() {
+			chapter.remote_url = format!("https://example.com/work/{index}/chapter/{position}");
+		}
+		store.save_work_snapshot(&work, &chapters).await.unwrap();
+		LibraryRepository::add_to_library(&store, user.id, work_id, None)
+			.await
+			.unwrap();
+		work_ids.push(work_id);
+	}
+
+	let (first, total) = store
+		.library_entries_page(user.id, &LibraryFilter::default(), 0, 3)
+		.await
+		.unwrap();
+	let (second, total_second) = store
+		.library_entries_page(user.id, &LibraryFilter::default(), 3, 3)
+		.await
+		.unwrap();
+	let (third, total_third) = store
+		.library_entries_page(user.id, &LibraryFilter::default(), 6, 3)
+		.await
+		.unwrap();
+	assert_eq!((total, total_second, total_third), (7, 7, 7));
+	assert_eq!((first.len(), second.len(), third.len()), (3, 3, 1));
+
+	let paged: Vec<Uuid> = first
+		.into_iter()
+		.chain(second)
+		.chain(third)
+		.map(|entry| entry.work_id)
+		.collect();
+	let mut unique = paged.clone();
+	unique.sort();
+	unique.dedup();
+	assert_eq!(unique.len(), 7, "pages must not overlap or drop rows");
+	assert_eq!(paged.len(), 7);
+	for work_id in work_ids {
+		assert!(paged.contains(&work_id), "every library entry appears on exactly one page");
+	}
+
+	let (past_end, total) = store
+		.library_entries_page(user.id, &LibraryFilter::default(), 99, 3)
+		.await
+		.unwrap();
+	assert_eq!(total, 7);
+	assert!(past_end.is_empty(), "an offset past the end is empty, not an error");
+}
+
+#[tokio::test]
+async fn session_pages_partition_every_row() {
+	let (store, _db_lock) = connect_store().await;
+	let user = store.create_user("pager2", "argon-hash").await.unwrap();
+
+	for _ in 0..5 {
+		store
+			.create_session(Session {
+				token: Uuid::new_v4(),
+				user_id: user.id,
+				device_label: Some("device".into()),
+				created_at: Utc::now(),
+				last_seen_at: Utc::now(),
+			})
+			.await
+			.unwrap();
+	}
+
+	let (first, total) = store.sessions_page(user.id, 0, 2).await.unwrap();
+	let (second, second_total) = store.sessions_page(user.id, 2, 2).await.unwrap();
+	let (third, third_total) = store.sessions_page(user.id, 4, 2).await.unwrap();
+	assert_eq!((total, second_total, third_total), (5, 5, 5));
+	assert_eq!((first.len(), second.len(), third.len()), (2, 2, 1));
+
+	let tokens: Vec<Uuid> = first
+		.into_iter()
+		.chain(second)
+		.chain(third)
+		.map(|session| session.token)
+		.collect();
+	let mut unique = tokens.clone();
+	unique.sort();
+	unique.dedup();
+	assert_eq!(unique.len(), 5, "session pages must not overlap");
+	assert_eq!(tokens.len(), 5);
+}
+
+#[tokio::test]
+async fn library_filters_apply_before_paging_not_after() {
+	let (store, _db_lock) = connect_store().await;
+	seed_source(&store).await;
+	let user = store.create_user("filteruser", "argon-hash").await.unwrap();
+
+	let mut novels = Vec::new();
+	for index in 0..4 {
+		let work_id = Uuid::now_v7();
+		let (mut work, mut chapters) = sample_work(work_id);
+		work.kind = domain::WorkKind::Novel;
+		work.title = format!("Action Story {index}");
+		work.remote_url = format!("https://example.com/novel/{index}");
+		for (position, chapter) in chapters.iter_mut().enumerate() {
+			chapter.remote_url = format!("https://example.com/novel/{index}/chapter/{position}");
+		}
+		store.save_work_snapshot(&work, &chapters).await.unwrap();
+		store.add_to_library(user.id, work_id, None).await.unwrap();
+		novels.push(work_id);
+	}
+	for index in 0..3 {
+		let work_id = Uuid::now_v7();
+		let (mut work, mut chapters) = sample_work(work_id);
+		work.kind = domain::WorkKind::Manga;
+		work.title = format!("Drama Story {index}");
+		work.remote_url = format!("https://example.com/manga/{index}");
+		for (position, chapter) in chapters.iter_mut().enumerate() {
+			chapter.remote_url = format!("https://example.com/manga/{index}/chapter/{position}");
+		}
+		store.save_work_snapshot(&work, &chapters).await.unwrap();
+		store.add_to_library(user.id, work_id, None).await.unwrap();
+	}
+
+	let all = LibraryFilter::default();
+	let (page, total) = store.library_entries_page(user.id, &all, 0, 50).await.unwrap();
+	assert_eq!((page.len(), total), (7, 7));
+
+	let novels_only = LibraryFilter {
+		kind: Some(domain::WorkKind::Novel),
+		..Default::default()
+	};
+	let (page, total) = store.library_entries_page(user.id, &novels_only, 0, 50).await.unwrap();
+	assert_eq!(
+		(page.len(), total),
+		(4, 4),
+		"the kind filter must reduce the total, not hide rows after paging"
+	);
+
+	let drama = LibraryFilter {
+		title_contains: Some("drama".into()),
+		..Default::default()
+	};
+	let (page, total) = store.library_entries_page(user.id, &drama, 0, 50).await.unwrap();
+	assert_eq!((page.len(), total), (3, 3), "title search is case-insensitive");
+
+	let action_novels = LibraryFilter {
+		kind: Some(domain::WorkKind::Novel),
+		title_contains: Some("action".into()),
+		..Default::default()
+	};
+	let (page, total) = store.library_entries_page(user.id, &action_novels, 0, 50).await.unwrap();
+	assert_eq!((page.len(), total), (4, 4));
+
+	let impossible = LibraryFilter {
+		kind: Some(domain::WorkKind::Manga),
+		title_contains: Some("action".into()),
+		..Default::default()
+	};
+	let (page, total) = store.library_entries_page(user.id, &impossible, 0, 50).await.unwrap();
+	assert!((page.is_empty(), total) == (true, 0), "filters compose");
+
+	let (_, filtered_total) = store.library_entries_page(user.id, &novels_only, 0, 2).await.unwrap();
+	assert_eq!(filtered_total, 4, "a filtered view can be paged independently");
+	let (second, _) = store.library_entries_page(user.id, &novels_only, 2, 2).await.unwrap();
+	assert_eq!(second.len(), 2);
+	for work_id in &novels {
+		assert!(novels_only_applies(&store, user.id, *work_id).await);
+	}
+}
+
+async fn novels_only_applies(store: &SeaStore, user_id: uuid::Uuid, work_id: uuid::Uuid) -> bool {
+	let filter = LibraryFilter {
+		kind: Some(domain::WorkKind::Novel),
+		..Default::default()
+	};
+	let (page, _) = store.library_entries_page(user_id, &filter, 0, 50).await.unwrap();
+	page.iter().any(|entry| entry.work_id == work_id)
 }

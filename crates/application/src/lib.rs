@@ -55,6 +55,136 @@ impl From<source_sdk::SourceError> for VaultError {
 
 pub type VaultResult<T> = Result<T, VaultError>;
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Page<T> {
+	pub items: Vec<T>,
+	pub total: i64,
+	pub offset: u64,
+	pub limit: u64,
+}
+
+impl<T> Page<T> {
+	pub fn new(items: Vec<T>, total: i64, offset: u64, limit: u64) -> Self {
+		Self {
+			items,
+			total,
+			offset,
+			limit,
+		}
+	}
+
+	pub fn has_more(&self) -> bool {
+		self.offset + self.limit < self.total as u64
+	}
+}
+
+#[derive(Debug, Clone, Copy, Default, serde::Deserialize)]
+pub struct PageQuery {
+	pub offset: Option<u64>,
+	pub limit: Option<u64>,
+}
+
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct LibraryFilterQuery {
+	pub kind: Option<String>,
+	pub category_id: Option<uuid::Uuid>,
+	pub q: Option<String>,
+}
+
+impl LibraryFilterQuery {
+	pub fn resolve(self) -> persistence::LibraryFilter {
+		let kind = self.kind.as_deref().and_then(|raw| match raw {
+			"manga" => Some(domain::WorkKind::Manga),
+			"novel" => Some(domain::WorkKind::Novel),
+			_ => None,
+		});
+		persistence::LibraryFilter {
+			kind,
+			category_id: self.category_id,
+			title_contains: self.q,
+		}
+	}
+}
+
+pub const MAX_PAGE_SIZE: u64 = 200;
+pub const DEFAULT_PAGE_SIZE: u64 = 50;
+
+impl PageQuery {
+	pub fn resolve(self) -> (u64, u64) {
+		let limit = self.limit.unwrap_or(DEFAULT_PAGE_SIZE).clamp(1, MAX_PAGE_SIZE);
+		(self.offset.unwrap_or(0), limit)
+	}
+}
+
+#[cfg(test)]
+mod paging_tests {
+	use super::*;
+
+	#[test]
+	fn paging_defaults_to_a_bounded_first_page() {
+		assert_eq!(
+			PageQuery {
+				offset: None,
+				limit: None
+			}
+			.resolve(),
+			(0, DEFAULT_PAGE_SIZE)
+		);
+	}
+
+	#[test]
+	fn an_absurd_limit_is_clamped_rather_than_trusted() {
+		assert_eq!(
+			PageQuery {
+				offset: None,
+				limit: Some(100_000)
+			}
+			.resolve()
+			.1,
+			MAX_PAGE_SIZE
+		);
+		assert_eq!(
+			PageQuery {
+				offset: None,
+				limit: Some(0)
+			}
+			.resolve()
+			.1,
+			1
+		);
+	}
+
+	#[test]
+	fn a_large_offset_is_preserved_so_the_last_page_is_reachable() {
+		assert_eq!(
+			PageQuery {
+				offset: Some(9_000),
+				limit: Some(10)
+			}
+			.resolve(),
+			(9_000, 10)
+		);
+	}
+
+	#[test]
+	fn has_more_reflects_the_remaining_rows() {
+		let mut page = Page::new(vec![1, 2, 3], 10, 0, 3);
+		assert!(page.has_more());
+		page.offset = 9;
+		assert!(!page.has_more());
+		page.offset = 7;
+		assert!(!page.has_more(), "a full final page means nothing follows");
+		page.offset = 10;
+		assert!(!page.has_more());
+	}
+
+	#[test]
+	fn an_empty_result_has_no_more_pages() {
+		let page: Page<u8> = Page::new(Vec::new(), 0, 0, 50);
+		assert!(!page.has_more());
+	}
+}
+
 pub const DEFAULT_SESSION_TTL: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 60 * 60);
 
 #[derive(Debug, Clone)]

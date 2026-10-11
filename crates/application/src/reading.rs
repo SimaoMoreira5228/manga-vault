@@ -2,7 +2,7 @@ use domain::{ChapterId, ReadingPosition, ReadingProgress, UserId, WorkId};
 use persistence::{ProgressRepository, WorkRepository};
 use uuid::Uuid;
 
-use crate::{Vault, VaultError, VaultResult};
+use crate::{Page, Vault, VaultError, VaultResult};
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ContinueReadingItem {
@@ -132,6 +132,22 @@ impl Vault {
 			}
 		}
 		Ok(items)
+	}
+
+	pub async fn history_page(
+		&self,
+		user_id: UserId,
+		offset: u64,
+		limit: u64,
+	) -> VaultResult<Page<(ReadingProgress, domain::Chapter, domain::Work)>> {
+		let (recent, total) = self.db.recent_progress_page(user_id, offset, limit).await?;
+		let mut items = Vec::with_capacity(recent.len());
+		for (progress, chapter) in recent {
+			if let Some(work) = self.db.get_work(chapter.work_id).await? {
+				items.push((progress, chapter, work));
+			}
+		}
+		Ok(Page::new(items, total, offset, limit))
 	}
 
 	pub async fn continue_reading(&self, user_id: UserId) -> VaultResult<Vec<ContinueReadingItem>> {

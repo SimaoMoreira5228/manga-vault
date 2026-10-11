@@ -133,7 +133,15 @@ pub trait SessionRepository: Send + Sync {
 	async fn touch_session(&self, token: uuid::Uuid, seen_at: DateTime<Utc>) -> StoreResult<()>;
 	async fn delete_session(&self, token: uuid::Uuid) -> StoreResult<()>;
 	async fn sessions_for_user(&self, user_id: UserId) -> StoreResult<Vec<Session>>;
+	async fn sessions_page(&self, user_id: UserId, offset: u64, limit: u64) -> StoreResult<(Vec<Session>, i64)>;
 	async fn delete_sessions_seen_before(&self, user_id: Option<UserId>, cutoff: DateTime<Utc>) -> StoreResult<u64>;
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct LibraryFilter {
+	pub kind: Option<WorkKind>,
+	pub category_id: Option<uuid::Uuid>,
+	pub title_contains: Option<String>,
 }
 
 #[async_trait]
@@ -154,6 +162,13 @@ pub trait LibraryRepository: Send + Sync {
 	) -> StoreResult<()>;
 	async fn clear_user_library(&self, user_id: UserId) -> StoreResult<()>;
 	async fn library_entries(&self, user_id: UserId) -> StoreResult<Vec<LibraryEntry>>;
+	async fn library_entries_page(
+		&self,
+		user_id: UserId,
+		filter: &LibraryFilter,
+		offset: u64,
+		limit: u64,
+	) -> StoreResult<(Vec<LibraryEntry>, i64)>;
 	async fn library_entry(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Option<LibraryEntry>>;
 	/// Includes soft-deleted rows so sync can compare a tombstone's `updated_at`.
 	async fn library_entries_including_removed(&self, user_id: UserId) -> StoreResult<Vec<LibraryEntry>>;
@@ -191,6 +206,12 @@ pub trait ProgressRepository: Send + Sync {
 	async fn chapter_counts_by_work(&self) -> StoreResult<Vec<(WorkId, i64)>>;
 	async fn read_progress(&self, user_id: UserId) -> StoreResult<Vec<ReadingProgress>>;
 	async fn recent_progress(&self, user_id: UserId, limit: u64) -> StoreResult<Vec<(ReadingProgress, Chapter)>>;
+	async fn recent_progress_page(
+		&self,
+		user_id: UserId,
+		offset: u64,
+		limit: u64,
+	) -> StoreResult<(Vec<(ReadingProgress, Chapter)>, i64)>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

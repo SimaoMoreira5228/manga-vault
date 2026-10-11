@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use core_ffi::api::local::{self, ChapterBody};
+use core_ffi::api::local::{self, ChapterBody, LibraryFilter};
 
 fn bundle_dir(name: &str) -> PathBuf {
 	let dir = std::env::temp_dir().join(format!("mv-core-ffi-{name}-{}", std::process::id()));
@@ -74,9 +74,9 @@ async fn local_mode_imports_reads_and_tracks() {
 	assert_eq!(imported.chapters.len(), 2);
 
 	vault.add_to_library(imported.id.clone()).await.unwrap();
-	let library = vault.list_library().await.unwrap();
-	assert_eq!(library.len(), 1);
-	assert_eq!(library[0].work.id, imported.id);
+	let library = vault.list_library(0, Some(200), no_filter()).await.unwrap();
+	assert_eq!(library.items.len(), 1);
+	assert_eq!(library.items[0].work.id, imported.id);
 
 	let body = vault.chapter_content(imported.chapters[0].id.clone()).await.unwrap();
 	match body {
@@ -121,28 +121,37 @@ async fn local_mode_imports_reads_and_tracks() {
 	assert_eq!(items[0].chapter_id.as_deref(), Some(second_id.as_str()));
 	assert_eq!(items[0].page, Some(7), "continue reading links the furthest page");
 
-	let history = vault.history(Some(10)).await.unwrap();
-	assert_eq!(history.len(), 1, "only the chapter that was marked read is history");
-	assert_eq!(history[0].chapter_id, first_id);
+	let history = vault.history(0, Some(10)).await.unwrap();
+	assert_eq!(history.items.len(), 1, "only the chapter that was marked read is history");
+	assert_eq!(history.total, 1);
+	assert_eq!(history.items[0].chapter_id, first_id);
 	assert!(
 		history
+			.items
 			.iter()
 			.all(|entry| entry.read_at.contains('T') && entry.read_at.len() > 19),
 		"history carries RFC3339 read timestamps, not placeholders"
 	);
 	assert_eq!(
-		history[0].chapter_title, imported.chapters[0].title,
+		history.items[0].chapter_title, imported.chapters[0].title,
 		"history names the chapter that was read"
 	);
-	assert_eq!(history[0].work_id, imported.id, "history names the work");
-	assert!(history.iter().all(|entry| entry.kind == "manga" || entry.kind == "novel"));
+	assert_eq!(history.items[0].work_id, imported.id, "history names the work");
+	assert!(
+		history
+			.items
+			.iter()
+			.all(|entry| entry.kind == "manga" || entry.kind == "novel")
+	);
 
 	let category = vault.create_category("Reading".to_owned()).await.unwrap();
 	assert_eq!(category.name, "Reading");
 	let categories = vault.list_categories().await.unwrap();
 	assert_eq!(categories.len(), 1);
 
-	let entry_id = vault.list_library().await.unwrap()[0].entry_id.clone();
+	let entry_id = vault.list_library(0, Some(200), no_filter()).await.unwrap().items[0]
+		.entry_id
+		.clone();
 	vault
 		.set_entry_category(entry_id.clone(), Some(category.id.clone()))
 		.await
@@ -173,7 +182,7 @@ async fn local_mode_imports_reads_and_tracks() {
 
 	let imported_id = imported.id.clone();
 	vault.remove_from_library(imported_id.clone()).await.unwrap();
-	assert!(vault.list_library().await.unwrap().is_empty());
+	assert!(vault.list_library(0, Some(200), no_filter()).await.unwrap().items.is_empty());
 
 	let mut vault = vault;
 	let profiles = vault.profiles().await.unwrap();
@@ -189,13 +198,89 @@ async fn local_mode_imports_reads_and_tracks() {
 	vault.select_profile(created.id.clone(), Some("1234".into())).await.unwrap();
 
 	vault.add_to_library(imported_id).await.unwrap();
-	assert_eq!(vault.list_library().await.unwrap().len(), 1);
+	assert_eq!(vault.list_library(0, Some(200), no_filter()).await.unwrap().items.len(), 1);
+
+	let page = vault.list_library(0, Some(200), no_filter()).await.unwrap();
+	assert_eq!(page.total, 1);
+	assert_eq!(page.offset, 0);
+	let shelf = vault.create_category("Shelf".to_owned()).await.unwrap();
+	vault
+		.set_entry_category(page.items[0].entry_id.clone(), Some(shelf.id.clone()))
+		.await
+		.unwrap();
+
+	let page = vault.list_library(0, Some(200), no_filter()).await.unwrap();
+	let assigned = page.items[0].category_id.clone();
+	assert_eq!(
+		assigned.as_deref(),
+		Some(shelf.id.to_string().as_str()),
+		"library items expose their category"
+	);
+
+	let by_category = local::LibraryFilter {
+		category_id: assigned.clone(),
+		..no_filter()
+	};
+	let filtered = vault.list_library(0, Some(200), by_category).await.unwrap();
+	assert_eq!(
+		(filtered.items.len(), filtered.total),
+		(1, 1),
+		"local filtering by category works in sql"
+	);
+
+	let other_shelf = vault.create_category("Other".to_owned()).await.unwrap();
+	let missing = LibraryFilter {
+		category_id: Some(other_shelf.id.to_string()),
+		..no_filter()
+	};
+	let empty = vault.list_library(0, Some(200), missing).await.unwrap();
+	assert!(
+		empty.items.is_empty() && empty.total == 0,
+		"an unknown category matches nothing"
+	);
+
+	let title = page.items[0].work.title.clone();
+	let upper = title.to_uppercase();
+	let by_title = LibraryFilter {
+		query: Some(upper),
+		..no_filter()
+	};
+	let found = vault.list_library(0, Some(200), by_title).await.unwrap();
+	assert_eq!(found.total, 1, "local title search is case-insensitive");
+
+	let actual_kind = page.items[0].work.kind.clone();
+	let matching = LibraryFilter {
+		kind: Some(actual_kind.clone()),
+		..no_filter()
+	};
+	assert_eq!(
+		vault.list_library(0, Some(200), matching).await.unwrap().total,
+		1,
+		"kind matches locally"
+	);
+	let opposite = LibraryFilter {
+		kind: Some(if actual_kind == "manga" { "novel" } else { "manga" }.to_owned()),
+		..no_filter()
+	};
+	assert_eq!(
+		vault.list_library(0, Some(200), opposite).await.unwrap().total,
+		0,
+		"kind filters exclude locally"
+	);
 
 	vault.select_profile(profiles[0].id.clone(), None).await.unwrap();
 	assert!(
-		vault.list_library().await.unwrap().is_empty(),
+		vault.list_library(0, Some(200), no_filter()).await.unwrap().items.is_empty(),
 		"each profile scopes its own library"
 	);
 
 	std::fs::remove_dir_all(&root).ok();
+}
+
+fn no_filter() -> LibraryFilter {
+	LibraryFilter {
+		kind: None,
+		category_id: None,
+		query: None,
+	}
 }

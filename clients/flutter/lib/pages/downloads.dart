@@ -22,7 +22,7 @@ class _DownloadsPageState extends State<DownloadsPage> {
   }
 
   Future<void> _load() async {
-    final items = await widget.vault.listLibrary();
+    final items = await widget.vault.allLibrary();
     final downloaded = <Map<String, dynamic>>[];
     for (final item in items) {
       try {

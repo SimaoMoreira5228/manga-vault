@@ -5,22 +5,19 @@ import {
 	api,
 	type InviteInfo,
 	type RegistrationMode,
-	type Session,
 	type SourceInfo,
 	type TrackerAccount,
 	type TrackerInfo,
 } from '$lib/api';
 import { appearance, THEMES } from '$lib/appearance.svelte';
 import { auth } from '$lib/auth.svelte';
+import DeviceList from '$lib/components/DeviceList.svelte';
 import {
 	chapterNotificationsEnabled,
 	registerWorkTitles,
 	setChapterNotifications,
 } from '$lib/events.svelte';
 import IconTranslate from '~icons/material-symbols/translate';
-
-let sessions = $state<Session[]>([]);
-let loading = $state(true);
 
 let registrationMode: RegistrationMode | null = $state(null);
 let invites = $state<InviteInfo[]>([]);
@@ -58,7 +55,7 @@ function sourceKind(sourceId: string): SourceInfo['kind'] | undefined {
 $effect(() => {
 	chapterNotifications = chapterNotificationsEnabled();
 	api
-		.library()
+		.allLibrary()
 		.then((library) => {
 			libraryTitles = Object.fromEntries(library.entries.map(([, work]) => [work.id, work.title]));
 		})
@@ -69,10 +66,6 @@ let trackerCredentials: Record<string, { username: string; password: string }> =
 let trackerBusy = $state(false);
 
 $effect(() => {
-	api
-		.sessions()
-		.then((result) => (sessions = result))
-		.finally(() => (loading = false));
 	api
 		.sources()
 		.then((all) => {
@@ -214,11 +207,6 @@ async function unlinkTracker(id: string) {
 	} finally {
 		trackerBusy = false;
 	}
-}
-
-async function revoke(token: string) {
-	await api.revokeSession(token);
-	sessions = sessions.filter((session) => session.token !== token);
 }
 
 async function saveTranslationSettings() {
@@ -651,36 +639,7 @@ async function clearTranslationSettings() {
 		{/if}
 	</section>
 
-	<section class="mt-12" aria-labelledby="devices-heading">
-		<h2 id="devices-heading" class="title-lg">Logged-in devices</h2>
-		<ul
-			class="mt-4 divide-y divide-outline-variant/20 rounded-card border border-outline-variant/40 bg-surface-low"
-		>
-			{#each sessions as session (session.token)}
-				<li class="flex items-center justify-between gap-4 px-4 py-3">
-					<div>
-						<p class="body-md">{session.device_label ?? 'Unnamed device'}</p>
-						<p class="mono-label text-outline">
-							Last seen {new Date(session.last_seen_at).toLocaleString()}
-						</p>
-					</div>
-					<button
-						type="button"
-						class="mono-label text-error uppercase hover:underline"
-						onclick={() => revoke(session.token)}
-					>
-						Log out device
-					</button>
-				</li>
-			{:else}
-				{#if !loading}
-					<li class="mono-label px-4 py-6 text-center text-on-surface-variant">
-						No other sessions
-					</li>
-				{/if}
-			{/each}
-		</ul>
-	</section>
+	<DeviceList />
 
 	<section class="mt-10 max-w-3xl" aria-labelledby="data-heading">
 		<h2 id="data-heading" class="title-lg">Data</h2>

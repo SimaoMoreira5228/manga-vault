@@ -3,8 +3,8 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrde
 
 use super::{utc_to_db, *};
 use crate::StoreResult;
-use crate::entities::{categories, chapters, library_entries, reading_positions, reading_progress};
-use crate::repo::{LibraryRepository, ProgressRepository};
+use crate::entities::{categories, chapters, library_entries, reading_positions, reading_progress, works};
+use crate::repo::{LibraryFilter, LibraryRepository, ProgressRepository};
 
 #[async_trait::async_trait]
 impl LibraryRepository for SeaStore {
@@ -127,6 +127,57 @@ impl LibraryRepository for SeaStore {
 			.one(&self.db)
 			.await?;
 		Ok(model.as_ref().map(LibraryEntry::from))
+	}
+
+	async fn library_entries_page(
+		&self,
+		user_id: uuid::Uuid,
+		filter: &LibraryFilter,
+		offset: u64,
+		limit: u64,
+	) -> StoreResult<(Vec<LibraryEntry>, i64)> {
+		use sea_orm::sea_query::expr::ExprTrait;
+		use sea_orm::sea_query::{Expr as QueryExpr, Func};
+		use sea_orm::{JoinType, PaginatorTrait, QueryFilter, QuerySelect, RelationTrait};
+
+		let apply = |query: sea_orm::Select<library_entries::Entity>| {
+			let query = query
+				.join(JoinType::InnerJoin, library_entries::Relation::Works.def())
+				.filter(library_entries::Column::UserId.eq(user_id))
+				.filter(library_entries::Column::RemovedAt.is_null());
+			let query = match filter.kind {
+				Some(kind) => query.filter(works::Column::Kind.eq(match kind {
+					domain::WorkKind::Manga => "manga",
+					domain::WorkKind::Novel => "novel",
+				})),
+				None => query,
+			};
+			let query = match filter.category_id {
+				Some(category_id) => query.filter(library_entries::Column::CategoryId.eq(category_id)),
+				None => query,
+			};
+			match filter
+				.title_contains
+				.as_deref()
+				.map(str::trim)
+				.filter(|text| !text.is_empty())
+			{
+				Some(needle) => query.filter(
+					QueryExpr::expr(Func::lower(works::Column::Title.into_expr()))
+						.like(format!("%{}%", needle.to_lowercase())),
+				),
+				None => query,
+			}
+		};
+
+		let total = apply(library_entries::Entity::find()).count(&self.db).await?;
+		let models = apply(library_entries::Entity::find())
+			.order_by_desc(library_entries::Column::CreatedAt)
+			.offset(offset)
+			.limit(limit)
+			.all(&self.db)
+			.await?;
+		Ok((models.iter().map(LibraryEntry::from).collect(), total as i64))
 	}
 
 	async fn library_entries_including_removed(&self, user_id: uuid::Uuid) -> StoreResult<Vec<LibraryEntry>> {
@@ -429,6 +480,35 @@ impl ProgressRepository for SeaStore {
 
 	async fn mark_unread(&self, user_id: uuid::Uuid, chapter_id: uuid::Uuid) -> StoreResult<()> {
 		self.tombstone_progress(user_id, vec![chapter_id]).await
+	}
+
+	async fn recent_progress_page(
+		&self,
+		user_id: uuid::Uuid,
+		offset: u64,
+		limit: u64,
+	) -> StoreResult<(Vec<(domain::ReadingProgress, domain::Chapter)>, i64)> {
+		use sea_orm::{PaginatorTrait, QuerySelect};
+		let total = reading_progress::Entity::find()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.filter(reading_progress::Column::RemovedAt.is_null())
+			.count(&self.db)
+			.await?;
+		let rows = reading_progress::Entity::find()
+			.filter(reading_progress::Column::UserId.eq(user_id))
+			.filter(reading_progress::Column::RemovedAt.is_null())
+			.order_by_desc(reading_progress::Column::ReadAt)
+			.offset(offset)
+			.limit(limit)
+			.all(&self.db)
+			.await?;
+		let mut items = Vec::with_capacity(rows.len());
+		for row in &rows {
+			if let Some(chapter) = chapters::Entity::find_by_id(row.chapter_id).one(&self.db).await? {
+				items.push((ReadingProgress::from(row), Chapter::from(&chapter)));
+			}
+		}
+		Ok((items, total as i64))
 	}
 
 	async fn reading_progress_for_works(

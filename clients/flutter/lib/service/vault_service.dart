@@ -1,8 +1,45 @@
 import '../src/rust/api/local.dart';
 
-export '../src/rust/api/local.dart';
+export '../src/rust/api/local.dart' hide HistoryPage, LibraryPage;
+export 'library_filter.dart';
 
 final Map<String, ChapterBody> _chapterContentCache = {};
+
+const int pageSize = 50;
+const int maxPageSize = 200;
+
+class VaultPage<T> {
+  const VaultPage({
+    required this.items,
+    required this.total,
+    required this.offset,
+    required this.limit,
+  });
+  final List<T> items;
+  final int total;
+  final int offset;
+  final int limit;
+
+  int get number => offset ~/ limit + 1;
+  int get pages => limit < 1 ? 1 : (total + limit - 1) ~/ limit;
+  bool get hasNext => offset + limit < total;
+  bool get hasPrevious => offset > 0;
+}
+
+extension VaultLibraryPages on VaultService {
+  Future<List<LibraryItem>> allLibrary() async {
+    final all = <LibraryItem>[];
+    var offset = 0;
+    var total = 1;
+    while (offset < total) {
+      final page = await listLibrary(offset: offset, limit: maxPageSize);
+      all.addAll(page.items);
+      total = page.total;
+      offset = page.offset + page.limit;
+    }
+    return all;
+  }
+}
 
 ChapterBody? cachedChapterContent(String chapterId) =>
     _chapterContentCache[chapterId];
@@ -104,9 +141,13 @@ abstract class VaultService {
   Future<ChapterBody> chapterContent({required String chapterId});
   Future<void> addToLibrary({required String workId});
   Future<void> removeFromLibrary({required String workId});
-  Future<List<LibraryItem>> listLibrary();
+  Future<VaultPage<LibraryItem>> listLibrary({
+    int offset = 0,
+    int limit = pageSize,
+    LibraryFilter filter = const LibraryFilter(),
+  });
   Future<Map<String, ChapterProgressStats>> libraryOverview();
-  Future<List<HistoryEntry>> history({int limit});
+  Future<VaultPage<HistoryEntry>> history({int offset, int limit});
   Future<ReadingStatsSummary> readingStats();
   Future<int> refreshAllLibrary();
   Future<List<CategoryInfo>> listCategories();

@@ -58,7 +58,23 @@ class LocalService implements VaultService {
       _vault.removeFromLibrary(workId: workId);
 
   @override
-  Future<List<LibraryItem>> listLibrary() => _vault.listLibrary();
+  Future<VaultPage<LibraryItem>> listLibrary({
+    int offset = 0,
+    int limit = pageSize,
+    LibraryFilter filter = const LibraryFilter(),
+  }) async {
+    final page = await _vault.listLibrary(
+      offset: BigInt.from(offset),
+      limit: limit,
+      filter: filter,
+    );
+    return VaultPage(
+      items: page.items,
+      total: page.total.toInt(),
+      offset: page.offset.toInt(),
+      limit: page.limit.toInt(),
+    );
+  }
 
   @override
   Future<Map<String, ChapterProgressStats>> libraryOverview() async {
@@ -73,31 +89,29 @@ class LocalService implements VaultService {
   }
 
   @override
-  Future<List<HistoryEntry>> history({int limit = 60}) async {
-    final items = await _vault.continueReading();
-    final entries = <HistoryEntry>[];
-    for (final item in items.take(limit)) {
-      final chapterId = item.chapterId;
-      if (chapterId == null) continue;
-      String? chapterTitle;
-      try {
-        final details = await _vault.getWork(workId: item.workId);
-        chapterTitle = details.chapters
-            .where((chapter) => chapter.id == chapterId)
-            .map((chapter) => chapter.title)
-            .firstOrNull;
-      } catch (_) {}
-      entries.add(
-        HistoryEntry(
-          readAt: null,
-          chapterId: chapterId,
-          chapterTitle: chapterTitle,
-          workId: item.workId,
-          workTitle: item.title,
-        ),
-      );
-    }
-    return entries;
+  Future<VaultPage<HistoryEntry>> history({
+    int offset = 0,
+    int limit = pageSize,
+  }) async {
+    final page = await _vault.history(
+      offset: BigInt.from(offset),
+      limit: limit,
+    );
+    return VaultPage(
+      items: [
+        for (final row in page.items)
+          HistoryEntry(
+            readAt: DateTime.tryParse(row.readAt),
+            chapterId: row.chapterId,
+            chapterTitle: row.chapterTitle,
+            workId: row.workId,
+            workTitle: row.workTitle,
+          ),
+      ],
+      total: page.total.toInt(),
+      offset: page.offset.toInt(),
+      limit: page.limit.toInt(),
+    );
   }
 
   @override
@@ -113,9 +127,8 @@ class LocalService implements VaultService {
 
   @override
   Future<int> refreshAllLibrary() async {
-    final items = await _vault.listLibrary();
     var queued = 0;
-    for (final item in items) {
+    for (final item in await allLibrary()) {
       try {
         await _vault.refreshWork(workId: item.work.id);
         queued++;

@@ -1,11 +1,24 @@
 <script lang="ts">
-import { api, type Category, type LibraryEntry, type Work, type WorkKind } from '$lib/api';
+import {
+	api,
+	type Category,
+	type LibraryEntry,
+	type LibraryFilter,
+	type Work,
+	type WorkKind,
+} from '$lib/api';
+import Pager from '$lib/components/Pager.svelte';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
 import { onWorkRefreshed } from '$lib/events.svelte';
+import { PAGE_SIZE } from '$lib/page';
+
+const limit = PAGE_SIZE;
 
 let items = $state<[LibraryEntry, Work][]>([]);
 let categories = $state<Category[]>([]);
 let overview = $state<Record<string, { read: number; total: number }>>({});
+let total = $state(0);
+let offset = $state(0);
 let filter = $state<'all' | WorkKind>('all');
 let categoryFilter = $state<string | null>(null);
 let sort = $state<'updated' | 'title' | 'added' | 'unread-desc' | 'unread-asc'>('updated');
@@ -15,15 +28,18 @@ let loadError = $state<string | null>(null);
 let newCategoryName = $state('');
 let refreshBusy = $state(false);
 
-const filtered = $derived.by(() => {
-	let rows = items;
-	if (filter !== 'all') rows = rows.filter(([, work]) => work.kind === filter);
-	if (categoryFilter) {
-		rows = rows.filter(([entry]) => entry.category_id === categoryFilter);
-	}
-	const text = textQuery.trim().toLowerCase();
-	if (text) rows = rows.filter(([, work]) => work.title.toLowerCase().includes(text));
-	rows = [...rows].sort((a, b) => {
+const filterQuery = $derived.by<LibraryFilter>(() => ({
+	kind: filter === 'all' ? undefined : filter,
+	categoryId: categoryFilter ?? undefined,
+	q: textQuery,
+}));
+
+const filterActive = $derived(
+	filter !== 'all' || categoryFilter !== null || textQuery.trim() !== '',
+);
+
+const rows = $derived.by(() =>
+	[...items].sort((a, b) => {
 		if (sort === 'title') return a[1].title.localeCompare(b[1].title);
 		if (sort === 'added') return b[0].created_at.localeCompare(a[0].created_at);
 		if (sort === 'unread-desc' || sort === 'unread-asc') {
@@ -36,9 +52,8 @@ const filtered = $derived.by(() => {
 			}
 		}
 		return b[1].updated_at.localeCompare(a[1].updated_at);
-	});
-	return rows;
-});
+	}),
+);
 
 function unreadOf(workId: string): number | null {
 	const stats = overview[workId];
@@ -50,11 +65,12 @@ async function load() {
 	loadError = null;
 	try {
 		const [library, counts] = await Promise.all([
-			api.library(),
+			api.library(offset, limit, filterQuery),
 			api.libraryOverview().catch(() => ({ overview: [] })),
 		]);
 		items = library.entries;
 		categories = library.categories;
+		total = library.total;
 		overview = Object.fromEntries(
 			counts.overview.map((row) => [
 				row.work_id,
@@ -66,6 +82,12 @@ async function load() {
 	} finally {
 		loading = false;
 	}
+}
+
+function shiftPage(next: number) {
+	offset = next;
+	loading = true;
+	load();
 }
 
 $effect(() => {
@@ -98,22 +120,23 @@ async function addCategory(event: SubmitEvent) {
 
 async function removeCategory(categoryId: string) {
 	await api.deleteCategory(categoryId);
-	if (categoryFilter === categoryId) categoryFilter = null;
+	if (categoryFilter === categoryId) {
+		categoryFilter = null;
+		offset = 0;
+	}
 	categories = categories.filter((category) => category.id !== categoryId);
 }
 
 async function assignCategory(entryId: string, categoryId: string | null) {
 	await api.setEntryCategory(entryId, categoryId);
-	items = items.map(([entry, work]) =>
-		entry.id === entryId ? [{ ...entry, category_id: categoryId }, work] : [entry, work],
-	);
+	await load();
 }
 </script>
 
 <div class="px-4 py-6 md:px-10 md:py-10">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<h1 class="font-display text-3xl font-bold md:text-4xl">Library</h1>
-		{#if items.length > 0}
+		{#if total > 0}
 			<button
 				type="button"
 				class="label-caps rounded-card border border-outline-variant/60 px-4 py-2 hover:border-outline disabled:opacity-50"
@@ -125,7 +148,7 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 		{/if}
 	</div>
 
-	{#if items.length > 0}
+	{#if total > 0 || filterActive}
 		<div class="mt-6 flex flex-wrap gap-2">
 			{#each ['all', 'manga', 'novel'] as const as option (option)}
 				<button
@@ -133,7 +156,10 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 					class="label-caps rounded-card border px-4 py-2 capitalize transition-colors {filter === option
 						? 'border-primary text-primary'
 						: 'border-outline-variant/50 text-on-surface-variant hover:border-outline'}"
-					onclick={() => (filter = option)}
+					onclick={() => {
+						filter = option;
+						offset = 0;
+					}}
 					aria-pressed={filter === option}
 				>
 					{option === 'all' ? 'All' : `${option}s`}
@@ -145,7 +171,10 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 				class="label-caps rounded-card border px-4 py-2 transition-colors {categoryFilter === null
 					? 'border-primary text-primary'
 					: 'border-outline-variant/50 text-on-surface-variant hover:border-outline'}"
-				onclick={() => (categoryFilter = null)}
+				onclick={() => {
+					categoryFilter = null;
+					offset = 0;
+				}}
 				aria-pressed={categoryFilter === null}
 			>
 				All
@@ -158,7 +187,10 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 						category.id
 							? 'border-primary text-primary'
 							: 'border-outline-variant/50 text-on-surface-variant hover:border-outline'}"
-						onclick={() => (categoryFilter = categoryFilter === category.id ? null : category.id)}
+						onclick={() => {
+							categoryFilter = categoryFilter === category.id ? null : category.id;
+							offset = 0;
+						}}
 						aria-pressed={categoryFilter === category.id}
 					>
 						{category.name}
@@ -186,7 +218,11 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 			<input
 				type="search"
 				placeholder="Filter titles…"
-				bind:value={textQuery}
+				value={textQuery}
+				oninput={(event) => {
+					textQuery = event.currentTarget.value;
+					offset = 0;
+				}}
 				class="min-w-0 flex-1 max-w-xs rounded-card border border-outline-variant/60 bg-surface-container px-4 py-2 outline-none focus:border-primary"
 			>
 			<select
@@ -200,6 +236,7 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 				<option value="unread-desc">Most unread chapters</option>
 				<option value="unread-asc">Fewest unread chapters</option>
 			</select>
+			<span class="mono-label text-on-surface-variant">{total} works</span>
 		</div>
 	{/if}
 
@@ -227,7 +264,7 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 		</div>
 	{:else}
 		<div class="mt-8 grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-5">
-			{#each filtered as [entry, work] (entry.id)}
+			{#each rows as [entry, work] (entry.id)}
 				{@const unread = unreadOf(work.id)}
 				<div class="relative">
 					<SeriesCard {work} kind={work.kind} />
@@ -253,9 +290,15 @@ async function assignCategory(entryId: string, categoryId: string | null) {
 				</div>
 			{:else}
 				<p class="body-md col-span-full text-on-surface-variant">
-					Your library is empty: explore sources to import works.
+					{#if total === 0}
+						Your library is empty: explore sources to import works.
+					{:else}
+						No titles match these filters.
+					{/if}
 				</p>
 			{/each}
 		</div>
+
+		<Pager {offset} {limit} {total} label="Library" onshift={shiftPage} />
 	{/if}
 </div>

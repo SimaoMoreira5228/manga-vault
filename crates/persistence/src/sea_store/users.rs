@@ -140,6 +140,22 @@ impl SessionRepository for SeaStore {
 		Ok(models.iter().map(Session::from).collect())
 	}
 
+	async fn sessions_page(&self, user_id: uuid::Uuid, offset: u64, limit: u64) -> StoreResult<(Vec<Session>, i64)> {
+		use sea_orm::{PaginatorTrait, QuerySelect};
+		let total = sessions::Entity::find()
+			.filter(sessions::Column::UserId.eq(user_id))
+			.count(&self.db)
+			.await?;
+		let models = sessions::Entity::find()
+			.filter(sessions::Column::UserId.eq(user_id))
+			.order_by_desc(sessions::Column::LastSeenAt)
+			.offset(offset)
+			.limit(limit)
+			.all(&self.db)
+			.await?;
+		Ok((models.iter().map(Session::from).collect(), total as i64))
+	}
+
 	async fn delete_sessions_seen_before(
 		&self,
 		user_id: Option<uuid::Uuid>,

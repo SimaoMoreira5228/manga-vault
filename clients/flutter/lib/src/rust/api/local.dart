@@ -63,7 +63,7 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<String> glossaryForLanguage({required String language});
 
-  Future<List<HistoryItem>> history({int? limit});
+  Future<HistoryPage> history({required BigInt offset, int? limit});
 
   Future<void> importBackup({required String backupJson});
 
@@ -83,7 +83,11 @@ abstract class LocalVault implements RustOpaqueInterface {
 
   Future<List<CategorySummary>> listCategories();
 
-  Future<List<LibraryItem>> listLibrary();
+  Future<LibraryPage> listLibrary({
+    required BigInt offset,
+    int? limit,
+    required LibraryFilter filter,
+  });
 
   Future<List<SourceSummary>> listSources();
 
@@ -344,14 +348,67 @@ class HistoryItem {
           kind == other.kind;
 }
 
-class LibraryItem {
-  final String entryId;
-  final WorkDetails work;
+class HistoryPage {
+  final List<HistoryItem> items;
+  final PlatformInt64 total;
+  final BigInt offset;
+  final BigInt limit;
 
-  const LibraryItem({required this.entryId, required this.work});
+  const HistoryPage({
+    required this.items,
+    required this.total,
+    required this.offset,
+    required this.limit,
+  });
 
   @override
-  int get hashCode => entryId.hashCode ^ work.hashCode;
+  int get hashCode =>
+      items.hashCode ^ total.hashCode ^ offset.hashCode ^ limit.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HistoryPage &&
+          runtimeType == other.runtimeType &&
+          items == other.items &&
+          total == other.total &&
+          offset == other.offset &&
+          limit == other.limit;
+}
+
+class LibraryFilter {
+  final String? kind;
+  final String? categoryId;
+  final String? query;
+
+  const LibraryFilter({this.kind, this.categoryId, this.query});
+
+  @override
+  int get hashCode => kind.hashCode ^ categoryId.hashCode ^ query.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LibraryFilter &&
+          runtimeType == other.runtimeType &&
+          kind == other.kind &&
+          categoryId == other.categoryId &&
+          query == other.query;
+}
+
+class LibraryItem {
+  final String entryId;
+  final String? categoryId;
+  final WorkDetails work;
+
+  const LibraryItem({
+    required this.entryId,
+    this.categoryId,
+    required this.work,
+  });
+
+  @override
+  int get hashCode => entryId.hashCode ^ categoryId.hashCode ^ work.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -359,7 +416,36 @@ class LibraryItem {
       other is LibraryItem &&
           runtimeType == other.runtimeType &&
           entryId == other.entryId &&
+          categoryId == other.categoryId &&
           work == other.work;
+}
+
+class LibraryPage {
+  final List<LibraryItem> items;
+  final PlatformInt64 total;
+  final BigInt offset;
+  final BigInt limit;
+
+  const LibraryPage({
+    required this.items,
+    required this.total,
+    required this.offset,
+    required this.limit,
+  });
+
+  @override
+  int get hashCode =>
+      items.hashCode ^ total.hashCode ^ offset.hashCode ^ limit.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is LibraryPage &&
+          runtimeType == other.runtimeType &&
+          items == other.items &&
+          total == other.total &&
+          offset == other.offset &&
+          limit == other.limit;
 }
 
 class PluginRepo {

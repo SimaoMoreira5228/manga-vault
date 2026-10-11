@@ -202,6 +202,12 @@ Every error response carries a stable machine-readable `code` alongside the huma
 
 Codes: `not_found`, `bad_credentials`, `too_many_attempts`, `registration_closed`, `invite_required`, `invalid_invite`, `username_taken`, `conflict`, `source_unavailable`, `plugin_not_found`, `bad_plugin_artifact`, `upstream_failed`, `internal`, `bad_request`, `forbidden`, `too_many_requests`.
 
+`GET /api/library`, `GET /api/me/history`, and `GET /api/me/sessions` are paginated with `?offset=&limit=`.
+`/api/library` also accepts `?kind=manga|novel`, `?category_id=<uuid>`, and `?q=<text>` (case-insensitive title search),
+and `total` reflects the filtered count, so a filtered view pages independently of the full library.
+`limit` defaults to 50 and is clamped to 200. Each response carries `total`, `offset`, and `limit` alongside its items
+(`/api/me/sessions` wraps them in `items`).
+
 Writes authenticated by cookie are checked against the request's `Origin`: a cross-origin `POST`/`PUT`/`DELETE`/`PATCH` is rejected with `403` unless the origin is same-host or listed in `CORS_ORIGINS`. Bearer clients (Flutter, scripts) and non-browser clients that send no `Origin` are unaffected.
 
 ---

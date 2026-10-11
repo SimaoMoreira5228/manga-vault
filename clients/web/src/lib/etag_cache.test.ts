@@ -95,6 +95,45 @@ describe('cachedRequest', () => {
 		assert.equal(calls[1].ifNoneMatch, null);
 	});
 
+	it('keys paginated reads by their query string', async () => {
+		next = () => reply({ entries: [{ id: 'w1' }], total: 120 }, '"v1"');
+		const first = await get('/api/library?offset=0&limit=50');
+		assert.deepEqual(first.body, { entries: [{ id: 'w1' }], total: 120 });
+
+		next = () => reply({ entries: [{ id: 'w51' }], total: 120 }, '"v2"');
+		const second = await get('/api/library?offset=50&limit=50');
+		assert.equal(second.notModified, false);
+		assert.deepEqual(second.body, { entries: [{ id: 'w51' }], total: 120 });
+		assert.equal(calls[1].url, '/api/library?offset=50&limit=50');
+		assert.equal(calls[1].ifNoneMatch, null);
+
+		next = () => reply(null, '"v2"', 304);
+		const replay = await get('/api/library?offset=50&limit=50');
+		assert.equal(replay.notModified, true);
+		assert.deepEqual(replay.body, { entries: [{ id: 'w51' }], total: 120 });
+	});
+
+	it('keys filtered reads separately from the unfiltered read', async () => {
+		next = () => reply({ entries: [{ id: 'w1' }], total: 3 }, '"plain"');
+		await get('/api/library?offset=0&limit=50');
+
+		next = () => reply({ entries: [{ id: 'w2' }], total: 1 }, '"manga"');
+		const filtered = await get('/api/library?offset=0&limit=50&kind=manga');
+		assert.equal(filtered.notModified, false);
+		assert.deepEqual(filtered.body, { entries: [{ id: 'w2' }], total: 1 });
+		assert.equal(calls[1].ifNoneMatch, null);
+
+		next = () => reply(null, '"manga"', 304);
+		const replay = await get('/api/library?offset=0&limit=50&kind=manga');
+		assert.equal(replay.notModified, true);
+		assert.deepEqual(replay.body, { entries: [{ id: 'w2' }], total: 1 });
+
+		next = () => reply(null, '"plain"', 304);
+		const plain = await get('/api/library?offset=0&limit=50');
+		assert.equal(plain.notModified, true);
+		assert.deepEqual(plain.body, { entries: [{ id: 'w1' }], total: 3 });
+	});
+
 	it('evicts the oldest entry past the bound', async () => {
 		next = () => reply({ ok: true }, '"v1"');
 		for (let index = 0; index < 40; index += 1) await get(`/api/works/${index}`);

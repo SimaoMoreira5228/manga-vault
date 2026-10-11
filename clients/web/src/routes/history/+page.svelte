@@ -1,6 +1,8 @@
 <script lang="ts">
 import { api } from '$lib/api';
+import Pager from '$lib/components/Pager.svelte';
 import { onWorkRefreshed } from '$lib/events.svelte';
+import { PAGE_SIZE } from '$lib/page';
 
 type HistoryEntry = {
 	read_at: string;
@@ -11,7 +13,11 @@ type HistoryEntry = {
 	kind: string;
 };
 
+const limit = PAGE_SIZE;
+
 let entries = $state<HistoryEntry[]>([]);
+let total = $state(0);
+let offset = $state(0);
 let loading = $state(true);
 let loadError = $state<string | null>(null);
 
@@ -19,12 +25,19 @@ async function load() {
 	loadError = null;
 	loading = true;
 	try {
-		entries = (await api.history(120)).history;
+		const page = await api.history(offset, limit);
+		entries = page.history;
+		total = page.total;
 	} catch (cause) {
 		loadError = cause instanceof Error ? cause.message : 'Failed to load history';
 	} finally {
 		loading = false;
 	}
+}
+
+function shiftPage(next: number) {
+	offset = next;
+	load();
 }
 
 $effect(() => {
@@ -54,6 +67,9 @@ function timeLabel(readAt: string): string {
 
 <div class="px-4 py-6 md:px-10 md:py-10">
 	<h1 class="font-display text-3xl font-bold md:text-4xl">History</h1>
+	{#if total > 0}
+		<p class="mono-label mt-2 text-on-surface-variant">{total} chapters read</p>
+	{/if}
 
 	{#if loading}
 		<div class="mt-16 flex flex-col items-center gap-4 text-on-surface-variant" role="status">
@@ -105,5 +121,7 @@ function timeLabel(readAt: string): string {
 				Nothing read yet: open any chapter and it shows up here.
 			</p>
 		{/each}
+
+		<Pager {offset} {limit} {total} label="History" onshift={shiftPage} />
 	{/if}
 </div>

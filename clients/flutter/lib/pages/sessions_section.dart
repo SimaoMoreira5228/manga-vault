@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../service/remote_service.dart';
 import '../service/session_store.dart';
 import '../service/vault_service.dart';
+import 'pager_bar.dart';
 
 class SessionsSection extends StatefulWidget {
   const SessionsSection({
@@ -20,6 +21,8 @@ class SessionsSection extends StatefulWidget {
 
 class _SessionsSectionState extends State<SessionsSection> {
   List<SessionInfo> sessions = const [];
+  int total = 0;
+  int offset = 0;
   bool loading = true;
   String? failure;
 
@@ -31,10 +34,11 @@ class _SessionsSectionState extends State<SessionsSection> {
 
   Future<void> _load() async {
     try {
-      final loaded = await widget.account.sessions();
+      final page = await widget.account.sessions(offset: offset);
       if (!mounted) return;
       setState(() {
-        sessions = loaded;
+        sessions = page.items;
+        total = page.total;
         loading = false;
         failure = null;
       });
@@ -45,6 +49,11 @@ class _SessionsSectionState extends State<SessionsSection> {
         failure = '$e';
       });
     }
+  }
+
+  void _shiftPage(int next) {
+    setState(() => offset = next);
+    _load();
   }
 
   Future<void> _revoke(SessionInfo session) async {
@@ -60,6 +69,9 @@ class _SessionsSectionState extends State<SessionsSection> {
       await SessionStore.saveLocal();
       widget.onSignedOut();
       return;
+    }
+    if (sessions.length == 1 && offset > 0) {
+      setState(() => offset -= pageSize);
     }
     await _load();
   }
@@ -105,6 +117,13 @@ class _SessionsSectionState extends State<SessionsSection> {
                 child: const Text('Revoke'),
               ),
             ),
+        if (failure == null)
+          PagerBar(
+            offset: offset,
+            limit: pageSize,
+            total: total,
+            onshift: _shiftPage,
+          ),
       ],
     );
   }

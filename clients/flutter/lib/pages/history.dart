@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../service/vault_service.dart';
+import 'pager_bar.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key, required this.vault});
@@ -13,6 +14,8 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   List<HistoryEntry>? entries;
+  int total = 0;
+  int offset = 0;
   String? error;
 
   @override
@@ -27,13 +30,21 @@ class _HistoryPageState extends State<HistoryPage> {
       error = null;
     });
     try {
-      final result = await widget.vault.history(limit: 100);
+      final page = await widget.vault.history(offset: offset, limit: pageSize);
       if (!mounted) return;
-      setState(() => entries = result);
+      setState(() {
+        entries = page.items;
+        total = page.total;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() => error = e.toString());
     }
+  }
+
+  void _shiftPage(int next) {
+    setState(() => offset = next);
+    _load();
   }
 
   String _dayLabel(DateTime date) {
@@ -58,8 +69,16 @@ class _HistoryPageState extends State<HistoryPage> {
           : shown.isEmpty
           ? const Center(child: Text('Nothing read yet'))
           : ListView.builder(
-              itemCount: shown.length,
+              itemCount: shown.length + 1,
               itemBuilder: (context, index) {
+                if (index == shown.length) {
+                  return PagerBar(
+                    offset: offset,
+                    limit: pageSize,
+                    total: total,
+                    onshift: _shiftPage,
+                  );
+                }
                 final entry = shown[index];
                 final readAt = entry.readAt;
                 final previous = index == 0 ? null : shown[index - 1].readAt;

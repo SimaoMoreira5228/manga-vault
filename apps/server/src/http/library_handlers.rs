@@ -1,3 +1,4 @@
+use application::{LibraryFilterQuery, PageQuery};
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::response::Response;
@@ -10,6 +11,14 @@ use crate::http::auth_extractor::Authenticated;
 use crate::http::cache;
 use crate::http::error::{ApiError, ApiResult};
 use crate::state::AppState;
+
+#[derive(Deserialize)]
+pub struct LibraryQuery {
+	#[serde(flatten)]
+	page: PageQuery,
+	#[serde(flatten)]
+	filter: LibraryFilterQuery,
+}
 
 #[derive(Deserialize)]
 pub struct AddToLibrary {
@@ -26,12 +35,21 @@ pub async fn list(
 	State(state): State<AppState>,
 	auth: Authenticated,
 	headers: axum::http::HeaderMap,
+	axum::extract::Query(query): axum::extract::Query<LibraryQuery>,
 ) -> Result<Response, ApiError> {
-	let entries = state.vault.library(auth.user.id).await?;
+	let (offset, limit) = query.page.resolve();
+	let filter = query.filter.resolve();
+	let entries = state.vault.library_page(auth.user.id, &filter, offset, limit).await?;
 	let categories = state.vault.categories(auth.user.id).await?;
 	Ok(cache::cached_json(
 		&headers,
-		&json!({ "entries": entries, "categories": categories }),
+		&json!({
+			"entries": entries.items,
+			"total": entries.total,
+			"offset": offset,
+			"limit": limit,
+			"categories": categories,
+		}),
 		0,
 	))
 }

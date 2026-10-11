@@ -20,7 +20,7 @@ async function load() {
 	loadError = null;
 	loading = true;
 	try {
-		items = (await api.library()).entries;
+		items = (await api.allLibrary()).entries;
 	} catch (cause) {
 		loadError = cause instanceof Error ? cause.message : 'Failed to load updates';
 	} finally {

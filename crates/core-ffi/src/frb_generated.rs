@@ -850,6 +850,7 @@ fn wire__crate__api__local__LocalVault_history_impl(
 			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
 				&mut deserializer,
 			);
+			let api_offset = <u64>::sse_decode(&mut deserializer);
 			let api_limit = <Option<u32>>::sse_decode(&mut deserializer);
 			deserializer.end();
 			move |context| async move {
@@ -866,7 +867,8 @@ fn wire__crate__api__local__LocalVault_history_impl(
 							}
 						}
 						let api_that_guard = api_that_guard.unwrap();
-						let output_ok = crate::api::local::LocalVault::history(&*api_that_guard, api_limit).await?;
+						let output_ok =
+							crate::api::local::LocalVault::history(&*api_that_guard, api_offset, api_limit).await?;
 						Ok(output_ok)
 					})()
 					.await,
@@ -1170,6 +1172,9 @@ fn wire__crate__api__local__LocalVault_list_library_impl(
 			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
 				&mut deserializer,
 			);
+			let api_offset = <u64>::sse_decode(&mut deserializer);
+			let api_limit = <Option<u32>>::sse_decode(&mut deserializer);
+			let api_filter = <crate::api::local::LibraryFilter>::sse_decode(&mut deserializer);
 			deserializer.end();
 			move |context| async move {
 				transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -1185,7 +1190,9 @@ fn wire__crate__api__local__LocalVault_list_library_impl(
 							}
 						}
 						let api_that_guard = api_that_guard.unwrap();
-						let output_ok = crate::api::local::LocalVault::list_library(&*api_that_guard).await?;
+						let output_ok =
+							crate::api::local::LocalVault::list_library(&*api_that_guard, api_offset, api_limit, api_filter)
+								.await?;
 						Ok(output_ok)
 					})()
 					.await,
@@ -2512,6 +2519,22 @@ impl SseDecode for crate::api::local::HistoryItem {
 	}
 }
 
+impl SseDecode for crate::api::local::HistoryPage {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_items = <Vec<crate::api::local::HistoryItem>>::sse_decode(deserializer);
+		let mut var_total = <i64>::sse_decode(deserializer);
+		let mut var_offset = <u64>::sse_decode(deserializer);
+		let mut var_limit = <u64>::sse_decode(deserializer);
+		return crate::api::local::HistoryPage {
+			items: var_items,
+			total: var_total,
+			offset: var_offset,
+			limit: var_limit,
+		};
+	}
+}
+
 impl SseDecode for i64 {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -2519,14 +2542,46 @@ impl SseDecode for i64 {
 	}
 }
 
+impl SseDecode for crate::api::local::LibraryFilter {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_kind = <Option<String>>::sse_decode(deserializer);
+		let mut var_categoryId = <Option<String>>::sse_decode(deserializer);
+		let mut var_query = <Option<String>>::sse_decode(deserializer);
+		return crate::api::local::LibraryFilter {
+			kind: var_kind,
+			category_id: var_categoryId,
+			query: var_query,
+		};
+	}
+}
+
 impl SseDecode for crate::api::local::LibraryItem {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
 		let mut var_entryId = <String>::sse_decode(deserializer);
+		let mut var_categoryId = <Option<String>>::sse_decode(deserializer);
 		let mut var_work = <crate::api::local::WorkDetails>::sse_decode(deserializer);
 		return crate::api::local::LibraryItem {
 			entry_id: var_entryId,
+			category_id: var_categoryId,
 			work: var_work,
+		};
+	}
+}
+
+impl SseDecode for crate::api::local::LibraryPage {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_items = <Vec<crate::api::local::LibraryItem>>::sse_decode(deserializer);
+		let mut var_total = <i64>::sse_decode(deserializer);
+		let mut var_offset = <u64>::sse_decode(deserializer);
+		let mut var_limit = <u64>::sse_decode(deserializer);
+		return crate::api::local::LibraryPage {
+			items: var_items,
+			total: var_total,
+			offset: var_offset,
+			limit: var_limit,
 		};
 	}
 }
@@ -2809,6 +2864,13 @@ impl SseDecode for u32 {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
 		deserializer.cursor.read_u32::<NativeEndian>().unwrap()
+	}
+}
+
+impl SseDecode for u64 {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		deserializer.cursor.read_u64::<NativeEndian>().unwrap()
 	}
 }
 
@@ -3118,10 +3180,46 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::local::HistoryItem> for crate
 	}
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::local::HistoryPage {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.items.into_into_dart().into_dart(),
+			self.total.into_into_dart().into_dart(),
+			self.offset.into_into_dart().into_dart(),
+			self.limit.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::HistoryPage {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::local::HistoryPage> for crate::api::local::HistoryPage {
+	fn into_into_dart(self) -> crate::api::local::HistoryPage {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::local::LibraryFilter {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.kind.into_into_dart().into_dart(),
+			self.category_id.into_into_dart().into_dart(),
+			self.query.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::LibraryFilter {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::local::LibraryFilter> for crate::api::local::LibraryFilter {
+	fn into_into_dart(self) -> crate::api::local::LibraryFilter {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::api::local::LibraryItem {
 	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
 		[
 			self.entry_id.into_into_dart().into_dart(),
+			self.category_id.into_into_dart().into_dart(),
 			self.work.into_into_dart().into_dart(),
 		]
 		.into_dart()
@@ -3130,6 +3228,24 @@ impl flutter_rust_bridge::IntoDart for crate::api::local::LibraryItem {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::LibraryItem {}
 impl flutter_rust_bridge::IntoIntoDart<crate::api::local::LibraryItem> for crate::api::local::LibraryItem {
 	fn into_into_dart(self) -> crate::api::local::LibraryItem {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::local::LibraryPage {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.items.into_into_dart().into_dart(),
+			self.total.into_into_dart().into_dart(),
+			self.offset.into_into_dart().into_dart(),
+			self.limit.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::local::LibraryPage {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::local::LibraryPage> for crate::api::local::LibraryPage {
+	fn into_into_dart(self) -> crate::api::local::LibraryPage {
 		self
 	}
 }
@@ -3402,6 +3518,16 @@ impl SseEncode for crate::api::local::HistoryItem {
 	}
 }
 
+impl SseEncode for crate::api::local::HistoryPage {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<Vec<crate::api::local::HistoryItem>>::sse_encode(self.items, serializer);
+		<i64>::sse_encode(self.total, serializer);
+		<u64>::sse_encode(self.offset, serializer);
+		<u64>::sse_encode(self.limit, serializer);
+	}
+}
+
 impl SseEncode for i64 {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -3409,11 +3535,31 @@ impl SseEncode for i64 {
 	}
 }
 
+impl SseEncode for crate::api::local::LibraryFilter {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<Option<String>>::sse_encode(self.kind, serializer);
+		<Option<String>>::sse_encode(self.category_id, serializer);
+		<Option<String>>::sse_encode(self.query, serializer);
+	}
+}
+
 impl SseEncode for crate::api::local::LibraryItem {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
 		<String>::sse_encode(self.entry_id, serializer);
+		<Option<String>>::sse_encode(self.category_id, serializer);
 		<crate::api::local::WorkDetails>::sse_encode(self.work, serializer);
+	}
+}
+
+impl SseEncode for crate::api::local::LibraryPage {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<Vec<crate::api::local::LibraryItem>>::sse_encode(self.items, serializer);
+		<i64>::sse_encode(self.total, serializer);
+		<u64>::sse_encode(self.offset, serializer);
+		<u64>::sse_encode(self.limit, serializer);
 	}
 }
 
@@ -3637,6 +3783,13 @@ impl SseEncode for u32 {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
 		serializer.cursor.write_u32::<NativeEndian>(self).unwrap();
+	}
+}
+
+impl SseEncode for u64 {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		serializer.cursor.write_u64::<NativeEndian>(self).unwrap();
 	}
 }
 

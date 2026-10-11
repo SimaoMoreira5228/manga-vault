@@ -313,7 +313,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _loadLibraryTitles() async {
     try {
-      final items = await widget.service.listLibrary();
+      final items = await widget.service.allLibrary();
       _libraryTitles = {
         for (final item in items) item.work.id: item.work.title,
       };

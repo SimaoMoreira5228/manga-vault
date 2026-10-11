@@ -3,7 +3,7 @@ use persistence::{JobRepository, SessionRepository, StoreResult, UserRepository}
 use uuid::Uuid;
 
 use crate::registration::verify_password;
-use crate::{Vault, VaultError, VaultResult};
+use crate::{Page, Vault, VaultError, VaultResult};
 
 impl Vault {
 	pub async fn login(&self, username: &str, password: &str, device_label: Option<String>) -> VaultResult<Session> {
@@ -84,6 +84,11 @@ impl Vault {
 	pub async fn logout(&self, token: Uuid) -> VaultResult<()> {
 		self.db.delete_session(token).await?;
 		Ok(())
+	}
+
+	pub async fn sessions_page(&self, user_id: Uuid, offset: u64, limit: u64) -> VaultResult<Page<Session>> {
+		let (sessions, total) = self.db.sessions_page(user_id, offset, limit).await?;
+		Ok(Page::new(sessions, total, offset, limit))
 	}
 
 	pub async fn sessions_for_user(&self, user_id: Uuid) -> VaultResult<Vec<Session>> {

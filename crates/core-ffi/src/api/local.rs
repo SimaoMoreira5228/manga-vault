@@ -95,7 +95,21 @@ pub struct WorkDetails {
 
 pub struct LibraryItem {
 	pub entry_id: String,
+	pub category_id: Option<String>,
 	pub work: WorkDetails,
+}
+
+pub struct LibraryFilter {
+	pub kind: Option<String>,
+	pub category_id: Option<String>,
+	pub query: Option<String>,
+}
+
+pub struct LibraryPage {
+	pub items: Vec<LibraryItem>,
+	pub total: i64,
+	pub offset: u64,
+	pub limit: u64,
 }
 
 pub enum ChapterBody {
@@ -462,17 +476,38 @@ impl LocalVault {
 		Ok(())
 	}
 
-	pub async fn list_library(&self) -> anyhow::Result<Vec<LibraryItem>> {
-		let entries = self.vault.library(self.user_id).await?;
-		let mut items = Vec::with_capacity(entries.len());
-		for (entry, work) in entries {
-			let (work, chapters) = self.vault.get_work(work.id).await?;
+	pub async fn list_library(&self, offset: u64, limit: Option<u32>, filter: LibraryFilter) -> anyhow::Result<LibraryPage> {
+		let limit = limit.unwrap_or(50).min(200);
+		let kind = filter.kind.as_deref().and_then(|raw| match raw {
+			"manga" => Some(domain::WorkKind::Manga),
+			"novel" => Some(domain::WorkKind::Novel),
+			_ => None,
+		});
+		let category_id = filter.category_id.map(|raw| raw.parse()).transpose()?;
+		let library_filter = persistence::LibraryFilter {
+			kind,
+			category_id,
+			title_contains: filter.query,
+		};
+		let page = self
+			.vault
+			.library_page(self.user_id, &library_filter, offset, u64::from(limit))
+			.await?;
+		let mut items = Vec::with_capacity(page.items.len());
+		for (entry, work) in page.items {
+			let (_, chapters) = self.vault.get_work(work.id).await?;
 			items.push(LibraryItem {
 				entry_id: entry.id.to_string(),
+				category_id: entry.category_id.map(|id| id.to_string()),
 				work: Self::work_details(&work, &chapters),
 			});
 		}
-		Ok(items)
+		Ok(LibraryPage {
+			items,
+			total: page.total,
+			offset: page.offset,
+			limit: page.limit,
+		})
 	}
 
 	pub async fn mark_read(&self, chapter_id: String) -> anyhow::Result<()> {
@@ -503,25 +538,29 @@ impl LocalVault {
 			.collect())
 	}
 
-	pub async fn history(&self, limit: Option<u32>) -> anyhow::Result<Vec<HistoryItem>> {
+	pub async fn history(&self, offset: u64, limit: Option<u32>) -> anyhow::Result<HistoryPage> {
 		let limit = limit.unwrap_or(60).min(200);
-		Ok(self
-			.vault
-			.history(self.user_id, u64::from(limit))
-			.await?
-			.into_iter()
-			.map(|(progress, chapter, work)| HistoryItem {
-				read_at: progress.read_at.to_rfc3339(),
-				chapter_id: chapter.id.to_string(),
-				chapter_title: chapter.title,
-				work_id: work.id.to_string(),
-				work_title: work.title,
-				kind: match work.kind {
-					domain::WorkKind::Manga => "manga".to_owned(),
-					domain::WorkKind::Novel => "novel".to_owned(),
-				},
-			})
-			.collect())
+		let page = self.vault.history_page(self.user_id, offset, u64::from(limit)).await?;
+		Ok(HistoryPage {
+			items: page
+				.items
+				.into_iter()
+				.map(|(progress, chapter, work)| HistoryItem {
+					read_at: progress.read_at.to_rfc3339(),
+					chapter_id: chapter.id.to_string(),
+					chapter_title: chapter.title,
+					work_id: work.id.to_string(),
+					work_title: work.title,
+					kind: match work.kind {
+						domain::WorkKind::Manga => "manga".to_owned(),
+						domain::WorkKind::Novel => "novel".to_owned(),
+					},
+				})
+				.collect(),
+			total: page.total,
+			offset: page.offset,
+			limit: page.limit,
+		})
 	}
 
 	pub fn plugin_repos(&self) -> Vec<PluginRepo> {
@@ -654,6 +693,13 @@ pub struct ContinueItem {
 	pub cover_url: Option<String>,
 	pub chapter_id: Option<String>,
 	pub page: Option<u32>,
+}
+
+pub struct HistoryPage {
+	pub items: Vec<HistoryItem>,
+	pub total: i64,
+	pub offset: u64,
+	pub limit: u64,
 }
 
 pub struct HistoryItem {
