@@ -54,20 +54,47 @@ class _DiscoverPageState extends State<DiscoverPage> {
   }
 
   Future<void> _open(String sourceId, WorkSummary work) async {
-    final details = await widget.vault.importWork(
-      sourceId: sourceId,
-      remoteUrl: work.remoteUrl,
-    );
-    if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WorkPage(
-          vault: widget.vault,
-          remote: widget.remote,
-          details: details,
+    final nav = Navigator.of(context, rootNavigator: true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Importing chapters'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'This can take a minute on a long series.',
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );
+    try {
+      final details = await widget.vault.importWork(
+        sourceId: sourceId,
+        remoteUrl: work.remoteUrl,
+      );
+      nav.pop();
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => WorkPage(
+            vault: widget.vault,
+            remote: widget.remote,
+            details: details,
+          ),
+        ),
+      );
+    } catch (e) {
+      nav.pop();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Import failed: $e')));
+    }
   }
 
   @override

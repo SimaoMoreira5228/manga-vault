@@ -73,6 +73,54 @@ test.describe('search', () => {
 		await expect(page.getByRole('heading', { level: 2, name: /E2E Novel/ })).toBeVisible();
 	});
 
+	test('blocks the page behind a progress dialog while importing', async ({ page }) => {
+		await signIn(page, 'searcher');
+		await page.route('**/api/works', async (route) => {
+			await new Promise((resolve) => setTimeout(resolve, 1200));
+			await route.continue();
+		});
+		await page.goto('/search');
+		await expect(page.getByRole('combobox')).toHaveValue('mv_e2e_manga');
+		await page.getByPlaceholder('Search archive…').fill('Manga Seed 07');
+		await page.getByRole('button', { name: 'Search', exact: true }).click();
+		await expect(page.getByRole('heading', { level: 3, name: 'Manga Seed 07' })).toBeVisible();
+
+		await page.getByRole('button', { name: /Manga Seed 07/ }).click();
+
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible();
+		await expect(dialog).toHaveAttribute('aria-modal', 'true');
+		await expect(dialog).toHaveAttribute('aria-busy', 'true');
+		await expect(dialog.getByText('This can take a minute on a long series.')).toBeVisible();
+		await expect(dialog.getByText('Importing chapters')).toBeVisible();
+		await expect(page.locator('div[inert]')).toHaveCount(1);
+
+		await expect(page).toHaveURL(/\/work\/[0-9a-f-]{36}$/, { timeout: 20000 });
+		await expect(page.getByRole('button', { name: 'In Library' })).toBeVisible();
+	});
+
+	test('a failed import closes the dialog and reports why', async ({ page }) => {
+		await signIn(page, 'searcher');
+		await page.route('**/api/works', (route) =>
+			route.fulfill({
+				status: 502,
+				contentType: 'application/json',
+				body: JSON.stringify({ code: 'upstream_unavailable', error: 'source is offline' }),
+			}),
+		);
+		await page.goto('/search');
+		await expect(page.getByRole('combobox')).toHaveValue('mv_e2e_manga');
+		await page.getByPlaceholder('Search archive…').fill('Manga Seed 07');
+		await page.getByRole('button', { name: 'Search', exact: true }).click();
+		await expect(page.getByRole('heading', { level: 3, name: 'Manga Seed 07' })).toBeVisible();
+
+		await page.getByRole('button', { name: /Manga Seed 07/ }).click();
+
+		await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 5000 });
+		await expect(page.getByText('source is offline')).toBeVisible();
+		await expect(page.locator('div[inert]')).toHaveCount(0);
+	});
+
 	test('imports a result and opens its work page', async ({ page }) => {
 		await signIn(page, 'searcher');
 		await page.goto('/search');

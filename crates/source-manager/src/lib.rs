@@ -3,16 +3,16 @@ use std::path::Path;
 use std::sync::Arc;
 
 use parking_lot::RwLock;
-pub mod throttle;
-
 use source_runtime_lua::LuaRuntime;
 use source_runtime_wasm::WasmRuntime;
 use source_sdk::{Backend, PluginManifest, Source};
+use source_throttle::{Throttle, ThrottledSource};
 
 pub struct SourceManager {
 	lua: LuaRuntime,
 	wasm: WasmRuntime,
 	loaded: RwLock<HashMap<String, Arc<dyn Source>>>,
+	throttles: RwLock<HashMap<String, Arc<Throttle>>>,
 }
 
 impl SourceManager {
@@ -21,6 +21,7 @@ impl SourceManager {
 			lua: LuaRuntime::new(flaresolverr_url.clone()),
 			wasm: WasmRuntime::new(flaresolverr_url)?,
 			loaded: RwLock::new(HashMap::new()),
+			throttles: RwLock::new(HashMap::new()),
 		})
 	}
 
@@ -57,18 +58,41 @@ impl SourceManager {
 			}
 			_ => {}
 		}
-		let source: Arc<dyn Source> = match manifest.backend {
-			Backend::Lua => Arc::new(self.lua.load(path).map_err(|e| e.to_string())?),
-			Backend::Wasm => Arc::new(self.wasm.load(path).await.map_err(|e| e.to_string())?),
+		let (source, throttle): (Arc<dyn Source>, Arc<Throttle>) = match manifest.backend {
+			Backend::Lua => {
+				let source = self.lua.load(path).map_err(|e| e.to_string())?;
+				let throttle = source.throttle();
+				(Arc::new(source), throttle)
+			}
+			Backend::Wasm => {
+				let source = self.wasm.load(path).await.map_err(|e| e.to_string())?;
+				let throttle = source.throttle();
+				(Arc::new(source), throttle)
+			}
 		};
+		let limits = &manifest.limits;
+		if limits.gap_ms > 0 || limits.concurrency != source_sdk::PluginLimits::default().concurrency {
+			tracing::info!(
+				source = %manifest.id,
+				gap_ms = limits.gap_ms,
+				concurrency = limits.concurrency,
+				"plugin rate limits applied"
+			);
+		}
 		let info = source.info().clone();
-		let throttled = throttle::ThrottledSource::new(source, throttle::MIN_REQUEST_GAP);
+		let throttled = ThrottledSource::new(source, Arc::clone(&throttle));
 		self.loaded.write().insert(manifest.id.clone(), Arc::new(throttled));
+		self.throttles.write().insert(manifest.id.clone(), throttle);
 		Ok(info)
 	}
 
 	pub async fn reload_bundle(&self, path: &Path) -> Result<source_sdk::SourceInfo, String> {
 		self.load_bundle(path).await
+	}
+
+	pub async fn parked_until(&self, source_id: &str) -> Option<tokio::time::Instant> {
+		let throttle = self.throttles.read().get(source_id)?.clone();
+		throttle.parked_until().await
 	}
 
 	pub fn get(&self, id: &str) -> Option<Arc<dyn Source>> {

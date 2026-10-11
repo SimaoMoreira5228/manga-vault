@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use source_sdk::cloudflare::looks_like_cloudflare_protection;
+use source_throttle::Throttle;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_io::IoView;
 
@@ -11,6 +12,7 @@ pub struct WasmState {
 	pub wasi: WasiCtx,
 	pub client: reqwest::Client,
 	pub flaresolverr_url: Option<String>,
+	pub throttle: std::sync::Arc<Throttle>,
 }
 
 impl IoView for WasmState {
@@ -29,9 +31,9 @@ impl WasiView for WasmState {
 }
 
 impl WasmState {
-	pub fn new(flaresolverr_url: Option<String>) -> Self {
+	pub fn new(flaresolverr_url: Option<String>, throttle: std::sync::Arc<Throttle>) -> Self {
 		let client = reqwest::Client::builder()
-			.timeout(std::time::Duration::from_secs(30))
+			.timeout(throttle.request_timeout())
 			.user_agent(source_sdk::BROWSER_USER_AGENT)
 			.build()
 			.expect("reqwest client");
@@ -40,6 +42,7 @@ impl WasmState {
 			table: Default::default(),
 			client,
 			flaresolverr_url,
+			throttle,
 		}
 	}
 }
@@ -54,8 +57,10 @@ fn header_list(headers: &reqwest::header::HeaderMap) -> Vec<http::Header> {
 		.collect()
 }
 
-async fn fetch(_client: &reqwest::Client, request: reqwest::RequestBuilder) -> Result<Option<http::Response>, String> {
+async fn fetch(url: &str, throttle: &Throttle, request: reqwest::RequestBuilder) -> Result<Option<http::Response>, String> {
+	let _guard = throttle.request_guard(url).await;
 	let Ok(response) = request.send().await else { return Ok(None) };
+	throttle.park_on_rate_limit(url, &response).await;
 	let status = response.status().as_u16();
 	let headers = header_list(response.headers());
 	let body = response.text().await.unwrap_or_default();
@@ -68,7 +73,7 @@ impl http::Host for WasmState {
 		for header in headers.into_iter().flatten() {
 			builder = builder.header(header.name, header.value);
 		}
-		fetch(&self.client, builder).await
+		fetch(&url, &self.throttle, builder).await
 	}
 
 	async fn post(
@@ -81,7 +86,7 @@ impl http::Host for WasmState {
 		for header in headers.into_iter().flatten() {
 			builder = builder.header(header.name, header.value);
 		}
-		fetch(&self.client, builder.body(body)).await
+		fetch(&url, &self.throttle, builder.body(body)).await
 	}
 
 	async fn has_cloudflare_protection(
@@ -104,6 +109,7 @@ impl flare_solverr::Host for WasmState {
 		if let Some(session) = session_id {
 			payload["session"] = serde_json::Value::String(session);
 		}
+		let _guard = self.throttle.request_guard(&endpoint).await;
 		let Ok(response) = self.client.post(endpoint).json(&payload).send().await else {
 			return Ok(None);
 		};

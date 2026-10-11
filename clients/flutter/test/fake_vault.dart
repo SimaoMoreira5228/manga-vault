@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:manga_vault/service/vault_service.dart';
 
 class FakeVault implements VaultService {
@@ -40,6 +42,31 @@ class FakeVault implements VaultService {
   final Map<String, ChapterBody> contents;
   final positions = <String, List<ReadingPosition>>{};
   final imageUrls = <String>[];
+  final imports = <({String sourceId, String remoteUrl})>[];
+  Object? importError;
+  Completer<void>? importGate;
+
+  @override
+  Future<WorkDetails> importWork({
+    required String sourceId,
+    required String remoteUrl,
+  }) async {
+    imports.add((sourceId: sourceId, remoteUrl: remoteUrl));
+    final gate = importGate;
+    if (gate != null) await gate.future;
+    final failure = importError;
+    if (failure != null) throw failure;
+    return WorkDetails(
+      id: 'imported',
+      sourceId: sourceId,
+      remoteUrl: remoteUrl,
+      kind: 'manga',
+      title: 'Imported Work',
+      authors: const [],
+      genres: const [],
+      chapters: const [],
+    );
+  }
 
   @override
   Future<WorkDetails> getWork({required String workId}) async =>

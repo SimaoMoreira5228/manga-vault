@@ -9,6 +9,13 @@ pub struct LuaSource {
 	pub(crate) manifest: source_sdk::PluginManifest,
 	pub(crate) info: SourceInfo,
 	pub(crate) lua: Arc<mlua::Lua>,
+	pub(crate) throttle: Arc<source_throttle::Throttle>,
+}
+
+impl LuaSource {
+	pub fn throttle(&self) -> Arc<source_throttle::Throttle> {
+		Arc::clone(&self.throttle)
+	}
 }
 
 impl LuaSource {

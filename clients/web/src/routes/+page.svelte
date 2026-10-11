@@ -9,6 +9,7 @@ import {
 	type WorkKind,
 } from '$lib/api';
 import { auth } from '$lib/auth.svelte';
+import ImportProgress from '$lib/components/ImportProgress.svelte';
 import ProgressBar from '$lib/components/ProgressBar.svelte';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
 import Skeleton from '$lib/components/Skeleton.svelte';
@@ -35,6 +36,7 @@ let loading = $state(true);
 let trendingStatus = $state<'loading' | 'ready' | 'error'>('loading');
 let sourcesError = $state(false);
 let importError = $state<string | null>(null);
+let importing = $state<string | null>(null);
 let clearingChapterId = $state<string | null>(null);
 let clearPositionError = $state<string | null>(null);
 
@@ -109,11 +111,14 @@ function retryLatest(sourceId: string) {
 
 async function importFrom(sourceId: string, remoteUrl: string): Promise<void> {
 	importError = null;
+	importing = remoteUrl;
 	try {
 		const work = await api.importWork(sourceId, remoteUrl);
 		await goto(`/work/${work.id}`);
 	} catch (cause) {
 		importError = cause instanceof Error ? cause.message : 'Import failed';
+	} finally {
+		importing = null;
 	}
 }
 
@@ -132,7 +137,7 @@ async function clearSavedPosition(entry: ContinueReadingItem) {
 }
 </script>
 
-<div class="px-4 py-6 md:px-10 md:py-10">
+<div class="px-4 py-6 md:px-10 md:py-10" inert={importing !== null}>
 	<header class="flex flex-wrap items-center justify-between gap-4">
 		<h1 class="font-display text-3xl font-bold md:text-4xl">
 			Welcome back, {auth.user?.username ?? 'Reader'}
@@ -361,3 +366,7 @@ async function clearSavedPosition(entry: ContinueReadingItem) {
 		</section>
 	{/if}
 </div>
+
+{#if importing}
+	<ImportProgress />
+{/if}

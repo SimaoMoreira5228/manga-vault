@@ -12,6 +12,7 @@ domain = { workspace = true }
 parking_lot = { workspace = true }
 source-sdk = { workspace = true }
 source-runtime-lua = { workspace = true }
+source-throttle = { workspace = true }
 source-runtime-wasm = { workspace = true }
 tracing = { workspace = true }
 

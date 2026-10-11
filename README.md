@@ -212,6 +212,34 @@ flare_solverr.get(url)  html.attr(elem, name)
 
 No shared utils at runtime, shared code stays in the author's build tooling.
 
+#### Rate limits
+
+Nothing is throttled by default. A plugin that needs a delay — an aggressive CDN, a
+Cloudflare front, a source that answers `429` under load — declares it in `plugin.toml`:
+
+```toml
+[limits]
+gap_ms = 1000          # one token refills this often; clamped to 0..2000
+burst = 1              # tokens held at once, so this is the initial allowance
+concurrency = 1        # requests in flight at once
+timeout_ms = 30000     # one HTTP request
+call_timeout_ms = 120000 # one whole source call
+```
+
+`gap_ms` and `burst` are a token bucket: `burst` requests go out immediately, then the rate
+settles to one per `gap_ms`. With `burst = 1` every request waits a full `gap_ms`, which is
+the conservative shape; raise `burst` when a source tolerates short spikes.
+
+`[limits.hosts."cdn.example.com"]` overrides `gap_ms` and `concurrency` for that host only,
+so a strict API and a lenient CDN in the same plugin do not fight. Out-of-range numbers are
+clamped and logged; an unknown key is rejected when the plugin loads. No request ever waits
+longer than 2 seconds for a slot, so a declared delay cannot stall the UI.
+
+`429` and `503` responses park that host for their `Retry-After` window — **that** wait is
+honoured in full, up to 120 seconds, because it is a server instruction rather than our own
+delay. Scheduled refreshes for a parked source are pushed to the end of the window instead of
+being claimed and blocked.
+
 ---
 
 ## Build from source

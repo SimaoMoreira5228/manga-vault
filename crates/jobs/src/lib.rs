@@ -37,6 +37,7 @@ impl Default for SchedulerConfig {
 pub enum ExecutionOutcome {
 	Success,
 	Retry(String),
+	RetryAfter(String, StdDuration),
 	Abandon(String),
 }
 
@@ -124,6 +125,15 @@ impl<S: JobRepository + WorkRepository + 'static> Scheduler<S> {
 						tracing::debug!(job_id = %job_row.id, "job completed");
 					}
 					result
+				}
+				ExecutionOutcome::RetryAfter(_, _) if job_row.attempts + 1 >= self.config.max_attempts => {
+					tracing::error!("job {} exhausted retries", job_row.id);
+					self.store.fail(job_row, "retries exhausted", None).await
+				}
+				ExecutionOutcome::RetryAfter(reason, delay) => {
+					let next = Utc::now() + Duration::from_std(delay).unwrap_or_else(|_| Duration::seconds(5));
+					tracing::warn!("job {} deferred {}s: {}", job_row.id, delay.as_secs(), reason);
+					self.store.fail(job_row.clone(), &reason, Some(next)).await
 				}
 				ExecutionOutcome::Retry(reason) if job_row.attempts + 1 >= self.config.max_attempts => {
 					tracing::error!("job {} exhausted retries: {reason}", job_row.id);

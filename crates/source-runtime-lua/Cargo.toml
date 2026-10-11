@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 source-sdk = { workspace = true }
+source-throttle = { workspace = true }
 domain = { workspace = true }
 mlua = { workspace = true }
 reqwest = { workspace = true }

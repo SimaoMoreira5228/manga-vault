@@ -44,7 +44,8 @@ impl LuaRuntime {
 			.map_err(|e| LoadError(format!("cannot read {}: {e}", entry_path.display())))?;
 
 		let lua = mlua::Lua::new();
-		host::install(&lua, self.flaresolverr_url.clone());
+		let throttle = Arc::new(source_throttle::Throttle::new(manifest.limits.clone()));
+		host::install(&lua, self.flaresolverr_url.clone(), Arc::clone(&throttle));
 		sandbox(&lua, bundle).map_err(|e| LoadError(format!("sandbox failed: {e}")))?;
 
 		lua.load(code)
@@ -74,6 +75,7 @@ impl LuaRuntime {
 			manifest,
 			info,
 			lua: Arc::new(lua),
+			throttle,
 		})
 	}
 }

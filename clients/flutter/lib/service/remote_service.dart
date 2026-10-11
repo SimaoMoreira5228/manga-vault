@@ -104,13 +104,18 @@ class RemoteService implements VaultService {
         }),
       ))['revoked_sessions'] as int;
 
-  Future<dynamic> _send(String method, String path, {String? body}) =>
-      _requestJson(
-        method: method,
-        url: '$baseUrl$path',
-        body: body,
-        headers: _auth,
-      );
+  Future<dynamic> _send(
+    String method,
+    String path, {
+    String? body,
+    Duration? timeout,
+  }) => _requestJson(
+    method: method,
+    url: '$baseUrl$path',
+    body: body,
+    headers: _auth,
+    timeout: timeout,
+  );
 
   Future<List<T>> _list<T>(String path, T Function(dynamic) from) async {
     final raw = await _send('GET', path);
@@ -140,6 +145,7 @@ class RemoteService implements VaultService {
     required String url,
     String? body,
     Map<String, String> headers = const {},
+    Duration? timeout,
   }) async {
     final client = HttpClient();
     try {
@@ -148,7 +154,7 @@ class RemoteService implements VaultService {
       headers.forEach(request.headers.set);
       if (body != null) request.write(body);
       final response = await request.close().timeout(
-        const Duration(seconds: 30),
+        timeout ?? const Duration(seconds: 30),
       );
       final text = await utf8.decodeStream(response);
       if (response.statusCode >= 400)
@@ -215,6 +221,7 @@ class RemoteService implements VaultService {
       'POST',
       '/api/works',
       body: jsonEncode({'source_id': sourceId, 'remote_url': remoteUrl}),
+      timeout: const Duration(seconds: 180),
     );
     return WorkDetailsMapper.fromWork(work);
   }

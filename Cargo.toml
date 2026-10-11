@@ -8,6 +8,7 @@ members = [
     "crates/source-runtime-lua",
     "crates/source-runtime-wasm",
     "crates/source-manager",
+    "crates/source-throttle",
     "crates/source-updater",
     "crates/jobs",
     "crates/translation",
@@ -30,6 +31,7 @@ source-sdk = { path = "crates/source-sdk" }
 source-runtime-lua = { path = "crates/source-runtime-lua" }
 source-runtime-wasm = { path = "crates/source-runtime-wasm" }
 source-manager = { path = "crates/source-manager" }
+source-throttle = { path = "crates/source-throttle" }
 source-updater = { path = "crates/source-updater" }
 jobs = { path = "crates/jobs" }
 core-ffi = { path = "crates/core-ffi" }

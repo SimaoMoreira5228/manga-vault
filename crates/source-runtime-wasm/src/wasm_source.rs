@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use domain::ChapterContent;
 use source_sdk::{
 	RemoteChapter, RemoteWorkDetails, RemoteWorkSummary, Source, SourceError, SourceInfo, SourceResult, WorkKindTag,
@@ -10,8 +8,6 @@ use wasmtime::component::{Component, HasSelf, Linker};
 use crate::bindings;
 use crate::host::WasmState;
 
-const CALL_TIMEOUT: Duration = Duration::from_secs(120);
-
 pub struct WasmSource {
 	#[allow(dead_code)]
 	pub(crate) manifest: source_sdk::PluginManifest,
@@ -19,6 +15,13 @@ pub struct WasmSource {
 	pub(crate) flaresolverr_url: Option<String>,
 	pub(crate) component: Component,
 	pub(crate) linker: Linker<WasmState>,
+	pub(crate) throttle: std::sync::Arc<source_throttle::Throttle>,
+}
+
+impl WasmSource {
+	pub fn throttle(&self) -> std::sync::Arc<source_throttle::Throttle> {
+		std::sync::Arc::clone(&self.throttle)
+	}
 }
 
 struct Instantiated {
@@ -32,15 +35,19 @@ impl WasmSource {
 		linker: &Linker<WasmState>,
 		manifest: &source_sdk::PluginManifest,
 	) -> Result<SourceInfo, String> {
-		let mut store = Store::new(component.engine(), WasmState::new(None));
+		let throttle = std::sync::Arc::new(source_throttle::Throttle::new(manifest.limits.clone()));
+		let mut store = Store::new(component.engine(), WasmState::new(None, std::sync::Arc::clone(&throttle)));
 		store.set_fuel(u64::MAX / 2).map_err(|e| e.to_string())?;
 		let world = bindings::SourceWorld::instantiate_async(&mut store, component, linker)
 			.await
 			.map_err(|e| e.to_string())?;
-		let raw = tokio::time::timeout(CALL_TIMEOUT, world.manga_vault_source_source().call_get_info(&mut store))
-			.await
-			.map_err(|_| "plugin get_info() timed out".to_string())?
-			.map_err(|e| format!("get_info() failed: {e}"))?;
+		let raw = tokio::time::timeout(
+			throttle.call_timeout(),
+			world.manga_vault_source_source().call_get_info(&mut store),
+		)
+		.await
+		.map_err(|_| "plugin get_info() timed out".to_string())?
+		.map_err(|e| format!("get_info() failed: {e}"))?;
 		if raw.id != manifest.id {
 			return Err(format!(
 				"plugin {} declares id {:?} in plugin.toml but {:?} in get_info(); they must match",
@@ -62,7 +69,10 @@ impl WasmSource {
 	}
 
 	async fn instantiate(&self) -> Result<Instantiated, SourceError> {
-		let mut store = Store::new(self.component.engine(), WasmState::new(self.flaresolverr_url.clone()));
+		let mut store = Store::new(
+			self.component.engine(),
+			WasmState::new(self.flaresolverr_url.clone(), std::sync::Arc::clone(&self.throttle)),
+		);
 		store
 			.set_fuel(u64::MAX / 2)
 			.map_err(|e| SourceError::Internal(e.to_string()))?;
@@ -121,8 +131,11 @@ fn details(raw: bindings::manga_vault::source::types::WorkDetails) -> RemoteWork
 	}
 }
 
-async fn within_timeout<T>(future: impl Future<Output = wasmtime::Result<T>>) -> SourceResult<T> {
-	tokio::time::timeout(CALL_TIMEOUT, future)
+async fn within_timeout<T>(
+	timeout: std::time::Duration,
+	future: impl Future<Output = wasmtime::Result<T>>,
+) -> SourceResult<T> {
+	tokio::time::timeout(timeout, future)
 		.await
 		.map_err(|_| SourceError::Internal("plugin call timed out".into()))?
 		.map_err(|e| SourceError::Internal(e.to_string()))
@@ -139,28 +152,28 @@ impl Source for WasmSource {
 	async fn search(&self, query: &str, page: u32) -> SourceResult<Vec<RemoteWorkSummary>> {
 		let mut inst = self.instantiate().await?;
 		let guest = inst.world.manga_vault_source_source();
-		let result = within_timeout(guest.call_search(&mut inst.store, query, page)).await?;
+		let result = within_timeout(self.throttle.call_timeout(), guest.call_search(&mut inst.store, query, page)).await?;
 		result.map(summaries).map_err(error_from_wit)
 	}
 
 	async fn latest(&self, page: u32) -> SourceResult<Vec<RemoteWorkSummary>> {
 		let mut inst = self.instantiate().await?;
 		let guest = inst.world.manga_vault_source_source();
-		let result = within_timeout(guest.call_latest(&mut inst.store, page)).await?;
+		let result = within_timeout(self.throttle.call_timeout(), guest.call_latest(&mut inst.store, page)).await?;
 		result.map(summaries).map_err(error_from_wit)
 	}
 
 	async fn trending(&self, page: u32) -> SourceResult<Vec<RemoteWorkSummary>> {
 		let mut inst = self.instantiate().await?;
 		let guest = inst.world.manga_vault_source_source();
-		let result = within_timeout(guest.call_trending(&mut inst.store, page)).await?;
+		let result = within_timeout(self.throttle.call_timeout(), guest.call_trending(&mut inst.store, page)).await?;
 		result.map(summaries).map_err(error_from_wit)
 	}
 
 	async fn fetch_work(&self, url: &str) -> SourceResult<RemoteWorkDetails> {
 		let mut inst = self.instantiate().await?;
 		let guest = inst.world.manga_vault_source_source();
-		let result = within_timeout(guest.call_fetch_work(&mut inst.store, url)).await?;
+		let result = within_timeout(self.throttle.call_timeout(), guest.call_fetch_work(&mut inst.store, url)).await?;
 		result.map(details).map_err(error_from_wit)
 	}
 
@@ -168,7 +181,7 @@ impl Source for WasmSource {
 		let kind = self.info.kind;
 		let mut inst = self.instantiate().await?;
 		let guest = inst.world.manga_vault_source_source();
-		let result = within_timeout(guest.call_fetch_chapter(&mut inst.store, url)).await?;
+		let result = within_timeout(self.throttle.call_timeout(), guest.call_fetch_chapter(&mut inst.store, url)).await?;
 		result
 			.map(|lines| source_sdk::chapter_content(kind, lines))
 			.map_err(error_from_wit)

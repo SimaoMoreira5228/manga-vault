@@ -68,12 +68,14 @@ impl WasmRuntime {
 			.await
 			.map_err(LoadError)?;
 
+		let throttle = std::sync::Arc::new(source_throttle::Throttle::new(manifest.limits.clone()));
 		Ok(wasm_source::WasmSource {
 			manifest,
 			info,
 			flaresolverr_url: self.flaresolverr_url.clone(),
 			component,
 			linker,
+			throttle,
 		})
 	}
 }

@@ -2,18 +2,21 @@ use std::collections::HashMap;
 
 use mlua::{Lua, LuaSerdeExt, Table, Value};
 use source_sdk::cloudflare::looks_like_cloudflare_protection;
+use source_throttle::Throttle;
 
-pub fn install(lua: &Lua, flaresolverr_url: Option<String>) {
+pub fn install(lua: &Lua, flaresolverr_url: Option<String>, throttle: std::sync::Arc<Throttle>) {
 	let client: std::sync::Arc<reqwest::Client> = std::sync::Arc::new(
 		reqwest::Client::builder()
-			.timeout(std::time::Duration::from_secs(30))
+			.timeout(throttle.request_timeout())
 			.user_agent(source_sdk::BROWSER_USER_AGENT)
 			.build()
 			.expect("reqwest client"),
 	);
 
 	let globals = lua.globals();
-	globals.set("http", http_module(lua, client.clone())).expect("http module");
+	globals
+		.set("http", http_module(lua, client.clone(), std::sync::Arc::clone(&throttle)))
+		.expect("http module");
 	globals.set("html", html_module(lua)).expect("html module");
 	globals.set("json", json_module(lua)).expect("json module");
 	globals.set("log", log_module(lua)).expect("log module");
@@ -89,28 +92,37 @@ async fn http_response_value(lua: &Lua, response: reqwest::Response) -> Result<V
 	lua.to_value(&result)
 }
 
-fn http_module(lua: &Lua, client: std::sync::Arc<reqwest::Client>) -> Table {
+fn http_module(lua: &Lua, client: std::sync::Arc<reqwest::Client>, throttle: std::sync::Arc<Throttle>) -> Table {
 	let post_client = client.clone();
+	let get_throttle = std::sync::Arc::clone(&throttle);
 	let get = lua
 		.create_async_function(move |lua, (url, headers): (String, Option<Table>)| {
-			let client = client.clone();
+			let (client, throttle) = (client.clone(), std::sync::Arc::clone(&get_throttle));
 			async move {
-				match apply_headers(client.get(&url), headers).send().await {
-					Ok(response) => http_response_value(&lua, response).await,
-					Err(error) => Err(mlua::Error::external(format!("mangavault:network:1:{}", error))),
-				}
+				let _guard = throttle.request_guard(&url).await;
+				let response = apply_headers(client.get(&url), headers)
+					.send()
+					.await
+					.map_err(|error| mlua::Error::external(format!("mangavault:network:1:{error}")))?;
+				throttle.park_on_rate_limit(&url, &response).await;
+				http_response_value(&lua, response).await
 			}
 		})
 		.unwrap();
 
+	let post_throttle = std::sync::Arc::clone(&throttle);
 	let post = lua
 		.create_async_function(move |lua, (url, body, headers): (String, String, Option<Table>)| {
-			let client = post_client.clone();
+			let (client, throttle) = (post_client.clone(), std::sync::Arc::clone(&post_throttle));
 			async move {
-				match apply_headers(client.post(&url), headers).body(body).send().await {
-					Ok(response) => http_response_value(&lua, response).await,
-					Err(error) => Err(mlua::Error::external(format!("mangavault:network:1:{}", error))),
-				}
+				let _guard = throttle.request_guard(&url).await;
+				let response = apply_headers(client.post(&url), headers)
+					.body(body)
+					.send()
+					.await
+					.map_err(|error| mlua::Error::external(format!("mangavault:network:1:{error}")))?;
+				throttle.park_on_rate_limit(&url, &response).await;
+				http_response_value(&lua, response).await
 			}
 		})
 		.unwrap();

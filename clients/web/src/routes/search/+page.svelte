@@ -1,6 +1,7 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
 import { api, type RemoteWorkSummary, type SourceInfo } from '$lib/api';
+import ImportProgress from '$lib/components/ImportProgress.svelte';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
 import Skeleton from '$lib/components/Skeleton.svelte';
 import { SEARCH_INPUT_ID } from '$lib/keyboard_shortcuts';
@@ -132,7 +133,7 @@ async function importAndOpen(remoteUrl: string) {
 }
 </script>
 
-<div class="px-4 py-6 md:px-10 md:py-10">
+<div class="px-4 py-6 md:px-10 md:py-10" inert={busy !== null}>
 	<h1 class="font-display text-3xl font-bold md:text-4xl">Search archive</h1>
 
 	<form class="mt-6 flex flex-wrap gap-3" onsubmit={submit}>
@@ -267,3 +268,7 @@ async function importAndOpen(remoteUrl: string) {
 		{/if}
 	{/if}
 </div>
+
+{#if busy}
+	<ImportProgress />
+{/if}

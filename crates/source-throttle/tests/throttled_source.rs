@@ -4,8 +4,16 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use domain::ChapterContent;
-use source_manager::throttle::{self, ThrottledSource};
-use source_sdk::{RemoteWorkDetails, RemoteWorkSummary, Source, SourceInfo, SourceResult, WorkKindTag};
+use source_sdk::{PluginLimits, RemoteWorkDetails, RemoteWorkSummary, Source, SourceInfo, SourceResult, WorkKindTag};
+use source_throttle::{Throttle, ThrottledSource};
+
+fn limits(gap_ms: u64) -> PluginLimits {
+	PluginLimits {
+		gap_ms,
+		burst: 1,
+		..PluginLimits::default()
+	}
+}
 
 struct ProbeSource {
 	active: AtomicUsize,
@@ -84,13 +92,13 @@ impl ProbeSource {
 }
 
 #[tokio::test]
-async fn throttled_source_never_exceeds_concurrency_limit() {
+async fn throttled_source_never_exceeds_the_declared_concurrency() {
 	let probe = Arc::new(ProbeSource {
 		active: AtomicUsize::new(0),
 		max_active: Arc::new(AtomicUsize::new(0)),
 		starts: Arc::new(std::sync::Mutex::new(Vec::new())),
 	});
-	let throttled = ThrottledSource::new(probe.clone(), Duration::ZERO);
+	let throttled = ThrottledSource::new(probe.clone(), Arc::new(Throttle::new(limits(0))));
 	let throttled = Arc::new(throttled);
 
 	let mut tasks = Vec::new();
@@ -112,7 +120,7 @@ async fn throttled_source_never_exceeds_concurrency_limit() {
 
 	assert_eq!(probe.active.load(Ordering::SeqCst), 0);
 	assert!(
-		probe.max_active.load(Ordering::SeqCst) <= throttle::MAX_CONCURRENT_PER_SOURCE,
+		probe.max_active.load(Ordering::SeqCst) as u32 <= PluginLimits::default().concurrency,
 		"concurrency peaked at {}",
 		probe.max_active.load(Ordering::SeqCst)
 	);
@@ -126,7 +134,7 @@ async fn requests_to_one_source_are_spaced_by_the_cooldown() {
 		starts: Arc::new(std::sync::Mutex::new(Vec::new())),
 	});
 	let gap = Duration::from_millis(60);
-	let throttled = Arc::new(ThrottledSource::new(probe.clone(), gap));
+	let throttled = Arc::new(ThrottledSource::new(probe.clone(), Arc::new(Throttle::new(limits(60)))));
 
 	let mut tasks = Vec::new();
 	for _ in 0..4 {
