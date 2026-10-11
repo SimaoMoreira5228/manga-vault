@@ -20,11 +20,16 @@ use crate::entities::{
 
 pub struct SeaStore {
 	pub db: DatabaseConnection,
+	queue: Option<crate::queue::RedisDispatch>,
 }
 
 impl SeaStore {
 	pub fn new(db: DatabaseConnection) -> Self {
-		Self { db }
+		Self { db, queue: None }
+	}
+
+	pub fn with_redis(db: DatabaseConnection, queue: crate::queue::RedisDispatch) -> Self {
+		Self { db, queue: Some(queue) }
 	}
 }
 

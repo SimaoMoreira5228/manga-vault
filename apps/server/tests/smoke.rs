@@ -31,6 +31,7 @@ fn command(tag: &str) -> (Command, PathBuf, String) {
 	let addr = format!("127.0.0.1:{port}");
 	let mut command = Command::new(env!("CARGO_BIN_EXE_manga-vault"));
 	command
+		.arg("api")
 		.current_dir(&dir)
 		.env_clear()
 		.env("DATABASE_URL", format!("sqlite://{}/vault.db?mode=rwc", dir.display()))

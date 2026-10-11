@@ -7,5 +7,5 @@ style_edition = "2024"
 format_macro_matchers = true
 reorder_impl_items = true
 max_width = 125
-struct_variant_width = 0
+struct_variant_width = 125
 hard_tabs = true

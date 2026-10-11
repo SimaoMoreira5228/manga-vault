@@ -53,8 +53,9 @@ Requires: Docker, PostgreSQL. The web frontend is a separate static deployment (
 
 ```bash
 cargo build --release
-./target/release/manga-vault          # SQLite by default
-DATABASE_URL=postgres://... ./target/release/manga-vault
+./target/release/manga-vault api          # SQLite by default
+DATABASE_URL=postgres://... ./target/release/manga-vault api
+./target/release/manga-vault worker       # background refresh jobs
 ```
 
 ### Running it locally for development
@@ -62,11 +63,19 @@ DATABASE_URL=postgres://... ./target/release/manga-vault
 Two processes: the API server, and the web client talking to it through a Vite proxy.
 
 ```bash
-# terminal 1 — the server, with the in-repo Lua sources loaded
+# terminal 1 — the api server, with the in-repo Lua sources loaded
 PLUGINS_DIR=./plugin-repo/sources \
 SECRET_KEY=$(openssl rand -hex 32) \
 DATA_DIR=/tmp/manga-vault-dev \
-cargo run -p manga-vault-server
+cargo run -p manga-vault-server -- api
+```
+
+```bash
+# terminal 1b — the background worker (refresh jobs, session cleanup)
+PLUGINS_DIR=./plugin-repo/sources \
+SECRET_KEY=$(openssl rand -hex 32) \
+DATA_DIR=/tmp/manga-vault-dev \
+cargo run -p manga-vault-server -- worker
 ```
 
 ```bash
@@ -287,11 +296,27 @@ cargo component build --target wasm32-wasip2 --release
 | `OLLAMA_MODEL` | `qwen2.5:7b` | Model used for Ollama translation |
 | `TRANSLATION_ENABLED` | `true` | Kill switch for translation |
 | `PLUGINS_DIR` | `./plugins` | Plugin storage path. Empty in a fresh clone; point it at `plugin-repo/sources` for the bundled Lua sources |
-| `IMAGE_CACHE_MB` | `512` | Proxy cache size for images |
+| `IMAGE_CACHE_MB` | `128` | Memory tier for the proxied-image cache |
+| `IMAGE_CACHE_BACKEND` | `hybrid` | `memory`, `disk`, or `hybrid` (memory L1 plus disk L2) |
+| `IMAGE_DISK_CACHE_MB` | `5120` | Disk tier budget for the proxied-image cache |
+| `IMAGE_CACHE_DIR` | `<DATA_DIR>/image-cache` | Disk tier location |
+| `IMAGE_DISK_CACHE_TTL_SECS` | `86400` | Disk entries older than this are refetched |
+| `DB_MAX_CONNECTIONS` | `5` sqlite / `25` postgres | Database pool ceiling |
+| `DB_MIN_CONNECTIONS` | `1` sqlite / `2` postgres | Database pool floor |
+| `DB_CONNECT_TIMEOUT_SECS` | `8` | Time to wait for a pooled connection |
+| `DB_IDLE_TIMEOUT_SECS` | `600` | Idle connection lifetime in the pool |
+| `DB_MAX_LIFETIME_SECS` | `3600` | Maximum connection lifetime in the pool |
+| `SCHEDULER_WORKERS` | `4` | Worker concurrency (worker process) |
+| `SCHEDULER_BATCH_SIZE` | `16` | Jobs claimed per poll (worker process) |
+| `SCHEDULER_POLL_SECS` | `30` | Poll interval (worker process) |
+| `SCHEDULER_STALE_AFTER_SECS` | `3600` | Works older than this get a refresh job |
+| `SCHEDULER_STALE_BATCH_LIMIT` | `500` | Stale works scanned per poll |
+| `WASM_PREWARM` | `2` | Pre-instantiated component instances kept warm per WASM source |
 | `PROXY_REQUESTS_PER_MINUTE` | `240` | Per-user image proxy request budget, refilled continuously. Exhausting it returns `429` with `Retry-After` |
 | `FLARESOLVERR_URL` | — | FlareSolverr for Cloudflare sources |
 | `CORS_ORIGINS` | — | Comma-separated allowed origins. Setting this marks the session cookie `SameSite=None` (and forces it `Secure`) for cross-site deployments such as Cloudflare Pages. Same-origin deployments keep `SameSite=Lax` |
 | `PUBLIC_API_URL` | `` | API URL for the web UI, baked in at build time (empty = same origin) |
+| `REDIS_URL` | — | Job dispatch and SSE fan-out via Redis (e.g. `redis://127.0.0.1/`). Unset keeps the single-node database queue and in-process events |
 
 Every error response carries a stable machine-readable `code` alongside the human-readable `error` string, so clients branch on the code instead of matching prose:
 

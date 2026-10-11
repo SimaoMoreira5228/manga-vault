@@ -8,7 +8,7 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let args = Args::parse();
-	persistence::connect(&args.url).await?;
+	persistence::connect(&persistence::DatabaseConfig::new(args.url.clone())).await?;
 	println!("schema ready on {}", args.url);
 	Ok(())
 }

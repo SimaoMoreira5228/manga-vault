@@ -39,7 +39,6 @@ async fn loads_component_and_serves_demo_content() {
 	let hits = source.search("weaver", 1).await.unwrap();
 	assert_eq!(hits.len(), 1);
 	assert_eq!(hits[0].title, "The Weaver's Echo");
-
 	let details = source.fetch_work("example://works/the-weavers-echo").await.unwrap();
 	assert_eq!(details.chapters.len(), 2);
 
@@ -50,5 +49,26 @@ async fn loads_component_and_serves_demo_content() {
 			assert!(html.contains("paragraph 5"));
 		}
 		domain::ChapterContent::Images(_) => panic!("novel chapter must yield html"),
+	}
+}
+
+#[tokio::test]
+async fn warm_pool_serves_concurrent_calls_and_refills() {
+	ensure_built();
+	let runtime = WasmRuntime::new(None).unwrap();
+	let source = runtime.load(&fixture_dir()).await.unwrap();
+
+	let (search, latest, trending) = tokio::join!(source.search("weaver", 1), source.latest(1), source.trending(1),);
+	assert_eq!(search.unwrap().len(), 1);
+	assert!(latest.is_ok());
+	assert!(trending.is_ok());
+
+	let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+	loop {
+		if source.warm_slots().await == 2 {
+			break;
+		}
+		assert!(std::time::Instant::now() < deadline, "warm pool never refilled");
+		tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 	}
 }

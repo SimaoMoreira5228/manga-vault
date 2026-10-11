@@ -17,18 +17,9 @@ pub enum AuthKind {
 
 #[derive(Debug, Clone)]
 pub enum Credentials {
-	Paste {
-		token: String,
-	},
-	OAuthCode {
-		code: String,
-		verifier: Option<String>,
-		redirect_uri: Option<String>,
-	},
-	UsernamePassword {
-		username: String,
-		password: String,
-	},
+	Paste { token: String },
+	OAuthCode { code: String, verifier: Option<String>, redirect_uri: Option<String> },
+	UsernamePassword { username: String, password: String },
 }
 
 #[derive(Debug, Clone)]

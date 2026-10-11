@@ -266,8 +266,10 @@ impl JobStatus {
 pub trait JobRepository: Send + Sync {
 	async fn enqueue(&self, kind: JobKind, subject: &str, next_attempt_at: DateTime<Utc>) -> StoreResult<bool>;
 
-	/// NOTE: claim-then-mark is not replica-safe; hosted multi-replica mode
-	/// must switch to SELECT ... FOR UPDATE SKIP LOCKED on Postgres.
+	/// On Postgres the claim runs inside one transaction under
+	/// `FOR UPDATE SKIP LOCKED`, so several replicas can poll the same table
+	/// without executing a job twice. Other backends keep a plain
+	/// claim-then-mark, which is only correct single-node.
 	async fn claim_due(&self, now: DateTime<Utc>, limit: u64) -> StoreResult<Vec<JobRow>>;
 	async fn complete(&self, job_id: uuid::Uuid) -> StoreResult<()>;
 	async fn fail(&self, job_row: JobRow, error: &str, retry_at: Option<DateTime<Utc>>) -> StoreResult<()>;

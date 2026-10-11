@@ -21,6 +21,13 @@ pub struct ServerConfig {
 	pub translation_enabled: bool,
 	pub session_ttl: std::time::Duration,
 	pub proxy_requests_per_minute: u32,
+	pub db_max_connections: Option<u32>,
+	pub db_min_connections: Option<u32>,
+	pub db_connect_timeout: std::time::Duration,
+	pub db_idle_timeout: std::time::Duration,
+	pub db_max_lifetime: std::time::Duration,
+	pub redis_url: Option<String>,
+	pub wasm_prewarm: usize,
 }
 
 fn env_or(key: &str, fallback: &str) -> String {
@@ -39,6 +46,10 @@ fn env_opt(key: &str) -> Option<String> {
 		Ok(value) if !value.is_empty() => Some(value),
 		_ => None,
 	}
+}
+
+fn env_secs(key: &str, fallback: u64) -> std::time::Duration {
+	std::time::Duration::from_secs(env_opt(key).and_then(|value| value.parse().ok()).unwrap_or(fallback))
 }
 
 fn default_database_url() -> String {
@@ -136,7 +147,28 @@ impl ServerConfig {
 					.unwrap_or(7)
 					.saturating_mul(24 * 60 * 60),
 			),
+			db_max_connections: env_opt("DB_MAX_CONNECTIONS").and_then(|value| value.parse().ok()),
+			db_min_connections: env_opt("DB_MIN_CONNECTIONS").and_then(|value| value.parse().ok()),
+			db_connect_timeout: env_secs("DB_CONNECT_TIMEOUT_SECS", 8),
+			db_idle_timeout: env_secs("DB_IDLE_TIMEOUT_SECS", 600),
+			db_max_lifetime: env_secs("DB_MAX_LIFETIME_SECS", 3600),
+			redis_url: env_opt("REDIS_URL"),
+			wasm_prewarm: env_opt("WASM_PREWARM").and_then(|value| value.parse().ok()).unwrap_or(2),
 		})
+	}
+
+	pub fn database_config(&self) -> persistence::DatabaseConfig {
+		let mut config = persistence::DatabaseConfig::for_url(self.database_url.clone());
+		if let Some(max) = self.db_max_connections {
+			config = config.with_max_connections(max);
+		}
+		if let Some(min) = self.db_min_connections {
+			config.min_connections = min.min(config.max_connections);
+		}
+		config.connect_timeout = self.db_connect_timeout;
+		config.idle_timeout = self.db_idle_timeout;
+		config.max_lifetime = self.db_max_lifetime;
+		config
 	}
 }
 
@@ -225,5 +257,45 @@ mod tests {
 			assert!(error.contains("short pattern"), "{error}");
 			assert!(error.contains("openssl rand -hex 32"), "{error}");
 		}
+	}
+
+	#[test]
+	fn pool_overrides_apply_on_top_of_backend_defaults() {
+		let config = ServerConfig {
+			database_url: "postgres://user:pass@localhost/db".into(),
+			bind_addr: "127.0.0.1:8080".into(),
+			plugins_dir: "./plugins".into(),
+			data_dir: "./data".into(),
+			flaresolverr_url: None,
+			cors_origins: vec![],
+			secure_cookies: false,
+			admin_username: None,
+			registration_mode: None,
+			ollama_endpoint: None,
+			ollama_model: "qwen2.5:7b".into(),
+			secret_key: None,
+			translation_enabled: true,
+			session_ttl: std::time::Duration::from_secs(60),
+			proxy_requests_per_minute: 240,
+			db_max_connections: Some(8),
+			db_min_connections: Some(3),
+			db_connect_timeout: std::time::Duration::from_secs(4),
+			db_idle_timeout: std::time::Duration::from_secs(30),
+			db_max_lifetime: std::time::Duration::from_secs(120),
+			redis_url: None,
+			wasm_prewarm: 2,
+		};
+		let pool = config.database_config();
+		assert_eq!((pool.max_connections, pool.min_connections), (8, 3));
+		assert_eq!(pool.connect_timeout, std::time::Duration::from_secs(4));
+
+		let sqlite = ServerConfig {
+			database_url: "sqlite::memory:".into(),
+			db_max_connections: None,
+			db_min_connections: None,
+			..config
+		};
+		let pool = sqlite.database_config();
+		assert_eq!((pool.max_connections, pool.min_connections), (5, 1));
 	}
 }

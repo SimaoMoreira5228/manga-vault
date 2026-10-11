@@ -135,7 +135,9 @@ async fn duplicate_chapter_urls_collapse_onto_the_first_row() {
 	assert_eq!(report.duplicate_chapters, 1);
 	assert!(report.verified(), "verification mismatched: {report:?}");
 
-	let target = persistence::connect(&to).await.unwrap();
+	let target = persistence::connect(&persistence::DatabaseConfig::new(to.clone()))
+		.await
+		.unwrap();
 	let chapters = persistence::entities::chapters::Entity::find().all(&target).await.unwrap();
 	assert_eq!(chapters.len(), 3);
 	assert_eq!(

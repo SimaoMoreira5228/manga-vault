@@ -4,6 +4,7 @@ services:
     build: ..
     network_mode: host
     restart: unless-stopped
+    command: ["api"]
     environment:
       DATABASE_URL: ${DATABASE_URL}
       BIND_ADDR: ${BIND_ADDR:-0.0.0.0:18080}
@@ -12,12 +13,38 @@ services:
       PLUGINS_DIR: ${PLUGINS_DIR:-/plugins}
       OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-}
       TRANSLATION_ENABLED: ${TRANSLATION_ENABLED:-true}
-      IMAGE_CACHE_MB: ${IMAGE_CACHE_MB:-512}
+      IMAGE_CACHE_BACKEND: ${IMAGE_CACHE_BACKEND:-hybrid}
+      IMAGE_CACHE_MB: ${IMAGE_CACHE_MB:-128}
+      IMAGE_DISK_CACHE_MB: ${IMAGE_DISK_CACHE_MB:-5120}
+      IMAGE_CACHE_DIR: ${IMAGE_CACHE_DIR:-/data/image-cache}
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-}
+      DB_MIN_CONNECTIONS: ${DB_MIN_CONNECTIONS:-}
       FLARESOLVERR_URL: ${FLARESOLVERR_URL:-http://127.0.0.1:8191/v1}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+      REDIS_URL: ${REDIS_URL:-}
     volumes:
       - plugins-data:/plugins
+      - vault-data:/data
+
+  worker:
+    image: manga-vault:latest
+    build: ..
+    network_mode: host
+    restart: unless-stopped
+    command: ["worker"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      PLUGINS_DIR: ${PLUGINS_DIR:-/plugins}
+      FLARESOLVERR_URL: ${FLARESOLVERR_URL:-http://127.0.0.1:8191/v1}
+      SCHEDULER_WORKERS: ${SCHEDULER_WORKERS:-4}
+      SCHEDULER_BATCH_SIZE: ${SCHEDULER_BATCH_SIZE:-16}
+      SCHEDULER_POLL_SECS: ${SCHEDULER_POLL_SECS:-30}
+      REDIS_URL: ${REDIS_URL:-}
+    volumes:
+      - plugins-data:/plugins
+      - vault-data:/data
 
   flaresolverr:
     image: flaresolverr/flaresolverr:latest
@@ -53,4 +80,5 @@ services:
 
 volumes:
   plugins-data:
+  vault-data:
   pgdata:

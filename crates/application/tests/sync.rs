@@ -12,7 +12,9 @@ async fn vault(data_dir: &std::path::Path) -> Vault {
 
 async fn vault_with_store(data_dir: &std::path::Path) -> (Vault, std::sync::Arc<persistence::SeaStore>) {
 	let db_url = format!("sqlite://{}/vault.db?mode=rwc", data_dir.display());
-	let store = std::sync::Arc::new(persistence::SeaStore::new(persistence::connect(&db_url).await.unwrap()));
+	let store = std::sync::Arc::new(persistence::SeaStore::new(
+		persistence::connect(&persistence::DatabaseConfig::new(db_url)).await.unwrap(),
+	));
 	let manager = SourceManager::new(None).unwrap();
 	(
 		Vault::new(std::sync::Arc::new(manager), store.clone(), data_dir.join("downloads")),

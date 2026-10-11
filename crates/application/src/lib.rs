@@ -34,13 +34,9 @@ pub enum VaultError {
 	#[error("the current password is not correct")]
 	WrongPassword,
 	#[error("password must be at least {min_length} characters")]
-	WeakPassword {
-		min_length: usize,
-	},
+	WeakPassword { min_length: usize },
 	#[error("too many failed login attempts; retry in {}s", retry_after.as_secs())]
-	TooManyAttempts {
-		retry_after: std::time::Duration,
-	},
+	TooManyAttempts { retry_after: std::time::Duration },
 	#[error("username `{0}` is already taken")]
 	UsernameTaken(String),
 	#[error("registration is closed on this server")]

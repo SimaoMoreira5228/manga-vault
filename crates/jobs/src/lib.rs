@@ -6,6 +6,10 @@ use persistence::{JobRepository, JobRow, WorkRepository};
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
+pub mod events;
+
+pub use events::{EVENTS_CHANNEL, JobEvents};
+
 #[derive(Debug, Clone)]
 pub struct SchedulerConfig {
 	pub workers: usize,

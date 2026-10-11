@@ -6,6 +6,7 @@ mod csrf;
 mod error;
 pub mod event_feed;
 mod glossary_handlers;
+pub mod image_store;
 mod library_handlers;
 mod migration_handlers;
 mod opds_handlers;

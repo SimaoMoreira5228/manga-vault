@@ -1,7 +1,9 @@
 use sea_orm::EntityTrait;
 
 pub async fn assert_migrated_vault(target_url: &str) {
-	let target = persistence::connect(target_url).await.unwrap();
+	let target = persistence::connect(&persistence::DatabaseConfig::new(target_url.to_owned()))
+		.await
+		.unwrap();
 
 	let user = persistence::entities::users::Entity::find()
 		.one(&target)

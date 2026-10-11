@@ -19,6 +19,7 @@ mod wasm_source;
 use std::path::Path;
 
 use thiserror::Error;
+pub use wasm_source::WasmSource;
 
 #[derive(Debug, Error)]
 #[error("{0}")]
@@ -27,6 +28,7 @@ pub struct LoadError(pub String);
 pub struct WasmRuntime {
 	engine: wasmtime::Engine,
 	flaresolverr_url: Option<String>,
+	prewarm: usize,
 }
 
 impl WasmRuntime {
@@ -38,7 +40,12 @@ impl WasmRuntime {
 		Ok(Self {
 			engine,
 			flaresolverr_url,
+			prewarm: 2,
 		})
+	}
+
+	pub fn set_prewarm(&mut self, prewarm: usize) {
+		self.prewarm = prewarm.min(16);
 	}
 
 	pub async fn load(&self, bundle: &Path) -> Result<wasm_source::WasmSource, LoadError> {
@@ -69,13 +76,28 @@ impl WasmRuntime {
 			.map_err(LoadError)?;
 
 		let throttle = std::sync::Arc::new(source_throttle::Throttle::new(manifest.limits.clone()));
-		Ok(wasm_source::WasmSource {
+		Ok(wasm_source::WasmSource::new(
 			manifest,
 			info,
-			flaresolverr_url: self.flaresolverr_url.clone(),
+			self.flaresolverr_url.clone(),
 			component,
 			linker,
 			throttle,
-		})
+			self.prewarm,
+		))
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn prewarm_is_bounded() {
+		let mut runtime = WasmRuntime::new(None).unwrap();
+		runtime.set_prewarm(usize::MAX);
+		assert_eq!(runtime.prewarm, 16);
+		runtime.set_prewarm(0);
+		assert_eq!(runtime.prewarm, 0);
 	}
 }

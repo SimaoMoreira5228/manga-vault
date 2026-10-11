@@ -69,7 +69,11 @@ async fn connect_store() -> (SeaStore, tokio::sync::MutexGuard<'static, ()>) {
 			persistence::migration::Migrator::fresh(&db).await.unwrap();
 			SeaStore::new(db)
 		}
-		Err(_) => SeaStore::new(persistence::connect("sqlite::memory:").await.unwrap()),
+		Err(_) => SeaStore::new(
+			persistence::connect(&persistence::DatabaseConfig::new("sqlite::memory:"))
+				.await
+				.unwrap(),
+		),
 	};
 	(store, guard)
 }

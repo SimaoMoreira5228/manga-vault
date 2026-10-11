@@ -309,7 +309,8 @@ mod route_tests {
 		let root = std::env::temp_dir().join(format!("mv-routes-{tag}-{}", std::process::id()));
 		std::fs::create_dir_all(&root).unwrap();
 		let db_url = format!("sqlite://{}/vault.db?mode=rwc", root.display());
-		let store = persistence::SeaStore::new(persistence::connect(&db_url).await.unwrap());
+		let store =
+			persistence::SeaStore::new(persistence::connect(&persistence::DatabaseConfig::new(db_url)).await.unwrap());
 		let vault = Vault::new(
 			Arc::new(source_manager::SourceManager::new(None).unwrap()),
 			Arc::new(store),
@@ -332,8 +333,14 @@ mod route_tests {
 			session_cookie: SessionCookie::new(true, true),
 			cors_origins: vec!["https://pages.example".to_owned()],
 			session_ttl: std::time::Duration::from_secs(900),
-			events: crate::http::event_feed::EventFeed::new(),
-			image_cache: Arc::new(crate::http::proxy_handler::new_image_cache(1024)),
+			events: jobs::JobEvents::from_memory_sender(crate::http::event_feed::EventFeed::new().sender()),
+			images: crate::http::image_store::ImageStore::new(&crate::http::image_store::ImageStoreConfig {
+				backend: crate::http::image_store::ImageBackend::Memory,
+				memory_mb: 1,
+				disk_mb: 1,
+				dir: root.join("image-cache"),
+				disk_ttl: std::time::Duration::from_secs(60),
+			}),
 			proxy_quota: Arc::new(crate::http::proxy_quota::ProxyQuota::per_minute(10)),
 		}
 	}

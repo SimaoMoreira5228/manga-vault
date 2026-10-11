@@ -65,7 +65,7 @@ struct Mappings {
 }
 
 pub async fn migrate(legacy: &LegacyVault, target_url: &str) -> Result<MigrationReport, Box<dyn std::error::Error>> {
-	let target = persistence::connect(target_url).await?;
+	let target = persistence::connect(&persistence::DatabaseConfig::new(target_url)).await?;
 	let txn = target.begin().await?;
 
 	let users: Vec<legacy::User> = legacy.fetch_all(USERS_SELECT).await?;

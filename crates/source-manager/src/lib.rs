@@ -25,6 +25,10 @@ impl SourceManager {
 		})
 	}
 
+	pub fn set_prewarm(&mut self, prewarm: usize) {
+		self.wasm.set_prewarm(prewarm);
+	}
+
 	pub async fn load_dir(&self, dir: &Path) {
 		let entries = match std::fs::read_dir(dir) {
 			Ok(entries) => entries,

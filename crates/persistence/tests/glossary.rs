@@ -1,7 +1,9 @@
 use persistence::{GlossaryRepository, SeaStore, UserRepository};
 
 async fn store() -> SeaStore {
-	let db = persistence::connect("sqlite::memory:").await.unwrap();
+	let db = persistence::connect(&persistence::DatabaseConfig::new("sqlite::memory:"))
+		.await
+		.unwrap();
 	SeaStore::new(db)
 }
 

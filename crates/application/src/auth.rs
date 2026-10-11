@@ -182,7 +182,8 @@ pub(crate) mod tests {
 		let root = std::env::temp_dir().join(format!("mv-session-{tag}-{}", std::process::id()));
 		std::fs::create_dir_all(&root).unwrap();
 		let db_url = format!("sqlite://{}/vault.db?mode=rwc", root.display());
-		let store = persistence::SeaStore::new(persistence::connect(&db_url).await.unwrap());
+		let store =
+			persistence::SeaStore::new(persistence::connect(&persistence::DatabaseConfig::new(db_url)).await.unwrap());
 		let sources = Arc::new(source_manager::SourceManager::new(None).unwrap());
 		Vault::new(sources, Arc::new(store), root.join("downloads"))
 	}

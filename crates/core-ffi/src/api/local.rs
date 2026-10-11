@@ -17,7 +17,9 @@ pub async fn start(data_dir: String, plugins_dir: String) -> anyhow::Result<Loca
 	std::fs::create_dir_all(&data_dir)?;
 	let _ = std::fs::create_dir_all(&plugins_dir);
 	let db_url = format!("sqlite://{}?mode=rwc", Path::new(&data_dir).join("vault.db").display());
-	let store = Arc::new(persistence::SeaStore::new(persistence::connect(&db_url).await?));
+	let store = Arc::new(persistence::SeaStore::new(
+		persistence::connect(&persistence::DatabaseConfig::new(db_url)).await?,
+	));
 	let manager = Arc::new(SourceManager::new(None)?);
 	manager.load_dir(Path::new(&plugins_dir)).await;
 	let vault = Arc::new(Vault::new(manager.clone(), store, Path::new(&data_dir).join("downloads")));

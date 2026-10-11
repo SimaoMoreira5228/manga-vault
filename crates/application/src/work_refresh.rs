@@ -8,16 +8,16 @@ use crate::Vault;
 
 pub struct RefreshExecutor {
 	pub vault: Arc<Vault>,
-	pub events: Option<tokio::sync::broadcast::Sender<String>>,
+	pub events: Option<jobs::JobEvents>,
 }
 
-fn publish_event(events: &Option<tokio::sync::broadcast::Sender<String>>, work_id: Uuid) {
-	if let Some(sender) = events
-		&& let Ok(payload) = serde_json::to_string(&serde_json::json!({
-			"type": "work_refreshed",
-			"work_id": work_id.to_string(),
-		})) {
-		let _ = sender.send(payload);
+async fn publish_event(events: &Option<jobs::JobEvents>, work_id: Uuid) {
+	let Some(events) = events else { return };
+	if let Ok(payload) = serde_json::to_string(&serde_json::json!({
+		"type": "work_refreshed",
+		"work_id": work_id.to_string(),
+	})) {
+		events.publish(payload).await;
 	}
 }
 
@@ -68,7 +68,7 @@ impl JobExecutor for RefreshExecutor {
 					let result = self.vault.refresh_work(work_id).await;
 					if result.is_ok() {
 						tracing::info!(%work_id, job_id = %job.id, "refresh completed");
-						publish_event(&self.events, work_id);
+						publish_event(&self.events, work_id).await;
 					} else if let Err(error) = &result {
 						tracing::warn!(%work_id, job_id = %job.id, %error, "refresh failed");
 					}

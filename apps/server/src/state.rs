@@ -5,8 +5,6 @@ use application::Vault;
 use source_updater::SourceUpdater;
 use translation::Translator;
 
-use crate::http::event_feed::EventFeed;
-
 #[derive(Clone)]
 pub struct PendingOauth {
 	pub user_id: uuid::Uuid,
@@ -27,8 +25,8 @@ pub struct AppState {
 	pub session_cookie: crate::http::session_cookie::SessionCookie,
 	pub cors_origins: Vec<String>,
 	pub session_ttl: std::time::Duration,
-	pub events: EventFeed,
-	pub image_cache: std::sync::Arc<moka::future::Cache<String, std::sync::Arc<crate::http::proxy_handler::CachedResponse>>>,
+	pub events: jobs::JobEvents,
+	pub images: std::sync::Arc<crate::http::image_store::ImageStore>,
 	pub proxy_quota: std::sync::Arc<crate::http::proxy_quota::ProxyQuota>,
 }
 

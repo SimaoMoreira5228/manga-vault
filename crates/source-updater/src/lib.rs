@@ -25,11 +25,7 @@ pub enum UpdateError {
 	#[error("io error: {0}")]
 	Io(#[from] std::io::Error),
 	#[error("artifact checksum mismatch for {plugin}: expected {expected}, got {actual}")]
-	Checksum {
-		plugin: String,
-		expected: String,
-		actual: String,
-	},
+	Checksum { plugin: String, expected: String, actual: String },
 	#[error("invalid plugin artifact {0}: {1}")]
 	BadArtifact(String, String),
 	#[error("invalid repos file: {0}")]

@@ -1,30 +1,19 @@
 use std::net::IpAddr;
-use std::sync::{Arc, OnceLock};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use axum::extract::{Query, State};
 use axum::http::header;
 use axum::response::{IntoResponse, Response};
-use moka::future::Cache;
 use serde::Deserialize;
 use url::Url;
 
 use crate::http::error::ApiError;
+pub use crate::http::image_store::CachedResponse;
+use crate::http::image_store::ImageStore;
 use crate::state::AppState;
 
 const MAX_ENTRY_BYTES: usize = 16 * 1024 * 1024;
-
-pub struct CachedResponse {
-	bytes: bytes::Bytes,
-	content_type: String,
-}
-
-pub fn new_image_cache(max_megabytes: u64) -> Cache<String, Arc<CachedResponse>> {
-	Cache::builder()
-		.max_capacity(max_megabytes * 1024 * 1024)
-		.time_to_live(Duration::from_secs(30 * 60))
-		.build()
-}
 
 fn shared_client() -> &'static reqwest::Client {
 	static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
@@ -95,6 +84,8 @@ async fn is_public_host(target: &Url) -> bool {
 			}
 		})
 }
+
+use std::sync::Arc;
 
 async fn fetch_upstream(target: Url, referer_url: &str) -> Result<Arc<CachedResponse>, ApiError> {
 	let client = shared_client();
@@ -199,12 +190,11 @@ pub async fn proxy(
 		code: crate::http::error::ErrorCode::BadRequest,
 		message: "no plugin referer matches the request".into(),
 	})?;
-	let cache_key = format!("{referer}|{target}");
+	let cache_key = ImageStore::cache_key(&referer, &target);
 	let cached = state
-		.image_cache
-		.try_get_with(cache_key, fetch_upstream(target, &referer))
-		.await
-		.map_err(Arc::unwrap_or_clone)?;
+		.images
+		.get_or_fetch(&cache_key, fetch_upstream(target, &referer))
+		.await?;
 
 	let cache_headers = [
 		(header::CONTENT_TYPE, cached.content_type.clone()),
@@ -220,6 +210,8 @@ pub async fn proxy(
 
 #[cfg(test)]
 mod tests {
+	use moka::future::Cache;
+
 	use super::*;
 
 	#[test]
