@@ -4,6 +4,7 @@ import type { Snippet } from 'svelte';
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
 import { auth } from '$lib/auth.svelte';
+import KeyboardShortcuts from '$lib/KeyboardShortcuts.svelte';
 import IconStats from '~icons/material-symbols/bar-chart';
 import IconClose from '~icons/material-symbols/close';
 import IconExplore from '~icons/material-symbols/explore';
@@ -73,6 +74,8 @@ $effect(() => {
 	<title>{pageTitle} - Manga Vault</title>
 </svelte:head>
 
+<KeyboardShortcuts />
+
 {#if !auth.ready}
 	<div class="grid min-h-dvh place-items-center">
 		<div
@@ -80,6 +83,7 @@ $effect(() => {
 		></div>
 	</div>
 {:else if (auth.user && !isReader) || (!auth.user && page.url.pathname === '/login')}
+	<a class="skip-link" href="#main">Skip to content</a>
 	<div class="flex min-h-dvh flex-col md:flex-row">
 		{#if auth.user}
 			<aside
@@ -155,7 +159,7 @@ $effect(() => {
 				</nav>
 			{/if}
 
-			<main class="min-w-0 flex-1 pt-16 pb-20 md:pt-0 md:pb-0">
+			<main id="main" tabindex="-1" class="min-w-0 flex-1 pt-16 pb-20 md:pt-0 md:pb-0">
 				{@render children()}
 			</main>
 

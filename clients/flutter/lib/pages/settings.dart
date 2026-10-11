@@ -14,6 +14,7 @@ import '../service/vault_service.dart';
 import 'appearance_section.dart';
 import 'server_sign_in.dart';
 import 'sessions_section.dart';
+import 'stats.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({
@@ -215,6 +216,27 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         children: [
           const AppearanceSection(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(
+              'READING',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.insights_outlined),
+            title: const Text('Statistics'),
+            subtitle: const Text('Chapters read, streak and daily activity.'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StatsPage(vault: widget.service),
+              ),
+            ),
+          ),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Text(

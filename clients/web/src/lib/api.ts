@@ -120,6 +120,13 @@ export interface HistoryPage {
 	limit: number;
 }
 
+export interface ReadingStats {
+	total_read: number;
+	daily_counts: [string, number][];
+	streak: number;
+	works_started: number;
+}
+
 export interface ReadingPosition {
 	id: string;
 	user_id: string;
@@ -495,13 +502,7 @@ export const api = {
 		),
 	history: (offset = 0, limit = PAGE_SIZE) =>
 		get<HistoryPage>(`/api/me/history?${pageQuery(offset, limit)}`),
-	readingStats: () =>
-		get<{
-			total_read: number;
-			daily_counts: [string, number][];
-			streak: number;
-			works_started: number;
-		}>('/api/me/stats'),
+	readingStats: () => get<ReadingStats>('/api/me/stats'),
 	addToLibrary: (workId: string) => put<LibraryEntry>('/api/library', { work_id: workId }),
 	removeFromLibrary: (workId: string) => del(`/api/library/${workId}`),
 

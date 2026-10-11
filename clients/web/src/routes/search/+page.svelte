@@ -2,6 +2,7 @@
 import { goto } from '$app/navigation';
 import { api, type RemoteWorkSummary, type SourceInfo } from '$lib/api';
 import SeriesCard from '$lib/components/SeriesCard.svelte';
+import { SEARCH_INPUT_ID } from '$lib/keyboard_shortcuts';
 
 let sources = $state<SourceInfo[]>([]);
 let selected = $state<string | null>(null);
@@ -98,6 +99,7 @@ async function importAndOpen(remoteUrl: string) {
 	<form class="mt-6 flex flex-wrap gap-3" onsubmit={submit}>
 		<input
 			type="search"
+			id={SEARCH_INPUT_ID}
 			placeholder="Search archive…"
 			bind:value={query}
 			class="min-w-0 flex-1 rounded-card border border-outline-variant/60 bg-surface-container px-4 py-3 outline-none focus:border-primary"

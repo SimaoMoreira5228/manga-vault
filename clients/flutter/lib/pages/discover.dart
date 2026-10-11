@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../service/remote_service.dart';
 import '../service/vault_service.dart';
+import 'source_page_bar.dart';
+import 'trending_feed.dart';
 import 'work_page.dart';
 
 class DiscoverPage extends StatefulWidget {
@@ -20,7 +22,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
   bool loading = true;
   String? error;
 
-  String? get selectedSource => tabIndex == 0 ? null : sources[tabIndex - 1].id;
+  SourceSummary? get _tabSource => tabIndex < 2 ? null : sources[tabIndex - 2];
 
   @override
   void initState() {
@@ -101,8 +103,9 @@ class _DiscoverPageState extends State<DiscoverPage> {
         ),
       );
     }
+    final tabSource = _tabSource;
     return DefaultTabController(
-      length: sources.length + 1,
+      length: sources.length + 2,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Discover'),
@@ -110,6 +113,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
             isScrollable: true,
             onTap: (index) => setState(() => tabIndex = index),
             tabs: [
+              const Tab(text: 'Trending'),
               const Tab(text: 'All'),
               for (final source in sources) Tab(text: source.name),
             ],
@@ -117,17 +121,23 @@ class _DiscoverPageState extends State<DiscoverPage> {
         ),
         body: sources.isEmpty
             ? const Center(child: Text('No sources installed'))
-            : tabIndex == 0
-            ? AggregatedSearch(
-                vault: widget.vault,
-                sources: sources,
-                onOpen: _open,
-              )
-            : SourceResults(
-                vault: widget.vault,
-                sourceId: sources[tabIndex - 1].id,
-                onOpen: (work) => _open(sources[tabIndex - 1].id, work),
-              ),
+            : switch (tabIndex) {
+                0 => TrendingFeed(
+                  vault: widget.vault,
+                  sources: sources,
+                  onOpen: _open,
+                ),
+                1 => AggregatedSearch(
+                  vault: widget.vault,
+                  sources: sources,
+                  onOpen: _open,
+                ),
+                _ => SourceResults(
+                  vault: widget.vault,
+                  sourceId: tabSource!.id,
+                  onOpen: (work) => _open(tabSource.id, work),
+                ),
+              },
       ),
     );
   }
@@ -154,19 +164,25 @@ class _AggregatedSearchState extends State<AggregatedSearch> {
   List<({String sourceId, String sourceName, List<WorkSummary> hits})> results =
       [];
   bool searching = false;
+  bool searched = false;
+  int page = 1;
 
-  Future<void> _search() async {
+  Future<void> _search() => _fetch(1);
+
+  Future<void> _fetch(int target) async {
     final text = query.text.trim();
     if (text.isEmpty) return;
-    searching = true;
-    setState(() {});
+    setState(() {
+      page = target;
+      searching = true;
+    });
     final settled = await Future.wait(
       widget.sources.map((source) async {
         try {
           final hits = await widget.vault.searchSource(
             sourceId: source.id,
             query: text,
-            page: 1,
+            page: target,
           );
           return (sourceId: source.id, sourceName: source.name, hits: hits);
         } catch (_) {
@@ -183,6 +199,7 @@ class _AggregatedSearchState extends State<AggregatedSearch> {
       results = settled.where((group) => group.hits.isNotEmpty).toList()
         ..sort((a, b) => b.hits.length.compareTo(a.hits.length));
       searching = false;
+      searched = true;
     });
   }
 
@@ -211,9 +228,13 @@ class _AggregatedSearchState extends State<AggregatedSearch> {
           ),
         ),
         if (results.isEmpty && !searching)
-          const Expanded(
+          Expanded(
             child: Center(
-              child: Text('Type a query to search across all sources'),
+              child: Text(
+                searched
+                    ? 'No results on page $page'
+                    : 'Type a query to search across all sources',
+              ),
             ),
           )
         else
@@ -265,6 +286,12 @@ class _AggregatedSearchState extends State<AggregatedSearch> {
               },
             ),
           ),
+        if (searched)
+          SourcePageBar(
+            page: page,
+            canAdvance: results.isNotEmpty,
+            onshift: _fetch,
+          ),
       ],
     );
   }
@@ -289,11 +316,15 @@ class SourceResults extends StatefulWidget {
 class _SourceResultsState extends State<SourceResults> {
   final query = TextEditingController();
   List<WorkSummary>? results;
+  bool searched = false;
+  int page = 1;
 
   @override
   void didUpdateWidget(SourceResults oldWidget) {
     super.didUpdateWidget(oldWidget);
     results = null;
+    searched = false;
+    page = 1;
     _loadLatest();
   }
 
@@ -316,13 +347,26 @@ class _SourceResultsState extends State<SourceResults> {
     }
   }
 
-  Future<void> _search() async {
-    final found = await widget.vault.searchSource(
-      sourceId: widget.sourceId,
-      query: query.text,
-      page: 1,
-    );
-    setState(() => results = found);
+  Future<void> _search() => _fetch(1);
+
+  Future<void> _fetch(int target) async {
+    setState(() {
+      page = target;
+      results = null;
+      searched = true;
+    });
+    try {
+      final found = await widget.vault.searchSource(
+        sourceId: widget.sourceId,
+        query: query.text,
+        page: target,
+      );
+      if (!mounted) return;
+      setState(() => results = found);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => results = []);
+    }
   }
 
   @override
@@ -363,6 +407,12 @@ class _SourceResultsState extends State<SourceResults> {
                   ),
                 ),
         ),
+        if (searched)
+          SourcePageBar(
+            page: page,
+            canAdvance: (shown ?? const []).isNotEmpty,
+            onshift: _fetch,
+          ),
       ],
     );
   }

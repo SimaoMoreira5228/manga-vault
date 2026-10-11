@@ -34,22 +34,18 @@ async fn main() {
 		)
 		.init();
 
-	let server_config = config::ServerConfig::from_env();
+	let server_config = config::ServerConfig::from_env().unwrap_or_else(|error| panic!("{error}"));
 	if let Some(parent) = server_config.plugins_dir.parent() {
 		let _ = std::fs::create_dir_all(parent);
 	}
 	let _ = std::fs::create_dir_all(&server_config.plugins_dir);
-
-	if let Some(secret_key) = server_config.secret_key.as_deref() {
-		secrets::validate(secret_key).unwrap_or_else(|error| panic!("{error}"));
-	}
+	std::fs::create_dir_all(&server_config.data_dir).expect("data dir");
 
 	let db = persistence::connect(&server_config.database_url)
 		.await
 		.unwrap_or_else(|error| panic!("database connect failed: {error}"));
 	let store = Arc::new(persistence::SeaStore::new(db));
 
-	std::fs::create_dir_all(&server_config.data_dir).expect("data dir");
 	let updater = Arc::new(
 		source_updater::SourceUpdater::new(source_updater::UpdaterConfig {
 			repos_file: server_config.data_dir.join("repos.json"),

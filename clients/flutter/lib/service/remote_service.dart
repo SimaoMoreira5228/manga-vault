@@ -164,7 +164,7 @@ class RemoteService implements VaultService {
     required String query,
     required int page,
   }) => _list(
-    '/api/sources/$sourceId/search?q=$query&page=$page',
+    '/api/sources/$sourceId/search?q=${Uri.encodeQueryComponent(query)}&page=$page',
     (raw) => WorkSummaryMapper.from(sourceId, raw),
   );
 

@@ -1,16 +1,14 @@
 <script lang="ts">
-import { api } from '$lib/api';
+import { api, type ReadingStats } from '$lib/api';
+import { dailyBars } from '$lib/stats_chart';
 
-type Stats = {
-	total_read: number;
-	daily_counts: [string, number][];
-	streak: number;
-	works_started: number;
-};
+const PLOT_HEIGHT = 128;
 
-let stats = $state<Stats | null>(null);
+let stats = $state<ReadingStats | null>(null);
 let loading = $state(true);
 let loadError = $state<string | null>(null);
+
+const bars = $derived(stats ? dailyBars(stats.daily_counts, PLOT_HEIGHT) : []);
 
 async function load() {
 	loadError = null;
@@ -27,11 +25,6 @@ async function load() {
 $effect(() => {
 	load();
 });
-
-function maxDaily(): number {
-	if (!stats || stats.daily_counts.length === 0) return 1;
-	return Math.max(...stats.daily_counts.map(([, count]) => count));
-}
 </script>
 
 <div class="px-4 py-6 md:px-10 md:py-10">
@@ -72,27 +65,23 @@ function maxDaily(): number {
 			</div>
 		</div>
 
-		{#if stats.daily_counts.length > 0}
-			<section class="mt-10 max-w-3xl" aria-labelledby="daily-heading">
+		{#if bars.length > 0}
+			<section class="mt-10" aria-labelledby="daily-heading">
 				<h2 id="daily-heading" class="title-lg">Last 30 days</h2>
-				<div class="mt-4 flex items-end gap-1" style="height: 120px">
-					{#each stats.daily_counts as [date, count], i (date)}
-						<div class="flex flex-1 flex-col items-center justify-end" title="{date}: {count}">
-							<div
-								class="w-full rounded-t bg-primary"
-								style="height: {maxDaily() > 0 ? (count / maxDaily()) * 100 : 0}%"
-							></div>
-							{#if i % 5 === 0 || i === stats.daily_counts.length - 1}
-								<span class="mt-1 text-[8px] text-on-surface-variant">
-									{date.slice(5)}
+				<div class="mt-4 flex items-end gap-1" style="height: {PLOT_HEIGHT + 16}px">
+					{#each bars as bar (bar.day)}
+						<div class="relative flex h-full flex-1 items-end" title="{bar.day}: {bar.count}">
+							<span class="absolute inset-x-0 bottom-4 text-center">
+								<span class="sr-only">{bar.day}: {bar.count}</span>
+								<span aria-hidden="true" class="block text-[8px] leading-none">
+									{bar.label ?? ''}
 								</span>
-							{/if}
+							</span>
+							<div class="w-full rounded-t bg-primary" style="height: {bar.height}px"></div>
 						</div>
 					{/each}
 				</div>
 			</section>
 		{/if}
-	{:else}
-		<p class="mt-6 text-on-surface-variant">Loading statistics…</p>
 	{/if}
 </div>

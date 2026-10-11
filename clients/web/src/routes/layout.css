@@ -120,3 +120,31 @@ body {
 	font-size: 0.6875rem;
 	line-height: 1rem;
 }
+
+/* SECURITY: must stay unlayered, or Tailwind's `outline-none` wins and focus vanishes. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+	outline: 2px solid var(--color-primary);
+	outline-offset: 2px;
+}
+
+.skip-link {
+	position: absolute;
+	left: -9999px;
+	top: 0;
+	z-index: 100;
+	padding: 0.75rem 1rem;
+	background: var(--color-surface-highest);
+	color: var(--color-on-surface);
+	border-radius: var(--radius-card);
+}
+
+.skip-link:focus {
+	left: 0.5rem;
+	top: 0.5rem;
+}

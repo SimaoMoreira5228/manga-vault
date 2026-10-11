@@ -16,10 +16,19 @@ jobs:
         with:
           targets: wasm32-wasip2
 
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+
       - uses: Swatinem/rust-cache@v2
 
+      - uses: taiki-e/install-action@nextest
+
+      - name: Format
+        run: cargo +nightly fmt --all --check
+
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-features --all-targets -- -D warnings
 
       - name: Tests
         run: cargo nextest run --workspace --all-features

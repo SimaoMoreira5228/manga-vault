@@ -8,6 +8,7 @@ import {
 	proxied,
 	type Work,
 } from '$lib/api';
+import { sanitizeChapterHtml } from '$lib/sanitize_chapter_html';
 import IconMenu from '~icons/material-symbols/menu';
 import IconSettings from '~icons/material-symbols/settings';
 
@@ -49,6 +50,11 @@ let showReaderSettings = $state(false);
 
 const images = $derived(content && 'Images' in content ? content.Images : []);
 const html = $derived(content && 'Html' in content ? content.Html : null);
+
+const renderedHtml = $derived.by(() => {
+	const raw = translatedHtml ?? html;
+	return raw === null ? '' : sanitizeChapterHtml(raw);
+});
 const chapterIndex = $derived(chapters.findIndex((chapter) => chapter.id === params.chapterId));
 const chapterTitle = $derived(chapters[chapterIndex]?.title ?? '');
 const previousChapter = $derived(chapterIndex > 0 ? (chapters[chapterIndex - 1] ?? null) : null);
@@ -600,7 +606,7 @@ async function load() {
 				dir={rtlMode ? 'rtl' : undefined}
 				style="font-size: {fontSize}px; line-height: {lineHeight}"
 			>
-				{@html translatedHtml ?? html}
+				{@html renderedHtml}
 			</article>
 		{:else}
 			<p class="mono-label p-10 text-center text-on-surface-variant">Loading chapter…</p>

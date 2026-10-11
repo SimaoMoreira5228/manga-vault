@@ -176,10 +176,10 @@ cargo component build --target wasm32-wasip2 --release
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `DATABASE_URL` | `sqlite://./data/manga-vault.db` | SQLite or Postgres connection |
+| `DATABASE_URL` | `sqlite://./data/manga-vault.db` | SQLite or Postgres connection. Checked at boot: the server refuses to start on an empty value, a missing `://`, or a driver it was not built with, and each failure names the accepted forms |
 | `BIND_ADDR` | `127.0.0.1:8080` | API listen address |
 | `DATA_DIR` | `./data` | Local data directory (downloads, repos) |
-| `SECRET_KEY` | — | Encrypts tracker/translation credentials at rest. Optional; when unset those features return an error. Must be 64 hex chars — the server refuses to start otherwise. Changing it makes existing credentials undecryptable |
+| `SECRET_KEY` | — | Encrypts tracker/translation credentials at rest. Optional; when unset the server warns at boot that those features are disabled and they return an error. Must be 64 hex chars — the server refuses to start otherwise, and refuses a key that repeats a short pattern because that encrypts nothing. Changing it makes existing credentials undecryptable |
 | `SESSION_TTL_DAYS` | `7` | Idle days before a session is rejected and the cookie expires |
 | `SECURE_COOKIES` | `true` unless `BIND_ADDR` is loopback | Marks the session cookie `Secure` and prefixes it `__Host-`. Leave on for any deployment reachable over the network; set `false` only for plain-HTTP local development |
 | `ADMIN_USERNAME` | — | Grants admin access (plugin + registration management) |

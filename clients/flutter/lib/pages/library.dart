@@ -29,6 +29,7 @@ class _LibraryPageState extends State<LibraryPage> {
   String sort = 'added';
   String textQuery = '';
   String kindFilter = 'all';
+  String? categoryFilter;
   bool refreshBusy = false;
   String? error;
   Timer? _debounce;
@@ -77,6 +78,7 @@ class _LibraryPageState extends State<LibraryPage> {
         limit: pageSize,
         filter: LibraryFilter(
           kind: kindFilter == 'all' ? null : kindFilter,
+          categoryId: categoryFilter,
           query: textQuery,
         ),
       );
@@ -114,6 +116,49 @@ class _LibraryPageState extends State<LibraryPage> {
       offset = 0;
     });
     _load();
+  }
+
+  void _setCategory(String? categoryId) {
+    setState(() {
+      categoryFilter = categoryId;
+      offset = 0;
+    });
+    _load();
+  }
+
+  Future<void> _createCategory() async {
+    final typed = await showDialog<String>(
+      context: context,
+      builder: (_) => const _CategoryDialog(),
+    );
+    final name = typed?.trim() ?? '';
+    if (name.isEmpty) return;
+    try {
+      await widget.vault.createCategory(name: name);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not create category: $e')));
+      return;
+    }
+    await _load();
+  }
+
+  Future<void> _deleteCategory(CategoryInfo category) async {
+    try {
+      await widget.vault.deleteCategory(categoryId: category.id);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not delete category: $e')));
+      return;
+    }
+    if (categoryFilter == category.id && mounted) {
+      setState(() => categoryFilter = null);
+    }
+    await _load();
   }
 
   void _setQuery(String value) {
@@ -265,6 +310,20 @@ class _LibraryPageState extends State<LibraryPage> {
                               selected: kindFilter == kind,
                               onSelected: (_) => _setKind(kind),
                             ),
+                          for (final category in categories)
+                            InputChip(
+                              label: Text(category.name),
+                              selected: categoryFilter == category.id,
+                              onSelected: (selected) =>
+                                  _setCategory(selected ? category.id : null),
+                              onDeleted: () => _deleteCategory(category),
+                              deleteIcon: const Icon(Icons.close, size: 18),
+                            ),
+                          ActionChip(
+                            avatar: const Icon(Icons.add, size: 18),
+                            label: const Text('New'),
+                            onPressed: _createCategory,
+                          ),
                         ],
                       ),
                     ),
@@ -389,6 +448,46 @@ class _LibraryPageState extends State<LibraryPage> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _CategoryDialog extends StatefulWidget {
+  const _CategoryDialog();
+
+  @override
+  State<_CategoryDialog> createState() => _CategoryDialogState();
+}
+
+class _CategoryDialogState extends State<_CategoryDialog> {
+  final name = TextEditingController();
+
+  @override
+  void dispose() {
+    name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('New category'),
+      content: TextField(
+        controller: name,
+        autofocus: true,
+        decoration: const InputDecoration(hintText: 'Category name'),
+        onSubmitted: (value) => Navigator.of(context).pop(value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(name.text),
+          child: const Text('Create'),
+        ),
+      ],
     );
   }
 }
