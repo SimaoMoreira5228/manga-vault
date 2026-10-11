@@ -2,17 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'remote_error.dart';
 import 'vault_service.dart';
-
-class RemoteApiException implements Exception {
-  RemoteApiException(this.statusCode, this.message);
-
-  final int statusCode;
-  final String message;
-
-  @override
-  String toString() => message;
-}
 
 class RemoteService implements VaultService {
   RemoteService({required this.baseUrl, required this.token});
@@ -117,9 +108,12 @@ class RemoteService implements VaultService {
       );
       final text = await utf8.decodeStream(response);
       if (response.statusCode >= 400)
-        throw RemoteApiException(
-          response.statusCode,
-          '$method $url failed (${response.statusCode}): $text',
+        throw decodeRemoteApiException(
+          statusCode: response.statusCode,
+          body: text,
+          fallbackMessage:
+              '$method $url failed (${response.statusCode}): $text',
+          retryAfterHeader: response.headers.value('retry-after'),
         );
       return text.isEmpty ? null : jsonDecode(text);
     } on TimeoutException {

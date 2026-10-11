@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../service/remote_error.dart';
 import '../service/remote_service.dart';
 
 Future<RemoteService?> showServerSignIn(
@@ -15,6 +16,56 @@ Future<RemoteService?> showServerSignIn(
     failureLabel: failureLabel,
   ),
 );
+
+enum _FailureField { username, invite, form }
+
+class _Failure {
+  const _Failure(this.field, this.message);
+
+  final _FailureField field;
+  final String message;
+}
+
+_Failure _describeFailure(Object failure, {required bool registering}) {
+  if (failure is! RemoteApiException) {
+    return _Failure(_FailureField.form, '$failure');
+  }
+  if (registering && failure.code == 'username_taken') {
+    return const _Failure(_FailureField.username, 'That username is taken.');
+  }
+  if (registering && failure.code == 'invite_required') {
+    return const _Failure(
+      _FailureField.invite,
+      'An invite code is required to register.',
+    );
+  }
+  if (registering && failure.code == 'invalid_invite') {
+    return const _Failure(
+      _FailureField.invite,
+      'That invite code is invalid or already used.',
+    );
+  }
+  switch (failure.code) {
+    case 'bad_credentials':
+      return const _Failure(_FailureField.form, 'Wrong username or password.');
+    case 'registration_closed':
+      return const _Failure(
+        _FailureField.form,
+        'This server is not accepting new accounts.',
+      );
+    case 'too_many_attempts':
+    case 'too_many_requests':
+      final seconds = failure.retryAfterSeconds;
+      return _Failure(
+        _FailureField.form,
+        seconds == null
+            ? failure.message
+            : 'Too many attempts. Retry in ${seconds}s.',
+      );
+    default:
+      return _Failure(_FailureField.form, failure.message);
+  }
+}
 
 class _ServerSignIn extends StatefulWidget {
   const _ServerSignIn({
@@ -37,6 +88,8 @@ class _ServerSignInState extends State<_ServerSignIn> {
   final password = TextEditingController();
   final inviteCode = TextEditingController();
   String? registration;
+  String? usernameError;
+  String? inviteError;
   var registering = false;
   var busy = false;
 
@@ -53,8 +106,37 @@ class _ServerSignInState extends State<_ServerSignIn> {
     setState(() => registration = mode);
   }
 
+  void _reportFailure(Object failure) {
+    final described = _describeFailure(failure, registering: registering);
+    switch (described.field) {
+      case _FailureField.username:
+        setState(() => usernameError = described.message);
+      case _FailureField.invite:
+        setState(() {
+          if (registration != 'invite') registration = 'invite';
+          inviteError = described.message;
+        });
+      case _FailureField.form:
+        setState(() {
+          if (failure is RemoteApiException &&
+              failure.code == 'registration_closed') {
+            registration = 'closed';
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${widget.failureLabel}: ${described.message}'),
+          ),
+        );
+    }
+  }
+
   Future<void> _submit() async {
-    setState(() => busy = true);
+    setState(() {
+      busy = true;
+      usernameError = null;
+      inviteError = null;
+    });
     try {
       final url = baseUrl.text.trim();
       final service = registering
@@ -74,8 +156,7 @@ class _ServerSignInState extends State<_ServerSignIn> {
     } catch (e) {
       if (!mounted) return;
       setState(() => busy = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('${widget.failureLabel}: $e')));
+      _reportFailure(e);
     }
   }
 
@@ -95,7 +176,10 @@ class _ServerSignInState extends State<_ServerSignIn> {
           ),
           TextField(
             controller: username,
-            decoration: const InputDecoration(hintText: 'Username'),
+            decoration: InputDecoration(
+              hintText: 'Username',
+              errorText: usernameError,
+            ),
           ),
           TextField(
             controller: password,
@@ -105,7 +189,10 @@ class _ServerSignInState extends State<_ServerSignIn> {
           if (registering && registration == 'invite')
             TextField(
               controller: inviteCode,
-              decoration: const InputDecoration(hintText: 'Invite code'),
+              decoration: InputDecoration(
+                hintText: 'Invite code',
+                errorText: inviteError,
+              ),
             ),
         ],
       ),

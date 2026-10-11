@@ -39,10 +39,9 @@ impl FromRequestParts<AppState> for AdminUser {
 			return Err(plugin_management_disabled());
 		};
 		if authenticated.user.username != *admin_username {
-			return Err(crate::http::error::ApiError {
-				status: axum::http::StatusCode::FORBIDDEN,
-				message: "plugin management is reserved to the server operator".to_owned(),
-			});
+			return Err(crate::http::error::ApiError::forbidden(
+				"plugin management is reserved to the server operator".to_owned(),
+			));
 		}
 		Ok(Self {
 			user: authenticated.user,
@@ -51,10 +50,9 @@ impl FromRequestParts<AppState> for AdminUser {
 }
 
 pub fn plugin_management_disabled() -> crate::http::error::ApiError {
-	crate::http::error::ApiError {
-		status: axum::http::StatusCode::FORBIDDEN,
-		message: "plugin management is disabled on this deployment: set ADMIN_USERNAME".to_owned(),
-	}
+	crate::http::error::ApiError::forbidden(
+		"plugin management is disabled on this deployment: set ADMIN_USERNAME".to_owned(),
+	)
 }
 
 fn extract_token(parts: &mut Parts) -> Option<Uuid> {

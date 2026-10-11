@@ -194,6 +194,14 @@ cargo component build --target wasm32-wasip2 --release
 | `CORS_ORIGINS` | — | Comma-separated allowed origins. Setting this marks the session cookie `SameSite=None` (and forces it `Secure`) for cross-site deployments such as Cloudflare Pages. Same-origin deployments keep `SameSite=Lax` |
 | `PUBLIC_API_URL` | `` | API URL for the web UI, baked in at build time (empty = same origin) |
 
+Every error response carries a stable machine-readable `code` alongside the human-readable `error` string, so clients branch on the code instead of matching prose:
+
+```json
+{ "error": "username `dup` is already taken", "code": "username_taken" }
+```
+
+Codes: `not_found`, `bad_credentials`, `too_many_attempts`, `registration_closed`, `invite_required`, `invalid_invite`, `username_taken`, `conflict`, `source_unavailable`, `plugin_not_found`, `bad_plugin_artifact`, `upstream_failed`, `internal`, `bad_request`, `forbidden`, `too_many_requests`.
+
 Writes authenticated by cookie are checked against the request's `Origin`: a cross-origin `POST`/`PUT`/`DELETE`/`PATCH` is rejected with `403` unless the origin is same-host or listed in `CORS_ORIGINS`. Bearer clients (Flutter, scripts) and non-browser clients that send no `Origin` are unaffected.
 
 ---

@@ -122,11 +122,13 @@ async fn fetch_upstream(target: Url, referer_url: &str) -> Result<Arc<CachedResp
 		.await
 		.map_err(|e| ApiError {
 			status: axum::http::StatusCode::BAD_GATEWAY,
+			code: crate::http::error::ErrorCode::UpstreamFailed,
 			message: e.to_string(),
 		})?;
 	if !upstream.status().is_success() {
 		return Err(ApiError {
 			status: axum::http::StatusCode::BAD_GATEWAY,
+			code: crate::http::error::ErrorCode::UpstreamFailed,
 			message: format!("upstream returned {}", upstream.status()),
 		});
 	}
@@ -140,17 +142,20 @@ async fn fetch_upstream(target: Url, referer_url: &str) -> Result<Arc<CachedResp
 	if !content_type.starts_with("image/") {
 		return Err(ApiError {
 			status: axum::http::StatusCode::BAD_GATEWAY,
+			code: crate::http::error::ErrorCode::UpstreamFailed,
 			message: "upstream did not return an image".into(),
 		});
 	}
 	let bytes = upstream.bytes().await.map_err(|e| ApiError {
 		status: axum::http::StatusCode::BAD_GATEWAY,
+		code: crate::http::error::ErrorCode::UpstreamFailed,
 		message: e.to_string(),
 	})?;
 
 	if bytes.len() > MAX_ENTRY_BYTES {
 		return Err(ApiError {
 			status: axum::http::StatusCode::BAD_GATEWAY,
+			code: crate::http::error::ErrorCode::UpstreamFailed,
 			message: "image exceeds max allowable size".into(),
 		});
 	}
@@ -171,23 +176,27 @@ pub async fn proxy(
 	}
 	let target = normalize_target(Url::parse(&query.url).map_err(|_| ApiError {
 		status: axum::http::StatusCode::BAD_REQUEST,
+		code: crate::http::error::ErrorCode::BadRequest,
 		message: "invalid url".into(),
 	})?);
 	if !matches!(target.scheme(), "http" | "https") || target.host_str().is_none() {
 		return Err(ApiError {
 			status: axum::http::StatusCode::BAD_REQUEST,
+			code: crate::http::error::ErrorCode::BadRequest,
 			message: "only valid http(s) urls are proxied".into(),
 		});
 	}
 	if !is_public_host(&target).await {
 		return Err(ApiError {
 			status: axum::http::StatusCode::FORBIDDEN,
+			code: crate::http::error::ErrorCode::Forbidden,
 			message: "private or unresolved hosts are not proxied".into(),
 		});
 	}
 
 	let referer = plugin_referer(&state, query.referer.as_deref()).ok_or_else(|| ApiError {
 		status: axum::http::StatusCode::BAD_REQUEST,
+		code: crate::http::error::ErrorCode::BadRequest,
 		message: "no plugin referer matches the request".into(),
 	})?;
 	let cache_key = format!("{referer}|{target}");

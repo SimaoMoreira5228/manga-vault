@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../service/remote_service.dart';
+import '../service/remote_error.dart';
 import '../service/vault_service.dart';
 
 class SourcesPage extends StatefulWidget {

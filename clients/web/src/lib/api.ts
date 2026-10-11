@@ -164,10 +164,53 @@ export interface InviteInfo {
 	used_by: string | null;
 }
 
+export type ApiErrorCode =
+	| 'not_found'
+	| 'bad_credentials'
+	| 'too_many_attempts'
+	| 'registration_closed'
+	| 'invite_required'
+	| 'invalid_invite'
+	| 'username_taken'
+	| 'conflict'
+	| 'source_unavailable'
+	| 'plugin_not_found'
+	| 'bad_plugin_artifact'
+	| 'upstream_failed'
+	| 'internal'
+	| 'bad_request'
+	| 'forbidden'
+	| 'too_many_requests';
+
+const apiErrorCodes: ReadonlySet<string> = new Set<ApiErrorCode>([
+	'not_found',
+	'bad_credentials',
+	'too_many_attempts',
+	'registration_closed',
+	'invite_required',
+	'invalid_invite',
+	'username_taken',
+	'conflict',
+	'source_unavailable',
+	'plugin_not_found',
+	'bad_plugin_artifact',
+	'upstream_failed',
+	'internal',
+	'bad_request',
+	'forbidden',
+	'too_many_requests',
+]);
+
+export function isApiErrorCode(value: unknown): value is ApiErrorCode {
+	return typeof value === 'string' && apiErrorCodes.has(value);
+}
+
 export class ApiError extends Error {
 	constructor(
 		public status: number,
 		message: string,
+		public code: ApiErrorCode | null = null,
+		public retryAfterSeconds: number | null = null,
 	) {
 		super(message);
 	}
@@ -189,6 +232,13 @@ function stashContent(chapterId: string, content: ChapterContent) {
 	chapterContentCache.set(chapterId, content);
 }
 
+function retryAfterSeconds(response: Response): number | null {
+	const header = response.headers.get('retry-after');
+	if (header === null) return null;
+	const seconds = Number.parseInt(header, 10);
+	return Number.isNaN(seconds) ? null : seconds;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
 	const headers = new Headers(init?.headers);
 	if (init?.body !== undefined && !headers.has('content-type')) {
@@ -200,11 +250,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 		headers,
 	});
 	if (!response.ok) {
-		const body = (await response.json().catch(() => ({ error: response.statusText }))) as {
+		const body = (await response.json().catch(() => ({
+			error: response.statusText,
+		}))) as {
 			error?: string;
+			code?: unknown;
 		};
 		if (response.status === 401 && !path.startsWith('/api/auth/')) onUnauthorized?.();
-		throw new ApiError(response.status, body.error ?? 'request failed');
+		throw new ApiError(
+			response.status,
+			body.error ?? 'request failed',
+			isApiErrorCode(body.code) ? body.code : null,
+			retryAfterSeconds(response),
+		);
 	}
 	if (response.status === 204) return undefined as T;
 	return response.json();

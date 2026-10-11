@@ -40,6 +40,7 @@ pub async fn update(State(state): State<AppState>, _admin: AdminUser, Json(paylo
 	let Some(mode) = RegistrationMode::parse(&payload.mode) else {
 		return Err(ApiError {
 			status: axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+			code: crate::http::error::ErrorCode::BadRequest,
 			message: "mode must be one of: open, closed, invite".to_owned(),
 		});
 	};

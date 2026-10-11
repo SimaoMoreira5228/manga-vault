@@ -1,7 +1,9 @@
 <script lang="ts">
 import { goto } from '$app/navigation';
-import { api, type RegistrationMode } from '$lib/api';
+import { ApiError, api, type RegistrationMode } from '$lib/api';
 import { auth } from '$lib/auth.svelte';
+
+type Field = 'username' | 'invite' | 'form';
 
 let username = $state('');
 let password = $state('');
@@ -9,6 +11,8 @@ let inviteCode = $state('');
 let mode = $state<'login' | 'register'>('login');
 let busy = $state(false);
 let error = $state<string | null>(null);
+let usernameError = $state<string | null>(null);
+let inviteError = $state<string | null>(null);
 let registration: RegistrationMode | null = $state(null);
 
 $effect(() => {
@@ -20,10 +24,62 @@ $effect(() => {
 
 const canRegisterHere = $derived(registration === null || registration !== 'closed');
 
+function fieldError(failure: ApiError): Field {
+	if (mode === 'register' && failure.code === 'username_taken') return 'username';
+	if (
+		mode === 'register' &&
+		(failure.code === 'invite_required' || failure.code === 'invalid_invite')
+	)
+		return 'invite';
+	return 'form';
+}
+
+function messageFor(failure: ApiError): string {
+	switch (failure.code) {
+		case 'bad_credentials':
+			return 'Wrong username or password.';
+		case 'username_taken':
+			return 'That username is taken.';
+		case 'invite_required':
+			return 'An invite code is required to register.';
+		case 'invalid_invite':
+			return 'That invite code is invalid or already used.';
+		case 'registration_closed':
+			return 'This server is not accepting new accounts.';
+		case 'too_many_attempts':
+		case 'too_many_requests':
+			return failure.retryAfterSeconds === null
+				? failure.message
+				: `Too many attempts. Retry in ${failure.retryAfterSeconds}s.`;
+		default:
+			return failure.message;
+	}
+}
+
+function handle(failure: unknown) {
+	if (!(failure instanceof ApiError)) {
+		error = failure instanceof Error ? failure.message : 'failed';
+		return;
+	}
+	const target = fieldError(failure);
+	const message = messageFor(failure);
+	if (target === 'username') usernameError = message;
+	else if (target === 'invite') {
+		registration = 'invite';
+		inviteError = message;
+	} else if (failure.code === 'registration_closed') {
+		registration = 'closed';
+	} else {
+		error = message;
+	}
+}
+
 async function submit(event: SubmitEvent) {
 	event.preventDefault();
 	busy = true;
 	error = null;
+	usernameError = null;
+	inviteError = null;
 	try {
 		if (mode === 'login') {
 			await auth.login(username, password);
@@ -32,7 +88,7 @@ async function submit(event: SubmitEvent) {
 		}
 		await goto('/');
 	} catch (cause) {
-		error = cause instanceof Error ? cause.message : 'failed';
+		handle(cause);
 	} finally {
 		busy = false;
 	}
@@ -58,8 +114,13 @@ async function submit(event: SubmitEvent) {
 					bind:value={username}
 					required
 					autocomplete="username"
+					aria-invalid={usernameError !== null}
+					aria-describedby={usernameError === null ? undefined : 'username-error'}
 					class="rounded-card border border-outline-variant/60 bg-surface-container px-4 py-3 outline-none focus:border-primary"
 				>
+				{#if usernameError}
+					<p id="username-error" class="text-error" role="alert">{usernameError}</p>
+				{/if}
 			</label>
 			<label class="flex flex-col gap-2">
 				<span class="label-caps text-outline">Password</span>
@@ -79,8 +140,13 @@ async function submit(event: SubmitEvent) {
 						bind:value={inviteCode}
 						required
 						placeholder="mv-…"
+						aria-invalid={inviteError !== null}
+						aria-describedby={inviteError === null ? undefined : 'invite-error'}
 						class="rounded-card border border-outline-variant/60 bg-surface-container px-4 py-3 outline-none focus:border-primary"
 					>
+					{#if inviteError}
+						<p id="invite-error" class="text-error" role="alert">{inviteError}</p>
+					{/if}
 				</label>
 			{/if}
 
