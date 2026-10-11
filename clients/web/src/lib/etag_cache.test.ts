@@ -6,6 +6,7 @@ interface Call {
 	url: string;
 	method: string;
 	ifNoneMatch: string | null;
+	credentials: RequestCredentials | undefined;
 }
 
 let calls: Call[] = [];
@@ -26,6 +27,7 @@ beforeEach(() => {
 			url: String(input),
 			method: init?.method ?? 'GET',
 			ifNoneMatch: new Headers(init?.headers).get('if-none-match'),
+			credentials: init?.credentials,
 		});
 		return Promise.resolve(next());
 	};
@@ -40,6 +42,17 @@ async function get(url: string) {
 }
 
 describe('cachedRequest', () => {
+	it('includes session cookies for cross-origin login and authenticated reads', async () => {
+		next = () => reply({ ok: true }, null);
+		await cachedRequest(
+			'https://api.example.test/api/auth/login',
+			{ method: 'POST', body: '{}' },
+			new Headers(),
+		);
+		await get('https://api.example.test/api/me');
+		assert.deepEqual(calls.map((call) => call.credentials), ['include', 'include']);
+	});
+
 	it('returns the cached body on 304 instead of parsing the empty body', async () => {
 		next = () => reply({ name: 'dex' }, '"v1"');
 		const first = await get('/api/sources');

@@ -32,7 +32,7 @@ export async function cachedRequest(
 	headers: Headers,
 ): Promise<CachedResponse> {
 	if (init?.method !== undefined && init.method !== 'GET') {
-		const response = await fetch(url, { ...init, headers });
+		const response = await fetch(url, { credentials: 'include', ...init, headers });
 		if (response.ok) invalidateEtags();
 		if (!response.ok || response.status === 204) {
 			return { response, body: undefined, notModified: false };
@@ -43,7 +43,7 @@ export async function cachedRequest(
 	const cached = cache.get(url);
 	const conditional = new Headers(headers);
 	if (cached) conditional.set('if-none-match', cached.etag);
-	const response = await fetch(url, { ...init, headers: conditional });
+	const response = await fetch(url, { credentials: 'include', ...init, headers: conditional });
 
 	if (response.status === 304 && cached) {
 		return { response, body: cached.body, notModified: true };
