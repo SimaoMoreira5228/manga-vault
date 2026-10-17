@@ -258,21 +258,30 @@ class RemoteService implements VaultService {
       _send('DELETE', '/api/library/$workId');
 
   @override
-  Future<VaultPage<LibraryItem>> listLibrary({
-    int offset = 0,
+  Future<LibraryCursorPage<LibraryItem>> listLibrary({
+    String? after,
     int limit = pageSize,
     LibraryFilter filter = const LibraryFilter(),
-  }) => _page(
-    '/api/library',
-    offset,
-    limit,
-    'entries',
-    (raw) => LibraryItem(
-      entryId: raw[0]['id'] as String,
-      work: WorkDetailsMapper.fromWork(raw[1]),
-    ),
-    libraryQuerySuffix(filter),
-  );
+  }) async {
+    final query = StringBuffer('limit=$limit');
+    if (after != null && after.isNotEmpty) {
+      query.write('&after=${Uri.encodeQueryComponent(after)}');
+    }
+    query.write(libraryQuerySuffix(filter));
+    final payload = await _send('GET', '/api/library?$query');
+    return LibraryCursorPage(
+      items: [
+        for (final raw in payload['entries'] as List)
+          LibraryItem(
+            entryId: raw[0]['id'] as String,
+            work: WorkDetailsMapper.fromWork(raw[1]),
+          ),
+      ],
+      total: payload['total'] as int,
+      limit: payload['limit'] as int,
+      nextCursor: payload['next_cursor'] as String?,
+    );
+  }
 
   @override
   Future<Map<String, ChapterProgressStats>> libraryOverview() async {

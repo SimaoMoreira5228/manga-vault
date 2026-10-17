@@ -86,7 +86,7 @@ abstract class LocalVault implements RustOpaqueInterface {
   Future<List<CategorySummary>> listCategories();
 
   Future<LibraryPage> listLibrary({
-    required BigInt offset,
+    String? after,
     int? limit,
     required LibraryFilter filter,
   });
@@ -429,19 +429,19 @@ class LibraryItem {
 class LibraryPage {
   final List<LibraryItem> items;
   final PlatformInt64 total;
-  final BigInt offset;
   final BigInt limit;
+  final String? nextCursor;
 
   const LibraryPage({
     required this.items,
     required this.total,
-    required this.offset,
     required this.limit,
+    this.nextCursor,
   });
 
   @override
   int get hashCode =>
-      items.hashCode ^ total.hashCode ^ offset.hashCode ^ limit.hashCode;
+      items.hashCode ^ total.hashCode ^ limit.hashCode ^ nextCursor.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -450,8 +450,8 @@ class LibraryPage {
           runtimeType == other.runtimeType &&
           items == other.items &&
           total == other.total &&
-          offset == other.offset &&
-          limit == other.limit;
+          limit == other.limit &&
+          nextCursor == other.nextCursor;
 }
 
 class PluginRepo {

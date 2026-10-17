@@ -28,6 +28,7 @@ class _LibraryPageState extends State<LibraryPage> {
   List<CategoryInfo> categories = [];
   bool loadingMore = false;
   bool done = false;
+  String? cursor;
   String? pageFailure;
   int _epoch = 0;
   String sort = 'added';
@@ -85,7 +86,6 @@ class _LibraryPageState extends State<LibraryPage> {
     final epoch = ++_epoch;
     try {
       final loaded = await widget.vault.listLibrary(
-        offset: 0,
         limit: pageSize,
         filter: _filter,
       );
@@ -103,9 +103,8 @@ class _LibraryPageState extends State<LibraryPage> {
         error = null;
         pageFailure = null;
         loadingMore = false;
-        done =
-            loaded.items.length < pageSize ||
-            loaded.items.length >= loaded.total;
+        cursor = loaded.nextCursor;
+        done = loaded.nextCursor == null;
       });
     } catch (e) {
       if (!mounted || epoch != _epoch) return;
@@ -118,25 +117,24 @@ class _LibraryPageState extends State<LibraryPage> {
 
   Future<void> _more() async {
     final window = items;
+    final after = cursor;
     if (window == null || window.isEmpty || loadingMore || done) return;
     final epoch = _epoch;
     setState(() => loadingMore = true);
     try {
       final page = await widget.vault.listLibrary(
-        offset: window.length,
+        after: after,
         limit: pageSize,
         filter: _filter,
       );
       if (!mounted || epoch != _epoch) return;
-      final seen = window.length + page.items.length;
+      final known = {for (final item in window) item.entryId};
       setState(() {
-        items = [...window, ...page.items];
+        items = [...window, for (final item in page.items) if (!known.contains(item.entryId)) item];
         pageFailure = null;
         loadingMore = false;
-        done =
-            page.items.isEmpty ||
-            page.items.length < pageSize ||
-            seen >= page.total;
+        cursor = page.nextCursor;
+        done = page.nextCursor == null;
       });
     } catch (e) {
       if (!mounted || epoch != _epoch) return;

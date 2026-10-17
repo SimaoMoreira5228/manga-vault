@@ -208,7 +208,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<LibraryPage> crateApiLocalLocalVaultListLibrary({
     required LocalVault that,
-    required BigInt offset,
+    String? after,
     int? limit,
     required LibraryFilter filter,
   });
@@ -1318,7 +1318,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   Future<LibraryPage> crateApiLocalLocalVaultListLibrary({
     required LocalVault that,
-    required BigInt offset,
+    String? after,
     int? limit,
     required LibraryFilter filter,
   }) {
@@ -1330,7 +1330,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          sse_encode_u_64(offset, serializer);
+          sse_encode_opt_String(after, serializer);
           sse_encode_opt_box_autoadd_u_32(limit, serializer);
           sse_encode_box_autoadd_library_filter(filter, serializer);
           pdeCallFfi(
@@ -1345,7 +1345,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateApiLocalLocalVaultListLibraryConstMeta,
-        argValues: [that, offset, limit, filter],
+        argValues: [that, after, limit, filter],
         apiImpl: this,
       ),
     );
@@ -1354,7 +1354,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiLocalLocalVaultListLibraryConstMeta =>
       const TaskConstMeta(
         debugName: "LocalVault_list_library",
-        argNames: ["that", "offset", "limit", "filter"],
+        argNames: ["that", "after", "limit", "filter"],
       );
 
   @override
@@ -2542,8 +2542,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return LibraryPage(
       items: dco_decode_list_library_item(arr[0]),
       total: dco_decode_i_64(arr[1]),
-      offset: dco_decode_u_64(arr[2]),
-      limit: dco_decode_u_64(arr[3]),
+      limit: dco_decode_u_64(arr[2]),
+      nextCursor: dco_decode_opt_String(arr[3]),
     );
   }
 
@@ -3038,13 +3038,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_items = sse_decode_list_library_item(deserializer);
     var var_total = sse_decode_i_64(deserializer);
-    var var_offset = sse_decode_u_64(deserializer);
     var var_limit = sse_decode_u_64(deserializer);
+    var var_nextCursor = sse_decode_opt_String(deserializer);
     return LibraryPage(
       items: var_items,
       total: var_total,
-      offset: var_offset,
       limit: var_limit,
+      nextCursor: var_nextCursor,
     );
   }
 
@@ -3614,8 +3614,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_library_item(self.items, serializer);
     sse_encode_i_64(self.total, serializer);
-    sse_encode_u_64(self.offset, serializer);
     sse_encode_u_64(self.limit, serializer);
+    sse_encode_opt_String(self.nextCursor, serializer);
   }
 
   @protected
@@ -4081,12 +4081,12 @@ class LocalVaultImpl extends RustOpaque implements LocalVault {
       RustLib.instance.api.crateApiLocalLocalVaultListCategories(that: this);
 
   Future<LibraryPage> listLibrary({
-    required BigInt offset,
+    String? after,
     int? limit,
     required LibraryFilter filter,
   }) => RustLib.instance.api.crateApiLocalLocalVaultListLibrary(
     that: this,
-    offset: offset,
+    after: after,
     limit: limit,
     filter: filter,
   );

@@ -26,18 +26,31 @@ class VaultPage<T> {
   bool get hasPrevious => offset > 0;
 }
 
+class LibraryCursorPage<T> {
+  const LibraryCursorPage({
+    required this.items,
+    required this.total,
+    required this.limit,
+    required this.nextCursor,
+  });
+  final List<T> items;
+  final int total;
+  final int limit;
+  final String? nextCursor;
+
+  bool get hasNext => nextCursor != null;
+}
+
 extension VaultLibraryPages on VaultService {
   Future<List<LibraryItem>> allLibrary() async {
     final all = <LibraryItem>[];
-    var offset = 0;
-    var total = 1;
-    while (offset < total) {
-      final page = await listLibrary(offset: offset, limit: maxPageSize);
+    String? after;
+    for (;;) {
+      final page = await listLibrary(after: after, limit: maxPageSize);
       all.addAll(page.items);
-      total = page.total;
-      offset = page.offset + page.limit;
+      if (page.nextCursor == null) return all;
+      after = page.nextCursor;
     }
-    return all;
   }
 }
 
@@ -141,8 +154,8 @@ abstract class VaultService {
   Future<ChapterBody> chapterContent({required String chapterId});
   Future<void> addToLibrary({required String workId});
   Future<void> removeFromLibrary({required String workId});
-  Future<VaultPage<LibraryItem>> listLibrary({
-    int offset = 0,
+  Future<LibraryCursorPage<LibraryItem>> listLibrary({
+    String? after,
     int limit = pageSize,
     LibraryFilter filter = const LibraryFilter(),
   });

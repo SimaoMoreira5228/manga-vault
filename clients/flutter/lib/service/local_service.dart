@@ -58,21 +58,21 @@ class LocalService implements VaultService {
       _vault.removeFromLibrary(workId: workId);
 
   @override
-  Future<VaultPage<LibraryItem>> listLibrary({
-    int offset = 0,
+  Future<LibraryCursorPage<LibraryItem>> listLibrary({
+    String? after,
     int limit = pageSize,
     LibraryFilter filter = const LibraryFilter(),
   }) async {
     final page = await _vault.listLibrary(
-      offset: BigInt.from(offset),
+      after: after,
       limit: limit,
       filter: filter,
     );
-    return VaultPage(
+    return LibraryCursorPage(
       items: page.items,
       total: page.total.toInt(),
-      offset: page.offset.toInt(),
       limit: page.limit.toInt(),
+      nextCursor: page.nextCursor,
     );
   }
 
