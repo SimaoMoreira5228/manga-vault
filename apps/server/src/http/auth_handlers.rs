@@ -371,6 +371,51 @@ mod route_tests {
 			.unwrap()
 	}
 
+	#[tokio::test]
+	async fn the_cookie_the_server_sets_is_the_cookie_it_accepts() {
+		let state = state("cookie-roundtrip").await;
+		let username = format!("route-{}", Uuid::new_v4());
+		let login = Request::builder()
+			.method("POST")
+			.uri("/api/auth/login")
+			.header(header::CONTENT_TYPE, "application/json")
+			.body(Body::from(
+				serde_json::json!({ "username": username, "password": "correct horse battery staple" }).to_string(),
+			))
+			.unwrap();
+		let (status, _, _) = call(&state, login).await;
+		assert_eq!(status, axum::http::StatusCode::UNAUTHORIZED);
+
+		state
+			.vault
+			.register(&username, "correct horse battery staple", None, None)
+			.await
+			.unwrap();
+		let login = Request::builder()
+			.method("POST")
+			.uri("/api/auth/login")
+			.header(header::CONTENT_TYPE, "application/json")
+			.body(Body::from(
+				serde_json::json!({ "username": username, "password": "correct horse battery staple" }).to_string(),
+			))
+			.unwrap();
+		let (status, _, set_cookie) = call(&state, login).await;
+		assert_eq!(status, axum::http::StatusCode::OK);
+		let set_cookie = set_cookie.expect("login sets a session cookie");
+		let pair = set_cookie.split(';').next().unwrap().to_owned();
+
+		let me = Request::builder()
+			.method("GET")
+			.uri("/api/me")
+			.header(header::ORIGIN, "https://pages.example")
+			.header(header::COOKIE, pair)
+			.body(Body::empty())
+			.unwrap();
+		let (status, body, _) = call(&state, me).await;
+		assert_eq!(status, axum::http::StatusCode::OK, "the set cookie must authenticate: {body}");
+		assert_eq!(body["username"], username);
+	}
+
 	async fn two_sessions(state: &AppState) -> (String, Uuid, Uuid) {
 		let username = format!("route-{}", Uuid::new_v4());
 		let registered = state
