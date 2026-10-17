@@ -74,7 +74,7 @@ async fn local_mode_imports_reads_and_tracks() {
 	assert_eq!(imported.chapters.len(), 2);
 
 	vault.add_to_library(imported.id.clone()).await.unwrap();
-	let library = vault.list_library(0, Some(200), no_filter()).await.unwrap();
+	let library = vault.list_library(None, Some(200), no_filter()).await.unwrap();
 	assert_eq!(library.items.len(), 1);
 	assert_eq!(library.items[0].work.id, imported.id);
 
@@ -149,7 +149,7 @@ async fn local_mode_imports_reads_and_tracks() {
 	let categories = vault.list_categories().await.unwrap();
 	assert_eq!(categories.len(), 1);
 
-	let entry_id = vault.list_library(0, Some(200), no_filter()).await.unwrap().items[0]
+	let entry_id = vault.list_library(None, Some(200), no_filter()).await.unwrap().items[0]
 		.entry_id
 		.clone();
 	vault
@@ -182,7 +182,7 @@ async fn local_mode_imports_reads_and_tracks() {
 
 	let imported_id = imported.id.clone();
 	vault.remove_from_library(imported_id.clone()).await.unwrap();
-	assert!(vault.list_library(0, Some(200), no_filter()).await.unwrap().items.is_empty());
+	assert!(vault.list_library(None, Some(200), no_filter()).await.unwrap().items.is_empty());
 
 	let mut vault = vault;
 	let profiles = vault.profiles().await.unwrap();
@@ -198,18 +198,18 @@ async fn local_mode_imports_reads_and_tracks() {
 	vault.select_profile(created.id.clone(), Some("1234".into())).await.unwrap();
 
 	vault.add_to_library(imported_id).await.unwrap();
-	assert_eq!(vault.list_library(0, Some(200), no_filter()).await.unwrap().items.len(), 1);
+	assert_eq!(vault.list_library(None, Some(200), no_filter()).await.unwrap().items.len(), 1);
 
-	let page = vault.list_library(0, Some(200), no_filter()).await.unwrap();
+	let page = vault.list_library(None, Some(200), no_filter()).await.unwrap();
 	assert_eq!(page.total, 1);
-	assert_eq!(page.offset, 0);
+	assert_eq!(page.next_cursor, None);
 	let shelf = vault.create_category("Shelf".to_owned()).await.unwrap();
 	vault
 		.set_entry_category(page.items[0].entry_id.clone(), Some(shelf.id.clone()))
 		.await
 		.unwrap();
 
-	let page = vault.list_library(0, Some(200), no_filter()).await.unwrap();
+	let page = vault.list_library(None, Some(200), no_filter()).await.unwrap();
 	let assigned = page.items[0].category_id.clone();
 	assert_eq!(
 		assigned.as_deref(),
@@ -221,7 +221,7 @@ async fn local_mode_imports_reads_and_tracks() {
 		category_id: assigned.clone(),
 		..no_filter()
 	};
-	let filtered = vault.list_library(0, Some(200), by_category).await.unwrap();
+	let filtered = vault.list_library(None, Some(200), by_category).await.unwrap();
 	assert_eq!(
 		(filtered.items.len(), filtered.total),
 		(1, 1),
@@ -233,7 +233,7 @@ async fn local_mode_imports_reads_and_tracks() {
 		category_id: Some(other_shelf.id.to_string()),
 		..no_filter()
 	};
-	let empty = vault.list_library(0, Some(200), missing).await.unwrap();
+	let empty = vault.list_library(None, Some(200), missing).await.unwrap();
 	assert!(
 		empty.items.is_empty() && empty.total == 0,
 		"an unknown category matches nothing"
@@ -245,7 +245,7 @@ async fn local_mode_imports_reads_and_tracks() {
 		query: Some(upper),
 		..no_filter()
 	};
-	let found = vault.list_library(0, Some(200), by_title).await.unwrap();
+	let found = vault.list_library(None, Some(200), by_title).await.unwrap();
 	assert_eq!(found.total, 1, "local title search is case-insensitive");
 
 	let actual_kind = page.items[0].work.kind.clone();
@@ -254,7 +254,7 @@ async fn local_mode_imports_reads_and_tracks() {
 		..no_filter()
 	};
 	assert_eq!(
-		vault.list_library(0, Some(200), matching).await.unwrap().total,
+		vault.list_library(None, Some(200), matching).await.unwrap().total,
 		1,
 		"kind matches locally"
 	);
@@ -263,14 +263,14 @@ async fn local_mode_imports_reads_and_tracks() {
 		..no_filter()
 	};
 	assert_eq!(
-		vault.list_library(0, Some(200), opposite).await.unwrap().total,
+		vault.list_library(None, Some(200), opposite).await.unwrap().total,
 		0,
 		"kind filters exclude locally"
 	);
 
 	vault.select_profile(profiles[0].id.clone(), None).await.unwrap();
 	assert!(
-		vault.list_library(0, Some(200), no_filter()).await.unwrap().items.is_empty(),
+		vault.list_library(None, Some(200), no_filter()).await.unwrap().items.is_empty(),
 		"each profile scopes its own library"
 	);
 

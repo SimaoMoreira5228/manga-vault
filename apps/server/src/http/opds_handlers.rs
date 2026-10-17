@@ -1,22 +1,36 @@
-use application::PageQuery;
 use axum::extract::{OriginalUri, State};
 use axum::http::{Response, StatusCode, header};
 use persistence::LibraryFilter;
+use serde::Deserialize;
 
 use crate::http::auth_extractor::Authenticated;
 use crate::http::error::ApiError;
 use crate::state::AppState;
 
+#[derive(Deserialize)]
+pub struct CatalogQuery {
+	pub after: Option<String>,
+	pub limit: Option<u64>,
+}
+
 pub async fn catalog(
 	State(state): State<AppState>,
 	auth: Authenticated,
 	OriginalUri(uri): OriginalUri,
-	axum::extract::Query(page): axum::extract::Query<PageQuery>,
+	axum::extract::Query(page): axum::extract::Query<CatalogQuery>,
 ) -> Result<Response<String>, ApiError> {
-	let (offset, limit) = page.resolve();
+	let limit = page.limit.unwrap_or(50).clamp(1, 200);
+	let cursor = match page.after.as_deref().filter(|raw| !raw.is_empty()) {
+		None => None,
+		Some(raw) => Some(persistence::LibraryCursor::decode(raw).ok_or_else(|| ApiError {
+			status: StatusCode::BAD_REQUEST,
+			code: crate::http::error::ErrorCode::BadRequest,
+			message: "invalid page cursor".into(),
+		})?),
+	};
 	let library = state
 		.vault
-		.library_page(auth.user.id, &LibraryFilter::default(), offset, limit)
+		.library_page(auth.user.id, &LibraryFilter::default(), cursor, limit)
 		.await?;
 
 	let base = uri.path();
@@ -35,12 +49,9 @@ pub async fn catalog(
 <id>urn:manga-vault:library</id>"#,
 	);
 	xml.push_str(&format!("<updated>{}</updated>", feed_updated));
-	xml.push_str(&page_link("first", base, 0, limit));
-	if offset > 0 {
-		xml.push_str(&page_link("previous", base, offset.saturating_sub(limit), limit));
-	}
-	if offset + limit < library.total as u64 {
-		xml.push_str(&page_link("next", base, offset + limit, limit));
+	xml.push_str(&page_link("first", base, None, limit));
+	if let Some(next) = library.next_cursor.as_deref() {
+		xml.push_str(&page_link("next", base, Some(next), limit));
 	}
 
 	for (_entry, work) in &library.items {
@@ -64,10 +75,12 @@ pub async fn catalog(
 		.map_err(|e| ApiError::bad_request(e.to_string()))
 }
 
-fn page_link(relation: &str, base: &str, offset: u64, limit: u64) -> String {
-	format!(
-		"<link rel=\"{relation}\" type=\"application/atom+xml;profile=opds-catalog\" href=\"{base}?offset={offset}&amp;limit={limit}\"/>"
-	)
+fn page_link(relation: &str, base: &str, after: Option<&str>, limit: u64) -> String {
+	let query = match after {
+		Some(cursor) => format!("after={cursor}&amp;limit={limit}"),
+		None => format!("limit={limit}"),
+	};
+	format!("<link rel=\"{relation}\" type=\"application/atom+xml;profile=opds-catalog\" href=\"{base}?{query}\"/>")
 }
 
 fn xml_escape(s: &str) -> String {
@@ -83,14 +96,14 @@ mod tests {
 
 	#[test]
 	fn links_escape_the_ampersand_so_the_xml_stays_valid() {
-		let link = page_link("next", "/opds/catalog", 50, 50);
-		assert!(link.contains("href=\"/opds/catalog?offset=50&amp;limit=50\""));
-		assert!(!link.contains("&offset"), "a bare ampersand would break the document");
+		let link = page_link("next", "/opds/catalog", Some("abc123"), 50);
+		assert!(link.contains("href=\"/opds/catalog?after=abc123&amp;limit=50\""));
+		assert!(!link.contains("&limit"), "a bare ampersand would break the document");
 	}
 
 	#[test]
 	fn links_are_built_from_the_requested_path() {
-		assert!(page_link("first", "/opds/catalog", 0, 25).contains("/opds/catalog?offset=0&amp;limit=25"));
+		assert!(page_link("first", "/opds/catalog", None, 25).contains("/opds/catalog?limit=25"));
 	}
 
 	#[test]

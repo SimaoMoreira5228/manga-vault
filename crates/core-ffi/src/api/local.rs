@@ -110,8 +110,8 @@ pub struct LibraryFilter {
 pub struct LibraryPage {
 	pub items: Vec<LibraryItem>,
 	pub total: i64,
-	pub offset: u64,
 	pub limit: u64,
+	pub next_cursor: Option<String>,
 }
 
 pub enum ChapterBody {
@@ -478,7 +478,12 @@ impl LocalVault {
 		Ok(())
 	}
 
-	pub async fn list_library(&self, offset: u64, limit: Option<u32>, filter: LibraryFilter) -> anyhow::Result<LibraryPage> {
+	pub async fn list_library(
+		&self,
+		after: Option<String>,
+		limit: Option<u32>,
+		filter: LibraryFilter,
+	) -> anyhow::Result<LibraryPage> {
 		let limit = limit.unwrap_or(50).min(200);
 		let kind = filter.kind.as_deref().and_then(|raw| match raw {
 			"manga" => Some(domain::WorkKind::Manga),
@@ -491,9 +496,15 @@ impl LocalVault {
 			category_id,
 			title_contains: filter.query,
 		};
+		let cursor = match after.as_deref().filter(|raw| !raw.is_empty()) {
+			None => None,
+			Some(raw) => {
+				Some(persistence::LibraryCursor::decode(raw).ok_or_else(|| anyhow::anyhow!("invalid page cursor"))?)
+			}
+		};
 		let page = self
 			.vault
-			.library_page(self.user_id, &library_filter, offset, u64::from(limit))
+			.library_page(self.user_id, &library_filter, cursor, u64::from(limit))
 			.await?;
 		let mut items = Vec::with_capacity(page.items.len());
 		for (entry, work) in page.items {
@@ -507,8 +518,8 @@ impl LocalVault {
 		Ok(LibraryPage {
 			items,
 			total: page.total,
-			offset: page.offset,
 			limit: page.limit,
+			next_cursor: page.next_cursor,
 		})
 	}
 

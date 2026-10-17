@@ -1218,7 +1218,7 @@ fn wire__crate__api__local__LocalVault_list_library_impl(
 			let api_that = <RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<LocalVault>>>::sse_decode(
 				&mut deserializer,
 			);
-			let api_offset = <u64>::sse_decode(&mut deserializer);
+			let api_after = <Option<String>>::sse_decode(&mut deserializer);
 			let api_limit = <Option<u32>>::sse_decode(&mut deserializer);
 			let api_filter = <crate::api::local::LibraryFilter>::sse_decode(&mut deserializer);
 			deserializer.end();
@@ -1237,7 +1237,7 @@ fn wire__crate__api__local__LocalVault_list_library_impl(
 						}
 						let api_that_guard = api_that_guard.unwrap();
 						let output_ok =
-							crate::api::local::LocalVault::list_library(&*api_that_guard, api_offset, api_limit, api_filter)
+							crate::api::local::LocalVault::list_library(&*api_that_guard, api_after, api_limit, api_filter)
 								.await?;
 						Ok(output_ok)
 					})()
@@ -2623,13 +2623,13 @@ impl SseDecode for crate::api::local::LibraryPage {
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
 		let mut var_items = <Vec<crate::api::local::LibraryItem>>::sse_decode(deserializer);
 		let mut var_total = <i64>::sse_decode(deserializer);
-		let mut var_offset = <u64>::sse_decode(deserializer);
 		let mut var_limit = <u64>::sse_decode(deserializer);
+		let mut var_nextCursor = <Option<String>>::sse_decode(deserializer);
 		return crate::api::local::LibraryPage {
 			items: var_items,
 			total: var_total,
-			offset: var_offset,
 			limit: var_limit,
+			next_cursor: var_nextCursor,
 		};
 	}
 }
@@ -3287,8 +3287,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::local::LibraryPage {
 		[
 			self.items.into_into_dart().into_dart(),
 			self.total.into_into_dart().into_dart(),
-			self.offset.into_into_dart().into_dart(),
 			self.limit.into_into_dart().into_dart(),
+			self.next_cursor.into_into_dart().into_dart(),
 		]
 		.into_dart()
 	}
@@ -3609,8 +3609,8 @@ impl SseEncode for crate::api::local::LibraryPage {
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
 		<Vec<crate::api::local::LibraryItem>>::sse_encode(self.items, serializer);
 		<i64>::sse_encode(self.total, serializer);
-		<u64>::sse_encode(self.offset, serializer);
 		<u64>::sse_encode(self.limit, serializer);
+		<Option<String>>::sse_encode(self.next_cursor, serializer);
 	}
 }
 

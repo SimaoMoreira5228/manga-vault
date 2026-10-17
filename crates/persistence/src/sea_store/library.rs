@@ -4,7 +4,7 @@ use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrde
 use super::{utc_to_db, *};
 use crate::StoreResult;
 use crate::entities::{categories, chapters, library_entries, reading_positions, reading_progress, works};
-use crate::repo::{LibraryFilter, LibraryRepository, ProgressRepository};
+use crate::repo::{LibraryCursor, LibraryFilter, LibraryRepository, ProgressRepository};
 
 #[async_trait::async_trait]
 impl LibraryRepository for SeaStore {
@@ -133,11 +133,11 @@ impl LibraryRepository for SeaStore {
 		&self,
 		user_id: uuid::Uuid,
 		filter: &LibraryFilter,
-		offset: u64,
+		cursor: Option<LibraryCursor>,
 		limit: u64,
-	) -> StoreResult<(Vec<LibraryEntry>, i64)> {
+	) -> StoreResult<(Vec<LibraryEntry>, i64, Option<LibraryCursor>)> {
 		use sea_orm::sea_query::expr::ExprTrait;
-		use sea_orm::sea_query::{Expr as QueryExpr, Func};
+		use sea_orm::sea_query::{Condition, Expr as QueryExpr, Func};
 		use sea_orm::{JoinType, PaginatorTrait, QueryFilter, QuerySelect, RelationTrait};
 
 		let apply = |query: sea_orm::Select<library_entries::Entity>| {
@@ -171,13 +171,30 @@ impl LibraryRepository for SeaStore {
 		};
 
 		let total = apply(library_entries::Entity::find()).count(&self.db).await?;
-		let models = apply(library_entries::Entity::find())
+		let mut query = apply(library_entries::Entity::find())
 			.order_by_desc(library_entries::Column::CreatedAt)
-			.offset(offset)
-			.limit(limit)
-			.all(&self.db)
-			.await?;
-		Ok((models.iter().map(LibraryEntry::from).collect(), total as i64))
+			.order_by_desc(library_entries::Column::Id);
+		if let Some(cursor) = cursor {
+			query = query.filter(
+				Condition::any()
+					.add(library_entries::Column::CreatedAt.lt(utc_to_db(cursor.created_at)))
+					.add(
+						Condition::all()
+							.add(library_entries::Column::CreatedAt.eq(utc_to_db(cursor.created_at)))
+							.add(library_entries::Column::Id.lt(cursor.id)),
+					),
+			);
+		}
+		let mut models = query.limit(limit.saturating_add(1)).all(&self.db).await?;
+		let next = (models.len() as u64 > limit).then(|| {
+			models.pop();
+			let last = models.last().expect("a non-empty page has a last row");
+			LibraryCursor {
+				created_at: last.created_at.with_timezone(&Utc),
+				id: last.id,
+			}
+		});
+		Ok((models.iter().map(LibraryEntry::from).collect(), total as i64, next))
 	}
 
 	async fn library_entries_including_removed(&self, user_id: uuid::Uuid) -> StoreResult<Vec<LibraryEntry>> {

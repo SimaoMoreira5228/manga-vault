@@ -146,6 +146,34 @@ pub struct LibraryFilter {
 	pub title_contains: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LibraryCursor {
+	pub created_at: DateTime<Utc>,
+	pub id: uuid::Uuid,
+}
+
+impl LibraryCursor {
+	pub fn encode(&self) -> String {
+		use base64::Engine;
+		base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(format!(
+			"{}|{}",
+			self.created_at.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true),
+			self.id
+		))
+	}
+
+	pub fn decode(raw: &str) -> Option<Self> {
+		use base64::Engine;
+		let text = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(raw.trim()).ok()?;
+		let text = String::from_utf8(text).ok()?;
+		let (stamp, id) = text.split_once('|')?;
+		Some(Self {
+			created_at: stamp.parse().ok()?,
+			id: id.parse().ok()?,
+		})
+	}
+}
+
 #[async_trait]
 pub trait LibraryRepository: Send + Sync {
 	async fn add_to_library(
@@ -168,9 +196,9 @@ pub trait LibraryRepository: Send + Sync {
 		&self,
 		user_id: UserId,
 		filter: &LibraryFilter,
-		offset: u64,
+		cursor: Option<LibraryCursor>,
 		limit: u64,
-	) -> StoreResult<(Vec<LibraryEntry>, i64)>;
+	) -> StoreResult<(Vec<LibraryEntry>, i64, Option<LibraryCursor>)>;
 	async fn library_entry(&self, user_id: UserId, work_id: WorkId) -> StoreResult<Option<LibraryEntry>>;
 	/// Includes soft-deleted rows so sync can compare a tombstone's `updated_at`.
 	async fn library_entries_including_removed(&self, user_id: UserId) -> StoreResult<Vec<LibraryEntry>>;

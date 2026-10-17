@@ -80,6 +80,29 @@ impl<T> Page<T> {
 	}
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CursorPage<T> {
+	pub items: Vec<T>,
+	pub total: i64,
+	pub limit: u64,
+	pub next_cursor: Option<String>,
+}
+
+impl<T> CursorPage<T> {
+	pub fn new(items: Vec<T>, total: i64, limit: u64, next_cursor: Option<String>) -> Self {
+		Self {
+			items,
+			total,
+			limit,
+			next_cursor,
+		}
+	}
+
+	pub fn has_more(&self) -> bool {
+		self.next_cursor.is_some()
+	}
+}
+
 #[derive(Debug, Clone, Copy, Default, serde::Deserialize)]
 pub struct PageQuery {
 	pub offset: Option<u64>,

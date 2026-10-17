@@ -1,4 +1,4 @@
-use application::{LibraryFilterQuery, PageQuery};
+use application::LibraryFilterQuery;
 use axum::Json;
 use axum::extract::{Path, State};
 use axum::response::Response;
@@ -14,7 +14,7 @@ use crate::state::AppState;
 
 #[derive(Deserialize)]
 pub struct LibraryQuery {
-	pub offset: Option<u64>,
+	pub after: Option<String>,
 	pub limit: Option<u64>,
 	pub kind: Option<String>,
 	pub category_id: Option<Uuid>,
@@ -22,11 +22,8 @@ pub struct LibraryQuery {
 }
 
 impl LibraryQuery {
-	fn page(&self) -> PageQuery {
-		PageQuery {
-			offset: self.offset,
-			limit: self.limit,
-		}
+	fn limit(&self) -> u64 {
+		self.limit.unwrap_or(50).clamp(1, 200)
 	}
 }
 
@@ -47,22 +44,30 @@ pub async fn list(
 	headers: axum::http::HeaderMap,
 	axum::extract::Query(query): axum::extract::Query<LibraryQuery>,
 ) -> Result<Response, ApiError> {
-	let (offset, limit) = query.page().resolve();
+	let limit = query.limit();
+	let cursor = match query.after.as_deref().filter(|raw| !raw.is_empty()) {
+		None => None,
+		Some(raw) => Some(persistence::LibraryCursor::decode(raw).ok_or_else(|| ApiError {
+			status: axum::http::StatusCode::BAD_REQUEST,
+			code: crate::http::error::ErrorCode::BadRequest,
+			message: "invalid page cursor".into(),
+		})?),
+	};
 	let filter = LibraryFilterQuery {
 		kind: query.kind.clone(),
 		category_id: query.category_id,
 		q: query.q.clone(),
 	}
 	.resolve();
-	let entries = state.vault.library_page(auth.user.id, &filter, offset, limit).await?;
+	let entries = state.vault.library_page(auth.user.id, &filter, cursor, limit).await?;
 	let categories = state.vault.categories(auth.user.id).await?;
 	Ok(cache::cached_json(
 		&headers,
 		&json!({
 			"entries": entries.items,
 			"total": entries.total,
-			"offset": offset,
 			"limit": limit,
+			"next_cursor": entries.next_cursor,
 			"categories": categories,
 		}),
 		0,
@@ -152,24 +157,31 @@ mod query_tests {
 
 	#[test]
 	fn page_numbers_arrive_as_numbers_not_strings() {
-		let query = parse("/api/library?offset=0&limit=200");
-		assert_eq!(query.offset, Some(0));
+		let query = parse("/api/library?limit=200");
 		assert_eq!(query.limit, Some(200));
-		assert_eq!(query.page().resolve(), (0, 200));
+		assert_eq!(query.limit(), 200);
+		assert_eq!(query.after, None);
 	}
 
 	#[test]
 	fn filters_parse_alongside_the_page() {
-		let query = parse("/api/library?offset=20&limit=10&q=necromancer&kind=novel");
+		let query = parse("/api/library?after=abc123&limit=10&q=necromancer&kind=novel");
 		assert_eq!(query.q.as_deref(), Some("necromancer"));
 		assert_eq!(query.kind.as_deref(), Some("novel"));
-		assert_eq!(query.page().resolve(), (20, 10));
+		assert_eq!(query.after.as_deref(), Some("abc123"));
+		assert_eq!(query.limit(), 10);
 	}
 
 	#[test]
 	fn an_absent_query_falls_back_to_the_defaults() {
 		let query = parse("/api/library");
-		assert_eq!(query.offset, None);
-		assert_eq!(query.page().resolve(), (0, 50));
+		assert_eq!(query.after, None);
+		assert_eq!(query.limit(), 50);
+	}
+
+	#[test]
+	fn limits_are_clamped_to_the_page_ceiling() {
+		let query = parse("/api/library?limit=2000");
+		assert_eq!(query.limit(), 200);
 	}
 }

@@ -2,7 +2,7 @@ use domain::{Category, LibraryEntry, UserId, WorkId};
 use persistence::{LibraryFilter, LibraryRepository, WorkRepository};
 use uuid::Uuid;
 
-use crate::{Page, Vault, VaultError, VaultResult};
+use crate::{CursorPage, Vault, VaultError, VaultResult};
 
 impl Vault {
 	pub async fn add_to_library(
@@ -48,21 +48,21 @@ impl Vault {
 		&self,
 		user_id: UserId,
 		filter: &LibraryFilter,
-		offset: u64,
+		cursor: Option<persistence::LibraryCursor>,
 		limit: u64,
-	) -> VaultResult<Page<(LibraryEntry, domain::Work)>> {
-		let (entries, total) = self.db.library_entries_page(user_id, filter, offset, limit).await?;
+	) -> VaultResult<CursorPage<(LibraryEntry, domain::Work)>> {
+		let (entries, total, next) = self.db.library_entries_page(user_id, filter, cursor, limit).await?;
 		let ids: Vec<WorkId> = entries.iter().map(|e| e.work_id).collect();
 		let works = self.db.get_works(&ids).await?;
 		let mut by_id: std::collections::HashMap<WorkId, domain::Work> = works.into_iter().map(|w| (w.id, w)).collect();
-		Ok(Page::new(
+		Ok(CursorPage::new(
 			entries
 				.into_iter()
 				.filter_map(|entry| by_id.remove(&entry.work_id).map(|work| (entry, work)))
 				.collect(),
 			total,
-			offset,
 			limit,
+			next.map(|cursor| cursor.encode()),
 		))
 	}
 
