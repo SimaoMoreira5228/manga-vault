@@ -37,7 +37,10 @@ export interface VaultTheme {
 			| 'primary'
 			| 'onPrimary'
 			| 'primaryContainer'
-			| 'onPrimaryContainer',
+			| 'onPrimaryContainer'
+			| 'secondary'
+			| 'onSecondary'
+			| 'secondaryTint',
 			string
 		>
 	>;
@@ -67,6 +70,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#351e01',
 			primaryContainer: '#955e06',
 			onPrimaryContainer: '#fff3e6',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 	{
@@ -92,6 +98,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#122b00',
 			primaryContainer: '#4c7b2d',
 			onPrimaryContainer: '#eafce1',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 	{
@@ -117,6 +126,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#012a2c',
 			primaryContainer: '#0a7b80',
 			onPrimaryContainer: '#dbfdff',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 	{
@@ -142,6 +154,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#211c48',
 			primaryContainer: '#6660ae',
 			onPrimaryContainer: '#f4f4ff',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 	{
@@ -167,6 +182,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#430e17',
 			primaryContainer: '#a54b55',
 			onPrimaryContainer: '#fef2f2',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 	{
@@ -192,6 +210,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#022a2a',
 			primaryContainer: '#0c7b7c',
 			onPrimaryContainer: '#d7fefd',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 	{
@@ -217,6 +238,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#092d02',
 			primaryContainer: '#427c35',
 			onPrimaryContainer: '#e8fce3',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 	{
@@ -242,6 +266,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#fffafd',
 			primaryContainer: '#feb8e6',
 			onPrimaryContainer: '#510840',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 	{
@@ -267,6 +294,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#fffbf8',
 			primaryContainer: '#fdc496',
 			onPrimaryContainer: '#462401',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 	{
@@ -292,6 +322,9 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#f9fcff',
 			primaryContainer: '#afd5fd',
 			onPrimaryContainer: '#022f55',
+			secondary: '#44E2CD',
+			onSecondary: '#003731',
+			secondaryTint: '#003731',
 		},
 	},
 ];

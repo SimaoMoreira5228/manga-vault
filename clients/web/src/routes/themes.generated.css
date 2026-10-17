@@ -17,6 +17,9 @@
 	--color-on-primary: #351e01;
 	--color-primary-container: #955e06;
 	--color-on-primary-container: #fff3e6;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="classic"] {
@@ -37,6 +40,9 @@
 	--color-on-primary: #351e01;
 	--color-primary-container: #955e06;
 	--color-on-primary-container: #fff3e6;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="forest"] {
@@ -57,6 +63,9 @@
 	--color-on-primary: #122b00;
 	--color-primary-container: #4c7b2d;
 	--color-on-primary-container: #eafce1;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="slate"] {
@@ -77,6 +86,9 @@
 	--color-on-primary: #012a2c;
 	--color-primary-container: #0a7b80;
 	--color-on-primary-container: #dbfdff;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="midnight"] {
@@ -97,6 +109,9 @@
 	--color-on-primary: #211c48;
 	--color-primary-container: #6660ae;
 	--color-on-primary-container: #f4f4ff;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="crimson"] {
@@ -117,6 +132,9 @@
 	--color-on-primary: #430e17;
 	--color-primary-container: #a54b55;
 	--color-on-primary-container: #fef2f2;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="ocean"] {
@@ -137,6 +155,9 @@
 	--color-on-primary: #022a2a;
 	--color-primary-container: #0c7b7c;
 	--color-on-primary-container: #d7fefd;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="terminal"] {
@@ -157,6 +178,9 @@
 	--color-on-primary: #092d02;
 	--color-primary-container: #427c35;
 	--color-on-primary-container: #e8fce3;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="sakura"] {
@@ -177,6 +201,9 @@
 	--color-on-primary: #fffafd;
 	--color-primary-container: #feb8e6;
 	--color-on-primary-container: #510840;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="parchment"] {
@@ -197,6 +224,9 @@
 	--color-on-primary: #fffbf8;
 	--color-primary-container: #fdc496;
 	--color-on-primary-container: #462401;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }
 
 [data-theme="monochrome"] {
@@ -217,4 +247,7 @@
 	--color-on-primary: #f9fcff;
 	--color-primary-container: #afd5fd;
 	--color-on-primary-container: #022f55;
+	--color-secondary: #44e2cd;
+	--color-on-secondary: #003731;
+	--color-secondary-tint: #003731;
 }

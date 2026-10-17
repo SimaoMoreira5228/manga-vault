@@ -8,8 +8,6 @@ import 'theme_palette_data.g.dart';
 const _geist = 'Geist';
 const _playfair = 'Playfair Display';
 
-const _secondary = Color(0xFF44E2CD);
-const _onSecondary = Color(0xFF003731);
 const _secondaryContainer = Color(0xFF03C6B2);
 const _onSecondaryContainer = Color(0xFF004D44);
 const _error = Color(0xFFFFB4AB);
@@ -36,6 +34,9 @@ class VaultPalette {
     required this.onPrimary,
     required this.primaryContainer,
     required this.onPrimaryContainer,
+    required this.secondary,
+    required this.onSecondary,
+    required this.secondaryTint,
   });
 
   final Color surface;
@@ -54,6 +55,9 @@ class VaultPalette {
   final Color onPrimary;
   final Color primaryContainer;
   final Color onPrimaryContainer;
+  final Color secondary;
+  final Color onSecondary;
+  final Color secondaryTint;
 }
 
 class VaultTheme {
@@ -158,8 +162,8 @@ ThemeData buildVaultTheme(VaultTheme theme, {bool pureBlack = false}) {
     onPrimary: palette.onPrimary,
     primaryContainer: palette.primaryContainer,
     onPrimaryContainer: palette.onPrimaryContainer,
-    secondary: _secondary,
-    onSecondary: _onSecondary,
+    secondary: palette.secondary,
+    onSecondary: palette.onSecondary,
     secondaryContainer: _secondaryContainer,
     onSecondaryContainer: _onSecondaryContainer,
     error: _error,

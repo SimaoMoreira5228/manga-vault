@@ -101,9 +101,19 @@ function paletteOf(spec) {
 	const tone = (lightness, chromaScale = 1) =>
 		oklch(lightness, spec.chroma * chromaScale, spec.hue);
 	const accent = (lightness, chroma) => oklch(lightness, chroma, spec.accent);
+	const fixed = (hex) => ({
+		hex,
+		rgb: [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16)),
+	});
+	const secondary = {
+		secondary: fixed('#44E2CD'),
+		onSecondary: fixed('#003731'),
+		secondaryTint: fixed('#003731'),
+	};
 
 	if (dark) {
 		return {
+			...secondary,
 			surface: tone(0.16),
 			surfaceDim: tone(0.16, 0.9),
 			surfaceBright: tone(0.34),
@@ -123,6 +133,7 @@ function paletteOf(spec) {
 		};
 	}
 	return {
+		...secondary,
 		surface: tone(0.97, 0.35),
 		surfaceDim: tone(0.95, 0.4),
 		surfaceBright: tone(0.85),
@@ -153,6 +164,8 @@ const REQUIRED_PAIRS = [
 	['onSurfaceVariant', 'surfaceHigh', 4.5],
 	['onPrimary', 'primary', 4.5],
 	['onPrimaryContainer', 'primaryContainer', 4.5],
+	['onSecondary', 'secondary', 4.5],
+	['secondary', 'secondaryTint', 4.5],
 	['primary', 'surface', 3],
 	['outline', 'surface', 3],
 	['outlineVariant', 'surface', 1.4],
@@ -194,6 +207,9 @@ const TOKENS = [
 	'onPrimary',
 	'primaryContainer',
 	'onPrimaryContainer',
+	'secondary',
+	'onSecondary',
+	'secondaryTint',
 ];
 
 const ts = `export const THEME_MODES = ['dark', 'light'] as const;

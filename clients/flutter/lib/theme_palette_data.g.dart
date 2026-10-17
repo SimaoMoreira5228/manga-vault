@@ -22,6 +22,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFF351E01),
     primaryContainer: Color(0xFF955E06),
     onPrimaryContainer: Color(0xFFFFF3E6),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
   'forest': VaultPalette(
     surface: Color(0xFF001201),
@@ -40,6 +43,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFF122B00),
     primaryContainer: Color(0xFF4C7B2D),
     onPrimaryContainer: Color(0xFFEAFCE1),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
   'slate': VaultPalette(
     surface: Color(0xFF001115),
@@ -58,6 +64,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFF012A2C),
     primaryContainer: Color(0xFF0A7B80),
     onPrimaryContainer: Color(0xFFDBFDFF),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
   'midnight': VaultPalette(
     surface: Color(0xFF070926),
@@ -76,6 +85,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFF211C48),
     primaryContainer: Color(0xFF6660AE),
     onPrimaryContainer: Color(0xFFF4F4FF),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
   'crimson': VaultPalette(
     surface: Color(0xFF210102),
@@ -94,6 +106,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFF430E17),
     primaryContainer: Color(0xFFA54B55),
     onPrimaryContainer: Color(0xFFFEF2F2),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
   'ocean': VaultPalette(
     surface: Color(0xFF001019),
@@ -112,6 +127,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFF022A2A),
     primaryContainer: Color(0xFF0C7B7C),
     onPrimaryContainer: Color(0xFFD7FEFD),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
   'terminal': VaultPalette(
     surface: Color(0xFF011205),
@@ -130,6 +148,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFF092D02),
     primaryContainer: Color(0xFF427C35),
     onPrimaryContainer: Color(0xFFE8FCE3),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
   'sakura': VaultPalette(
     surface: Color(0xFFFFF1F7),
@@ -148,6 +169,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFFFFFAFD),
     primaryContainer: Color(0xFFFEB8E6),
     onPrimaryContainer: Color(0xFF510840),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
   'parchment': VaultPalette(
     surface: Color(0xFFFCF4E9),
@@ -166,6 +190,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFFFFFBF8),
     primaryContainer: Color(0xFFFDC496),
     onPrimaryContainer: Color(0xFF462401),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
   'monochrome': VaultPalette(
     surface: Color(0xFFF3F5F8),
@@ -184,6 +211,9 @@ const _palettes = <String, VaultPalette>{
     onPrimary: Color(0xFFF9FCFF),
     primaryContainer: Color(0xFFAFD5FD),
     onPrimaryContainer: Color(0xFF022F55),
+    secondary: Color(0xFF44E2CD),
+    onSecondary: Color(0xFF003731),
+    secondaryTint: Color(0xFF003731),
   ),
 };
 

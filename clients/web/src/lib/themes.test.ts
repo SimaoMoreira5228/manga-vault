@@ -71,4 +71,17 @@ describe('generated themes', () => {
 			assert.ok(contrast(theme.palette.outline, theme.palette.surface) >= 3, theme.id);
 		}
 	});
+
+	it('keeps the unread-count pill and tinted chips readable', () => {
+		for (const theme of THEMES) {
+			assert.ok(
+				contrast(theme.palette.onSecondary, theme.palette.secondary) >= 4.5,
+				`${theme.id}: onSecondary on secondary`,
+			);
+			assert.ok(
+				contrast(theme.palette.secondary, theme.palette.secondaryTint) >= 4.5,
+				`${theme.id}: secondary on secondaryTint`,
+			);
+		}
+	});
 });
