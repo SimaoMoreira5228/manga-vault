@@ -56,13 +56,14 @@ test.describe('library', () => {
 		await expect(page.getByText('60 works')).toBeVisible();
 	});
 
-	test('searches, filters and paginates with an older server response', async ({ page }) => {
+	test('searches, filters and paginates with a cursor-shaped response', async ({ page }) => {
 		await page.route('**/api/library?*', async (route) => {
 			const url = new URL(route.request().url());
-			url.search = '?offset=0&limit=200';
+			url.searchParams.set('limit', '200');
+			url.searchParams.delete('after');
 			const response = await route.fetch({ url: url.toString() });
-			const { entries, categories } = await response.json();
-			await route.fulfill({ json: { entries, categories } });
+			const { entries, categories, total, limit, next_cursor } = await response.json();
+			await route.fulfill({ json: { entries, categories, total, limit, next_cursor } });
 		});
 		await page.reload();
 		await expect(page.getByText('60 works')).toBeVisible();

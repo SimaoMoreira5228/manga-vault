@@ -97,8 +97,8 @@ export interface Page<T> {
 export interface LibraryPage {
 	entries: [LibraryEntry, Work][];
 	total: number;
-	offset: number;
 	limit: number;
+	next_cursor: string | null;
 	categories: Category[];
 }
 
@@ -459,45 +459,30 @@ export const api = {
 
 	continueReading: () => get<ContinueReadingItem[]>('/api/me/continue-reading'),
 
-	library: async (offset = 0, limit = PAGE_SIZE, filter?: LibraryFilter): Promise<LibraryPage> => {
-		const query = new URLSearchParams(pageQuery(offset, limit));
+	library: async (
+		after: string | null = null,
+		limit = PAGE_SIZE,
+		filter?: LibraryFilter,
+	): Promise<LibraryPage> => {
+		const query = new URLSearchParams(`limit=${limit}`);
+		if (after) query.set('after', after);
 		if (filter?.kind) query.set('kind', filter.kind);
 		if (filter?.categoryId) query.set('category_id', filter.categoryId);
 		const q = filter?.q?.trim();
 		if (q) query.set('q', q);
-		const page = await get<Omit<LibraryPage, 'total'> & { total?: number }>(
-			`/api/library?${query}`,
-		);
-		if (page.total !== undefined) return { ...page, total: page.total };
-
-		const text = q?.toLowerCase();
-		const entries = page.entries.filter(
-			([entry, work]) =>
-				(!filter?.kind || work.kind === filter.kind) &&
-				(!filter?.categoryId || entry.category_id === filter.categoryId) &&
-				(!text || work.title.toLowerCase().includes(text)),
-		);
-		return {
-			...page,
-			entries: entries.slice(offset, offset + limit),
-			total: entries.length,
-			offset,
-			limit,
-		};
+		return get<LibraryPage>(`/api/library?${query}`);
 	},
 	allLibrary: async (): Promise<{ entries: [LibraryEntry, Work][]; categories: Category[] }> => {
 		const entries: [LibraryEntry, Work][] = [];
 		let categories: Category[] = [];
-		let offset = 0;
-		let total = 1;
-		while (offset < total) {
-			const page = await api.library(offset, MAX_PAGE_SIZE);
+		let after: string | null = null;
+		for (;;) {
+			const page = await api.library(after, MAX_PAGE_SIZE);
 			entries.push(...page.entries);
 			categories = page.categories;
-			total = page.total;
-			offset = page.offset + page.limit;
+			if (page.next_cursor === null) return { entries, categories };
+			after = page.next_cursor;
 		}
-		return { entries, categories };
 	},
 	setEntryCategory: (entryId: string, categoryId: string | null) =>
 		put(`/api/library-entries/${entryId}/category`, { category_id: categoryId }),

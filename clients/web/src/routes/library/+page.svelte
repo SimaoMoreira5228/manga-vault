@@ -26,6 +26,7 @@ let loading = $state(true);
 let loadingMore = $state(false);
 let loadError = $state<string | null>(null);
 let moreError = $state<string | null>(null);
+let cursor = $state<string | null>(null);
 let finished = $state(false);
 let newCategoryName = $state('');
 let refreshBusy = $state(false);
@@ -67,13 +68,14 @@ async function load() {
 	loadError = null;
 	try {
 		const [library, counts] = await Promise.all([
-			api.library(0, limit, filterQuery),
+			api.library(null, limit, filterQuery),
 			api.libraryOverview().catch(() => ({ overview: [] })),
 		]);
 		items = library.entries;
 		categories = library.categories;
 		total = library.total;
-		finished = library.entries.length >= library.total;
+		cursor = library.next_cursor;
+		finished = library.next_cursor === null;
 		moreError = null;
 		overview = Object.fromEntries(
 			counts.overview.map((row) => [
@@ -93,12 +95,13 @@ async function loadMore() {
 	loadingMore = true;
 	moreError = null;
 	try {
-		const page = await api.library(items.length, limit, filterQuery);
+		const page = await api.library(cursor, limit, filterQuery);
 		const seen = new Set(items.map(([entry]) => entry.id));
 		const added = page.entries.filter(([entry]) => !seen.has(entry.id));
 		items = [...items, ...added];
 		total = page.total;
-		finished = added.length === 0 || items.length >= page.total;
+		cursor = page.next_cursor;
+		finished = page.next_cursor === null;
 	} catch (cause) {
 		moreError = cause instanceof Error ? cause.message : 'Could not load more';
 	} finally {
