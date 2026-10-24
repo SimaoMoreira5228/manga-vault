@@ -144,7 +144,9 @@ async function uninstall(pluginId: string) {
 						</span>
 					{/if}
 					<div class="min-w-0 flex-1">
-						<h2 class="title-md truncate">{source.name}</h2>
+						<a href={`/sources/${source.id}`} class="title-md block truncate hover:text-primary">
+							{source.name}
+						</a>
 						<p class="mono-label mt-1 flex items-center gap-3 text-outline">
 							<span>v{source.version}</span>
 							<span

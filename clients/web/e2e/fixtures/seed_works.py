@@ -15,6 +15,7 @@ USERS = (
     "searcher",
     "settings_viewer",
     "shortcuts_user",
+    "source_browser",
 )
 MANGA_COUNT = 40
 NOVEL_COUNT = 20
