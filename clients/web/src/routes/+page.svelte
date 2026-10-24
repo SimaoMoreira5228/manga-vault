@@ -249,7 +249,7 @@ async function clearSavedPosition(entry: ContinueReadingItem) {
 				{#each latest as group (group.sourceId)}
 					{#if group.status === 'loading'}
 						<a
-							href="/sources"
+							href={`/sources/${group.sourceId}`}
 							class="label-caps mt-6 mb-3 block first:mt-0 text-outline hover:text-primary"
 						>
 							{group.sourceName}
@@ -275,7 +275,7 @@ async function clearSavedPosition(entry: ContinueReadingItem) {
 						</p>
 					{:else if group.items.length > 0}
 						<a
-							href="/sources"
+							href={`/sources/${group.sourceId}`}
 							class="label-caps mt-6 mb-3 block first:mt-0 text-outline hover:text-primary"
 						>
 							{group.sourceName}
