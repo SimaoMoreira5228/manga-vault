@@ -30,20 +30,28 @@ impl ProxyQuota {
 
 	pub fn charge(&self, user: Uuid) -> Result<(), Duration> {
 		let now = Instant::now();
-		let mut bucket = self.buckets.entry(user).or_insert_with(|| Bucket {
-			tokens: self.burst,
-			last_refill: now,
-		});
-		let elapsed = now.saturating_duration_since(bucket.last_refill).as_secs_f64();
-		bucket.tokens = (bucket.tokens + elapsed * self.per_second).min(self.burst);
-		bucket.last_refill = now;
-		if bucket.tokens >= 1.0 {
-			bucket.tokens -= 1.0;
-			self.prune(now);
-			return Ok(());
+		let allowed = {
+			let mut bucket = self.buckets.entry(user).or_insert_with(|| Bucket {
+				tokens: self.burst,
+				last_refill: now,
+			});
+			let elapsed = now.saturating_duration_since(bucket.last_refill).as_secs_f64();
+			bucket.tokens = (bucket.tokens + elapsed * self.per_second).min(self.burst);
+			bucket.last_refill = now;
+			if bucket.tokens >= 1.0 {
+				bucket.tokens -= 1.0;
+				true
+			} else {
+				false
+			}
+		};
+		if !allowed {
+			let bucket = self.buckets.get(&user).expect("bucket exists");
+			let wait = Duration::from_secs_f64((1.0 - bucket.tokens) / self.per_second);
+			return Err(wait.max(Duration::from_secs(1)));
 		}
-		let wait = Duration::from_secs_f64((1.0 - bucket.tokens) / self.per_second);
-		Err(wait.max(Duration::from_secs(1)))
+		self.prune(now);
+		Ok(())
 	}
 
 	fn prune(&self, now: Instant) {
@@ -114,6 +122,24 @@ mod tests {
 		let user = Uuid::now_v7();
 		assert!(quota.charge(user).is_ok());
 		assert!(quota.charge(user).is_err());
+	}
+
+	#[test]
+	fn pruning_while_charging_does_not_deadlock() {
+		use std::sync::{Arc, mpsc};
+		let quota = Arc::new(ProxyQuota::per_minute(60));
+		*quota.last_prune.lock().unwrap() = Instant::now() - PRUNE_AFTER - Duration::from_secs(1);
+		let moved = Arc::clone(&quota);
+		let user = Uuid::now_v7();
+		let (done, completed) = mpsc::channel();
+		std::thread::spawn(move || {
+			let _ = done.send(moved.charge(user).is_ok());
+		});
+		assert!(
+			completed.recv_timeout(Duration::from_secs(10)).unwrap_or(false),
+			"charge deadlocked while pruning"
+		);
+		assert!(quota.buckets.contains_key(&user));
 	}
 
 	#[test]
