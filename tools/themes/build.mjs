@@ -7,13 +7,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = join(here, '..', '..');
 
 const SPECS = [
+	{ id: 'monochrome-dark', name: 'Monochrome Dark', mode: 'dark', hue: 250, accent: 250, chroma: 0.0, accentChroma: 0.0, secondary: ['#c9c9c9', '#1a1a1a', '#2e2e2e'] },
 	{ id: 'classic', name: 'Classic Vault', mode: 'dark', hue: 55, accent: 70, chroma: 0.055 },
 	{ id: 'forest', name: 'Forest Archive', mode: 'dark', hue: 145, accent: 135, chroma: 0.05 },
-	{ id: 'slate', name: 'Slate Scholar', mode: 'dark', hue: 210, accent: 200, chroma: 0.045 },
 	{ id: 'midnight', name: 'Midnight Ink', mode: 'dark', hue: 275, accent: 285, chroma: 0.06 },
 	{ id: 'crimson', name: 'Crimson Scroll', mode: 'dark', hue: 25, accent: 15, chroma: 0.06 },
 	{ id: 'ocean', name: 'Deep Ocean', mode: 'dark', hue: 230, accent: 195, chroma: 0.055 },
-	{ id: 'terminal', name: 'Terminal', mode: 'dark', hue: 150, accent: 140, chroma: 0.04 },
 	{ id: 'sakura', name: 'Sakura Bloom', mode: 'light', hue: 350, accent: 340, chroma: 0.05 },
 	{ id: 'parchment', name: 'Parchment', mode: 'light', hue: 75, accent: 60, chroma: 0.05 },
 	{ id: 'monochrome', name: 'Monochrome', mode: 'light', hue: 250, accent: 250, chroma: 0.012 },
@@ -100,16 +99,22 @@ function paletteOf(spec) {
 	const dark = spec.mode === 'dark';
 	const tone = (lightness, chromaScale = 1) =>
 		oklch(lightness, spec.chroma * chromaScale, spec.hue);
-	const accent = (lightness, chroma) => oklch(lightness, chroma, spec.accent);
+	const accent = (lightness, chroma) => oklch(lightness, spec.accentChroma ?? chroma, spec.accent);
 	const fixed = (hex) => ({
 		hex,
 		rgb: [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16)),
 	});
-	const secondary = {
-		secondary: fixed('#44E2CD'),
-		onSecondary: fixed('#003731'),
-		secondaryTint: fixed('#003731'),
-	};
+	const secondary = spec.secondary
+		? {
+				secondary: fixed(spec.secondary[0]),
+				onSecondary: fixed(spec.secondary[1]),
+				secondaryTint: fixed(spec.secondary[2]),
+			}
+		: {
+				secondary: fixed('#44E2CD'),
+				onSecondary: fixed('#003731'),
+				secondaryTint: fixed('#003731'),
+			};
 
 	if (dark) {
 		return {

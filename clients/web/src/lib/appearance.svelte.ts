@@ -1,11 +1,11 @@
-import { resolveThemeId } from './theme_default.ts';
+import { DEFAULT_THEME, resolveThemeId } from './theme_default.ts';
 import { THEMES, type ThemeId } from './themes.generated.ts';
 
 const THEME_KEY = 'mv-theme';
 const PURE_BLACK_KEY = 'mv-pure-black';
 
 class AppearanceState {
-	theme = $state<ThemeId>('classic');
+	theme = $state<ThemeId>(DEFAULT_THEME);
 	pureBlack = $state(false);
 
 	constructor() {

@@ -101,7 +101,7 @@ VaultTheme vaultThemeById(String id) => vaultThemes.firstWhere(
   orElse: () => vaultThemes.first,
 );
 
-const darkDefaultThemeId = 'classic';
+const darkDefaultThemeId = 'monochrome-dark';
 
 String resolveThemeId(String? stored) =>
     stored != null && vaultThemes.any((theme) => theme.id == stored)

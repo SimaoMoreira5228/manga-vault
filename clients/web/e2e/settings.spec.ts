@@ -40,8 +40,8 @@ test.describe('settings', () => {
 		await signIn(page, 'settings_viewer');
 		await page.goto('/settings');
 
-		await expect(page.locator('html')).toHaveAttribute('data-theme', 'classic');
-		await expect(page.getByRole('button', { name: 'Classic Vault' })).toHaveAttribute(
+		await expect(page.locator('html')).toHaveAttribute('data-theme', 'monochrome-dark');
+		await expect(page.getByRole('button', { name: 'Monochrome Dark' })).toHaveAttribute(
 			'aria-pressed',
 			'true',
 		);

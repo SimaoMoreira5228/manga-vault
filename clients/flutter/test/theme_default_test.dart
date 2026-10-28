@@ -3,7 +3,7 @@ import 'package:manga_vault/theme.dart';
 
 void main() {
   test('defaults to a dark theme', () {
-    expect(darkDefaultThemeId, 'classic');
+    expect(darkDefaultThemeId, 'monochrome-dark');
     expect(
       vaultThemeById(darkDefaultThemeId).mode,
       VaultThemeMode.dark,

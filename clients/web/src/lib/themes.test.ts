@@ -17,10 +17,10 @@ function contrast(first: string, second: string): number {
 }
 
 describe('generated themes', () => {
-	it('offers ten themes with distinct ids and names', () => {
-		assert.equal(THEMES.length, 10);
-		assert.equal(new Set(THEMES.map((theme) => theme.id)).size, 10);
-		assert.equal(new Set(THEMES.map((theme) => theme.name)).size, 10);
+	it('offers nine themes with distinct ids and names', () => {
+		assert.equal(THEMES.length, 9);
+		assert.equal(new Set(THEMES.map((theme) => theme.id)).size, 9);
+		assert.equal(new Set(THEMES.map((theme) => theme.name)).size, 9);
 	});
 
 	it('offers both dark and light themes', () => {
@@ -29,7 +29,7 @@ describe('generated themes', () => {
 	});
 
 	it('gives every theme a distinct surface colour', () => {
-		assert.equal(new Set(THEMES.map((theme) => theme.palette.surface)).size, 10);
+		assert.equal(new Set(THEMES.map((theme) => theme.palette.surface)).size, 9);
 	});
 
 	it('keeps body text readable on every surface', () => {

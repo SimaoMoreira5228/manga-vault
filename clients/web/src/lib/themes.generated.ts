@@ -3,13 +3,12 @@ export const THEME_MODES = ['dark', 'light'] as const;
 export type ThemeMode = (typeof THEME_MODES)[number];
 
 export type ThemeId =
+	| 'monochrome-dark'
 	| 'classic'
 	| 'forest'
-	| 'slate'
 	| 'midnight'
 	| 'crimson'
 	| 'ocean'
-	| 'terminal'
 	| 'sakura'
 	| 'parchment'
 	| 'monochrome';
@@ -47,6 +46,34 @@ export interface VaultTheme {
 }
 
 export const THEMES: readonly VaultTheme[] = [
+	{
+		id: 'monochrome-dark',
+		name: 'Monochrome Dark',
+		mode: 'dark',
+		accent: '#c4c4c4',
+		deep: '#404040',
+		palette: {
+			surface: '#0d0d0d',
+			surfaceDim: '#0d0d0d',
+			surfaceBright: '#383838',
+			surfaceLowest: '#040404',
+			surfaceLow: '#141414',
+			surfaceContainer: '#1b1b1b',
+			surfaceHigh: '#242424',
+			surfaceHighest: '#303030',
+			onSurface: '#e8e8e8',
+			onSurfaceVariant: '#bababa',
+			outline: '#8c8c8c',
+			outlineVariant: '#404040',
+			primary: '#c4c4c4',
+			onPrimary: '#242424',
+			primaryContainer: '#6c6c6c',
+			onPrimaryContainer: '#f5f5f5',
+			secondary: '#c9c9c9',
+			onSecondary: '#1a1a1a',
+			secondaryTint: '#2e2e2e',
+		},
+	},
 	{
 		id: 'classic',
 		name: 'Classic Vault',
@@ -98,34 +125,6 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#122b00',
 			primaryContainer: '#4c7b2d',
 			onPrimaryContainer: '#eafce1',
-			secondary: '#44E2CD',
-			onSecondary: '#003731',
-			secondaryTint: '#003731',
-		},
-	},
-	{
-		id: 'slate',
-		name: 'Slate Scholar',
-		mode: 'dark',
-		accent: '#34dde5',
-		deep: '#2c4449',
-		palette: {
-			surface: '#001115',
-			surfaceDim: '#001114',
-			surfaceBright: '#173e45',
-			surfaceLowest: '#000609',
-			surfaceLow: '#00181c',
-			surfaceContainer: '#001f25',
-			surfaceHigh: '#002a30',
-			surfaceHighest: '#0e363d',
-			onSurface: '#deebed',
-			onSurfaceVariant: '#abbfc2',
-			outline: '#7f9093',
-			outlineVariant: '#2c4449',
-			primary: '#34dde5',
-			onPrimary: '#012a2c',
-			primaryContainer: '#0a7b80',
-			onPrimaryContainer: '#dbfdff',
 			secondary: '#44E2CD',
 			onSecondary: '#003731',
 			secondaryTint: '#003731',
@@ -210,34 +209,6 @@ export const THEMES: readonly VaultTheme[] = [
 			onPrimary: '#022a2a',
 			primaryContainer: '#0c7b7c',
 			onPrimaryContainer: '#d7fefd',
-			secondary: '#44E2CD',
-			onSecondary: '#003731',
-			secondaryTint: '#003731',
-		},
-	},
-	{
-		id: 'terminal',
-		name: 'Terminal',
-		mode: 'dark',
-		accent: '#96d987',
-		deep: '#354438',
-		palette: {
-			surface: '#011205',
-			surfaceDim: '#021105',
-			surfaceBright: '#293e2d',
-			surfaceLowest: '#000701',
-			surfaceLow: '#05190a',
-			surfaceContainer: '#0b2010',
-			surfaceHigh: '#15291a',
-			surfaceHighest: '#213625',
-			onSurface: '#e3eae4',
-			onSurfaceVariant: '#b2beb4',
-			outline: '#858f86',
-			outlineVariant: '#354438',
-			primary: '#96d987',
-			onPrimary: '#092d02',
-			primaryContainer: '#427c35',
-			onPrimaryContainer: '#e8fce3',
 			secondary: '#44E2CD',
 			onSecondary: '#003731',
 			secondaryTint: '#003731',

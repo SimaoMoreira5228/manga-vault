@@ -23,9 +23,9 @@ double contrastRatio(Color a, Color b) {
 }
 
 void main() {
-  test('offers ten themes with distinct ids', () {
-    expect(vaultThemes, hasLength(10));
-    expect(vaultThemes.map((theme) => theme.id).toSet(), hasLength(10));
+  test('offers nine themes with distinct ids', () {
+    expect(vaultThemes, hasLength(9));
+    expect(vaultThemes.map((theme) => theme.id).toSet(), hasLength(9));
   });
 
   test('every theme id resolves back to its own theme', () {

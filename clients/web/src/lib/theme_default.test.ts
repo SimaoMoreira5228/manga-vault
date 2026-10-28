@@ -5,7 +5,7 @@ import { THEMES } from './themes.generated.ts';
 
 describe('theme default', () => {
 	it('defaults to a dark theme', () => {
-		assert.equal(DEFAULT_THEME, 'classic');
+		assert.equal(DEFAULT_THEME, 'monochrome-dark');
 		assert.equal(THEMES.find((theme) => theme.id === DEFAULT_THEME)?.mode, 'dark');
 	});
 
